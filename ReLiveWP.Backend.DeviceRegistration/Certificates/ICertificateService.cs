@@ -1,10 +1,10 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 
-namespace ReLiveWP.Services.Activation.Certificates
+namespace ReLiveWP.Backend.Certificates
 {
     public interface ICertificateService
     {
-        byte[] HandleCertRequest(string certificateRequest);
+        byte[] HandleCertRequest(byte[] certificateRequest);
 
         X509Certificate2 GetOrGenerateRootCACert();
     }

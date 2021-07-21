@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReLiveWP.Backend.DeviceRegistration";
+
+package device_registration;
+
+service DeviceRegistration {
+  rpc RegisterDevice (DeviceRegistrationRequest) returns (DeviceRegistrationResponse);
+}
+
+message DeviceRegistrationRequest {
+  string certificateSubject = 1;
+
+  string osVersion = 2;
+  string locale = 3;
+  string activationCode = 4;
+
+  string deviceManufacturer = 5;
+  string deviceModel = 6;
+  string deviceUniqueId = 7;
+  string deviceOperator = 8;
+  string deviceIMEI = 9;
+}
+
+message DeviceRegistrationResponse {
+  bool succeeded = 1;
+  bool wasAlreadyRegistered = 2;
+}

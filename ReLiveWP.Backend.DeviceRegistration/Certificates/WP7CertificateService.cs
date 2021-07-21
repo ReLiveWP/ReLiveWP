@@ -24,7 +24,7 @@ using Microsoft.Extensions.Configuration;
 // tl;dr i know SHA1 is insecure these days please do not email me about it
 //
 
-namespace ReLiveWP.Services.Activation.Certificates
+namespace ReLiveWP.Backend.Certificates
 {
     public class WP7CertificateService : ICertificateService
     {
@@ -44,13 +44,13 @@ namespace ReLiveWP.Services.Activation.Certificates
             return GetOrGenerateRootCACert(false); // avoid exposing private keys lmao
         }
 
-        public byte[] HandleCertRequest(string certificateRequest)
+        public byte[] HandleCertRequest(byte[] certificateRequest)
         {
             var rootCert2 = GetOrGenerateRootCACert(true);
             var rootCert = DotNetUtilities.FromX509Certificate(rootCert2);
 
             var random = SecureRandom.GetInstance("SHA_1PRNG");
-            var certRequest = new Pkcs10CertificationRequest(Convert.FromBase64String(certificateRequest));
+            var certRequest = new Pkcs10CertificationRequest(certificateRequest);
             var certRequestInfo = certRequest.GetCertificationRequestInfo();
 
             var caKeyPair = DotNetUtilities.GetRsaKeyPair(rootCert2.GetRSAPrivateKey());
@@ -91,16 +91,16 @@ namespace ReLiveWP.Services.Activation.Certificates
             }
 
             var cert = certificateGenerator.Generate(signatureFactory);
+            var certificate = new X509Certificate2(cert.GetEncoded());
 
-            //var certs = new List<object> { cert };
-            //var store = X509StoreFactory.Create("Certificate/Collection", new X509CollectionStoreParameters(certs));
-
-            //var gen = new CmsSignedDataGenerator();
-            //gen.AddSigner(caKeyPair.Private, bcCert, CmsSignedGenerator.DigestSha1);
-            //gen.AddCertificates(store);
-
-            var collection = new X509Certificate2Collection(new X509Certificate2(cert.GetEncoded()));
+            var collection = new X509Certificate2Collection(certificate);
             var data = collection.Export(X509ContentType.Pkcs7);
+
+            using (var store = new X509Store("Trusted Windows Phone devices", StoreLocation.CurrentUser, OpenFlags.ReadWrite))
+            {
+                store.AddRange(collection);
+                store.Close();
+            }
 
             return data;
         }

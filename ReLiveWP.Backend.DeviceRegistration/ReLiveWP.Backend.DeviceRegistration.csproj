@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.38.0" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\protos\client_provisioning.proto">
+      <Link>Protos\client_provisioning.proto</Link>
+    </Protobuf>
+    <Protobuf Include="..\protos\device_registration.proto">
+      <Link>Protos\device_registration.proto</Link>
+    </Protobuf>
+  </ItemGroup>
+
+</Project>

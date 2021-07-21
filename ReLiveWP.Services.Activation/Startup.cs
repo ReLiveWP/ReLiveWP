@@ -10,7 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using ReLiveWP.Services.Activation.Certificates;
+using ReLiveWP.Backend.ClientProvisioning;
+using ReLiveWP.Backend.DeviceRegistration;
 
 namespace ReLiveWP.Services.Activation
 {
@@ -26,7 +27,11 @@ namespace ReLiveWP.Services.Activation
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddSingleton<ICertificateService, WP7CertificateService>();
+
+            services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
+                o => o.Address = new Uri("https://localhost:5001"));
+            services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
+                o => o.Address = new Uri("https://localhost:5001"));
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReLiveWP.Backend.ClientProvisioning";
+
+package client_provisioning;
+
+service ClientProvisioning {
+  rpc ProvisionWP7Device (WP7ProvisioningRequest) returns (DeviceProvisioningResponse);
+}
+
+message WP7ProvisioningRequest {
+  bytes certificateRequest = 1;
+}
+
+message DeviceProvisioningResponse {
+  bool succeeded = 1;
+  bytes certificate = 2;
+}
