@@ -1,4 +1,4 @@
 [submodule "ReLiveWP.Services.Activation"]
 	path = ReLiveWP.Services.Activation
 	url = https://github.com/ReLiveWP/ReLiveWP.Services.Activation
-	branch = origin/main
+	branch = main
