@@ -15,6 +15,8 @@ using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Math;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using System.IO;
+using Org.BouncyCastle.Cms;
 
 //
 // so i'm no crypto expert, and a lot of this probably has some holes so like if you think you can fix it
@@ -29,30 +31,37 @@ namespace ReLiveWP.Backend.Certificates
     public class WP7CertificateService : ICertificateService
     {
         private ILogger<WP7CertificateService> _logger;
-        private IConfiguration _configuration;
+        private RootCACertificateProvider _caProvider;
 
         public WP7CertificateService(
             ILogger<WP7CertificateService> logger,
-            IConfiguration configuration)
+            RootCACertificateProvider caProvider)
         {
             _logger = logger;
-            _configuration = configuration;
-        }
-
-        public X509Certificate2 GetOrGenerateRootCACert()
-        {
-            return GetOrGenerateRootCACert(false); // avoid exposing private keys lmao
+            _caProvider = caProvider;
         }
 
         public byte[] HandleCertRequest(byte[] certificateRequest)
         {
-            var rootCert2 = GetOrGenerateRootCACert(true);
+            var rootCert2 = _caProvider.GetOrGenerateRootCACert(true);
             var rootCert = DotNetUtilities.FromX509Certificate(rootCert2);
 
             var random = SecureRandom.GetInstance("SHA_1PRNG");
             var certRequest = new Pkcs10CertificationRequest(certificateRequest);
             var certRequestInfo = certRequest.GetCertificationRequestInfo();
 
+            using var store = new X509Store("Trusted Windows Phone devices", StoreLocation.CurrentUser, OpenFlags.ReadWrite);
+            //var storeCollection = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, certRequestInfo.Subject.ToString(), true);
+            //if (storeCollection.Count > 0)
+            //{
+            //    _logger.LogDebug("Found existing certificate for {SubjectDN}", certRequestInfo.Subject);
+
+            //    var deviceCert = storeCollection[0];
+            //    var deviceStore = new X509Certificate2Collection(new[] { deviceCert });
+            //    return deviceStore.Export(X509ContentType.Pkcs7);
+            //}
+
+            _logger.LogDebug("Generating new certificate for {SubjectDN}", certRequestInfo.Subject);
             var caKeyPair = DotNetUtilities.GetRsaKeyPair(rootCert2.GetRSAPrivateKey());
             var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), random);
 
@@ -70,7 +79,9 @@ namespace ReLiveWP.Backend.Certificates
             {
                 KeyPurposeID.IdKPServerAuth,
                 KeyPurposeID.IdKPClientAuth,
-                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.1") // WP7 key usage
+                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.1"), // WP7 key usage
+                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.2"), // WP8 key usage
+                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.6")  // Windows Live key usage?
             });
 
             certificateGenerator.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.NonRepudiation | KeyUsage.KeyEncipherment | KeyUsage.DataEncipherment));
@@ -92,77 +103,18 @@ namespace ReLiveWP.Backend.Certificates
 
             var cert = certificateGenerator.Generate(signatureFactory);
             var certificate = new X509Certificate2(cert.GetEncoded());
+            store.Add(certificate);
+            store.Close();
 
-            var collection = new X509Certificate2Collection(certificate);
+            var collection = new X509Certificate2Collection();
+            collection.Add(certificate);
+            collection.Add(rootCert2);
+
             var data = collection.Export(X509ContentType.Pkcs7);
 
-            using (var store = new X509Store("Trusted Windows Phone devices", StoreLocation.CurrentUser, OpenFlags.ReadWrite))
-            {
-                store.AddRange(collection);
-                store.Close();
-            }
+            _logger.LogInformation("Generated new certificate for {SubjectDN}", certRequestInfo.Subject);
 
             return data;
-        }
-
-        private X509Certificate2 GetOrGenerateRootCACert(bool includePrivateKey)
-        {
-            var caDistinguishedName = _configuration["CertificateGeneration:RootCA"];
-            var caCommonName = _configuration["CertificateGeneration:RootCACN"];
-            var caName = new X509Name(caDistinguishedName);
-
-            _logger.LogDebug("Looking for certificate with CN \"{Name}\"", caCommonName);
-
-            using var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser);
-            store.Open(OpenFlags.ReadWrite);
-
-            var collection = store.Certificates.Find(X509FindType.FindBySubjectName, caCommonName, true);
-
-            if (collection.Count > 0)
-            {
-                var foundCert = collection[0];
-                _logger.LogDebug("Found certificate {Cert}", foundCert.Thumbprint);
-                return includePrivateKey ? foundCert : new X509Certificate2(foundCert.RawData);
-            }
-            else
-            {
-                _logger.LogWarning("No certificate found, creating new! Make sure your device trusts it!");
-
-                var random = SecureRandom.GetInstance("SHA_1PRNG");
-                var rsa = new RsaKeyPairGenerator();
-                rsa.Init(new KeyGenerationParameters(random, 4096));
-
-                var keyPair = rsa.GenerateKeyPair();
-                var startingDateTime = new DateTime(2010, 1, 1);
-                var endDateTime = new DateTime(2110, 1, 1);
-
-                // var publicKeyInfo = SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(keyPair.Public);
-                var privateKeyInfo = PrivateKeyInfoFactory.CreatePrivateKeyInfo(keyPair.Private);
-                var certBuilder = new X509V1CertificateGenerator();
-
-                var signatureFactory = new Asn1SignatureFactory("SHA1WITHRSA", keyPair.Private, random); // secure lol
-                var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), random);
-                certBuilder.SetSerialNumber(serialNumber);
-                certBuilder.SetSubjectDN(caName);
-                certBuilder.SetIssuerDN(caName);
-                certBuilder.SetNotBefore(startingDateTime);
-                certBuilder.SetNotAfter(endDateTime);
-                certBuilder.SetPublicKey(keyPair.Public);
-
-                var cert = certBuilder.Generate(signatureFactory);
-
-                var x509 = new X509Certificate2(cert.GetEncoded());
-                var seq = (Asn1Sequence)Asn1Object.FromByteArray(privateKeyInfo.ParsePrivateKey().GetDerEncoded());
-                var rsaKey = RsaPrivateKeyStructure.GetInstance(seq);
-                var rsaParams = new RsaPrivateCrtKeyParameters(rsaKey);
-
-                var x509WithKey = x509.CopyWithPrivateKey(DotNetUtilities.ToRSA(rsaParams));
-                store.Add(x509WithKey);
-                store.Close();
-
-                _logger.LogInformation("Created and stored certificate {Cert}", x509.Thumbprint);
-                return includePrivateKey ? x509WithKey : x509;
-            }
         }
     }
 }

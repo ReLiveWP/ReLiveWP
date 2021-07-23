@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<a:feed xmlns:a="http://www.w3.org/2005/Atom" xmlns:os="http://a9.com/-/spec/opensearch/1.1/" xmlns="http://schemas.zune.net/catalog/apps/2008/02">
+  <a:link rel="self" type="application/atom+xml" href="/v3.2/en-US/apps/1a0ee8c2-48b1-df11-8a2f-00237de2db9e?version=latest&amp;clientType=WinMobile" />
+  <a:updated>2015-09-26T11:28:15.317173Z</a:updated>
+  <a:title type="text">Unicord</a:title>
+  <a:id>urn:uuid:1572f5ac-5eca-df11-9eae-00237de2db9e</a:id>
+  <a:content type="html">This claims to be HTML but doesn&#39;t support any formatting features, and also preserves whitespace &gt;:c</a:content>
+  <iapCount>2</iapCount>
+  <sortTitle>Unicord</sortTitle>
+  <releaseDate>2021-07-22T12:41:03Z</releaseDate>
+  <visibilityStatus>Live</visibilityStatus>
+  <publisher>Wan Kerr Co. Ltd.</publisher>
+  <averageUserRating>7.5</averageUserRating>
+  <userRatingCount>100</userRatingCount>
+  <image>
+    <id>urn:uuid:aea82cb2-0bda-49bc-a664-1c12304337a1</id>
+  </image>
+  <screenshots>
+    <screenshot>
+      <id>urn:uuid:1046f729-0ec7-48cf-8020-68d42e811d00</id>
+      <orientation>0</orientation>
+    </screenshot>
+    <screenshot>
+      <id>urn:uuid:0243a5e1-aec5-475a-a962-adb5eb34bccb</id>
+      <orientation>0</orientation>
+    </screenshot>
+    <screenshot>
+      <id>urn:uuid:81c7db91-2012-4b99-b3ac-7361524f6c6e</id>
+      <orientation>0</orientation>
+    </screenshot>
+    <screenshot>
+      <id>urn:uuid:3c0efdb4-6a37-48b6-a2f7-e817992b1d67</id>
+      <orientation>0</orientation>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>
+      <id>windowsphone.social</id>
+      <title>social</title>
+      <isRoot>True</isRoot>
+    </category>
+  </categories>
+  <tags>
+    <tag>apptag.independent</tag>
+  </tags>
+  <offers>
+    <offer>
+      <offerId>urn:uuid:36b19144-ca1b-4368-b0d5-04948c6909cd</offerId>
+      <mediaInstanceId>urn:uuid:1672f5ac-5eca-df11-9eae-00237de2db9e</mediaInstanceId>
+      <clientTypes>
+        <clientType>WinMobile 7.1</clientType>
+      </clientTypes>
+      <paymentTypes>
+        <paymentType>Credit Card</paymentType>
+      </paymentTypes>
+      <store>Zest</store>
+      <price>0</price>
+      <displayPrice>$0.00</displayPrice>
+      <priceCurrencyCode>USD</priceCurrencyCode>
+      <licenseRight>Purchase</licenseRight>
+    </offer>
+  </offers>
+  <taxString>plus applicable taxes</taxString>
+  <backgroundImage />
+  <publisherId>Wan Kerr Co. Ltd.</publisherId>
+  <publisherGuid>urn:uuid:dc0444bf-2788-4d98-9ed7-b042cfd71c1d</publisherGuid>
+  <a:entry>
+    <a:updated>2021-07-22T12:41:03Z</a:updated>
+    <a:title type="text">Unicord 1.0.0.0</a:title>
+    <a:id>urn:uuid:16e4c8db-b2b3-4725-9c9f-3d8e7cd40e92</a:id>
+    <version>1.0.0.0</version>
+    <payloadId>urn:uuid:16e4c8db-b2b3-4725-9c9f-3d8e7cd40e92</payloadId>
+    <skuId>urn:uuid:4474fde7-d627-427d-979a-e008cb1c70f5</skuId>
+    <skuLastUpdated>2021-07-22T12:41:03Z</skuLastUpdated>
+    <isAvailableInCountry>true</isAvailableInCountry>
+    <isAvailableInStore>true</isAvailableInStore>
+    <isClientTypeCompatible>true</isClientTypeCompatible>
+    <isHardwareCompatible>true</isHardwareCompatible>
+    <isBlacklisted>false</isBlacklisted>
+    <url>http://cdn.marketplacecontent.windowsphone.com/public/e94e737b-0f77-40b9-b2b9-660d08a5546c</url>
+    <packageSize>28394810</packageSize>
+    <installSize>45887488</installSize>
+    <clientTypes>
+      <clientType>WindowsPhone71</clientType>
+    </clientTypes>
+    <supportedLanguages>
+      <supportedLanguage>English (United States)</supportedLanguage>
+    </supportedLanguages>
+    <deviceCapabilities>
+      &lt;capability&gt;
+      &lt;id&gt;ID_CAP_MEDIALIB&lt;/id&gt;
+      &lt;string&gt;photo, music, and video libraries&lt;/string&gt;
+      &lt;disclosure&gt;Disclose&lt;/disclosure&gt;
+      &lt;/capability&gt;&lt;capability&gt;
+      &lt;id&gt;ID_CAP_NETWORKING&lt;/id&gt;
+      &lt;string&gt;data services&lt;/string&gt;
+      &lt;disclosure&gt;Disclose&lt;/disclosure&gt;
+      &lt;/capability&gt;&lt;capability&gt;
+      &lt;id&gt;ID_CAP_WEBBROWSERCOMPONENT&lt;/id&gt;
+      &lt;string&gt;web browser component&lt;/string&gt;
+      &lt;disclosure&gt;Disclose&lt;/disclosure&gt;
+      &lt;/capability&gt;
+    </deviceCapabilities>
+  </a:entry>
+  <a:author>
+    <a:name>Microsoft Corporation</a:name>
+  </a:author>
+</a:feed>

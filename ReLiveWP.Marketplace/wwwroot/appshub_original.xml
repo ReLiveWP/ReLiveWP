@@ -1,0 +1,1437 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<a:feed xmlns:a="http://www.w3.org/2005/Atom" xmlns:os="http://a9.com/-/spec/opensearch/1.1/" xmlns="http://schemas.zune.net/catalog/apps/2008/02">
+    <a:link rel="self" type="application/atom+xml" href="/v3.2/en-US/clientTypes/WinMobile%207.1/hubTypes/apps/hub?store=Zest&amp;store=&amp;store=" />
+    <a:updated>2012-01-14T06:19:39.326466Z</a:updated>
+    <a:title type="text">apps-US-winMobile7</a:title>
+    <a:id>apps-US-WinMobile71-ALL-ALL</a:id>
+    <templates>
+        <template>
+            <mimeType>application/uix</mimeType>
+            <templateName>ApplicationsHub</templateName>
+        </template>
+    </templates>
+    <a:entry>
+        <a:updated>2012-01-14T06:19:39.326466Z</a:updated>
+        <a:title type="text">List Of Items</a:title>
+        <a:id>urn:uuid:d8cdc134-a2a7-45ef-9433-4403f4b4acb7</a:id>
+        <index>1</index>
+        <link>
+            <type>ApplicationCollection</type>
+            <target>D8CDC134-A2A7-45EF-9433-4403F4B4ACB7</target>
+        </link>
+        <editorialItems>
+            <editorialItem>
+                <id>urn:uuid:800f82d2-5402-47b0-ba8a-f3117b7a388b</id>
+                <link>
+                    <type>Application</type>
+                    <target>c968b96e-2dda-df11-a844-00237de2db9e</target>
+                </link>
+                <title>Ministry Of Sound</title>
+                <sequenceNumber>1</sequenceNumber>
+                <image>
+                    <id>urn:uuid:a3dbaae7-fe8e-43e8-8f01-ff10276a4358</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:bc1e64ba-0b8e-4057-8d71-a91308875f71</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:2219feda-0f51-4907-9870-18afd743dab2</id>
+                <link>
+                    <type>Application</type>
+                    <target>cddff7ed-a876-e011-9210-002264c2fb72</target>
+                </link>
+                <title>Walgreens</title>
+                <sequenceNumber>2</sequenceNumber>
+                <image>
+                    <id>urn:uuid:4867f4db-1e20-4c62-8712-b93d5d443308</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:ec0ee57c-4065-4576-877d-ff999e65900a</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:11d19197-1464-46b1-8dd4-04516b53ee17</id>
+                <link>
+                    <type>Application</type>
+                    <target>8a20beb9-e450-e011-854c-00237de2db9e</target>
+                </link>
+                <title>Intuit GoPayment Credit Card Terminal</title>
+                <sequenceNumber>3</sequenceNumber>
+                <image>
+                    <id>urn:uuid:66ceb654-4578-4200-9cfc-495facabeb7f</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:fcec1d4c-d431-4d28-81f0-2efcc9aaee43</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:64a09938-e680-4fb7-bdf5-04a1eeece16f</id>
+                <link>
+                    <type>Application</type>
+                    <target>361aeae0-4a82-e011-986b-78e7d1fa76f8</target>
+                </link>
+                <title>6 Week Training</title>
+                <sequenceNumber>4</sequenceNumber>
+                <image>
+                    <id>urn:uuid:e2b405f2-dd48-413d-a0ee-3b63f3936a7e</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:0ff82538-3432-426d-a845-3cc473d3c1b1</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:775f5872-28ef-45a8-a80b-ca51cc9a4328</id>
+                <link>
+                    <type>Application</type>
+                    <target>8fbeb777-a17c-4afd-b880-deac88ed86ca</target>
+                </link>
+                <title>RedLaser</title>
+                <sequenceNumber>5</sequenceNumber>
+                <image>
+                    <id>urn:uuid:62b0cd91-da8a-41ba-aead-ec5bffe72b90</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:8c8d2d09-d512-4781-8b0e-7d9783ae1500</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:6644ba5d-acca-4108-93f9-5fddfe27b42c</id>
+                <link>
+                    <type>Application</type>
+                    <target>d823aa9a-71d6-df11-a844-00237de2db9e</target>
+                </link>
+                <title>MyRadar</title>
+                <sequenceNumber>6</sequenceNumber>
+                <image>
+                    <id>urn:uuid:7759ba35-f637-4aed-845b-73d94c7ffbc9</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:5f12d068-f943-4489-8c74-0096e4d87aff</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:40f7c37e-0816-46c1-a132-efcb4bf7ca6f</id>
+                <link>
+                    <type>Application</type>
+                    <target>1572f5ac-5eca-df11-9eae-00237de2db9e</target>
+                </link>
+                <title>Match.com</title>
+                <sequenceNumber>7</sequenceNumber>
+                <image>
+                    <id>urn:uuid:3eb25b4c-cd84-45b5-bb7a-90dff3a105b3</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:d5cdf6cb-ed12-4aba-8bd0-ebda5868d76f</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:3ac83472-03d8-46d9-970e-b5f6d36a4f0c</id>
+                <link>
+                    <type>Application</type>
+                    <target>e5b074f3-3aa1-e011-986b-78e7d1fa76f8</target>
+                </link>
+                <title>Pizza Hut</title>
+                <sequenceNumber>8</sequenceNumber>
+                <image>
+                    <id>urn:uuid:e4e4dd1d-efcd-4a13-9334-a5c6ea42c2bb</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:5cfdd4ae-9339-42c1-8b4e-ebf3b4041599</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:16bebe33-731d-4883-aa83-ac9f863a87ba</id>
+                <link>
+                    <type>Application</type>
+                    <target>2503939c-ad3e-e011-854c-00237de2db9e</target>
+                </link>
+                <title>Ski Guide</title>
+                <sequenceNumber>9</sequenceNumber>
+                <image>
+                    <id>urn:uuid:a38b423b-377e-4016-9fd6-05c3639afa3a</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:e070049b-6dff-4e85-a2ff-db79461b7921</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:58219e4c-438d-40bf-97c8-74c20f212cb6</id>
+                <link>
+                    <type>Application</type>
+                    <target>b7bf7f78-9deb-df11-9264-00237de2db9e</target>
+                </link>
+                <title>Beezz</title>
+                <sequenceNumber>10</sequenceNumber>
+                <image>
+                    <id>urn:uuid:cfeffe28-2b1a-4d99-88e4-2886cce8faaa</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:0f1fa9d2-9cd0-4d1a-862a-c64b79d1c1f7</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:55c1d59f-ae53-4451-bc65-04d3e2d9a9a0</id>
+                <link>
+                    <type>Application</type>
+                    <target>a7efb71d-06ef-40f7-9df9-8bf9b5d3fb4d</target>
+                </link>
+                <title>BBC Radio Player</title>
+                <sequenceNumber>11</sequenceNumber>
+                <image>
+                    <id>urn:uuid:bad6e769-7f76-44ba-be5a-4604ca2843b8</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:6f5169ae-f4ba-416a-911b-b8f6738b08c6</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:c4bd4997-68b0-428f-bfdf-a67b5e2f3bd7</id>
+                <link>
+                    <type>Application</type>
+                    <target>ef2fbd99-f7a1-e011-986b-78e7d1fa76f8</target>
+                </link>
+                <title>Priority Club Rewards</title>
+                <sequenceNumber>12</sequenceNumber>
+                <image>
+                    <id>urn:uuid:b2fbfd1f-a785-4325-9bb1-b85f7ca9d67f</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:27ccee52-d773-47ca-86bf-5dc8a0d3645d</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:002343d0-ec04-4191-abc8-1aebe28205fc</id>
+                <link>
+                    <type>Application</type>
+                    <target>23935a68-0208-e011-9264-00237de2db9e</target>
+                </link>
+                <title>TechRack</title>
+                <sequenceNumber>13</sequenceNumber>
+                <image>
+                    <id>urn:uuid:24ce4312-9dfc-46d8-a4f8-00efe4e0d7e5</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:c2fd0748-41cd-444b-946f-6abf3d7d01f3</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:e83e6441-3f2e-4bf2-b2fb-cee86e073c33</id>
+                <link>
+                    <type>Application</type>
+                    <target>9ce93e51-5b35-e011-854c-00237de2db9e</target>
+                </link>
+                <title>Lync 2010</title>
+                <sequenceNumber>14</sequenceNumber>
+                <image>
+                    <id>urn:uuid:58112d20-269d-46a9-8634-2c575d889104</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:e305babb-2402-4030-a5c7-1ad0ed2bf8de</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:c17b70ab-c9a6-401c-8a57-dd94968920b0</id>
+                <link>
+                    <type>Application</type>
+                    <target>16b4f331-e05b-e011-854c-00237de2db9e</target>
+                </link>
+                <title>...i'm a WP7!</title>
+                <sequenceNumber>15</sequenceNumber>
+                <image>
+                    <id>urn:uuid:090cb4de-3d7f-4d71-bb2f-914aee7d5a58</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:83b8f910-2516-44c1-ac4b-a5115e060c1a</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:b2534083-869a-423c-a1ea-8e2e89fb5e17</id>
+                <link>
+                    <type>Application</type>
+                    <target>92d3a3a3-66d9-df11-a844-00237de2db9e</target>
+                </link>
+                <title>eBay</title>
+                <sequenceNumber>16</sequenceNumber>
+                <image>
+                    <id>urn:uuid:0d2a0dae-b0c3-4e1b-9e6f-465e28eb4419</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:9c940ce0-eca8-44f0-9a8a-6f15d8d7f3a7</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:fbdb9cee-1ddc-40d2-a256-b624412da8a4</id>
+                <link>
+                    <type>Application</type>
+                    <target>b2032b14-fcb1-4d8d-b958-37d367595de9</target>
+                </link>
+                <title>Convert2Go</title>
+                <sequenceNumber>17</sequenceNumber>
+                <image>
+                    <id>urn:uuid:f131f787-fec9-45f3-8e0a-e3f60a2d9db9</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:2b952127-8037-4373-8981-3785e5df229b</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:e1973c5a-b3d3-4583-a4f5-561e7d9254ae</id>
+                <link>
+                    <type>Application</type>
+                    <target>7dc6e04c-0c99-e011-986b-78e7d1fa76f8</target>
+                </link>
+                <title>Eventful</title>
+                <sequenceNumber>18</sequenceNumber>
+                <image>
+                    <id>urn:uuid:7d2d5917-5e2a-4f02-bb71-a2341dd839c3</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:36e7f6d6-4ca8-4635-b3e5-aed443bee0ac</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:18c499a0-b577-41f7-932e-28ef3d593b15</id>
+                <link>
+                    <type>Application</type>
+                    <target>d47287b9-391f-44c7-9a3c-299b4bca5991</target>
+                </link>
+                <title>WeatherMaster</title>
+                <sequenceNumber>19</sequenceNumber>
+                <image>
+                    <id>urn:uuid:b47f775d-1e8a-441c-a19b-a773fdf6da5e</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:c266722c-109b-445e-9efb-29f790253f8b</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:cd3ceb72-33df-411a-b899-ca180a621cb6</id>
+                <link>
+                    <type>Application</type>
+                    <target>180b0f46-e753-e011-854c-00237de2db9e</target>
+                </link>
+                <title>TripAdvisor</title>
+                <sequenceNumber>20</sequenceNumber>
+                <image>
+                    <id>urn:uuid:f3400f85-7423-4110-9318-b22903f442fd</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:d0920d44-5a9d-4be7-8c3f-ff3dae72dc06</id>
+                </backgroundImage>
+            </editorialItem>
+        </editorialItems>
+        <applications>
+            <application>
+                <id>urn:uuid:c968b96e-2dda-df11-a844-00237de2db9e</id>
+                <title>Ministry Of Sound</title>
+                <sortTitle>Ministry Of Sound</sortTitle>
+                <releaseDate>2010-10-19T02:25:34.607Z</releaseDate>
+                <shortDescription>Home of Dance Music</shortDescription>
+                <version>1.4.0.0</version>
+                <averageUserRating>7.619048</averageUserRating>
+                <userRatingCount>21</userRatingCount>
+                <averageLastInstanceUserRating>0</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>0</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:29a5d38f-bd5d-4381-b0aa-984d7475064b</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.musicandvideo</id>
+                        <title>music + video</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:e58ef7db-3a45-4bb2-b7fe-71d07f5b02d3</offerId>
+                        <mediaInstanceId>urn:uuid:5bb45d77-e01f-424a-9d42-36a9886c28a9</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Ministry of Sound</id>
+                    <name>Ministry of Sound</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:cddff7ed-a876-e011-9210-002264c2fb72</id>
+                <title>Walgreens</title>
+                <sortTitle>Walgreens</sortTitle>
+                <releaseDate>2011-05-06T18:31:03.96Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>6.727273</averageUserRating>
+                <userRatingCount>88</userRatingCount>
+                <averageLastInstanceUserRating>6.727273</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>88</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:9534d78d-f4a4-42ef-96b9-cfd46310f773</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.lifestyle</id>
+                        <title>lifestyle</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.shopping</id>
+                        <title>shopping</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.lifestyle</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:c88e175a-02e9-4509-ba1b-46a0b9203857</offerId>
+                        <mediaInstanceId>urn:uuid:46903bfa-a876-e011-9210-002264c2fb72</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Walgreen Co.</id>
+                    <name>Walgreen Co.</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:8a20beb9-e450-e011-854c-00237de2db9e</id>
+                <title>Intuit GoPayment Credit Card Terminal</title>
+                <sortTitle>Intuit GoPayment Credit Card Terminal</sortTitle>
+                <releaseDate>2011-03-19T00:01:32.647Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>7.285714</averageUserRating>
+                <userRatingCount>28</userRatingCount>
+                <averageLastInstanceUserRating>7.285714</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>28</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:5dc9d97b-9809-47b2-8227-3e10c4cb3735</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.finance</id>
+                        <title>personal finance</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:ae1e2f3b-73db-4c26-ad74-b5bc18d2ded2</offerId>
+                        <mediaInstanceId>urn:uuid:8b20beb9-e450-e011-854c-00237de2db9e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Intuit Inc</id>
+                    <name>Intuit Inc</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:361aeae0-4a82-e011-986b-78e7d1fa76f8</id>
+                <title>6 Week Training</title>
+                <sortTitle>6 Week Training</sortTitle>
+                <releaseDate>2011-05-24T05:34:30.603Z</releaseDate>
+                <version>2.6.0.0</version>
+                <averageUserRating>9.0625</averageUserRating>
+                <userRatingCount>224</userRatingCount>
+                <averageLastInstanceUserRating>9.02439</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>41</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:09177d57-30a0-4d42-9c4c-22ce622d90e2</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.healthandfitness</id>
+                        <title>health + fitness</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.fitness</id>
+                        <title>fitness</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.healthandfitness</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:793d297a-3030-47d9-a38f-6a6f9a6b81e6</offerId>
+                        <mediaInstanceId>urn:uuid:67ff49bf-77b5-4bd3-a841-b32226c2001e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Herm's Software Services</id>
+                    <name>Herm's Software Services</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:8fbeb777-a17c-4afd-b880-deac88ed86ca</id>
+                <title>RedLaser</title>
+                <sortTitle>RedLaser</sortTitle>
+                <releaseDate>2011-12-07T22:09:32.02Z</releaseDate>
+                <version>1.3.0.0</version>
+                <averageUserRating>6.109091</averageUserRating>
+                <userRatingCount>55</userRatingCount>
+                <averageLastInstanceUserRating>0</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>0</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:7556a69c-0dc9-4fb6-95f8-713ad7db6862</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.lifestyle</id>
+                        <title>lifestyle</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.shopping</id>
+                        <title>shopping</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.lifestyle</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:648c83a6-c963-41d5-b357-f80e3b3f1a54</offerId>
+                        <mediaInstanceId>urn:uuid:34f4d1fe-b004-4d51-a3c9-0f0d5affac33</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>eBay Inc.</id>
+                    <name>eBay Inc.</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:d823aa9a-71d6-df11-a844-00237de2db9e</id>
+                <title>MyRadar</title>
+                <sortTitle>MyRadar</sortTitle>
+                <releaseDate>2010-10-15T17:55:15.973Z</releaseDate>
+                <version>2.2.0.0</version>
+                <averageUserRating>8.578947</averageUserRating>
+                <userRatingCount>1254</userRatingCount>
+                <averageLastInstanceUserRating>8.631579</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>76</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:5c667042-c910-488c-88e1-4bfb693c3f45</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.newsandweather</id>
+                        <title>news + weather</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.localandnational</id>
+                        <title>local + national</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.newsandweather</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:4615c576-19d1-4855-9f2d-77a4d4bd8bc6</offerId>
+                        <mediaInstanceId>urn:uuid:b2a15258-dac0-4b22-853b-97fdf134b5fd</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>ACME AtronOmatic, LLC</id>
+                    <name>ACME AtronOmatic, LLC</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:1572f5ac-5eca-df11-9eae-00237de2db9e</id>
+                <title>Match.com</title>
+                <sortTitle>Match.com</sortTitle>
+                <releaseDate>2010-10-25T22:01:12.06Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>5.102041</averageUserRating>
+                <userRatingCount>49</userRatingCount>
+                <averageLastInstanceUserRating>5.102041</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>49</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:2d7c3845-5ad3-4ea9-ae50-abd29432886e</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.social</id>
+                        <title>social</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:36b19144-ca1b-4368-b0d5-04948c6909cd</offerId>
+                        <mediaInstanceId>urn:uuid:1672f5ac-5eca-df11-9eae-00237de2db9e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Match.com, L.L.C.</id>
+                    <name>Match.com, L.L.C.</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:e5b074f3-3aa1-e011-986b-78e7d1fa76f8</id>
+                <title>Pizza Hut</title>
+                <sortTitle>Pizza Hut</sortTitle>
+                <releaseDate>2011-11-01T19:35:42.22Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>6.671052</averageUserRating>
+                <userRatingCount>152</userRatingCount>
+                <averageLastInstanceUserRating>6.671052</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>152</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:6e48f4f1-34f5-4017-9639-0079a6d5aef7</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.lifestyle</id>
+                        <title>lifestyle</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.foodanddining</id>
+                        <title>food + dining</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.lifestyle</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:9b359530-e035-4099-88aa-25f51be603a2</offerId>
+                        <mediaInstanceId>urn:uuid:4a0a74f9-3aa1-e011-986b-78e7d1fa76f8</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Pizza Hut Inc.</id>
+                    <name>Pizza Hut Inc.</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:2503939c-ad3e-e011-854c-00237de2db9e</id>
+                <title>Ski Guide</title>
+                <sortTitle>Ski Guide</sortTitle>
+                <releaseDate>2011-02-27T10:57:26.41Z</releaseDate>
+                <version>2.3.0.0</version>
+                <averageUserRating>8</averageUserRating>
+                <userRatingCount>36</userRatingCount>
+                <averageLastInstanceUserRating>8.5</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>8</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:b3984c31-cda9-41de-871f-4df9cdadcfe5</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.sports</id>
+                        <title>sports</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:274c8dd3-c631-469c-b29e-9703ee94d347</offerId>
+                        <mediaInstanceId>urn:uuid:74dcd5ea-3e6c-4d06-a54b-680989aab0a2</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:63054a6a-6129-4765-b1e2-d7124251e52e</offerId>
+                        <mediaInstanceId>urn:uuid:74dcd5ea-3e6c-4d06-a54b-680989aab0a2</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>2.49</price>
+                        <displayPrice>$2.49</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Sourcewarp Limited</id>
+                    <name>Sourcewarp Limited</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:b7bf7f78-9deb-df11-9264-00237de2db9e</id>
+                <title>Beezz</title>
+                <sortTitle>Beezz</sortTitle>
+                <releaseDate>2010-11-09T10:13:23.007Z</releaseDate>
+                <version>1.1.0.0</version>
+                <averageUserRating>6.388548</averageUserRating>
+                <userRatingCount>489</userRatingCount>
+                <averageLastInstanceUserRating>6.204176</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>431</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:f57875c1-bc8d-40b5-be9b-1f7b10864c6b</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.social</id>
+                        <title>social</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:9e7012bc-e97e-4628-ad7c-fd6740375f92</offerId>
+                        <mediaInstanceId>urn:uuid:93c72055-6300-e011-9264-00237de2db9e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>DevMob</id>
+                    <name>DevMob</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:a7efb71d-06ef-40f7-9df9-8bf9b5d3fb4d</id>
+                <title>BBC Radio Player</title>
+                <sortTitle>BBC Radio Player</sortTitle>
+                <releaseDate>2011-09-10T22:44:35.363Z</releaseDate>
+                <version>2.6.0.0</version>
+                <averageUserRating>8.457143</averageUserRating>
+                <userRatingCount>70</userRatingCount>
+                <averageLastInstanceUserRating>10</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>1</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:80e0549c-a644-4f7e-aa2b-9194bbd97e78</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.musicandvideo</id>
+                        <title>music + video</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:c1a9d307-2116-4eec-93a5-1cfefdf83ea6</offerId>
+                        <mediaInstanceId>urn:uuid:2af32dc6-4813-430a-b7cd-406a28dc33ff</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:0ebc2d7a-8200-4f7e-8488-2fe995994506</offerId>
+                        <mediaInstanceId>urn:uuid:2af32dc6-4813-430a-b7cd-406a28dc33ff</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>1.29</price>
+                        <displayPrice>$1.29</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Igneous Software Ltd.</id>
+                    <name>Igneous Software Ltd.</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:ef2fbd99-f7a1-e011-986b-78e7d1fa76f8</id>
+                <title>Priority Club Rewards</title>
+                <sortTitle>Priority Club Rewards</sortTitle>
+                <releaseDate>2011-06-29T20:01:47.113Z</releaseDate>
+                <version>1.1.0.0</version>
+                <averageUserRating>9.6</averageUserRating>
+                <userRatingCount>35</userRatingCount>
+                <averageLastInstanceUserRating>10</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>7</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:29e1f097-976f-4e89-b248-825817be5613</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.travel</id>
+                        <title>travel + navigation</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.planning</id>
+                        <title>planning</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.travel</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:0c9d7388-2295-40c9-b29b-d05bb20e7007</offerId>
+                        <mediaInstanceId>urn:uuid:76584b6c-3a95-4701-9e05-97b4b3ec5e97</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>InterContinental Hotels Group</id>
+                    <name>InterContinental Hotels Group</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:23935a68-0208-e011-9264-00237de2db9e</id>
+                <title>TechRack</title>
+                <sortTitle>TechRack</sortTitle>
+                <releaseDate>2010-12-17T04:50:22.853Z</releaseDate>
+                <version>1.16.0.0</version>
+                <averageUserRating>6.857143</averageUserRating>
+                <userRatingCount>21</userRatingCount>
+                <averageLastInstanceUserRating>7.2</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>5</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:d9d626e2-7352-49ab-8772-e30af81c8db2</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.newsandweather</id>
+                        <title>news + weather</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.localandnational</id>
+                        <title>local + national</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.newsandweather</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:c8d88226-0e23-49f9-8e41-38ed50b35321</offerId>
+                        <mediaInstanceId>urn:uuid:41de4280-2e57-e011-854c-00237de2db9e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:1dfecc3b-9e83-48ea-b6a5-587992137216</offerId>
+                        <mediaInstanceId>urn:uuid:41de4280-2e57-e011-854c-00237de2db9e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0.99</price>
+                        <displayPrice>$0.99</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>7AppsLabs</id>
+                    <name>7AppsLabs</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:9ce93e51-5b35-e011-854c-00237de2db9e</id>
+                <title>Lync 2010</title>
+                <sortTitle>Lync 2010</sortTitle>
+                <releaseDate>2011-12-11T15:58:46.117Z</releaseDate>
+                <version>4.0.0.0</version>
+                <averageUserRating>8.175772</averageUserRating>
+                <userRatingCount>421</userRatingCount>
+                <averageLastInstanceUserRating>8.175772</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>421</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:a2791a4e-c1c7-47f0-82f3-f35eb1eff8fd</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.toolsandproductivity</id>
+                        <title>tools + productivity</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:7165765a-c036-4260-ab8a-7eb8b030a2f1</offerId>
+                        <mediaInstanceId>urn:uuid:9de93e51-5b35-e011-854c-00237de2db9e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Microsoft Corporation</id>
+                    <name>Microsoft Corporation</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:16b4f331-e05b-e011-854c-00237de2db9e</id>
+                <title>...i'm a WP7!</title>
+                <sortTitle>...i'm a WP7!</sortTitle>
+                <releaseDate>2011-04-15T20:31:11.117Z</releaseDate>
+                <version>3.8.0.0</version>
+                <averageUserRating>9.466112</averageUserRating>
+                <userRatingCount>5533</userRatingCount>
+                <averageLastInstanceUserRating>9.581395</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>172</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:0849fe38-9cfc-403e-a0cf-11860f0bd13c</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.social</id>
+                        <title>social</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:c662e481-83b1-46d9-a40c-27dc18741db7</offerId>
+                        <mediaInstanceId>urn:uuid:4a64041a-ef48-4642-942f-b5cbeb51922b</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:71801a8e-1329-41d0-b8f8-2ddf47fa4b1d</offerId>
+                        <mediaInstanceId>urn:uuid:4a64041a-ef48-4642-942f-b5cbeb51922b</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Liquid Daffodil</id>
+                    <name>Liquid Daffodil</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:92d3a3a3-66d9-df11-a844-00237de2db9e</id>
+                <title>eBay</title>
+                <sortTitle>eBay</sortTitle>
+                <releaseDate>2010-10-18T07:00:38.493Z</releaseDate>
+                <version>1.15.0.0</version>
+                <averageUserRating>7.326413</averageUserRating>
+                <userRatingCount>867</userRatingCount>
+                <averageLastInstanceUserRating>7.794117</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>68</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:b11931e7-5944-4a2c-b8ea-97232416aaa8</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.lifestyle</id>
+                        <title>lifestyle</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.shopping</id>
+                        <title>shopping</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.lifestyle</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.Bing_Products_Arts_and_Crafts</tag>
+                    <tag>apptag.Bing_Products_Baby_and_Nursery</tag>
+                    <tag>apptag.Bing_Products_Beauty_and_Fragrance</tag>
+                    <tag>apptag.Bing_Products_Books_and_Magazines</tag>
+                    <tag>apptag.Bing_Products_Cameras_and_Optics</tag>
+                    <tag>apptag.Bing_Products_Car_and_Garage</tag>
+                    <tag>apptag.Bing_Products_Clothing_and_Shoes</tag>
+                    <tag>apptag.Bing_Products_Computing</tag>
+                    <tag>apptag.Bing_Products_Electronics</tag>
+                    <tag>apptag.Bing_Products_Gourmet_Food_and_Chocolate</tag>
+                    <tag>apptag.Bing_Products_Health_and_Wellness</tag>
+                    <tag>apptag.Bing_Products_Jewelry_and_Watches</tag>
+                    <tag>apptag.Bing_Products_Kitchen_and_Housewares</tag>
+                    <tag>apptag.Bing_Products_Lawn_and_Garden</tag>
+                    <tag>apptag.Bing_Products_Movies</tag>
+                    <tag>apptag.Bing_Products_Music</tag>
+                    <tag>apptag.Bing_Products_Office_Products</tag>
+                    <tag>apptag.Bing_Products_Software</tag>
+                    <tag>apptag.Bing_Products_Sports_and_Outdoors</tag>
+                    <tag>apptag.Bing_Products_Tools_and_Hardware</tag>
+                    <tag>apptag.Bing_Products_Toys</tag>
+                    <tag>apptag.Bing_Products_Travel</tag>
+                    <tag>apptag.Bing_Products_Vehicles</tag>
+                    <tag>apptag.Bing_Products_Video_Games</tag>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:63056221-85e8-48cd-a9b3-180db7fc9ceb</offerId>
+                        <mediaInstanceId>urn:uuid:98df7206-67c6-445f-b4b0-9295458cd081</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>eBay Inc.</id>
+                    <name>eBay Inc.</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:b2032b14-fcb1-4d8d-b958-37d367595de9</id>
+                <title>Convert2Go</title>
+                <sortTitle>Convert2Go</sortTitle>
+                <releaseDate>2011-11-26T19:49:36.037Z</releaseDate>
+                <version>1.1.0.0</version>
+                <averageUserRating>9.782609</averageUserRating>
+                <userRatingCount>46</userRatingCount>
+                <averageLastInstanceUserRating>0</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>0</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:aaf54ef1-9a6a-41f2-8b96-d45acfde43d7</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.toolsandproductivity</id>
+                        <title>tools + productivity</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:b6e1ad18-4f14-42f2-8328-a1af6d227e58</offerId>
+                        <mediaInstanceId>urn:uuid:29a4a2db-aa5d-4a83-b271-26b63ae00df0</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:44811f1b-db86-43d1-9a55-c564cd4e7638</offerId>
+                        <mediaInstanceId>urn:uuid:29a4a2db-aa5d-4a83-b271-26b63ae00df0</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>1.49</price>
+                        <displayPrice>$1.49</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>CaldeiraSoft</id>
+                    <name>CaldeiraSoft</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:7dc6e04c-0c99-e011-986b-78e7d1fa76f8</id>
+                <title>Eventful</title>
+                <sortTitle>Eventful</sortTitle>
+                <releaseDate>2011-06-27T23:41:46.147Z</releaseDate>
+                <version>1.1.0.0</version>
+                <averageUserRating>6.897959</averageUserRating>
+                <userRatingCount>49</userRatingCount>
+                <averageLastInstanceUserRating>7.151515</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>33</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:4a50a6c5-d0e9-4a93-b361-20735107b596</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.lifestyle</id>
+                        <title>lifestyle</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.outandabout</id>
+                        <title>out + about</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.lifestyle</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:fe0bbd04-eaf5-49c7-b842-418cbb32fa33</offerId>
+                        <mediaInstanceId>urn:uuid:15435110-40a3-e011-986b-78e7d1fa76f8</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Eventful</id>
+                    <name>Eventful</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:d47287b9-391f-44c7-9a3c-299b4bca5991</id>
+                <title>WeatherMaster</title>
+                <sortTitle>WeatherMaster</sortTitle>
+                <releaseDate>2011-10-08T14:56:38.02Z</releaseDate>
+                <version>2.1.0.0</version>
+                <averageUserRating>8.66087</averageUserRating>
+                <userRatingCount>115</userRatingCount>
+                <averageLastInstanceUserRating>8.782609</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>23</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:0ac50625-24d7-4249-9e52-768511612629</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.newsandweather</id>
+                        <title>news + weather</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.international</id>
+                        <title>international</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.newsandweather</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:b8180478-315f-4dfe-9abd-0013ded710a5</offerId>
+                        <mediaInstanceId>urn:uuid:633371e8-0128-48c6-ba61-7897f6e971b6</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:d6f78102-830c-4f01-9148-e504de65f75f</offerId>
+                        <mediaInstanceId>urn:uuid:633371e8-0128-48c6-ba61-7897f6e971b6</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>1.99</price>
+                        <displayPrice>$1.99</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Snocc</id>
+                    <name>Snocc</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:180b0f46-e753-e011-854c-00237de2db9e</id>
+                <title>TripAdvisor</title>
+                <sortTitle>TripAdvisor</sortTitle>
+                <releaseDate>2011-04-04T23:47:40.283Z</releaseDate>
+                <version>1.1.0.0</version>
+                <averageUserRating>5.252747</averageUserRating>
+                <userRatingCount>91</userRatingCount>
+                <averageLastInstanceUserRating>5.225806</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>62</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:6f3bb031-53f8-4101-9a0f-7e53ff6c9625</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.travel</id>
+                        <title>travel + navigation</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.planning</id>
+                        <title>planning</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.travel</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:13b70143-513b-40f7-9cc9-407a1628fac8</offerId>
+                        <mediaInstanceId>urn:uuid:0cb24980-5064-e011-81d2-78e7d1fa76f8</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>TripAdvisor LLC</id>
+                    <name>TripAdvisor LLC</name>
+                </publisher>
+            </application>
+        </applications>
+    </a:entry>
+    <a:author>
+        <a:name>Microsoft Corporation</a:name>
+    </a:author>
+</a:feed>

@@ -15,11 +15,11 @@ message DeviceRegistrationRequest {
   string locale = 3;
   string activationCode = 4;
 
-  string deviceManufacturer = 5;
-  string deviceModel = 6;
-  string deviceUniqueId = 7;
-  string deviceOperator = 8;
-  string deviceIMEI = 9;
+  optional string deviceManufacturer = 5;
+  optional string deviceModel = 6;
+  optional string deviceUniqueId = 7;
+  optional string deviceOperator = 8;
+  optional string deviceIMEI = 9;
 }
 
 message DeviceRegistrationResponse {

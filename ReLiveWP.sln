@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Frontend", "Frontend", "{E4
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Backend", "Backend", "{F21136F6-B25E-4C0C-848E-812BEEB2688D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Marketplace", "ReLiveWP.Marketplace\ReLiveWP.Marketplace.csproj", "{EADD5D96-2011-465B-8E9A-D5A71E3A13FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,10 @@ Global
 		{B3C90A92-A8A3-470B-8722-38059965FF1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B3C90A92-A8A3-470B-8722-38059965FF1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B3C90A92-A8A3-470B-8722-38059965FF1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EADD5D96-2011-465B-8E9A-D5A71E3A13FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EADD5D96-2011-465B-8E9A-D5A71E3A13FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EADD5D96-2011-465B-8E9A-D5A71E3A13FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EADD5D96-2011-465B-8E9A-D5A71E3A13FD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -32,6 +38,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{23C095D9-5F72-4086-AEC3-18EB5557B904} = {E4515B9A-381E-43F5-8B34-25BC4359D357}
 		{B3C90A92-A8A3-470B-8722-38059965FF1B} = {F21136F6-B25E-4C0C-848E-812BEEB2688D}
+		{EADD5D96-2011-465B-8E9A-D5A71E3A13FD} = {E4515B9A-381E-43F5-8B34-25BC4359D357}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C918B561-B888-4A59-8EE2-3B9DAE8E3302}

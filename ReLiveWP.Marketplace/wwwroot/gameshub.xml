@@ -1,0 +1,932 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<a:feed xmlns:a="http://www.w3.org/2005/Atom" xmlns:os="http://a9.com/-/spec/opensearch/1.1/" xmlns="http://schemas.zune.net/catalog/apps/2008/02">
+    <a:link rel="self" type="application/atom+xml" href="/v3.2/en-US/clientTypes/WinMobile%207.1/hubTypes/games/hub?store=Zest&amp;store=&amp;store=" />
+    <a:updated>2012-01-12T00:58:53.4155988Z</a:updated>
+    <a:title type="text">games</a:title>
+    <a:id>games-US-WinMobile71-ALL-ALL</a:id>
+    <templates>
+        <template>
+            <mimeType>application/uix</mimeType>
+            <templateName>GamesHub</templateName>
+        </template>
+    </templates>
+    <a:entry>
+        <a:updated>2012-01-12T00:58:53.4155988Z</a:updated>
+        <a:title type="text">List Of Items</a:title>
+        <a:id>urn:uuid:6618f145-8117-4f03-a869-8b9554abb2a8</a:id>
+        <index>1</index>
+        <link>
+            <type>ApplicationCollection</type>
+            <target>6618F145-8117-4F03-A869-8B9554ABB2A8</target>
+        </link>
+        <editorialItems>
+            <editorialItem>
+                <id>urn:uuid:e8791db8-8c50-415d-99fd-bff24799a99c</id>
+                <link>
+                    <type>Application</type>
+                    <target>527b1d5e-c1ef-4b12-9745-faaa8d5b1a9c</target>
+                </link>
+                <title>Bouncy Mouse</title>
+                <sequenceNumber>1</sequenceNumber>
+                <image>
+                    <id>urn:uuid:bb03b01a-4735-4245-8556-bd3ece34fa54</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:4fe816ed-76ed-4741-b710-e8c3157b8f78</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:78ce1a39-cb07-42cb-880f-fa950f31fb57</id>
+                <link>
+                    <type>Application</type>
+                    <target>ec203ab7-3383-482c-9b3b-4a86f66aa901</target>
+                </link>
+                <title>Implode!</title>
+                <text>Deal of the Week</text>
+                <sequenceNumber>2</sequenceNumber>
+                <image>
+                    <id>urn:uuid:a8e7f5eb-0583-4ca7-b627-e26a000adc7b</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:e6ab4356-390e-4d43-b77e-992aa826ea9a</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:39a43ff6-4226-4a24-babc-e7873d0a3f2d</id>
+                <link>
+                    <type>Application</type>
+                    <target>bd59b84c-1af2-df11-9264-00237de2db9e</target>
+                </link>
+                <title>Impossible Shoota</title>
+                <sequenceNumber>3</sequenceNumber>
+                <image>
+                    <id>urn:uuid:d43c3e3d-7290-48f9-8c0a-01ed77a2c1d4</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:6b283c4d-74ab-4209-86c8-ff493910485c</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:ff4b8f5a-b34f-447b-96d8-2b8d6b30c9d4</id>
+                <link>
+                    <type>Application</type>
+                    <target>c347bc0a-7e37-41fd-b0f0-2c8b6682041e</target>
+                </link>
+                <title>Battlewagon</title>
+                <sequenceNumber>4</sequenceNumber>
+                <image>
+                    <id>urn:uuid:d99967ed-a14a-4086-af77-261273b3f634</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:1aa7c215-1bc8-4074-a7f9-afacc86a7c1d</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:3e57d459-ea69-4cc2-b77c-a7c333d5b151</id>
+                <link>
+                    <type>Application</type>
+                    <target>bca4319e-58fe-4bcd-a33c-b034413bc95f</target>
+                </link>
+                <title>Dark Runner</title>
+                <sequenceNumber>5</sequenceNumber>
+                <image>
+                    <id>urn:uuid:6446b632-55e5-49f8-b531-1a34449f6a76</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:1aca7f31-7e37-43c3-82ea-62975a51da33</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:ed886e14-fcca-4f95-b410-8b9d6db150b2</id>
+                <link>
+                    <type>Application</type>
+                    <target>55cb78f2-d117-440b-8f9f-bb77beb7b698</target>
+                </link>
+                <title>Spider Jack</title>
+                <sequenceNumber>6</sequenceNumber>
+                <image>
+                    <id>urn:uuid:d9eb6f40-8c58-49ca-878a-f405061c1091</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:8cf5d1cb-afc6-4749-904c-d1884eaa2c45</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:12688719-eb9c-4335-884c-efcb66d01b41</id>
+                <link>
+                    <type>Application</type>
+                    <target>6068023e-01ac-e011-a53c-78e7d1fa76f8</target>
+                </link>
+                <title>3D Paperball</title>
+                <sequenceNumber>7</sequenceNumber>
+                <image>
+                    <id>urn:uuid:1b0c826e-bc1c-4236-b505-6a9cd37130e3</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:4f8889b6-dd3e-4446-8369-663ccdd6bfdf</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:7d035118-ba29-4b8d-8b82-c927f5e82dd3</id>
+                <link>
+                    <type>Application</type>
+                    <target>34e0f2e7-7bc7-41c0-9431-399e7ceddd2f</target>
+                </link>
+                <title>Doodle God™</title>
+                <sequenceNumber>8</sequenceNumber>
+                <image>
+                    <id>urn:uuid:e679eb24-3f24-477b-b117-4ac50d746056</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:3f3916fb-5634-4e7e-a7d8-9dfe9858a642</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:d1327c46-1923-4706-8a1e-0c39fdcb6700</id>
+                <link>
+                    <type>Application</type>
+                    <target>43ddad58-9cb0-4687-ac8c-bf86f3d03c6b</target>
+                </link>
+                <title>Drag Race</title>
+                <sequenceNumber>9</sequenceNumber>
+                <image>
+                    <id>urn:uuid:ef7b25d7-1ec8-41f8-bca9-776a74460af1</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:5e9c1d56-ff68-4609-a24e-134677852593</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:3837faf8-56fe-48e8-ad37-d09ee542f898</id>
+                <link>
+                    <type>Application</type>
+                    <target>65c23c5b-73e9-df11-9264-00237de2db9e</target>
+                </link>
+                <title>Simon Said</title>
+                <sequenceNumber>10</sequenceNumber>
+                <image>
+                    <id>urn:uuid:c55d65e0-6609-44f0-9e49-b037d6252433</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:525aceac-e07b-4fd0-8b34-585e86df35ce</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:55915111-0f27-4d0a-8cab-cd0e10271523</id>
+                <link>
+                    <type>Application</type>
+                    <target>24139b6e-e8a6-4c87-80f9-dd8dd40fc454</target>
+                </link>
+                <title>Bump Out</title>
+                <sequenceNumber>11</sequenceNumber>
+                <image>
+                    <id>urn:uuid:6f523044-7dfe-4a9c-99ec-7c35e1c9430f</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:6e7dac17-5c50-4932-b382-df8813cdf49c</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:f059bf6a-9284-4b4f-8446-1c5e63bcc494</id>
+                <link>
+                    <type>Application</type>
+                    <target>f71c8b87-81fa-df11-9264-00237de2db9e</target>
+                </link>
+                <title>7Cave</title>
+                <sequenceNumber>12</sequenceNumber>
+                <image>
+                    <id>urn:uuid:364c2897-4242-498d-9e55-9ebc053c1f48</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:76130daf-9ac4-49cb-ae6e-31b1186e7120</id>
+                </backgroundImage>
+            </editorialItem>
+        </editorialItems>
+        <applications>
+            <application>
+                <id>urn:uuid:527b1d5e-c1ef-4b12-9745-faaa8d5b1a9c</id>
+                <title>Bouncy Mouse</title>
+                <sortTitle>Bouncy Mouse</sortTitle>
+                <releaseDate>2011-09-02T00:50:14.54Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>9.559682</averageUserRating>
+                <userRatingCount>377</userRatingCount>
+                <averageLastInstanceUserRating>9.559682</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>377</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:b0a265a8-a01d-46aa-b710-f0e1167abdaa</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.actionandadventure</id>
+                        <title>action + adventure</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:9f5c2f0e-c70a-430b-93f2-15532836e8b8</offerId>
+                        <mediaInstanceId>urn:uuid:62b16cea-1cbb-432c-bab9-dbd4e37c5482</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0.99</price>
+                        <displayPrice>$0.99</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:b3d967f8-8247-4e2a-a343-2eba7e7d6b48</offerId>
+                        <mediaInstanceId>urn:uuid:62b16cea-1cbb-432c-bab9-dbd4e37c5482</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Munkadoo Games LLC</id>
+                    <name>Munkadoo Games LLC</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:ec203ab7-3383-482c-9b3b-4a86f66aa901</id>
+                <title>Implode!</title>
+                <sortTitle>Implode!</sortTitle>
+                <releaseDate>2011-09-01T16:18:04.23Z</releaseDate>
+                <shortDescription>Deal of the Week</shortDescription>
+                <version>1.0.0.0</version>
+                <averageUserRating>8.346939</averageUserRating>
+                <userRatingCount>196</userRatingCount>
+                <averageLastInstanceUserRating>8.346939</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>196</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:d342f48c-02a5-4fa8-b84f-c78264b21c11</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.puzzleandtrivia</id>
+                        <title>puzzle + trivia</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.premium</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:afe700cc-5b00-4a3b-a9f0-84a4ea1103a2</offerId>
+                        <mediaInstanceId>urn:uuid:3bfd4bcc-4d46-4984-b32a-eddad63b50f2</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>1.99</price>
+                        <displayPrice>$1.99</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:00335787-0bc7-4ae0-bcc1-949a3a354c7f</offerId>
+                        <mediaInstanceId>urn:uuid:3bfd4bcc-4d46-4984-b32a-eddad63b50f2</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Microsoft Studios</id>
+                    <name>Microsoft Studios</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:bd59b84c-1af2-df11-9264-00237de2db9e</id>
+                <title>Impossible Shoota</title>
+                <sortTitle>Impossible Shoota</sortTitle>
+                <releaseDate>2010-11-17T20:01:29.47Z</releaseDate>
+                <version>3.1.0.0</version>
+                <averageUserRating>8.250531</averageUserRating>
+                <userRatingCount>471</userRatingCount>
+                <averageLastInstanceUserRating>7.333333</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>15</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:251f4643-f270-42af-9ea1-79c33b8b7869</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.shooter</id>
+                        <title>shooter</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:0b9a8ee4-e9ea-406e-a5d4-735960aa4b80</offerId>
+                        <mediaInstanceId>urn:uuid:5809e8eb-a331-438a-8cd7-198a1641ab00</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Elbert Perez</id>
+                    <name>Elbert Perez</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:c347bc0a-7e37-41fd-b0f0-2c8b6682041e</id>
+                <title>Battlewagon</title>
+                <sortTitle>Battlewagon</sortTitle>
+                <releaseDate>2011-11-11T04:46:06.447Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>4.222222</averageUserRating>
+                <userRatingCount>45</userRatingCount>
+                <averageLastInstanceUserRating>4.222222</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>45</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:7e9ab617-87d0-45c6-9b98-800467706983</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.strategy</id>
+                        <title>strategy + simulation</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.premium</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:de373542-ab9e-4351-979c-19ad83c00c35</offerId>
+                        <mediaInstanceId>urn:uuid:0b220cfc-9b4a-48ec-8d4c-eef55482635c</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>2.99</price>
+                        <displayPrice>$2.99</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:9c971644-9232-4a29-b0d2-772edcfe41b6</offerId>
+                        <mediaInstanceId>urn:uuid:0b220cfc-9b4a-48ec-8d4c-eef55482635c</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Ironsun Studios</id>
+                    <name>Ironsun Studios</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:bca4319e-58fe-4bcd-a33c-b034413bc95f</id>
+                <title>Dark Runner</title>
+                <sortTitle>Dark Runner</sortTitle>
+                <releaseDate>2011-09-14T03:06:21.777Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>7.2</averageUserRating>
+                <userRatingCount>5</userRatingCount>
+                <averageLastInstanceUserRating>7.2</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>5</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:c1461a12-9d3c-4ef7-bf05-e9b5cdb727ed</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.actionandadventure</id>
+                        <title>action + adventure</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:5c52533d-0ffd-45ac-b8b0-b1140bf5ec36</offerId>
+                        <mediaInstanceId>urn:uuid:faadc450-c2de-42bb-95ba-33c099887f88</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Dumadu Games Pvt Ltd</id>
+                    <name>Dumadu Games Pvt Ltd</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:55cb78f2-d117-440b-8f9f-bb77beb7b698</id>
+                <title>Spider Jack</title>
+                <sortTitle>Spider Jack</sortTitle>
+                <releaseDate>2011-11-18T22:37:03.223Z</releaseDate>
+                <version>1.1.0.0</version>
+                <averageUserRating>7.106383</averageUserRating>
+                <userRatingCount>47</userRatingCount>
+                <averageLastInstanceUserRating>0</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>0</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:8435f391-05e3-4fcc-a50d-b7e7d30bd117</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.puzzleandtrivia</id>
+                        <title>puzzle + trivia</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.premium</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:ae901e00-8a55-485f-a7cf-8499ab33969d</offerId>
+                        <mediaInstanceId>urn:uuid:5987337f-044a-4c29-b261-9a322144858b</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>2.99</price>
+                        <displayPrice>$2.99</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:f15d7cdb-0ee1-453c-af8d-e602fd570efb</offerId>
+                        <mediaInstanceId>urn:uuid:5987337f-044a-4c29-b261-9a322144858b</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Electronic Arts</id>
+                    <name>Electronic Arts</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:6068023e-01ac-e011-a53c-78e7d1fa76f8</id>
+                <title>3D Paperball</title>
+                <sortTitle>3D Paperball</sortTitle>
+                <releaseDate>2011-07-14T00:21:53.427Z</releaseDate>
+                <version>1.5.0.0</version>
+                <averageUserRating>6.587537</averageUserRating>
+                <userRatingCount>337</userRatingCount>
+                <averageLastInstanceUserRating>6.12</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>50</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:e0f40225-f763-4a22-bb69-b6c1e52e6340</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.family</id>
+                        <title>family</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:bffb6226-96e2-449b-9125-0d5d4fd854a7</offerId>
+                        <mediaInstanceId>urn:uuid:1baf7fa7-ea0b-4356-aff7-539556b40eb6</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>A Trillion Games</id>
+                    <name>A Trillion Games</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:34e0f2e7-7bc7-41c0-9431-399e7ceddd2f</id>
+                <title>Doodle God™</title>
+                <sortTitle>Doodle God™</sortTitle>
+                <releaseDate>2011-11-18T22:31:34.653Z</releaseDate>
+                <version>1.0.0.0</version>
+                <averageUserRating>8.04902</averageUserRating>
+                <userRatingCount>204</userRatingCount>
+                <averageLastInstanceUserRating>8.04902</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>204</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:90f7060a-a2ce-41df-aba0-69446a8e3f38</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.puzzleandtrivia</id>
+                        <title>puzzle + trivia</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.premium</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:8aa2e7fc-4ed9-479f-91aa-8f2bb1180f67</offerId>
+                        <mediaInstanceId>urn:uuid:e09b8bf6-12ee-4cc8-90b5-1214e3833348</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>2.99</price>
+                        <displayPrice>$2.99</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:056bb5eb-a922-4379-90b4-d32d4b6f0d82</offerId>
+                        <mediaInstanceId>urn:uuid:e09b8bf6-12ee-4cc8-90b5-1214e3833348</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Microsoft Studios</id>
+                    <name>Microsoft Studios</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:43ddad58-9cb0-4687-ac8c-bf86f3d03c6b</id>
+                <title>Drag Race</title>
+                <sortTitle>Drag Race</sortTitle>
+                <releaseDate>2011-12-02T09:35:13.16Z</releaseDate>
+                <version>1.2.0.0</version>
+                <averageUserRating>8.271814</averageUserRating>
+                <userRatingCount>1295</userRatingCount>
+                <averageLastInstanceUserRating>8.315947</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>671</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:6fc43544-31d3-43b8-9f3a-fd837a13f0bc</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.racingandflying</id>
+                        <title>racing + flying</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:ec0891af-d962-4124-aa8a-42d2466dafe3</offerId>
+                        <mediaInstanceId>urn:uuid:9d991c2d-1faf-4132-83e3-b2a9ada5e82e</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Phyron</id>
+                    <name>Phyron</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:65c23c5b-73e9-df11-9264-00237de2db9e</id>
+                <title>Simon Said</title>
+                <sortTitle>Simon Said</sortTitle>
+                <releaseDate>2010-11-07T00:00:35.013Z</releaseDate>
+                <version>2.2.0.0</version>
+                <averageUserRating>7.228916</averageUserRating>
+                <userRatingCount>166</userRatingCount>
+                <averageLastInstanceUserRating>0</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>0</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:ed3ccf7e-388e-4800-b5c2-675af4310009</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.classics</id>
+                        <title>classics</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:4debb29d-d31d-4f69-88ca-2313cfe6d990</offerId>
+                        <mediaInstanceId>urn:uuid:14f4c731-06fe-40a3-9759-1691a5a191a7</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Trial</licenseRight>
+                    </offer>
+                    <offer>
+                        <offerId>urn:uuid:d2884763-38a1-441d-a7e2-b50229280a45</offerId>
+                        <mediaInstanceId>urn:uuid:14f4c731-06fe-40a3-9759-1691a5a191a7</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>David J Kelley</id>
+                    <name>David J Kelley</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:24139b6e-e8a6-4c87-80f9-dd8dd40fc454</id>
+                <title>Bump Out</title>
+                <sortTitle>Bump Out</sortTitle>
+                <releaseDate>2011-10-20T05:00:24.827Z</releaseDate>
+                <version>1.5.0.0</version>
+                <averageUserRating>8.013089</averageUserRating>
+                <userRatingCount>764</userRatingCount>
+                <averageLastInstanceUserRating>8.038356</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>365</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:3112cc7b-7170-45a9-9d92-77ffec6022ce</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.puzzleandtrivia</id>
+                        <title>puzzle + trivia</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:79eb25f3-624a-4599-9b5a-d8c769ea9277</offerId>
+                        <mediaInstanceId>urn:uuid:c2d6af89-e3db-4a74-94c4-9c7a4145dd40</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>Farhad Abasov</id>
+                    <name>Farhad Abasov</name>
+                </publisher>
+            </application>
+            <application>
+                <id>urn:uuid:f71c8b87-81fa-df11-9264-00237de2db9e</id>
+                <title>7Cave</title>
+                <sortTitle>7Cave</sortTitle>
+                <releaseDate>2010-11-30T23:47:34.607Z</releaseDate>
+                <version>1.1.0.0</version>
+                <averageUserRating>9.01476</averageUserRating>
+                <userRatingCount>542</userRatingCount>
+                <averageLastInstanceUserRating>8.088889</averageLastInstanceUserRating>
+                <lastInstanceUserRatingCount>45</lastInstanceUserRatingCount>
+                <image>
+                    <id>urn:uuid:89e85da2-e3e0-45d6-a781-bf26b732cdc4</id>
+                </image>
+                <categories>
+                    <category>
+                        <id>windowsphone.games</id>
+                        <title>games</title>
+                        <isRoot>True</isRoot>
+                    </category>
+                    <category>
+                        <id>windowsphone.actionandadventure</id>
+                        <title>action + adventure</title>
+                        <isRoot>False</isRoot>
+                        <parentId>windowsphone.games</parentId>
+                    </category>
+                </categories>
+                <tags>
+                    <tag>apptag.independent</tag>
+                </tags>
+                <offers>
+                    <offer>
+                        <offerId>urn:uuid:cdfea9a5-b736-408d-a777-41194e680d84</offerId>
+                        <mediaInstanceId>urn:uuid:73412035-16fa-482f-b95a-927d897225ce</mediaInstanceId>
+                        <clientTypes>
+                            <clientType>WinMobile 7.1</clientType>
+                        </clientTypes>
+                        <paymentTypes>
+                            <paymentType>Credit Card</paymentType>
+                            <paymentType>Mobile Operator</paymentType>
+                        </paymentTypes>
+                        <store>Zest</store>
+                        <price>0</price>
+                        <displayPrice>$0.00</displayPrice>
+                        <priceCurrencyCode>USD</priceCurrencyCode>
+                        <licenseRight>Purchase</licenseRight>
+                    </offer>
+                </offers>
+                <publisher>
+                    <id>ComfyChair</id>
+                    <name>ComfyChair</name>
+                </publisher>
+            </application>
+        </applications>
+    </a:entry>
+    <a:author>
+        <a:name>Microsoft Corporation</a:name>
+    </a:author>
+</a:feed>

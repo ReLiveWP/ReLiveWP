@@ -5,7 +5,5 @@ namespace ReLiveWP.Backend.Certificates
     public interface ICertificateService
     {
         byte[] HandleCertRequest(byte[] certificateRequest);
-
-        X509Certificate2 GetOrGenerateRootCACert();
     }
 }

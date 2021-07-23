@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<a:feed xmlns:a="http://www.w3.org/2005/Atom" xmlns:os="http://a9.com/-/spec/opensearch/1.1/" xmlns="http://schemas.zune.net/catalog/apps/2008/02">
+  <a:link rel="self" type="application/atom+xml" href="/v3.2/en-US/clientTypes/WinMobile%207.1/hubTypes/apps/hub?store=Zest&amp;store=&amp;store=" />
+  <a:updated>2012-01-14T06:19:39.326466Z</a:updated>
+  <a:title type="text">apps-US-winMobile7</a:title>
+  <a:id>apps-US-WinMobile71-ALL-ALL</a:id>
+  <templates>
+    <template>
+      <mimeType>application/uix</mimeType>
+      <templateName>ApplicationsHub</templateName>
+    </template>
+  </templates>
+  <a:entry>
+    <a:updated>2012-01-14T06:19:39.326466Z</a:updated>
+    <a:title type="text">List Of Items</a:title>
+    <a:id>urn:uuid:d8cdc134-a2a7-45ef-9433-4403f4b4acb7</a:id>
+    <index>1</index>
+    <link>
+      <type>ApplicationCollection</type>
+      <target>D8CDC134-A2A7-45EF-9433-4403F4B4ACB7</target>
+    </link>
+    <editorialItems>
+      <editorialItem>
+        <id>urn:uuid:800f82d2-5402-47b0-ba8a-f3117b7a388b</id>
+        <link>
+          <type>Application</type>
+          <target>1572f5ac-5eca-df11-9eae-00237de2db9e</target>
+        </link>
+        <title>Unicord</title>
+        <sequenceNumber>1</sequenceNumber>
+        <image>
+          <id>urn:uuid:1572f5ac-5eca-df11-9eae-00237de2db9e</id>
+        </image>
+        <backgroundImage>
+          <id>urn:uuid:bc1e64ba-0b8e-4057-8d71-a91308875f71</id>
+        </backgroundImage>
+      </editorialItem>
+    </editorialItems>
+    <applications>
+      <application>
+        <id>urn:uuid:1572f5ac-5eca-df11-9eae-00237de2db9e</id>
+        <title>Unicord</title>
+        <sortTitle>Unicord</sortTitle>
+        <releaseDate>2010-10-25T22:01:12.06Z</releaseDate>
+        <version>1.0.0.0</version>
+        <averageUserRating>7.5</averageUserRating>
+        <userRatingCount>100</userRatingCount>
+        <averageLastInstanceUserRating>5.102041</averageLastInstanceUserRating>
+        <lastInstanceUserRatingCount>49</lastInstanceUserRatingCount>
+        <image>
+          <id>urn:uuid:2d7c3845-5ad3-4ea9-ae50-abd29432886e</id>
+        </image>
+        <categories>
+          <category>
+            <id>windowsphone.social</id>
+            <title>social</title>
+            <isRoot>True</isRoot>
+          </category>
+        </categories>
+        <tags>
+          <tag>apptag.independent</tag>
+        </tags>
+        <offers>
+          <offer>
+            <offerId>urn:uuid:36b19144-ca1b-4368-b0d5-04948c6909cd</offerId>
+            <mediaInstanceId>urn:uuid:1672f5ac-5eca-df11-9eae-00237de2db9e</mediaInstanceId>
+            <clientTypes>
+              <clientType>WinMobile 7.1</clientType>
+            </clientTypes>
+            <paymentTypes>
+              <paymentType>Credit Card</paymentType>
+              <paymentType>Mobile Operator</paymentType>
+            </paymentTypes>
+            <store>Zest</store>
+            <price>0</price>
+            <displayPrice>$0.00</displayPrice>
+            <priceCurrencyCode>USD</priceCurrencyCode>
+            <licenseRight>Purchase</licenseRight>
+          </offer>
+        </offers>
+        <publisher>
+          <id>Wan Kerr Co. Ltd.</id>
+          <name>Wan Kerr Co. Ltd.</name>
+        </publisher>
+      </application>
+    </applications>
+  </a:entry>
+  <a:author>
+    <a:name>Microsoft Corporation</a:name>
+  </a:author>
+</a:feed>

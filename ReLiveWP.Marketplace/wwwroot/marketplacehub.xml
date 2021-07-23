@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<a:feed xmlns:a="http://www.w3.org/2005/Atom" xmlns:os="http://a9.com/-/spec/opensearch/1.1/" xmlns="http://schemas.zune.net/catalog/apps/2008/02">
+    <a:link rel="self" type="application/atom+xml" href="/v3.2/en-US/clientTypes/WinMobile%207.1/hubTypes/marketplace/hub?store=Zest&amp;store=&amp;store=" />
+    <a:updated>2012-01-12T00:24:11.7579762Z</a:updated>
+    <a:title type="text">marketplace-US-winMobile7</a:title>
+    <a:id>marketplace-US-WinMobile71-ALL-ALL</a:id>
+    <templates>
+        <template>
+            <mimeType>application/uix</mimeType>
+            <templateName>MarketplaceHub</templateName>
+        </template>
+    </templates>
+    <a:entry>
+        <a:link rel="alternate" type="application/atom+xml" href="/v3.2/en-US/music/collection/features/ab0ce46c-3edf-44fc-9c6f-5af4f03c81bf" />
+        <a:updated>2012-01-12T00:24:11.7579762Z</a:updated>
+        <a:title type="text">List Of Items</a:title>
+        <a:id>urn:uuid:ab0ce46c-3edf-44fc-9c6f-5af4f03c81bf</a:id>
+        <index>1</index>
+        <link>
+            <type>FeatureCollection</type>
+            <target>AB0CE46C-3EDF-44FC-9C6F-5AF4F03C81BF</target>
+        </link>
+        <editorialItems>
+            <editorialItem>
+                <id>urn:uuid:406421e2-536a-45e5-be14-cece66c6c393</id>
+                <link>
+                    <type>Application</type>
+                    <target>55cb78f2-d117-440b-8f9f-bb77beb7b698</target>
+                </link>
+                <title>Spider Jack</title>
+                <sequenceNumber>1</sequenceNumber>
+                <image>
+                    <id>urn:uuid:8825ca9b-39a5-4010-ade2-f1c0f42ab437</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:4a35ce93-c222-44d9-b446-bf25a4829617</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:fe7fb142-8564-4ddf-847d-ca429347db4e</id>
+                <link>
+                    <type>Application</type>
+                    <target>3a1fabb3-4a70-e011-81d2-78e7d1fa76f8</target>
+                </link>
+                <title>Doodle Jump</title>
+                <sequenceNumber>2</sequenceNumber>
+                <image>
+                    <id>urn:uuid:efe6279d-c8b1-4558-a06a-f8c0977c82c2</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:b1bc8d49-22f2-4c58-a0a6-ede459dac32c</id>
+                </backgroundImage>
+            </editorialItem>
+            <editorialItem>
+                <id>urn:uuid:222770d0-b977-4506-b6bc-6b60e11f29d3</id>
+                <link>
+                    <type>Application</type>
+                    <target>e4571a02-0b87-e011-986b-78e7d1fa76f8</target>
+                </link>
+                <title>Angry Birds</title>
+                <sequenceNumber>3</sequenceNumber>
+                <image>
+                    <id>urn:uuid:335d4369-2876-4440-ad68-ff7369b4479c</id>
+                </image>
+                <backgroundImage>
+                    <id>urn:uuid:6a793f25-abab-4130-9e70-04edfb60addd</id>
+                </backgroundImage>
+            </editorialItem>
+        </editorialItems>
+        <features>
+            <feature>
+                <id>urn:uuid:406421e2-536a-45e5-be14-cece66c6c393</id>
+                <link>
+                    <type>Application</type>
+                    <target>55cb78f2-d117-440b-8f9f-bb77beb7b698</target>
+                </link>
+                <title>Spider Jack</title>
+                <sequenceNumber>1</sequenceNumber>
+                <image>
+                    <id>urn:uuid:8825ca9b-39a5-4010-ade2-f1c0f42ab437</id>
+                </image>
+            </feature>
+            <feature>
+                <id>urn:uuid:fe7fb142-8564-4ddf-847d-ca429347db4e</id>
+                <link>
+                    <type>Application</type>
+                    <target>3a1fabb3-4a70-e011-81d2-78e7d1fa76f8</target>
+                </link>
+                <title>Doodle Jump</title>
+                <sequenceNumber>2</sequenceNumber>
+                <image>
+                    <id>urn:uuid:efe6279d-c8b1-4558-a06a-f8c0977c82c2</id>
+                </image>
+            </feature>
+            <feature>
+                <id>urn:uuid:222770d0-b977-4506-b6bc-6b60e11f29d3</id>
+                <link>
+                    <type>Application</type>
+                    <target>e4571a02-0b87-e011-986b-78e7d1fa76f8</target>
+                </link>
+                <title>Angry Birds</title>
+                <sequenceNumber>3</sequenceNumber>
+                <image>
+                    <id>urn:uuid:335d4369-2876-4440-ad68-ff7369b4479c</id>
+                </image>
+            </feature>
+        </features>
+    </a:entry>
+    <a:author>
+        <a:name>Microsoft Corporation</a:name>
+    </a:author>
+</a:feed>

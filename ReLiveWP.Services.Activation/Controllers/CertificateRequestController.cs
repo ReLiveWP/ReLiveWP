@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Crypto.Tls;
@@ -35,13 +36,13 @@ namespace ReLiveWP.Services.Activation
             _deviceRegistration = deviceRegistration;
         }
 
-        //[HttpGet]
-        //public IActionResult Get()
-        //{
-        //    var cert = _certificateService.GetOrGenerateRootCACert();
-        //    var bytes = cert.Export(X509ContentType.Pkcs12);
-        //    return File(bytes, "application/pkcs12", "RootCertificate.pfx");
-        //}
+        [HttpGet]
+        public async Task<IActionResult> Get()
+        {
+            var cert = await _clientProvisioning.GetCACertificateAsync(new Empty());
+            var bytes = cert.Certificate.ToByteArray();
+            return File(bytes, "application/pkcs12", "RootCertificate.pfx");
+        }
 
         [HttpPost]
         public async Task<IActionResult> Post()
@@ -55,7 +56,7 @@ namespace ReLiveWP.Services.Activation
                 return BadRequest("No device info header specified.");
 
             var version = protocolVersionHeader[0];
-            if (version != "1.0") // TODO: I assume this changes for WP8.
+            if (version != "1.0") // TODO: WP8 support
                 return BadRequest("Unsupported protocol version.");
 
             var activationCode = activationCodeHeader[0];
@@ -86,6 +87,10 @@ namespace ReLiveWP.Services.Activation
                 registrationRequest.DeviceOperator = @operator;
             if (deviceInfo.TryGetValue("IMEI", out var imei))
                 registrationRequest.DeviceIMEI = imei;
+
+            // not tracked:
+            // IMSI
+            // ComOperator
 
             var response = await _deviceRegistration.RegisterDeviceAsync(registrationRequest);
             if (response.Succeeded)
