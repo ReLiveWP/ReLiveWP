@@ -31,7 +31,7 @@ namespace ReLiveWP.Marketplace.Controllers
 
             var resp = new SignInResponse();
             resp.AccountInfo.ZuneTag = "WamWooWam";
-            resp.AccountInfo.Xuid = zuneId;
+            resp.AccountInfo.Xuid = 123456789;
             resp.AccountInfo.UserReadID = new Guid(uid);
             resp.AccountInfo.UserWriteID = new Guid(uid);
             resp.AccountInfo.Locale = "en-GB";

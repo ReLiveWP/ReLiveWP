@@ -28,6 +28,7 @@ namespace ReLiveWP.Marketplace.Data
     {
         public AccountState AccountState { get; set; } = new AccountState();
         public AccountInfo AccountInfo { get; set; } = new AccountInfo();
+        public Balances Balances { get; set; } = new Balances();
         public SubscriptionInfo SubscriptionInfo { get; set; } = new SubscriptionInfo();
 
         [XmlArrayItem(Type = typeof(MediaTypeTunerRegisterInfo))]
@@ -70,7 +71,7 @@ namespace ReLiveWP.Marketplace.Data
     public class AccountInfo
     {
         public string ZuneTag { get; set; }
-        public string Xuid { get; set; }
+        public ulong Xuid { get; set; }
         public Guid UserReadID { get; set; }
         public Guid UserWriteID { get; set; }
         public string Locale { get; set; }
@@ -83,9 +84,9 @@ namespace ReLiveWP.Marketplace.Data
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class SubscriptionInfo
     {
-        public Guid SubscriptionOfferId { get; set; }
-        public Guid SubscriptionRenewalOfferId { get; set; }
-        public Guid BillingInstanceId { get; set; }
+        public Guid? SubscriptionOfferId { get; set; }
+        public Guid? SubscriptionRenewalOfferId { get; set; }
+        public Guid? BillingInstanceId { get; set; }
         public bool SubscriptionEnabled { get; set; }
         public bool SubscriptionBillingViolation { get; set; }
         public bool SubscriptionPendingCancel { get; set; }

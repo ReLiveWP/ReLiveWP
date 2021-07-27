@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ReLiveWP.Marketplace.Controllers
 {
-    [Route("/{version}/{language}/appCategories/")]
+    [Route("/{version}/{language}/appCategories/{action=Index}")]
     [Route("/{version}/{language}/appCategories/{category}/{action}")]
     public class AppCategoriesController : Controller
     {
