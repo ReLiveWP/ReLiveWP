@@ -14,15 +14,18 @@ namespace ReLiveWP.Marketplace.Controllers
     [Route("/{language}/asset/{action}")]
     public class AssetController : Controller
     {
-        public IActionResult Location()
+        public LocationResponse Location()
         {
-            var str = new UTF8StringWriter();
             var resp = new LocationResponse();
+            var output = new LocationOutput()
+            {
+                KeyID = Guid.NewGuid(),
+                DownloadUrl = "http://marketplaceedgeservice.windowsphone.com/ReLiveWP.xap",
+                DownloadAcknowledgementUrl = "http://marketplaceedgeservice.windowsphone.com/asset/acknowledge"
+            };
 
-            var serialiser = new XmlSerializer(typeof(LocationResponse), "http://schemas.zune.net/commerce/2009/01");
-            serialiser.Serialize(str, resp);
-
-            return Content(str.ToString(), "application/xml", Encoding.UTF8);
+            resp.LocationOutputs.Add(output);
+            return resp;
         }
     }
 }

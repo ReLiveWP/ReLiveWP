@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ReLiveWP.Marketplace.Controllers
 {
+    [Route("/{version}/{language}/hubs/{action}")]
     [Route("/{version}/{language}/clientTypes/{clientType}/hubTypes/{action}/hub")]
     public class HubController : Controller
     {

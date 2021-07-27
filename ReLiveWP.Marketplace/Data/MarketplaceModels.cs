@@ -8,17 +8,33 @@ using System.Xml.Serialization;
 
 namespace ReLiveWP.Marketplace.Data
 {
+    [XmlRoot(ElementName = nameof(SignInRequest), Namespace = "http://schemas.zune.net/commerce/2009/01")]
+    public class SignInRequest
+    {
+        public TunerInfo TunerInfo { get; set; }
+    }
+
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
+    public class TunerInfo
+    {
+        public string ID { get; set; }
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string Version { get; set; }
+    }
+
+    [XmlRoot(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class SignInResponse
     {
         public AccountState AccountState { get; set; } = new AccountState();
         public AccountInfo AccountInfo { get; set; } = new AccountInfo();
         public SubscriptionInfo SubscriptionInfo { get; set; } = new SubscriptionInfo();
 
+        [XmlArrayItem(Type = typeof(MediaTypeTunerRegisterInfo))]
         public List<TunerRegisterInfo> TunerRegisterInfo = new List<TunerRegisterInfo>()
         {
-            new TypeTunerRegisterInfo() { RegisterType = TunerRegisterType.AppStore, Activated = true },
-            new TypeTunerRegisterInfo() { RegisterType = TunerRegisterType.Subscription, Activated = false, Activable = false }
+            new MediaTypeTunerRegisterInfo() { RegisterType = TunerRegisterType.AppStore, Activated = true },
+            new MediaTypeTunerRegisterInfo() { RegisterType = TunerRegisterType.Subscription, Activated = false, Activable = false }
         };
     }
 
@@ -32,7 +48,7 @@ namespace ReLiveWP.Marketplace.Data
         AppStore
     }
 
-    public class TypeTunerRegisterInfo : TunerRegisterInfo
+    public class MediaTypeTunerRegisterInfo : TunerRegisterInfo
     {
         public TunerRegisterType RegisterType { get; set; }
         public bool Activated { get; set; }
@@ -54,7 +70,7 @@ namespace ReLiveWP.Marketplace.Data
     public class AccountInfo
     {
         public string ZuneTag { get; set; }
-        public ulong Xuid { get; set; }
+        public string Xuid { get; set; }
         public Guid UserReadID { get; set; }
         public Guid UserWriteID { get; set; }
         public string Locale { get; set; }
@@ -80,7 +96,7 @@ namespace ReLiveWP.Marketplace.Data
         public TunerRegisterInfo MediaTypeTunerRegisterInfo { get; set; }
     }
 
-    [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
+    [XmlRoot(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class BalanceResponse
     {
         public Balances Balances = new Balances();
@@ -94,7 +110,7 @@ namespace ReLiveWP.Marketplace.Data
         public string SongCreditRenewalDate { get; set; }
     }
 
-    [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
+    [XmlRoot(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class AcquisitionInfoResponse
     {
         public List<AppAcquisitionInfoOutput> AppAcquisitionInfoOutputs { get; set; }
@@ -106,11 +122,25 @@ namespace ReLiveWP.Marketplace.Data
         public Guid AppId { get; set; }
     }
 
-    [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
+    [XmlRoot(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class GetCreditCardResponse { }
+    [XmlRoot(Namespace = "http://schemas.zune.net/commerce/2009/01")]
+    public class PurchaseResponse { }
+    [XmlRoot(Namespace = "http://schemas.zune.net/commerce/2009/01")]
+    public class LocationResponse
+    {
+        public List<LocationOutput> LocationOutputs { get; set; } = new List<LocationOutput>();
+    }
 
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
-    public class PurchaseResponse { }
-    [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
-    public class LocationResponse { }
+    public class LocationOutput
+    {
+        public Guid KeyID { get; set; }
+
+        [XmlElement(ElementName = "downloadUrl")]
+        public string DownloadUrl { get; set; }
+
+        [XmlElement(ElementName = "downloadAcknowledgementUrl")]
+        public string DownloadAcknowledgementUrl { get; set; }
+    }
 }
