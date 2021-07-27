@@ -79,7 +79,7 @@ namespace ReLiveWP.Backend.Certificates
             {
                 KeyPurposeID.IdKPServerAuth,
                 KeyPurposeID.IdKPClientAuth,
-                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.1"), // WP7 key usageyea
+                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.1"), // WP7 key usage
                 new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.2"), // WP8 key usage (seems to be used by the marketplace)
                 new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.6")  // Windows Live key usage?
             });
