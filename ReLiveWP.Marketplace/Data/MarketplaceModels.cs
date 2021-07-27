@@ -15,22 +15,26 @@ namespace ReLiveWP.Marketplace.Data
         public AccountInfo AccountInfo { get; set; } = new AccountInfo();
         public SubscriptionInfo SubscriptionInfo { get; set; } = new SubscriptionInfo();
 
-        public List<MediaTypeTunerRegisterInfo> TunerRegisterInfo = new List<MediaTypeTunerRegisterInfo>()
+        public List<TunerRegisterInfo> TunerRegisterInfo = new List<TunerRegisterInfo>()
         {
-            new MediaTypeTunerRegisterInfo() { RegisterType = MediaType.AppStore, Activated = true },
-            new MediaTypeTunerRegisterInfo() { RegisterType = MediaType.Subscription, Activated = false, Activable = false }
+            new TypeTunerRegisterInfo() { RegisterType = TunerRegisterType.AppStore, Activated = true },
+            new TypeTunerRegisterInfo() { RegisterType = TunerRegisterType.Subscription, Activated = false, Activable = false }
         };
     }
 
-    public enum MediaType
+    public class TunerRegisterInfo
+    {
+    }
+
+    public enum TunerRegisterType
     {
         Subscription,
         AppStore
     }
 
-    public class MediaTypeTunerRegisterInfo
+    public class TypeTunerRegisterInfo : TunerRegisterInfo
     {
-        public MediaType RegisterType { get; set; }
+        public TunerRegisterType RegisterType { get; set; }
         public bool Activated { get; set; }
         public bool Activable { get; set; }
     }
@@ -38,7 +42,12 @@ namespace ReLiveWP.Marketplace.Data
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class AccountState
     {
-        public uint SignInErrorCode { get; set; } = 0;
+        public int SignInErrorCode { get; set; } = 0;
+        public bool TagChangeRequired { get; set; } = false;
+        public bool AcceptedTermsOfService { get; set; } = true;
+        public bool AccountSuspended { get; set; } = false;
+        public bool SubscriptionLapsed { get; set; } = false;
+        public bool BillingUnavailable { get; set; } = true;
     }
 
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
@@ -49,6 +58,7 @@ namespace ReLiveWP.Marketplace.Data
         public Guid UserReadID { get; set; }
         public Guid UserWriteID { get; set; }
         public string Locale { get; set; }
+        public bool Lightweight { get; set; } = false;
         public bool ParentallyControlled { get; set; } = false;
         public bool ExplicitPrivilege { get; set; } = false;
         public bool UsageCollectionAllowed { get; set; } = true;
@@ -57,8 +67,17 @@ namespace ReLiveWP.Marketplace.Data
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class SubscriptionInfo
     {
-        public bool SubscriptionEnabled { get; set; } = false;
-        public string SubscriptionMeteringCertificate { get; set; } = "";
+        public Guid SubscriptionOfferId { get; set; }
+        public Guid SubscriptionRenewalOfferId { get; set; }
+        public Guid BillingInstanceId { get; set; }
+        public bool SubscriptionEnabled { get; set; }
+        public bool SubscriptionBillingViolation { get; set; }
+        public bool SubscriptionPendingCancel { get; set; }
+        public string SubscriptionStartDate { get; set; }
+        public string SubscriptionEndDate { get; set; }
+        public string SubscriptionMeteringCertificate { get; set; }
+        public string LastLabelTakedownDate { get; set; }
+        public TunerRegisterInfo MediaTypeTunerRegisterInfo { get; set; }
     }
 
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
@@ -70,7 +89,9 @@ namespace ReLiveWP.Marketplace.Data
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class Balances
     {
-        public int SongCreditBalance = 1000;
+        public double PointsBalance { get; set; }
+        public double SongCreditBalance { get; set; }
+        public string SongCreditRenewalDate { get; set; }
     }
 
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]

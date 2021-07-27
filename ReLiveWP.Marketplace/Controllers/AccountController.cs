@@ -31,9 +31,13 @@ namespace ReLiveWP.Marketplace.Controllers
             resp.AccountInfo.UserWriteID = new Guid(id);
             resp.AccountInfo.Locale = "en-GB";
 
+            resp.SubscriptionInfo.BillingInstanceId = new Guid(id);
+
             var serialiser = new XmlSerializer(typeof(SignInResponse), "http://schemas.zune.net/commerce/2009/01");
             serialiser.Serialize(writer, resp);
 
+            // this is a login token sent for other requests (like purchases)
+            // asp.net core authrorization when:tm:
             Response.Cookies.Append("ZuneECommerce", "todo: generate commerse token");
 
             return Content(writer.ToString(), "application/xml");
