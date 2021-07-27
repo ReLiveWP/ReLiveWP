@@ -36,15 +36,14 @@ namespace ReLiveWP.Backend.Certificates
         public X509Certificate2 GetOrGenerateRootCACert(bool includePrivateKey)
         {
             var caDistinguishedName = _configuration["CertificateGeneration:RootCA"];
-            var caCommonName = _configuration["CertificateGeneration:RootCACN"];
             var caName = new X509Name(caDistinguishedName);
 
-            _logger.LogDebug("Looking for certificate with CN \"{Name}\"", caCommonName);
+            _logger.LogDebug("Looking for certificate with CN \"{Name}\"", caDistinguishedName);
 
             using var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadWrite);
 
-            var collection = store.Certificates.Find(X509FindType.FindBySubjectName, caCommonName, true);
+            var collection = store.Certificates.Find(X509FindType.FindByIssuerName, "Windows Phone PCA", true);
 
             if (collection.Count > 0)
             {
