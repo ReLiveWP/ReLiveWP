@@ -43,78 +43,75 @@ namespace ReLiveWP.Backend.Certificates
 
         public byte[] HandleCertRequest(byte[] certificateRequest)
         {
-            var rootCert2 = _caProvider.GetOrGenerateRootCACert(true);
-            var rootCert = DotNetUtilities.FromX509Certificate(rootCert2);
+            X509Certificate2 deviceCert;
+            X509Certificate2Collection deviceStore;
+
+            var rootCert = _caProvider.GetOrGenerateRootCACert(true);
+            var bcRootCert = DotNetUtilities.FromX509Certificate(rootCert);
 
             var random = SecureRandom.GetInstance("SHA_1PRNG");
             var certRequest = new Pkcs10CertificationRequest(certificateRequest);
             var certRequestInfo = certRequest.GetCertificationRequestInfo();
 
-            using var store = new X509Store("Trusted Windows Phone devices", StoreLocation.CurrentUser, OpenFlags.ReadWrite);
-            //var storeCollection = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, certRequestInfo.Subject.ToString(), true);
-            //if (storeCollection.Count > 0)
-            //{
-            //    _logger.LogDebug("Found existing certificate for {SubjectDN}", certRequestInfo.Subject);
-
-            //    var deviceCert = storeCollection[0];
-            //    var deviceStore = new X509Certificate2Collection(new[] { deviceCert });
-            //    return deviceStore.Export(X509ContentType.Pkcs7);
-            //}
-
-            _logger.LogDebug("Generating new certificate for {SubjectDN}", certRequestInfo.Subject);
-            var caKeyPair = DotNetUtilities.GetRsaKeyPair(rootCert2.GetRSAPrivateKey());
-            var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), random);
-
-            // var publicKeyInfo = SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(keyPair.Public);
-            var signatureFactory = new Asn1SignatureFactory("SHA1WITHRSA", caKeyPair.Private, random); // secure lol
-            var certificateGenerator = new X509V3CertificateGenerator();
-            certificateGenerator.SetSerialNumber(serialNumber);
-            certificateGenerator.SetIssuerDN(rootCert.SubjectDN);
-            certificateGenerator.SetSubjectDN(certRequestInfo.Subject);
-            certificateGenerator.SetNotBefore(DateTime.UtcNow.Subtract(TimeSpan.FromDays(7)));
-            certificateGenerator.SetNotAfter(DateTime.UtcNow.AddYears(1));
-            certificateGenerator.SetPublicKey(certRequest.GetPublicKey());
-
-            var extendedUsage = new ExtendedKeyUsage(new List<object>()
+            using var localStore = new X509Store("Trusted Windows Phone devices", StoreLocation.CurrentUser, OpenFlags.ReadWrite);
+            var storeCollection = localStore.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, certRequestInfo.Subject.ToString(), true);
+            if (storeCollection.Count > 0)
             {
-                KeyPurposeID.IdKPServerAuth,
-                KeyPurposeID.IdKPClientAuth,
-                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.1"), // WP7 key usage
-                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.2"), // WP8 key usage (seems to be used by the marketplace)
-                new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.6")  // Windows Live key usage? Potentially PlayReady
-            });
-
-            certificateGenerator.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.NonRepudiation | KeyUsage.KeyEncipherment | KeyUsage.DataEncipherment));
-            certificateGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, extendedUsage);
-
-            foreach (var attribute in certRequestInfo.Attributes)
+                _logger.LogDebug("Found existing certificate for {SubjectDN}", certRequestInfo.Subject);
+                deviceCert = storeCollection[0];
+            }
+            else
             {
-                var attr = AttributePkcs.GetInstance(attribute);
-                if (attr.AttrType == PkcsObjectIdentifiers.Pkcs9AtExtensionRequest)
+                _logger.LogDebug("Generating new certificate for {SubjectDN}", certRequestInfo.Subject);
+                var caKeyPair = DotNetUtilities.GetRsaKeyPair(rootCert.GetRSAPrivateKey());
+                var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), random);
+
+                // var publicKeyInfo = SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(keyPair.Public);
+                var signatureFactory = new Asn1SignatureFactory("SHA1WITHRSA", caKeyPair.Private, random); // secure lol
+                var certificateGenerator = new X509V3CertificateGenerator();
+                certificateGenerator.SetSerialNumber(serialNumber);
+                certificateGenerator.SetIssuerDN(bcRootCert.SubjectDN);
+                certificateGenerator.SetSubjectDN(certRequestInfo.Subject);
+                certificateGenerator.SetNotBefore(DateTime.UtcNow.Subtract(TimeSpan.FromDays(7)));
+                certificateGenerator.SetNotAfter(DateTime.UtcNow.AddYears(1));
+                certificateGenerator.SetPublicKey(certRequest.GetPublicKey());
+
+                var extendedUsage = new ExtendedKeyUsage(new List<object>()
                 {
-                    var extensions = X509Extensions.GetInstance(attr.AttrValues[0]);
-                    foreach (var oid in extensions.ExtensionOids)
+                    KeyPurposeID.IdKPServerAuth,
+                    KeyPurposeID.IdKPClientAuth,
+                    new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.1"), // WP7 key usage
+                    new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.2"), // WP8 key usage (seems to be used by the marketplace)
+                    new DerObjectIdentifier("1.3.6.1.4.1.311.71.1.6")  // Windows Live key usage? Potentially PlayReady
+                });
+
+                certificateGenerator.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.NonRepudiation | KeyUsage.KeyEncipherment | KeyUsage.DataEncipherment));
+                certificateGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, extendedUsage);
+
+                foreach (var attribute in certRequestInfo.Attributes)
+                {
+                    var attr = AttributePkcs.GetInstance(attribute);
+                    if (attr.AttrType == PkcsObjectIdentifiers.Pkcs9AtExtensionRequest)
                     {
-                        var ext = extensions.GetExtension((DerObjectIdentifier)oid);
-                        certificateGenerator.AddExtension((DerObjectIdentifier)oid, ext.IsCritical, ext.GetParsedValue());
+                        var extensions = X509Extensions.GetInstance(attr.AttrValues[0]);
+                        foreach (var oid in extensions.ExtensionOids)
+                        {
+                            var ext = extensions.GetExtension((DerObjectIdentifier)oid);
+                            certificateGenerator.AddExtension((DerObjectIdentifier)oid, ext.IsCritical, ext.GetParsedValue());
+                        }
                     }
                 }
+
+                var cert = certificateGenerator.Generate(signatureFactory);
+
+                deviceCert = new X509Certificate2(cert.GetEncoded());
+                localStore.Add(deviceCert);
+
+                _logger.LogInformation("Generated new certificate for {SubjectDN}", certRequestInfo.Subject);
             }
 
-            var cert = certificateGenerator.Generate(signatureFactory);
-            var certificate = new X509Certificate2(cert.GetEncoded());
-            store.Add(certificate);
-            store.Close();
-
-            var collection = new X509Certificate2Collection();
-            collection.Add(certificate);
-            collection.Add(rootCert2);
-
-            var data = collection.Export(X509ContentType.Pkcs7);
-
-            _logger.LogInformation("Generated new certificate for {SubjectDN}", certRequestInfo.Subject);
-
-            return data;
+            deviceStore = new X509Certificate2Collection(new[] { deviceCert, rootCert });
+            return deviceStore.Export(X509ContentType.Pkcs7);
         }
     }
 }

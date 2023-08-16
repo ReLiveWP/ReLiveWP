@@ -35,7 +35,7 @@ namespace ReLiveWP.Backend.Certificates
 
         public X509Certificate2 GetOrGenerateRootCACert(bool includePrivateKey)
         {
-            var caDistinguishedName = _configuration["CertificateGeneration:RootCA"];
+            var caDistinguishedName = "CN=Windows Phone Login Verification, O=Wan Kerr Co. Ltd., L=Arklow, C=IE";
             var caName = new X509Name(caDistinguishedName);
 
             _logger.LogDebug("Looking for certificate with CN \"{Name}\"", caDistinguishedName);
@@ -43,7 +43,7 @@ namespace ReLiveWP.Backend.Certificates
             using var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadWrite);
 
-            var collection = store.Certificates.Find(X509FindType.FindByIssuerName, "Windows Phone PCA", true);
+            var collection = store.Certificates.Find(X509FindType.FindByIssuerName, "Windows Phone Login Verification", true);
 
             if (collection.Count > 0)
             {
@@ -57,7 +57,7 @@ namespace ReLiveWP.Backend.Certificates
 
                 var random = SecureRandom.GetInstance("SHA_1PRNG");
                 var rsa = new RsaKeyPairGenerator();
-                rsa.Init(new KeyGenerationParameters(random, 4096));
+                rsa.Init(new KeyGenerationParameters(random, 2048));
 
                 var keyPair = rsa.GenerateKeyPair();
                 var startingDateTime = new DateTime(2010, 1, 1);

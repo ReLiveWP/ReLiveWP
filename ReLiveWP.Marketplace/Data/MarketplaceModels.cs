@@ -106,7 +106,7 @@ namespace ReLiveWP.Marketplace.Data
     [XmlType(Namespace = "http://schemas.zune.net/commerce/2009/01")]
     public class Balances
     {
-        public double PointsBalance { get; set; }
+        public double PointsBalance { get; set; } = 1000;
         public double SongCreditBalance { get; set; }
         public string SongCreditRenewalDate { get; set; }
     }

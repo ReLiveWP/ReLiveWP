@@ -1,23 +1,21 @@
-{
+﻿{
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "iisSettings": {
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:16070",
-      "sslPort": 44323
+      "applicationUrl": "http://localhost:64089",
+      "sslPort": 44396
     }
   },
   "profiles": {
-    "ReLiveWP.Marketplace": {
+    "ReLiveWP.Services.Authentication": {
       "commandName": "Project",
-      "launchBrowser": false,
-      "launchUrl": "weatherforecast",
+      "dotnetRunMessages": true,
+      "applicationUrl": "https://127.0.0.8;http://127.0.0.8",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "applicationUrl": "http://127.0.0.9;https://127.0.0.9",
-      "dotnetRunMessages": true
+      }
     },
     "IIS Express": {
       "commandName": "IISExpress",
