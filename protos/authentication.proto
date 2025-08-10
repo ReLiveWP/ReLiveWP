@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReLiveWP.Backend.Identity";
+
+import "google/protobuf/timestamp.proto";
+
+package identity;
+
+service Authentication {
+  rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
+  rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyTokenResponse);
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+}
+
+message RegisterRequest {
+  string username = 1;
+  string emailAddress = 2;
+  string password = 3;
+}
+
+message RegisterResponse {
+  uint32 code = 1;
+}
+
+message SecurityTokenRequest {
+  string serviceTarget = 1;
+  string servicePolicy = 2;
+}
+
+message SecurityTokensRequest {
+  string username = 1;
+  string password = 2;
+
+  repeated SecurityTokenRequest requests = 3;
+}
+
+message SecurityTokenResponse {
+  string serviceTarget = 1;
+  string token = 2;
+  string tokenType = 3; 
+
+  google.protobuf.Timestamp created = 4;
+  google.protobuf.Timestamp expires = 5;
+}
+
+message SecurityTokensResponse {
+  uint32 code = 1;
+  uint64 puid = 2;
+  string cid = 3;
+  string username = 4;
+  string emailAddress = 5;
+  repeated SecurityTokenResponse tokens = 6;
+}
+
+message ClaimMessage {
+  string type = 1;
+  string value = 2;
+}
+
+message VerifyTokenRequest {
+  string serviceTarget = 1;
+  string token = 2;
+  string tokenType = 3; 
+}
+
+message VerifyTokenResponse {
+  uint32 code = 1;
+  repeated ClaimMessage claims = 2;
+}

@@ -106,3 +106,9 @@ Zune images CDN. No longer functional and will need reimplementing.
 ### `tuners.zune.net`, `tuners-ssl.zune.net`
 Used for registering devices with the Zune backend. No longer functional and will need reimplementing.
 
+## Misc
+- `mangoclient.consumermarketplace.msid.windowsphone.com`: Mentioned in RequestSecurityToken.
+- `kdc.xboxlive.com`: Mentioned in RequestSecurityToken.
+- `live.xbox.com`: Mentioned in RequestSecurityToken.
+- `mobilling.microsoft.com`: Mentioned in RequestSecurityToken.
+- `live.zune.net`: Mentioned in RequestSecurityToken.

@@ -14,10 +14,10 @@ message DeviceRegistrationRequest {
   string osVersion = 2;
   string locale = 3;
   string activationCode = 4;
+  string uniqueId = 5;
 
-  optional string deviceManufacturer = 5;
-  optional string deviceModel = 6;
-  optional string deviceUniqueId = 7;
+  optional string deviceManufacturer = 6;
+  optional string deviceModel = 7;
   optional string deviceOperator = 8;
   optional string deviceIMEI = 9;
 }

@@ -29,9 +29,9 @@ namespace ReLiveWP.Services.Activation
             services.AddControllers();
 
             services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
-                o => o.Address = new Uri("https://localhost:5001"));
+                o => o.Address = new Uri("http://127.0.0.2:5000"));
             services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
-                o => o.Address = new Uri("https://localhost:5001"));
+                o => o.Address = new Uri("http://127.0.0.3:5000"));
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -40,6 +40,7 @@ namespace ReLiveWP.Services.Activation
             {
                 app.UseDeveloperExceptionPage();
             }
+
 
             app.UseStaticFiles();
 
