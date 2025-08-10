@@ -351,3 +351,5 @@ MigrationBackup/
 
 *.db*
 *.bin
+
+!ReLiveWP.Services.ClientConfiguration/wwwroot/relivewp_config.db
