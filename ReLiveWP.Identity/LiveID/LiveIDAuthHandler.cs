@@ -40,6 +40,16 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
     protected override Task<object> CreateEventsAsync()
         => Task.FromResult<object>(new LiveIDAuthEvents());
 
+    protected override async Task InitializeHandlerAsync()
+    {
+        await base.InitializeHandlerAsync();
+
+        if (!Options.ValidServiceTargets.Any())
+        {
+            throw new Exception("No valid service targets specified!");
+        }
+    }
+
     /// <summary>
     /// Searches the 'Authorization' header for a 'Bearer' token. If the 'Bearer' token is found, it is validated via the gRPC authentication service.
     /// </summary>
@@ -55,10 +65,16 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
 
         var token = authHeader["Bearer ".Length..].Trim();
 
+        var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
+        foreach (var validService in Options.ValidServiceTargets)
+        {
+            request.ServiceTargets.Add(validService);
+        }
+
         VerifyTokenResponse reply;
         try
         {
-            reply = await authenticationClient.VerifySecurityTokenAsync(new VerifyTokenRequest { Token = token });
+            reply = await authenticationClient.VerifySecurityTokenAsync(request);
         }
         catch (Exception ex)
         {

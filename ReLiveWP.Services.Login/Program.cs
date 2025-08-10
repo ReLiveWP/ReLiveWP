@@ -14,6 +14,7 @@ builder.Services.AddControllers()
 builder.Services.AddLiveIDAuthentication((o) =>
 {
     o.GrpcConfiguration = (c) => c.Address = new Uri("http://127.0.0.4:5000");
+    o.LiveIDConfiguration = (c) => c.ValidServiceTargets = ["http://Passport.NET/tb"];
 });
 
 builder.Services.ConfigureHttpJsonOptions(options =>

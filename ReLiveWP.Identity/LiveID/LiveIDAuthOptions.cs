@@ -8,5 +8,5 @@ namespace ReLiveWP.Identity.LiveID;
 
 public class LiveIDAuthOptions : AuthenticationSchemeOptions
 {
-
+    public IReadOnlyList<string> ValidServiceTargets { internal get; set; } = [];
 }

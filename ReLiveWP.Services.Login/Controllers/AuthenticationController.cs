@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Backend.Identity;
 using ReLiveWP.Services.Login.Models;
@@ -13,6 +15,14 @@ namespace ReLiveWP.Services.Login.Controllers
         ILogger<AuthenticationController> logger,
         Authentication.AuthenticationClient authenticationClient) : ControllerBase
     {
+        [HttpGet]
+        [Authorize]
+        [ActionName("test_auth")]
+        public async Task<string> GetAuthedStringAsync()
+        {
+            return HttpContext.User.Identities.FirstOrDefault().Name;
+        }
+
         [ActionName("request_tokens")]
         [HttpPost(Name = "request_tokens")]
         public async Task<SecurityTokensResponseModel> RequestTokens([FromBody] SecurityTokensRequestModel request)

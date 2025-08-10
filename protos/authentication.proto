@@ -58,7 +58,7 @@ message ClaimMessage {
 }
 
 message VerifyTokenRequest {
-  string serviceTarget = 1;
+  repeated string serviceTargets = 1;
   string token = 2;
   string tokenType = 3; 
 }
