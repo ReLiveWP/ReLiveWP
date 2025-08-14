@@ -1,0 +1,6 @@
+@ReLiveWP.Backend.DeviceUpdate_HostAddress = http://localhost:5056
+
+GET {{ReLiveWP.Backend.DeviceUpdate_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

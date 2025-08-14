@@ -52,6 +52,9 @@ public class CertificateRequestController(
         var deviceInfo = deviceInfoHeader[0].Split(',')
                                             .Select(s => s.Split(':'))
                                             .ToDictionary(k => k[0], v => v.ElementAtOrDefault(1));
+
+        logger.LogInformation("Provided key {ProductKey}", activationCode);
+
         var requestCert = await (new StreamReader(Request.Body)).ReadToEndAsync();
 
         var encoded = Convert.FromBase64String(requestCert);

@@ -28,7 +28,7 @@ builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

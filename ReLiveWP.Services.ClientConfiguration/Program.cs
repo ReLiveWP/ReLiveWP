@@ -17,6 +17,11 @@ app.MapGet("/config", (IWebHostEnvironment environment) =>
     return Results.File(Path.Join(environment.WebRootPath, "relivewp_config.db"), "application/x-sqlite3", "ppcrlconfig.db");
 });
 
+app.MapGet("/config_int", (IWebHostEnvironment environment) =>
+{
+    return Results.File(Path.Join(environment.WebRootPath, "relivewp_config_int.db"), "application/x-sqlite3", "ppcrlconfig.db");
+});
+
 app.MapGet("/config/version", () =>
 {
     return new ClientConfigVersions(2, 2);

@@ -22,6 +22,9 @@
     <Protobuf Include="..\protos\authentication.proto" GrpcServices="Server">
       <Link>Protos\authentication.proto</Link>
     </Protobuf>
+    <Protobuf Include="..\protos\user.proto" GrpcServices="Server">
+      <Link>Protos\user.proto</Link>
+    </Protobuf>
   </ItemGroup>
 
 </Project>

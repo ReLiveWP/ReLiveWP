@@ -353,3 +353,8 @@ MigrationBackup/
 *.bin
 
 !ReLiveWP.Services.ClientConfiguration/wwwroot/relivewp_config.db
+/ReLiveWP.Backend.DeviceUpdate/GetExtendedUpdateInfo
+/ReLiveWP.Backend.DeviceUpdate/old
+/ReLiveWP.Backend.DeviceUpdate/SyncUpdates
+/ReLiveWP.Backend.DeviceUpdate/UpdateRegulation
+/ReLiveWP.Backend.DeviceUpdate/wwwroot

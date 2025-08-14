@@ -2,6 +2,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
@@ -60,10 +61,13 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
             return AuthenticateResult.NoResult();
 
         var authHeader = value.ToString();
-        if (!authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            return AuthenticateResult.Fail("Invalid auth scheme");
-
-        var token = authHeader["Bearer ".Length..].Trim();
+        var token = authHeader;
+        if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            token = authHeader["Bearer ".Length..].Trim();
+        else if (authHeader.StartsWith("WLID1.0 ", StringComparison.OrdinalIgnoreCase))
+            token = authHeader["WLID1.0 ".Length..].Trim();
+        else
+            return AuthenticateResult.NoResult();
 
         var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
         foreach (var validService in Options.ValidServiceTargets)

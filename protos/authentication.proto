@@ -31,6 +31,8 @@ message SecurityTokensRequest {
   string username = 1;
   string password = 2;
 
+  string authToken = 4;
+
   repeated SecurityTokenRequest requests = 3;
 }
 

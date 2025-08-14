@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReLiveWP.Backend.Identity";
+
+import "google/protobuf/timestamp.proto";
+
+package identity;
+
+service User {
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+}
+
+message GetUserInfoRequest {
+	string userId = 1;
+}
+
+message GetUserInfoResponse {
+  uint64 puid = 1;
+  string cid = 2;
+  string username = 3;
+  string emailAddress = 4;
+}

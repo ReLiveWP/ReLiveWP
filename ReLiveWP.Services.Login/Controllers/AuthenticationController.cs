@@ -9,29 +9,43 @@ using ReLiveWP.Services.Login.Models;
 
 namespace ReLiveWP.Services.Login.Controllers
 {
+    record class ErrorModel(uint ErrorCode);
+
     [ApiController]
     [Route("auth/[action]")]
     public class AuthenticationController(
         ILogger<AuthenticationController> logger,
         Authentication.AuthenticationClient authenticationClient) : ControllerBase
     {
-        [HttpGet]
-        [Authorize]
-        [ActionName("test_auth")]
-        public async Task<string> GetAuthedStringAsync()
-        {
-            return HttpContext.User.Identities.FirstOrDefault().Name;
-        }
-
         [ActionName("request_tokens")]
         [HttpPost(Name = "request_tokens")]
-        public async Task<SecurityTokensResponseModel> RequestTokens([FromBody] SecurityTokensRequestModel request)
+        public async Task<IActionResult> RequestTokens([FromBody] SecurityTokensRequestModel request)
         {
-            var grpcRequest = new SecurityTokensRequest()
+            SecurityTokensRequest grpcRequest;
+            if (request.Credentials.TryGetValue("ps:password", out var password))
             {
-                Username = request.Identity,
-                Password = request.Credentials["ps:password"],
-            };
+                grpcRequest = new SecurityTokensRequest()
+                {
+                    Username = request.Identity,
+                    Password = password,
+                };
+            }
+            else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values) && values.FirstOrDefault() != null)
+            {
+                var value = values.FirstOrDefault()!;
+                if (value.StartsWith("Bearer "))
+                    value = value[7..];
+
+                grpcRequest = new SecurityTokensRequest()
+                {
+                    Username = request.Identity,
+                    AuthToken = value
+                };
+            }
+            else
+            {
+                return Unauthorized();
+            }
 
             foreach (var tokenRequest in request.TokenRequests)
             {
@@ -45,7 +59,10 @@ namespace ReLiveWP.Services.Login.Controllers
             }
 
             var grpcResponse = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
-            Marshal.ThrowExceptionForHR((int)grpcResponse.Code);
+            if ((grpcResponse.Code & 0x80000000) != 0)
+            {
+                return Unauthorized(new ErrorModel(grpcResponse.Code));
+            }
 
             var securityTokens = new List<SecurityTokenModel>();
             foreach (var token in grpcResponse.Tokens)
@@ -57,7 +74,7 @@ namespace ReLiveWP.Services.Login.Controllers
                                                           token.Expires.ToDateTimeOffset()));
             }
 
-            return new SecurityTokensResponseModel(grpcResponse.Puid, grpcResponse.Cid, grpcResponse.Username, grpcResponse.EmailAddress, [.. securityTokens]);
+            return Ok(new SecurityTokensResponseModel(grpcResponse.Puid, grpcResponse.Cid, grpcResponse.Username, grpcResponse.EmailAddress, [.. securityTokens]));
         }
     }
 }

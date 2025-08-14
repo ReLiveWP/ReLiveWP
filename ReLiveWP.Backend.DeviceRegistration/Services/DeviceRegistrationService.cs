@@ -51,7 +51,6 @@ public class DeviceRegistrationService(ILogger<DeviceRegistrationService> logger
         }
 
         await dbContext.SaveChangesAsync();
-
         return deviceRegistrationResponse;
     }
 }

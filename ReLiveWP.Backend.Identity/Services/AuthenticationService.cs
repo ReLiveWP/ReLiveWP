@@ -11,7 +11,10 @@ using ReLiveWP.Backend.Identity.Data;
 
 namespace ReLiveWP.Backend.Identity.Services
 {
-    public class AuthenticationService : Authentication.AuthenticationBase
+    public class AuthenticationService(IConfiguration configuration,
+                        ILogger<AuthenticationService> logger,
+                        UserManager<LiveUser> userManager,
+                        RoleManager<LiveRole> roleManager) : Authentication.AuthenticationBase
     {
         private const string JwtIssuer = "https://relivewp.net/";
 
@@ -22,50 +25,9 @@ namespace ReLiveWP.Backend.Identity.Services
         private const uint PPCRL_E_SQM_INTERNET_SEC_INVALID_CERT = 0x80048428;
         private const uint ERROR_ALREADY_EXISTS = 0x800700B7;
 
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<AuthenticationService> _logger;
-        private readonly UserManager<LiveUser> _userManager;
-        private readonly RoleManager<LiveRole> _roleManager;
-
-        public AuthenticationService(IConfiguration configuration,
-                            ILogger<AuthenticationService> logger,
-                            UserManager<LiveUser> userManager,
-                            RoleManager<LiveRole> roleManager)
-        {
-            _configuration = configuration;
-            _logger = logger;
-            _userManager = userManager;
-            _roleManager = roleManager;
-        }
-
-        private string NormaliseUsername(string username)
-        {
-            if (username.IndexOf('@') != -1)
-                return username[..username.IndexOf('@')];
-            return username;
-        }
-
         public override async Task<VerifyTokenResponse> VerifySecurityToken(VerifyTokenRequest request, ServerCallContext context)
         {
-            var handler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]!);
-
-            var validationParameters = new TokenValidationParameters()
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
-
-                ValidateIssuer = true,
-                ValidIssuer = JwtIssuer,
-
-                ValidateAudience = true,
-                ValidAudiences = request.ServiceTargets,
-
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromMinutes(5) // +- 5 mins is fine, these devices are Old
-            };
-
-            var result = await handler.ValidateTokenAsync(request.Token, validationParameters);
+            var result = await ValidateJwtAsync(request.Token, [.. request.ServiceTargets]);
             if (!result.IsValid)
             {
                 // TODO: figure out what was actually invalid
@@ -84,12 +46,11 @@ namespace ReLiveWP.Backend.Identity.Services
 
         public override async Task<SecurityTokensResponse> GetSecurityTokens(SecurityTokensRequest request, ServerCallContext context)
         {
-            var user = await _userManager.FindByNameAsync(NormaliseUsername(request.Username));
+            var user = await GetUserForSecurityTokenAsync(request);
             if (user == null)
+            {
                 return new SecurityTokensResponse() { Code = PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD };
-
-            if (!await _userManager.CheckPasswordAsync(user, request.Password))
-                return new SecurityTokensResponse() { Code = PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD };
+            }
 
             string[] policies = new string[] { "LEGACY", "HBI_KEY", "MBI", "MBI_KEY" };
 
@@ -142,7 +103,7 @@ namespace ReLiveWP.Backend.Identity.Services
 
         public override async Task<RegisterResponse> Register(RegisterRequest request, ServerCallContext context)
         {
-            if (await _userManager.FindByEmailAsync(request.EmailAddress) != null)
+            if (await userManager.FindByEmailAsync(request.EmailAddress) != null)
                 return new RegisterResponse() { Code = ERROR_ALREADY_EXISTS };
 
             var user = new LiveUser()
@@ -151,13 +112,13 @@ namespace ReLiveWP.Backend.Identity.Services
                 Email = request.EmailAddress,
             };
 
-            var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await userManager.CreateAsync(user, request.Password);
             return new RegisterResponse() { Code = S_OK };
         }
 
         private JwtSecurityToken CreateToken(List<Claim> authClaims, DateTimeOffset expires)
         {
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]));
 
             var token = new JwtSecurityToken(
                 expires: expires.UtcDateTime,
@@ -166,6 +127,71 @@ namespace ReLiveWP.Backend.Identity.Services
             );
 
             return token;
+        }
+
+        private string NormaliseUsername(string username)
+        {
+            if (username.IndexOf('@') != -1)
+                return username[..username.IndexOf('@')];
+            return username;
+        }
+
+        private async Task<TokenValidationResult> ValidateJwtAsync(string token, string[] audiences)
+        {
+            var key = Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!);
+
+            // only Passport.NET tokens are valid for issuing other tokens
+            var validationParameters = new TokenValidationParameters()
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+
+                ValidateIssuer = true,
+                ValidIssuer = JwtIssuer,
+
+                ValidateAudience = true,
+                ValidAudiences = audiences,
+
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromMinutes(5) // +- 5 mins is fine, these devices are Old
+            };
+
+            var handler = new JwtSecurityTokenHandler();
+
+            return await handler.ValidateTokenAsync(token, validationParameters);
+        }
+
+        private async Task<LiveUser?> GetUserForSecurityTokenAsync(SecurityTokensRequest request)
+        {
+            if (!string.IsNullOrWhiteSpace(request.Username) && !string.IsNullOrWhiteSpace(request.Password))
+            {
+                var user = await userManager.FindByNameAsync(NormaliseUsername(request.Username));
+                if (user == null)
+                    return null;
+
+                if (!await userManager.CheckPasswordAsync(user, request.Password))
+                    return null;
+
+                return user;
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.AuthToken))
+            {
+                TokenValidationResult result = await ValidateJwtAsync(request.AuthToken, ["http://Passport.NET/tb"]);
+                if (!result.IsValid)
+                {
+                    return null;
+                }
+
+                if (!result.Claims.TryGetValue(ClaimTypes.NameIdentifier, out var userId))
+                {
+                    return null;
+                }
+
+                return await userManager.FindByIdAsync(userId.ToString()!);
+            }
+
+            return null;
         }
     }
 }
