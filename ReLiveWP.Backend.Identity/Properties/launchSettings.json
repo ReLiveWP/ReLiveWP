@@ -1,10 +1,10 @@
 ﻿{
   "profiles": {
-    "ReLiveWP.Backend.Identity": {
+    "http": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "https://127.0.0.4:5001;http://127.0.0.4:5000",
+      "applicationUrl": "http://127.0.0.4:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

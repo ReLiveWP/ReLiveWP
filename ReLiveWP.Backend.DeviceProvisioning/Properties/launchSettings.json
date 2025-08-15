@@ -7,14 +7,6 @@
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://127.0.0.3:5000"
-    },
-    "https": {
-      "commandName": "Project",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "dotnetRunMessages": true,
-      "applicationUrl": "https://127.0.0.3:5001;http://127.0.0.3:5000"
     }
   }
 }
