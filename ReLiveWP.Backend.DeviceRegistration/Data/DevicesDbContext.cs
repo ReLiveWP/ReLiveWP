@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.DeviceRegistration.Model;
 
-namespace ReLiveWP.Backend.DeviceRegistration.Database;
+namespace ReLiveWP.Backend.DeviceRegistration.Data;
 
 public class DevicesDbContext : DbContext
 {

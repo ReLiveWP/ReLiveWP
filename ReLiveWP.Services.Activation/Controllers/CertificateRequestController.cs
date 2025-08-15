@@ -1,18 +1,15 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Org.BouncyCastle.Crypto.Tls;
 using Org.BouncyCastle.Pkcs;
-using ReLiveWP.Backend.ClientProvisioning;
-using ReLiveWP.Backend.DeviceRegistration;
+using ReLiveWP.Services.Grpc;
 
-namespace ReLiveWP.Services.Activation;
+namespace ReLiveWP.Services.Activation.Controllers;
 
 [ApiController]
 [Route("dcs/certificaterequest")]
@@ -55,7 +52,7 @@ public class CertificateRequestController(
 
         logger.LogInformation("Provided key {ProductKey}", activationCode);
 
-        var requestCert = await (new StreamReader(Request.Body)).ReadToEndAsync();
+        var requestCert = await new StreamReader(Request.Body).ReadToEndAsync();
 
         var encoded = Convert.FromBase64String(requestCert);
         var certRequest = new Pkcs10CertificationRequest(encoded);

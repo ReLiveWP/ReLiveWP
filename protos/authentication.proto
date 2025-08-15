@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "ReLiveWP.Backend.Identity";
+option csharp_namespace = "ReLiveWP.Services.Grpc";
 
 import "google/protobuf/timestamp.proto";
 

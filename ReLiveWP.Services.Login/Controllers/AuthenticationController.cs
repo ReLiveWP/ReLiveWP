@@ -1,8 +1,5 @@
-using System.Runtime.InteropServices;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ReLiveWP.Backend.Identity;
+using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Login.Models;
 
 // {"credentials":{"ps:password":"asdf"},"identity":"wamwoowam@gmail.com","token_requests":[{"service_policy":"LEGACY","service_target":"http://Passport.NET/tb"}]}

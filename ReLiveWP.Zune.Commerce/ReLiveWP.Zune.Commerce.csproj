@@ -1,10 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>6cc4b98e-30b7-4216-85cd-65ac619f665a</UserSecretsId>
+    <UserSecretsId>7d696ee4-adbf-417d-9c0a-011390cc9229</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
@@ -13,7 +13,6 @@
     <PackageReference Include="Google.Protobuf" Version="3.32.0" />
     <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
-    
     <PackageReference Include="Grpc.Tools" Version="2.72.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -22,12 +21,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Zune\ReLiveWP.Zune.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <Protobuf Include="../protos/authentication.proto" GrpcServices="Client">
       <Link>Protos\authentication.proto</Link>
     </Protobuf>
+    <Protobuf Include="../protos/user.proto" GrpcServices="Client">
+      <Link>Protos\user.proto</Link>
+    </Protobuf>
   </ItemGroup>
+
 
 </Project>

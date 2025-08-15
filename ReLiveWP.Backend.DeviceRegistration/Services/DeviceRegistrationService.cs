@@ -1,13 +1,14 @@
 ﻿using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
-using ReLiveWP.Backend.DeviceRegistration.Database;
+using ReLiveWP.Backend.DeviceRegistration.Data;
 using ReLiveWP.Backend.DeviceRegistration.Model;
+using ReLiveWP.Services.Grpc;
+using static ReLiveWP.Services.Grpc.DeviceRegistration;
 
-namespace ReLiveWP.Backend.DeviceRegistration;
+namespace ReLiveWP.Backend.DeviceRegistration.Services;
 
 public class DeviceRegistrationService(ILogger<DeviceRegistrationService> logger,
-                                       DevicesDbContext dbContext)
-    : DeviceRegistration.DeviceRegistrationBase
+                                       DevicesDbContext dbContext) : DeviceRegistrationBase
 {
     public override async Task<DeviceRegistrationResponse> RegisterDevice(DeviceRegistrationRequest request, ServerCallContext context)
     {

@@ -1,27 +1,28 @@
-using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using ReLiveWP.Services.Grpc;
 
-namespace ReLiveWP.Services.Activation;
+namespace ReLiveWP.Services.Push;
 
-public class Startup(IConfiguration configuration)
+public class Startup
 {
-    public IConfiguration Configuration { get; } = configuration;
-
-    public void ConfigureServices(IServiceCollection services)
+    public Startup(IConfiguration configuration)
     {
-        services.AddControllers();
-
-        services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
-            o => o.Address = new Uri(Configuration["Endpoints:DeviceRegistration"]));
-        services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
-            o => o.Address = new Uri(Configuration["Endpoints:ClientProvisioning"]));
+        Configuration = configuration;
     }
 
+    public IConfiguration Configuration { get; }
+
+    // This method gets called by the runtime. Use this method to add services to the container.
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddControllersWithViews();
+        services.AddHostedService<PushTcpService>();
+    }
+
+    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
         if (env.IsDevelopment())
@@ -29,7 +30,7 @@ public class Startup(IConfiguration configuration)
             app.UseDeveloperExceptionPage();
         }
 
-        app.UseStaticFiles();
+        // app.UseHttpsRedirection();
 
         app.UseRouting();
 

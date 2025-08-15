@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "ReLiveWP.Backend.DeviceRegistration";
+option csharp_namespace = "ReLiveWP.Services.Grpc";
 
 package device_registration;
 

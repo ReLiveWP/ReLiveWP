@@ -12,11 +12,13 @@
     <Protobuf Include="../protos/device_registration.proto">
       <Link>Protos\device_registration.proto</Link>
     </Protobuf>
+    <Protobuf Include="../protos/client_provisioning.proto">
+      <Link>Protos\client_provisioning.proto</Link>
+    </Protobuf>
   </ItemGroup>
 
-
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.68.1"/>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.8">
       <PrivateAssets>all</PrivateAssets>
@@ -28,6 +30,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
   </ItemGroup>
 
 </Project>

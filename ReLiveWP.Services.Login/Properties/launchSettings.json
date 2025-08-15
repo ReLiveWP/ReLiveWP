@@ -7,7 +7,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:10002"
+      "applicationUrl": "http://0.0.0.0:10002"
     },
     "Container (Dockerfile)": {
       "commandName": "Docker",
@@ -20,13 +20,5 @@
       "useSSL": true
     }
   },
-  "$schema": "http://json.schemastore.org/launchsettings.json",
-  "iisSettings": {
-    "windowsAuthentication": false,
-    "anonymousAuthentication": true,
-    "iisExpress": {
-      "applicationUrl": "http://localhost:61616",
-      "sslPort": 44329
-    }
-  }
+  "$schema": "http://json.schemastore.org/launchsettings.json"
 }

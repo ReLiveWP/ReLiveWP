@@ -1,6 +1,6 @@
 using System.Text.Json;
-using ReLiveWP.Backend.Identity;
 using ReLiveWP.Identity;
+using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +13,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddLiveIDAuthentication((o) =>
 {
-    o.GrpcConfiguration = (c) => c.Address = new Uri("http://127.0.0.4:5000");
+    o.GrpcConfiguration = (c) => c.Address = new Uri(builder.Configuration["Endpoints:Identity"]!);
     o.LiveIDConfiguration = (c) => c.ValidServiceTargets = ["http://Passport.NET/tb"];
 });
 
@@ -24,7 +24,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
-    o => o.Address = new Uri("http://127.0.0.4:5000"));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 
 var app = builder.Build();
 

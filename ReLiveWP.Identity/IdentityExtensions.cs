@@ -1,8 +1,7 @@
 ﻿using System.Security.Claims;
-using System.Security.Principal;
 using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authorization;
-using ReLiveWP.Backend.Identity;
+using ReLiveWP.Services.Grpc;
 using ReLiveWP.Identity.LiveID;
 
 namespace ReLiveWP.Identity;

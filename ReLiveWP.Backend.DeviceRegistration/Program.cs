@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using ReLiveWP.Backend.DeviceRegistration;
-using ReLiveWP.Backend.DeviceRegistration.Database;
+using ReLiveWP.Backend.DeviceRegistration.Data;
+using ReLiveWP.Backend.DeviceRegistration.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,16 +15,15 @@ var app = builder.Build();
 ApplyMigrations(app);
 
 // Configure the HTTP request pipeline.
+app.MapGrpcService<ClientProvisioningService>();
 app.MapGrpcService<DeviceRegistrationService>();
 
 app.Run();
 
 static void ApplyMigrations(WebApplication app)
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var dbContext = scope.ServiceProvider.GetRequiredService<DevicesDbContext>();
+    using var scope = app.Services.CreateScope();
+    using var dbContext = scope.ServiceProvider.GetRequiredService<DevicesDbContext>();
 
-        dbContext.Database.Migrate();
-    }
+    dbContext.Database.Migrate();
 }

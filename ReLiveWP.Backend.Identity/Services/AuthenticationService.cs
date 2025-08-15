@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -6,8 +5,8 @@ using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using ReLiveWP.Backend.Identity;
 using ReLiveWP.Backend.Identity.Data;
+using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Backend.Identity.Services
 {
