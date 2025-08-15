@@ -16,9 +16,17 @@ public class Program
 
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
         builder.Services.AddDbContext<LiveDbContext>(options => options.UseSqlite(connectionString));
-        builder.Services.AddIdentity<LiveUser, LiveRole>(options => options.SignIn.RequireConfirmedAccount = true)
-                        .AddEntityFrameworkStores<LiveDbContext>()
-                        .AddDefaultTokenProviders();
+        builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
+        {
+            options.SignIn.RequireConfirmedAccount = true;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireLowercase = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireDigit = false;
+            options.Password.RequiredLength = 1;
+        })
+        .AddEntityFrameworkStores<LiveDbContext>()
+        .AddDefaultTokenProviders();
 
         builder.Services.AddAuthentication(options =>
         {
@@ -49,11 +57,9 @@ public class Program
         // Configure the HTTP request pipeline.
         app.MapGrpcService<AuthenticationService>();
         app.MapGrpcService<UserService>();
-        app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 
         app.Run();
     }
-
 
     static void ApplyMigrations(WebApplication app)
     {

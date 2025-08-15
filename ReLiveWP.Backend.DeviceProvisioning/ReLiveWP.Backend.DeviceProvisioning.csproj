@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\protos\client_provisioning.proto">
+    <Protobuf Include="../protos/client_provisioning.proto">
       <Link>Protos\client_provisioning.proto</Link>
     </Protobuf>
   </ItemGroup>

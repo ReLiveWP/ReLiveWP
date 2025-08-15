@@ -7,9 +7,11 @@ using ReLiveWP.Services.Login.Models;
 
 // {"credentials":{"ps:password":"asdf"},"identity":"wamwoowam@gmail.com","token_requests":[{"service_policy":"LEGACY","service_target":"http://Passport.NET/tb"}]}
 
+
 namespace ReLiveWP.Services.Login.Controllers
 {
     record class ErrorModel(uint ErrorCode);
+    public record CreateAccountModel(string Username, string Password, string EmailAddress);
 
     [ApiController]
     [Route("auth/[action]")]
@@ -17,6 +19,14 @@ namespace ReLiveWP.Services.Login.Controllers
         ILogger<AuthenticationController> logger,
         Authentication.AuthenticationClient authenticationClient) : ControllerBase
     {
+
+        [ActionName("register")]
+        public async Task<IActionResult> RequestTokens([FromBody] CreateAccountModel request)
+        {
+            await authenticationClient.RegisterAsync(new RegisterRequest() { Username = request.Username, Password = request.Password, EmailAddress = request.EmailAddress });
+            return NoContent();
+        }
+
         [ActionName("request_tokens")]
         [HttpPost(Name = "request_tokens")]
         public async Task<IActionResult> RequestTokens([FromBody] SecurityTokensRequestModel request)

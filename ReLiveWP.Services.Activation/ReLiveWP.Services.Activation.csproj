@@ -16,10 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\protos\client_provisioning.proto" GrpcServices="Client">
+    <Protobuf Include="../protos/client_provisioning.proto" GrpcServices="Client">
       <Link>Protos\client_provisioning.proto</Link>
     </Protobuf>
-    <Protobuf Include="..\protos\device_registration.proto" GrpcServices="Client">
+    <Protobuf Include="../protos/device_registration.proto" GrpcServices="Client">
       <Link>Protos\device_registration.proto</Link>
     </Protobuf>
   </ItemGroup>

@@ -52,7 +52,7 @@ namespace ReLiveWP.Backend.Identity.Services
                 return new SecurityTokensResponse() { Code = PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD };
             }
 
-            string[] policies = new string[] { "LEGACY", "HBI_KEY", "MBI", "MBI_KEY" };
+            string[] policies = ["LEGACY", "HBI_KEY", "MBI", "MBI_KEY"];
 
             var chars = user.Id.ToString();
             var bytes = user.Id.ToByteArray();
@@ -113,6 +113,7 @@ namespace ReLiveWP.Backend.Identity.Services
             };
 
             var result = await userManager.CreateAsync(user, request.Password);
+        
             return new RegisterResponse() { Code = S_OK };
         }
 
@@ -165,7 +166,7 @@ namespace ReLiveWP.Backend.Identity.Services
         {
             if (!string.IsNullOrWhiteSpace(request.Username) && !string.IsNullOrWhiteSpace(request.Password))
             {
-                var user = await userManager.FindByNameAsync(NormaliseUsername(request.Username));
+                var user = await userManager.FindByEmailAsync(request.Username);
                 if (user == null)
                     return null;
 

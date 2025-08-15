@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\protos\device_registration.proto">
+    <Protobuf Include="../protos/device_registration.proto">
       <Link>Protos\device_registration.proto</Link>
     </Protobuf>
   </ItemGroup>
