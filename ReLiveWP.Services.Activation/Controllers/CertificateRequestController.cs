@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Google.Protobuf;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Pkcs;
@@ -21,14 +20,6 @@ public class CertificateRequestController(
     private const string ActivationProtocolVersionHeader = "X-Windows-Phone-Activation-Protocol-Version";
     private const string ActivationCodeHeader = "X-Windows-Phone-Activation-Code";
     private const string DeviceInfoHeader = "X-Windows-Phone-Device-Info";
-
-    [HttpGet]
-    public async Task<IActionResult> Get()
-    {
-        var cert = await clientProvisioning.GetCACertificateAsync(new Empty());
-        var bytes = cert.Certificate.ToByteArray();
-        return File(bytes, "application/pkcs12", "RootCertificate.pfx");
-    }
 
     [HttpPost]
     public async Task<IActionResult> Post()
@@ -51,6 +42,9 @@ public class CertificateRequestController(
                                             .ToDictionary(k => k[0], v => v.ElementAtOrDefault(1));
 
         logger.LogInformation("Provided key {ProductKey}", activationCode);
+
+        if (activationCode == "NOPVK-NOPVK-NOPVK-NOPVK-NOPVK")
+            return StatusCode(409);
 
         var requestCert = await new StreamReader(Request.Body).ReadToEndAsync();
 

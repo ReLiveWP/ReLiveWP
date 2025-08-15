@@ -34,7 +34,6 @@ public class RootCACertificateProvider(
             }
         }
 
-
         var caCertFile = configuration["CertificateGeneration:RootCACertFile"];
         var caCertFilePassword = configuration["CertificateGeneration:RootCACertPassword"];
         if (!string.IsNullOrWhiteSpace(caCertFile))

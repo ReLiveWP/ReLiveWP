@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ReLiveWP.Backend.DeviceRegistration.Certificates;
 using ReLiveWP.Backend.DeviceRegistration.Data;
 using ReLiveWP.Backend.DeviceRegistration.Services;
 
@@ -6,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddGrpc();
+builder.Services.AddSingleton<ICertificateService, WP7CertificateService>();
+builder.Services.AddSingleton<RootCACertificateProvider>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<DevicesDbContext>(options => options.UseSqlite(connectionString));
