@@ -4,8 +4,7 @@ using ReLiveWP.Backend.Identity.Data;
 
 namespace ReLiveWP.Backend.Identity.Services;
 
-public class UserService(ILogger<UserService> logger,
-                        UserManager<LiveUser> userManager) : User.UserBase
+public class UserService(UserManager<LiveUser> userManager) : User.UserBase
 {
     public override async Task<GetUserInfoResponse> GetUserInfo(GetUserInfoRequest request, ServerCallContext context)
     {

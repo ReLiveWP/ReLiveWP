@@ -3,6 +3,7 @@ using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authorization;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Identity.LiveID;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ReLiveWP.Identity;
 

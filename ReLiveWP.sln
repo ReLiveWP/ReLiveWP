@@ -31,6 +31,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Services.Push", "R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Zune.Commerce", "ReLiveWP.Zune.Commerce\ReLiveWP.Zune.Commerce.csproj", "{0AF07B1D-A2A8-8F38-1185-0D2351EA8A6A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Protos", "Protos", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "ReLiveWP.Services.Grpc", "ReLiveWP.Services.Grpc\ReLiveWP.Services.Grpc.shproj", "{99FD1C28-8BD8-42B7-AA98-6AA1B545A686}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -92,8 +96,12 @@ Global
 		{BF255ADE-4FED-860E-6704-4D4B14D01A6F} = {563909B7-5F9F-4E92-A01E-4B306DF190A9}
 		{3DBB712F-D271-5799-CEBC-623ACE72FE1F} = {EE4591F3-A643-48B8-A378-624DF4CB6394}
 		{0AF07B1D-A2A8-8F38-1185-0D2351EA8A6A} = {78F3BFBD-792B-4D22-BFE8-5024284733C9}
+		{99FD1C28-8BD8-42B7-AA98-6AA1B545A686} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C918B561-B888-4A59-8EE2-3B9DAE8E3302}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		ReLiveWP.Services.Grpc\ReLiveWP.Services.Grpc.projitems*{99fd1c28-8bd8-42b7-aa98-6aa1b545a686}*SharedItemsImports = 13
 	EndGlobalSection
 EndGlobal

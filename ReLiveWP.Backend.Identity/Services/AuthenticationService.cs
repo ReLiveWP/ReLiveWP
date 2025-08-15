@@ -11,9 +11,7 @@ using ReLiveWP.Services.Grpc;
 namespace ReLiveWP.Backend.Identity.Services
 {
     public class AuthenticationService(IConfiguration configuration,
-                        ILogger<AuthenticationService> logger,
-                        UserManager<LiveUser> userManager,
-                        RoleManager<LiveRole> roleManager) : Authentication.AuthenticationBase
+                        UserManager<LiveUser> userManager) : Authentication.AuthenticationBase
     {
         private const string JwtIssuer = "https://relivewp.net/";
 
@@ -118,7 +116,7 @@ namespace ReLiveWP.Backend.Identity.Services
 
         private JwtSecurityToken CreateToken(List<Claim> authClaims, DateTimeOffset expires)
         {
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]));
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
 
             var token = new JwtSecurityToken(
                 expires: expires.UtcDateTime,
@@ -127,13 +125,6 @@ namespace ReLiveWP.Backend.Identity.Services
             );
 
             return token;
-        }
-
-        private string NormaliseUsername(string username)
-        {
-            if (username.IndexOf('@') != -1)
-                return username[..username.IndexOf('@')];
-            return username;
         }
 
         private async Task<TokenValidationResult> ValidateJwtAsync(string token, string[] audiences)

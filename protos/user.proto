@@ -2,8 +2,6 @@ syntax = "proto3";
 
 option csharp_namespace = "ReLiveWP.Backend.Identity";
 
-import "google/protobuf/timestamp.proto";
-
 package identity;
 
 service User {

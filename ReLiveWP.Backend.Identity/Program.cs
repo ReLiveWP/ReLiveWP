@@ -42,7 +42,7 @@ public class Program
             {
                 ValidateIssuer = true,
                 ValidateAudience = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]!))
             };
         });
 
@@ -63,11 +63,9 @@ public class Program
 
     static void ApplyMigrations(WebApplication app)
     {
-        using (var scope = app.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
+        using var scope = app.Services.CreateScope();
+        using var dbContext = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
 
-            dbContext.Database.Migrate();
-        }
+        dbContext.Database.Migrate();
     }
 }

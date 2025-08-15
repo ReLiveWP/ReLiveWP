@@ -8,7 +8,7 @@ namespace ReLiveWP.Services.Push;
 
 public class PushTcpService : IHostedService
 {
-    private TcpListener tcpListener;
+    private readonly TcpListener tcpListener;
     public PushTcpService()
     {
         tcpListener = new TcpListener(IPAddress.Any, 2345);
