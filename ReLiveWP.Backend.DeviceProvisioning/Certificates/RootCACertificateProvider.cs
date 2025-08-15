@@ -31,7 +31,7 @@ namespace ReLiveWP.Backend.Certificates
             using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadWrite);
 
-            var collection = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, caDistinguishedName, true);
+            var collection = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, caDistinguishedName, false);
 
             if (collection.Count > 0)
             {

@@ -14,6 +14,6 @@ public class SignInResponse
     public List<TunerRegisterInfo> TunerRegisterInfo = new List<TunerRegisterInfo>()
     {
         new MediaTypeTunerRegisterInfo() { RegisterType = TunerRegisterType.AppStore, Activated = true },
-        new MediaTypeTunerRegisterInfo() { RegisterType = TunerRegisterType.Subscription, Activated = false, Activable = false }
+        new MediaTypeTunerRegisterInfo() { RegisterType = TunerRegisterType.Subscription, Activated = true, Activable = true }
     };
 }

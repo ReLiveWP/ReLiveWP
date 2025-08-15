@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLiveIDAuthentication(o =>
 {
     o.GrpcConfiguration = (c) => c.Address = new Uri("http://127.0.0.4:5000");
-    o.LiveIDConfiguration = (c) => c.ValidServiceTargets = ["live.zune.net", "live.xbox.com"];
+    o.LiveIDConfiguration = (c) => c.ValidServiceTargets = ["live.zune.net", "live.xbox.com", "kdc.xboxlive.com"];
 });
 
 builder.Services.AddControllers(o =>
@@ -24,8 +24,13 @@ builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri("http://127.0.0.4:5000"));
 
-
 var app = builder.Build();
+
+app.Use(async (ctx, next) =>
+{
+    ctx.Request.EnableBuffering(); // this is dumb
+    await next();
+});
 
 app.UseHttpsRedirection();
 

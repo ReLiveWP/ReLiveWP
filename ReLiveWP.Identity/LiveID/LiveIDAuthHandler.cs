@@ -106,7 +106,6 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
             AuthenticateFailure = authResult?.Failure
         };
 
-
         await Events.Challenge(eventContext);
         if (eventContext.Handled)
         {

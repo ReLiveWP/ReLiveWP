@@ -24,7 +24,7 @@ app.MapGet("/config_int", (IWebHostEnvironment environment) =>
 
 app.MapGet("/config/version", () =>
 {
-    return new ClientConfigVersions(2, 2);
+    return new ClientConfigVersions(3, 3);
 });
 
 app.Run();

@@ -180,6 +180,15 @@ namespace ReLiveWP.Backend.Identity.Services
                 TokenValidationResult result = await ValidateJwtAsync(request.AuthToken, ["http://Passport.NET/tb"]);
                 if (!result.IsValid)
                 {
+                    if (request.Requests.All(s => s.ServiceTarget == "commerce.zune.net"))
+                    {
+                        // xbox/zune tokens are allowed to issue tokens for other specific targets
+                        result = await ValidateJwtAsync(request.AuthToken, ["zune.live.net", "xbox.live.net", "kdc.xboxlive.com"]);
+                    }
+                }
+
+                if (!result.IsValid)
+                {
                     return null;
                 }
 

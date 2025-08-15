@@ -10,5 +10,5 @@ public class AccountState
     public bool AcceptedTermsOfService { get; set; } = true;
     public bool AccountSuspended { get; set; } = false;
     public bool SubscriptionLapsed { get; set; } = false;
-    public bool BillingUnavailable { get; set; } = true;
+    public bool BillingUnavailable { get; set; } = false;
 }

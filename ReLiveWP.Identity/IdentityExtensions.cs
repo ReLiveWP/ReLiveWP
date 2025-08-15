@@ -1,4 +1,6 @@
-﻿using Grpc.Net.ClientFactory;
+﻿using System.Security.Claims;
+using System.Security.Principal;
+using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authorization;
 using ReLiveWP.Backend.Identity;
 using ReLiveWP.Identity.LiveID;
@@ -43,4 +45,7 @@ public static class IdentityExtensions
             collection.AddAuthorization();
         }
     }
+
+    public static string? Id(this ClaimsPrincipal? identity)
+        => identity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 }

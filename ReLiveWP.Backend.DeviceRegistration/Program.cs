@@ -12,7 +12,19 @@ builder.Services.AddDbContext<DevicesDbContext>(options => options.UseSqlite(con
 
 var app = builder.Build();
 
+ApplyMigrations(app);
+
 // Configure the HTTP request pipeline.
 app.MapGrpcService<DeviceRegistrationService>();
 
 app.Run();
+
+static void ApplyMigrations(WebApplication app)
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<DevicesDbContext>();
+
+        dbContext.Database.Migrate();
+    }
+}
