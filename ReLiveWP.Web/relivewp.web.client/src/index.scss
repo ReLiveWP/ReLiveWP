@@ -1,0 +1,44 @@
+:root {
+  --accent-colour: #e60c00;
+  accent-color: var(--accent-colour);
+}
+
+body {
+  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
+  margin: 0;
+  height: -webkit-fill-available;
+  margin: 0;
+  font-size: 10.5pt;
+}
+
+input {
+  font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.root {
+  background: linear-gradient(to bottom, #ffe1e0, #fff0f0 80px, #ffffff 200px);
+  min-height: 200px;
+}
+
+main {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 200;
+}
+
+a {
+  text-decoration: none;
+  color: #888;
+}

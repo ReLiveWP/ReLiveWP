@@ -6,3 +6,6 @@ ClientConfiguration = http://localhost:10001
 Login = http://localhost:10002
 Zune.Commerce = http://localhost:10003
 DeviceUpdate = http://localhost:10004
+Push = http://localhost:10005
+Zune.Catalog = http://localhost:10006
+Activity = http://localhost:10007

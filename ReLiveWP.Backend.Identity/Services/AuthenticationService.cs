@@ -110,7 +110,11 @@ namespace ReLiveWP.Backend.Identity.Services
             };
 
             var result = await userManager.CreateAsync(user, request.Password);
-        
+            if (!result.Succeeded)
+            {
+                throw new RpcException(new Status(StatusCode.FailedPrecondition, string.Join(", ", result.Errors.Select(s => s.Description))));
+            }
+
             return new RegisterResponse() { Code = S_OK };
         }
 
@@ -126,7 +130,6 @@ namespace ReLiveWP.Backend.Identity.Services
 
             return token;
         }
-
         private async Task<TokenValidationResult> ValidateJwtAsync(string token, string[] audiences)
         {
             var key = Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!);
@@ -151,7 +154,6 @@ namespace ReLiveWP.Backend.Identity.Services
 
             return await handler.ValidateTokenAsync(token, validationParameters);
         }
-
         private async Task<LiveUser?> GetUserForSecurityTokenAsync(SecurityTokensRequest request)
         {
             if (!string.IsNullOrWhiteSpace(request.Username) && !string.IsNullOrWhiteSpace(request.Password))

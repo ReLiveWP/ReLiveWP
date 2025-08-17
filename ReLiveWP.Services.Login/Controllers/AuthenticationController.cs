@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ReLiveWP.Backend.Identity;
+using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Login.Models;
 
@@ -9,13 +12,32 @@ namespace ReLiveWP.Services.Login.Controllers
 {
     record class ErrorModel(uint ErrorCode);
     public record CreateAccountModel(string Username, string Password, string EmailAddress);
+    public record UserModel(string Id, string Cid, string Puid, string Username, string EmailAddress);
 
     [ApiController]
-    [Route("auth/[action]")]
+    [Route("auth/[action]/{id?}")]
     public class AuthenticationController(
         ILogger<AuthenticationController> logger,
-        Authentication.AuthenticationClient authenticationClient) : ControllerBase
+        Authentication.AuthenticationClient authenticationClient,
+        User.UserClient userClient) : ControllerBase
     {
+        [Authorize]
+        [ActionName("user")]
+        public async Task<ActionResult<UserModel>> GetUser(string id)
+        {
+            if (id != "@me")
+                return Forbid();
+
+            if (User == null)
+                return Unauthorized();
+
+            var user = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
+            if (user == null)
+                return NotFound(); // this is pretty bad, maybe 500 is better?
+
+            return new UserModel(User.Id()!, user.Cid, user.Puid.ToString(), user.Username, user.EmailAddress);
+        }
+
 
         [ActionName("register")]
         public async Task<IActionResult> RequestTokens([FromBody] CreateAccountModel request)
@@ -26,7 +48,7 @@ namespace ReLiveWP.Services.Login.Controllers
 
         [ActionName("request_tokens")]
         [HttpPost(Name = "request_tokens")]
-        public async Task<IActionResult> RequestTokens([FromBody] SecurityTokensRequestModel request)
+        public async Task<ActionResult<SecurityTokensResponseModel>> RequestTokens([FromBody] SecurityTokensRequestModel request)
         {
             SecurityTokensRequest grpcRequest;
             if (request.Credentials.TryGetValue("ps:password", out var password))

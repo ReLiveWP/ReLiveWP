@@ -1,14 +1,16 @@
-﻿using System.Reflection;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
 using System.Xml;
 using System.Xml.Serialization;
+using Atom.Attributes;
 using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace ReLiveWP.Zune;
 
 public class ZestOutputFormatter : XmlSerializerOutputFormatter
 {
-    private Dictionary<Type, XmlSerializerNamespaces> _namespaceCache
-        = new Dictionary<Type, XmlSerializerNamespaces>();
+    private ConcurrentDictionary<Type, XmlSerializerNamespaces> _namespaceCache
+        = new ConcurrentDictionary<Type, XmlSerializerNamespaces>();
 
     public override IReadOnlyList<string> GetSupportedContentTypes(string contentType, Type objectType)
     {
