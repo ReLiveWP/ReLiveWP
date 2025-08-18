@@ -17,9 +17,6 @@ importers:
       preact-iso:
         specifier: ^2.9.2
         version: 2.9.2(preact-render-to-string@6.5.13(preact@10.27.0))(preact@10.27.0)
-      preact-router:
-        specifier: ^4.1.2
-        version: 4.1.2(preact@10.27.0)
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -1740,11 +1737,6 @@ packages:
 
   preact-render-to-string@6.5.13:
     resolution: {integrity: sha512-iGPd+hKPMFKsfpR2vL4kJ6ZPcFIoWZEcBf0Dpm3zOpdVvj77aY8RlLiQji5OMrngEyaxGogeakTb54uS2FvA6w==}
-    peerDependencies:
-      preact: '>=10'
-
-  preact-router@4.1.2:
-    resolution: {integrity: sha512-uICUaUFYh+XQ+6vZtQn1q+X6rSqwq+zorWOCLWPF5FAsQh3EJ+RsDQ9Ee+fjk545YWQHfUxhrBAaemfxEnMOUg==}
     peerDependencies:
       preact: '>=10'
 
@@ -3857,10 +3849,6 @@ snapshots:
       preact-render-to-string: 6.5.13(preact@10.27.0)
 
   preact-render-to-string@6.5.13(preact@10.27.0):
-    dependencies:
-      preact: 10.27.0
-
-  preact-router@4.1.2(preact@10.27.0):
     dependencies:
       preact: 10.27.0
 

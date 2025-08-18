@@ -1,49 +1,106 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using ReLiveWP.Backend.Identity.ConnectedServices;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
 
-namespace ReLiveWP.Backend.Identity;
+using ServiceCaps = ReLiveWP.Backend.Identity.Data.LiveConnectedServiceCapabilities;
 
-public class Program
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpClient("AtProtoClient",(c) =>
 {
-    public static void Main(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
+    c.DefaultRequestHeaders.Add("User-Agent", "ReLiveWP/1.0 (+https://github.com/ReLiveWP/ReLiveWP)");
+});
 
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        builder.Services.AddDbContext<LiveDbContext>(options => options.UseSqlite(connectionString));
-        builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<LiveDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 1;
+})
+.AddEntityFrameworkStores<LiveDbContext>()
+.AddDefaultTokenProviders();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.TokenValidationParameters = new TokenValidationParameters()
+    {
+        ValidateIssuer = true,
+        ValidIssuers = ["https://relivewp.net/"],
+        ValidateAudience = true,
+        ValidAudiences = ["http://Passport.NET/tb", "relivewp.net", "spaces.int.relivewp.net", "spaces.relivewp.net"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]!))
+    };
+});
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddSingleton<IClientAssertionService, ClientAssertionService>();
+builder.Services.AddScoped<AtProtoOAuthProvider>();
+
+builder.Services.AddConnectedServices()
+    .AddConnectedService((s) =>
+    {
+        return new()
         {
-            options.SignIn.RequireConfirmedAccount = true;
-            options.Password.RequireNonAlphanumeric = false;
-            options.Password.RequireLowercase = false;
-            options.Password.RequireUppercase = false;
-            options.Password.RequireDigit = false;
-            options.Password.RequiredLength = 1;
-        })
-        .AddEntityFrameworkStores<LiveDbContext>()
-        .AddDefaultTokenProviders();
+            ServiceId = "atproto",
+            DisplayName = "AtProto",
+            ClientId = builder.Configuration["ConnectedServices:AtProto:ClientId"]!,
+            RedirectUri = builder.Configuration["ConnectedServices:AtProto:RedirectUrl"]!,
+            Scopes = "atproto transition:generic",
+            ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialCheckIn | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost,
+            OAuthHandler = (s) =>
+            {
+                return Task.FromResult<IOAuthProvider>(s.GetRequiredService<AtProtoOAuthProvider>());
+            } 
+        };
+    }); 
 
-        // Add services to the container.
-        builder.Services.AddGrpc();
+builder.Services.AddGrpc();
 
-        var app = builder.Build();
+var app = builder.Build();
 
-        ApplyMigrations(app);
+ApplyMigrations(app);
 
-        // Configure the HTTP request pipeline.
-        app.MapGrpcService<AuthenticationService>();
-        app.MapGrpcService<UserService>();
+app.UseAuthentication();
+app.UseAuthorization();
 
-        app.Run();
-    }
+// Configure the HTTP request pipeline.
+app.MapGrpcService<AuthenticationService>();
+app.MapGrpcService<UserService>();
+app.MapGrpcService<OAuthService>();
 
-    static void ApplyMigrations(WebApplication app)
-    {
-        using var scope = app.Services.CreateScope();
-        using var dbContext = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
+app.Map("/xrpc/{**catchall}", async (
+    HttpContext context,
+    string catchall,
+    IHttpClientFactory factory) =>
+{
 
-        dbContext.Database.Migrate();
-    }
+});
+
+app.Run();
+
+static void ApplyMigrations(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    using var dbContext = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
+
+    dbContext.Database.Migrate();
 }

@@ -3,10 +3,11 @@ import { ErrorBoundary, lazy, LocationProvider, Route, Router } from "preact-iso
 
 import Home from "./pages/index"
 import NavHeader from "./components/NavHeader"
-
-import { AppStateProvider, createAppState } from "./state/app-state";
-import { useTitle } from "./util/title";
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
+
+import { AppStateProvider, createAppState, useAppState } from "./state/app-state";
+import { useAccentColor, useTitle } from "./util/effects";
+import { useSignalEffect } from "@preact/signals";
 
 const Auth = lazy(() => import('./pages/auth'));
 const My = lazy(() => import('./pages/my'));
@@ -17,24 +18,42 @@ const NotFound = () => {
     return <p>Coming soon :3</p>
 }
 
+const AccentHandler = () => {
+    const { accent, accentColor } = useAppState();
+    useSignalEffect(() => {
+        const body = document.body;
+        body.className = 'accent-' + accent.value;
+
+        const themeTag = document.querySelector('meta[name="theme-color"]');
+        themeTag.setAttribute("content", accentColor.value)
+    });
+
+    useAccentColor('red');
+
+    return (
+        <LocationProvider>
+            <NavHeader />
+            <main>
+                <ErrorBoundary>
+                    <Router>
+                        <Route path="/" component={Home} />
+                        <AuthenticatedRoute path="/auth/*" requiredAuthState={false} component={Auth} />
+                        <AuthenticatedRoute path="/my/*" requiredAuthState={true} component={My} />
+                        <Route default component={NotFound} />
+                    </Router>
+                </ErrorBoundary>
+            </main>
+            <footer>
+                <p><small>relive for windows phone &bull; windows phone is a trademark of Microsoft Corp.</small></p>
+            </footer>
+        </LocationProvider>
+    );
+}
+
 const Main = () => {
     return (
         <AppStateProvider value={createAppState()}>
-            <LocationProvider>
-                <div class="root">
-                    <NavHeader />
-                    <main>
-                        <ErrorBoundary>
-                            <Router>
-                                <Route path="/" component={Home} />
-                                <AuthenticatedRoute path="/auth/*" requiredAuthState={false} component={Auth} />
-                                <AuthenticatedRoute path="/my/*" requiredAuthState={true} component={My} />
-                                <Route default component={NotFound} />
-                            </Router>
-                        </ErrorBoundary>
-                    </main>
-                </div>
-            </LocationProvider>
+            <AccentHandler />
         </AppStateProvider>
     );
 }

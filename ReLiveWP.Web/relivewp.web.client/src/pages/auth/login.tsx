@@ -1,5 +1,5 @@
 
-import { useTitle } from "../../util/title";
+import { useTitle } from "../../util/effects";
 import { signal, useSignal } from "@preact/signals";
 
 import "./login.scss"

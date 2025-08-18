@@ -33,7 +33,6 @@ header {
         margin-left: 1px;
         margin-top: -2px;
         font-size: 10.5pt;
-        color: var(--accent-colour);
     }
 }
 
@@ -63,11 +62,9 @@ header {
                 font-size: 18px;
                 line-height: 24px;
                 text-decoration: none;
-                color: #333;
 
-                &.active,
-                &:hover {
-                    color: var(--accent-colour);
+                &:not(.text-accent) {
+                    color: #333;
                 }
             }
         }

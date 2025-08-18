@@ -15,7 +15,7 @@ namespace ReLiveWP.Backend.Identity.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "6.0.6");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
@@ -114,6 +114,94 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveConnectedService", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuthorizationEndpoint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DPoPKeyId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<uint>("EnabledCapabilities")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<uint>("Flags")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Issuer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefreshToken")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Service")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ServiceUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenEndpoint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ConnectedServices");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LivePendingOAuth", b =>
+                {
+                    b.Property<string>("State")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuthorizationEndpoint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CodeVerifier")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Endpoint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Service")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenEndpoint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("State");
+
+                    b.HasIndex("State");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PendingOAuths");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveRole", b =>
@@ -257,6 +345,67 @@ namespace ReLiveWP.Backend.Identity.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveConnectedService", b =>
+                {
+                    b.HasOne("ReLiveWP.Backend.Identity.Data.LiveUser", "User")
+                        .WithMany("ConnectedServices")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("ReLiveWP.Backend.Identity.Data.LiveConnectedServiceProfile", "ServiceProfile", b1 =>
+                        {
+                            b1.Property<Guid>("LiveConnectedServiceId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("AvatarUrl")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("DisplayName")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("EmailAddress")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("UserId")
+                                .IsRequired()
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("Username")
+                                .HasColumnType("TEXT");
+
+                            b1.HasKey("LiveConnectedServiceId");
+
+                            b1.ToTable("ConnectedServices");
+
+                            b1.WithOwner()
+                                .HasForeignKey("LiveConnectedServiceId");
+                        });
+
+                    b.Navigation("ServiceProfile")
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LivePendingOAuth", b =>
+                {
+                    b.HasOne("ReLiveWP.Backend.Identity.Data.LiveUser", "User")
+                        .WithMany("PendingOAuths")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveUser", b =>
+                {
+                    b.Navigation("ConnectedServices");
+
+                    b.Navigation("PendingOAuths");
                 });
 #pragma warning restore 612, 618
         }

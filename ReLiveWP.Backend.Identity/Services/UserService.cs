@@ -1,6 +1,7 @@
 ﻿using Grpc.Core;
 using Microsoft.AspNetCore.Identity;
 using ReLiveWP.Backend.Identity.Data;
+using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Backend.Identity.Services;
 

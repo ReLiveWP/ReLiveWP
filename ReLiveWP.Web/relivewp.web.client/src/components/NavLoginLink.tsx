@@ -7,7 +7,7 @@ const NavLoginLink = () => {
 
     return (
         <Show when={appState.isAuthenticated} fallback={<Link activeClass="active" href="/auth/login">sign in</Link>}>
-            <Link activeClass="active" href="/my/account">
+            <Link activeClass="active text-accent" href="/my/account">
                 <Show when={appState.user} fallback={<span>hi there</span>}>
                     <span>hi, {appState.user.value?.username}</span>
                 </Show>

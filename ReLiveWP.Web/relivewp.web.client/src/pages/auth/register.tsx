@@ -1,5 +1,5 @@
 import { useEffect } from "preact/hooks"
-import { useTitle } from "../../util/title";
+import { useTitle } from "../../util/effects";
 
 export default function Register() {
     useTitle("register");

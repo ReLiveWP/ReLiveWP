@@ -4,10 +4,15 @@ import { useContext } from "preact/hooks";
 import { ENDPOINT_GET_USER } from "../util/endpoints";
 import { type User } from "../util/auth-types";
 
+export type AccentColor = 'red' | 'purple' | 'teal' | 'pink' | 'green' | 'yellow' | 'blue' | 'magenta' | 'zune';
+
 type AppState = {
     token: Signal<string>,
     user: Signal<User>,
-    isAuthenticated: Signal<boolean>
+    isAuthenticated: Signal<boolean>,
+    accentStack: Signal<AccentColor[]>
+    accent: Signal<AccentColor>,
+    accentColor: Signal<string>
 }
 
 const AppStateContext = createContext<AppState>(null);
@@ -17,12 +22,42 @@ function useAppState() {
     return useContext(AppStateContext);
 }
 
-function createAppState(): AppState {
+function createAppState() {
+    const appState = createAppStateSignals();
+    configureAppStateEffects(appState);
+
+    return appState;
+}
+
+function createAppStateSignals(): AppState {
     const tokenValue = localStorage.getItem("token");
 
     const token = new Signal(tokenValue === null ? undefined : tokenValue);
     const user = new Signal();
+    const accentStack = new Signal<AccentColor[]>(['red']);
+    const accent = computed(() => accentStack.value[accentStack.value.length - 1]);
 
+    return {
+        token,
+        user,
+        isAuthenticated: computed(() => !!token.value),
+        accent,
+        accentStack,
+        accentColor: computed(() => ({
+            red: "#e60c00",
+            teal: "#00ABA9",
+            purple: "#A200FF",
+            pink: "#E671B8",
+            green: "#339933",
+            yellow: "#F09609",
+            blue: "#1BA1E2",
+            magenta: "#D80073",
+            zune: "#f10da1",
+        })[accent.value])
+    };
+}
+
+function configureAppStateEffects({ token, user }: AppState) {
     effect(() => {
         const value = token.value;
         if (!value) {
@@ -55,12 +90,6 @@ function createAppState(): AppState {
             }
         })();
     });
-
-    return {
-        token,
-        user,
-        isAuthenticated: computed(() => !!token.value)
-    };
 }
 
 export { useAppState, createAppState, AppStateProvider, AppState }

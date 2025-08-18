@@ -1,35 +1,153 @@
 :root {
-  --accent-colour: #e60c00;
-  accent-color: var(--accent-colour);
+  --accent-colour-red: #e60c00;
+  --accent-colour-teal: #00ABA9;
+  --accent-colour-purple: #A200FF;
+  --accent-colour-pink: #E671B8;
+  --accent-colour-green: #339933;
+  --accent-colour-yellow: #F09609;
+  --accent-colour-blue: #1BA1E2;
+  --accent-colour-magenta: #D80073;
+  --accent-colour-zune1: #f10da1;
+  --accent-colour-zune2: #e95214;
+
+  --accent-gradient-red: linear-gradient(to bottom, #ffe1e0, #fff0f0 80px, #ffffff 200px);
+  --accent-gradient-teal: linear-gradient(to bottom, #e0fffe, #f0fffe 80px, #fcffff 200px);
+  --accent-gradient-purple: linear-gradient(to bottom, #f4e0ff, #faf0ff 80px, #fefcff 200px);
+  --accent-gradient-pink: linear-gradient(to bottom, #ffe0f3, #fff0f9 80px, #fffcfe 200px);
+  --accent-gradient-green: linear-gradient(to bottom, #e0ffe0, #f0fff0 80px, #fcfffc 200px);
+  --accent-gradient-yellow: linear-gradient(to bottom, #fff3e0, #fff9f0 80px, #fffefc 200px);
+  --accent-gradient-blue: linear-gradient(to bottom, #e0f5ff, #f0faff 80px, #fafdff 200px);
+  --accent-gradient-magenta: linear-gradient(to bottom, #ffe0f1, #fff0f8 80px, #fffcfe 200px);
+  --accent-gradient-zune: linear-gradient(to bottom, #ffe9e0, #fff4f0 80px, #fffdfc 200px);
+
+  --font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
+  --font-family-monospace: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 body {
   color: #333;
-  font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
-  margin: 0;
-  height: -webkit-fill-available;
-  margin: 0;
+
+  font-family: var(--font-family);
   font-size: 10.5pt;
+
+  margin: 0;
+  min-height: 100vh;
+
+  background-repeat: no-repeat;
+
+  display: flex;
+  flex-direction: column;
 }
 
+body.accent-red {
+  --accent-colour: var(--accent-colour-red);
+  accent-color: var(--accent-colour-red);
+  background: var(--accent-gradient-red);
+}
+
+body.accent-teal {
+  --accent-colour: var(--accent-colour-teal);
+  accent-color: var(--accent-colour-teal);
+  background: var(--accent-gradient-teal);
+}
+
+body.accent-purple {
+  --accent-colour: var(--accent-colour-purple);
+  accent-color: var(--accent-colour-purple);
+  background: var(--accent-gradient-purple);
+}
+
+body.accent-pink {
+  --accent-colour: var(--accent-colour-pink);
+  accent-color: var(--accent-colour-pink);
+  background: var(--accent-gradient-pink);
+}
+
+body.accent-green {
+  --accent-colour: var(--accent-colour-green);
+  accent-color: var(--accent-colour-green);
+  background: var(--accent-gradient-green);
+}
+
+body.accent-yellow {
+  --accent-colour: var(--accent-colour-yellow);
+  accent-color: var(--accent-colour-yellow);
+  background: var(--accent-gradient-yellow);
+}
+
+body.accent-blue {
+  --accent-colour: var(--accent-colour-blue);
+  accent-color: var(--accent-colour-blue);
+  background: var(--accent-gradient-blue);
+}
+
+body.accent-magenta {
+  --accent-colour: var(--accent-colour-magenta);
+  accent-color: var(--accent-colour-magenta);
+  background: var(--accent-gradient-magenta);
+}
+
+body.accent-zune {
+  --accent-colour: linear-gradient(to bottom, var(--accent-colour-zune1), var(--accent-colour-zune2));
+  accent-color: var(--accent-colour-zune1);
+  background: var(--accent-gradient-zune);
+
+  .text-accent {
+    background-image: var(--accent-colour);
+    color: transparent;
+    background-clip: text;
+  }
+
+  .background-accent {
+    background-image:  linear-gradient(to left, var(--accent-colour-zune1), var(--accent-colour-zune2));
+  }
+}
+
+.text-accent {
+  color: var(--accent-colour)
+}
+
+.background-accent {
+  background: var(--accent-colour);
+}
+
+
 input {
-  font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
+  font-family: var(--font-family);
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: var(--font-family-monospace);
 }
 
-.root {
-  background: linear-gradient(to bottom, #ffe1e0, #fff0f0 80px, #ffffff 200px);
-  min-height: 200px;
+app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+header,
+main,
+footer {
+  max-width: 1024px;
+  width: 100%;
+  width: calc(100% - 48px);
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
 main {
-  max-width: 1024px;
-  margin: 0 auto;
-  padding: 0 24px;
+  flex: 1;
+}
+
+footer {
+  &>p {
+    margin: 0;
+  }
+
+  margin-top: 24px;
+  margin-bottom: 24px;
+  color: #aaa;
 }
 
 h1,

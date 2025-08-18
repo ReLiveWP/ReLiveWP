@@ -1,0 +1,29 @@
+.link-account-dialog {
+    min-width: 480px;
+    min-height: 360px;
+
+    label,
+    input {
+        display: block;
+    }
+
+    label,
+    .submit {
+        margin-top: 16px;
+        margin-bottom: 2px;
+    }
+
+    .textbox {
+        min-width: 300px;
+        padding: 2px;
+        margin-top: 2px;
+    }
+
+    .checkbox {
+        display: inline;
+    }
+
+    .submit {
+        min-width: 72px;
+    }
+}

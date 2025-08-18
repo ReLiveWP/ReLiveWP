@@ -1,0 +1,87 @@
+main:has(.my-account) {
+    display: flex;
+    flex-direction: column;
+}
+
+.my-account {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+
+    h1 {
+        margin-bottom: 0.5em;
+    }
+
+    h4 {
+        font-size: 14pt;
+        margin-top: 0;
+        margin-bottom: 8px;
+    }
+
+    h4,
+    h5,
+    h6 {
+        font-weight: 500;
+    }
+
+    button,
+    input[type="submit"] {
+        font-size: 9pt;
+        font-variant: small-caps;
+    }
+
+    .my-account-container {
+        display: flex;
+        flex-direction: row;
+        flex: 1;
+
+        .my-account-sidebar {
+            display: flex;
+            flex-direction: column;
+            width: 250px;
+
+            ul {
+                flex: 1;
+                font-size: 10.5pt;
+                font-weight: 500;
+                font-variant: small-caps;
+                list-style-type: none;
+                margin: 0;
+                padding: 12px 24px 0 24px;
+
+                border-right: 1px solid #DEDEDE;
+
+                li>a {
+                    color: #333;
+                    margin-left: 14px;
+
+                    &.active {
+                        margin-left: 0px;
+
+                        &::before {
+                            content: '▶';
+                            transform: scaleX(0.6666);
+                            width: 12px;
+                            font-size: 9pt;
+                            margin-right: 2px;
+                            display: inline-block;
+                        }
+                    }
+                }
+            }
+        }
+
+        .my-account-content {
+            flex: 1;
+            margin: 0 24px 0 24px;
+        }
+    }
+
+    dl {
+        dt {
+            font-size: 10.5pt;
+            font-weight: 500;
+            font-variant: small-caps;
+        }
+    }
+}

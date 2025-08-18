@@ -130,6 +130,7 @@ namespace ReLiveWP.Backend.Identity.Services
 
             return token;
         }
+
         private async Task<TokenValidationResult> ValidateJwtAsync(string token, string[] audiences)
         {
             var key = Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!);

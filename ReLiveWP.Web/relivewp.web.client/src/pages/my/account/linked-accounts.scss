@@ -1,0 +1,21 @@
+.linked-accounts {
+    .link-icon {
+        width: 12px;
+        margin-bottom: -2px;
+    }
+
+    a {
+        color: #666;
+    }
+
+    a.unlink {
+        color: #999;
+    }
+
+    dl {
+        margin-top: 4px;
+    }
+    dd {
+        margin-bottom: 4px;
+    }
+}

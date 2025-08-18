@@ -2,21 +2,31 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using Atom.Xml;
+using Duende.IdentityModel.Client;
 using FishyFlip;
 using FishyFlip.Lexicon;
 using FishyFlip.Lexicon.App.Bsky.Actor;
 using FishyFlip.Lexicon.App.Bsky.Feed;
+using FishyFlip.Lexicon.Com.Atproto.Repo;
+using FishyFlip.Lexicon.Place.Stream;
 using FishyFlip.Models;
+using Grpc.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Razor.Templating.Core;
 using ReLiveWP.Services.Activity.Models;
+using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Activity.Controllers;
 
-public class ActivitiesController(ILogger<ActivitiesController> logger, ILogger<ATProtocol> atprotoLogger) : Controller
+public class ActivitiesController(
+    ILogger<ActivitiesController> logger,
+    ILogger<ATProtocol> atprotoLogger,
+    ConnectedServices.ConnectedServicesClient connectedServices) : Controller
 {
     [HttpPost]
+    [Authorize]
     [Route("/Activities")]
     [Produces("application/atom+xml")]
     public async Task<ActionResult<LiveFeed>> Activities(
@@ -25,22 +35,39 @@ public class ActivitiesController(ILogger<ActivitiesController> logger, ILogger<
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
-        var actor = new ATDid("did:plc:7rfssi44thh6f4ywcl3u5nvt");
 
-        var atProtocolBuilder = new ATProtocolBuilder()
-            .EnableAutoRenewSession(true)
-            .WithLogger(atprotoLogger);
+        var auth = Request.Headers.Authorization.ToString();
+        var headers = new Metadata() { { "Authorization", "Bearer" + auth.Substring(auth.IndexOf(' ')) } };
 
-        var atProto = atProtocolBuilder.Build();
-        var atProfile = (await atProto.Actor.GetProfileAsync(actor))
+        var connectedServicesRequest = new ConnectionsRequest() { };
+        var servicesResponse = await connectedServices.GetConnectionsAsync(connectedServicesRequest, headers);
+        if (servicesResponse.Connections.Count == 0)
+        {
+            return NoContent();
+        }
+
+        var service = servicesResponse.Connections.FirstOrDefault(s => s.Service == "atproto");
+        if (service is null)
+        {
+            return NoContent();
+        }
+
+        var protocol = new ATProtocolBuilder()
+             .WithInstanceUrl(new Uri(service.ServiceUrl))
+             .WithLogger(atprotoLogger)
+             .EnableAutoRenewSession(false)
+             .WithServiceEndpointUponLogin(false)
+             .Build();
+
+        var atProfile = (await protocol.Actor.GetProfileAsync(session.Did))
             .HandleResult();
 
         if (atProfile == null)
             return NotFound();
 
-        LiveAuthor author = CreateAuthor(atProfile);
+        var author = CreateAuthor(atProfile);
 
-        var atFeed = (await atProto.Feed.GetAuthorFeedAsync(actor, limit: count, includePins: false))
+        var atFeed = (await protocol.Feed.GetAuthorFeedAsync(session.Did, limit: count, includePins: false))
             .HandleResult();
 
         var feed = new LiveFeed()

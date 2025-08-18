@@ -22,15 +22,11 @@
         display: inline;
     }
 
-    .submit {
-        min-width: 72px;
-    }
-
     .forgot-link {
         font-size: 9pt;
     }
 
-    .remember-me-text {
+    input[type="checkbox"] > span {
         display: inline-block;
         position: relative;
         top: -1px;

@@ -1,11 +1,10 @@
 using System.Text.Json;
-using ReLiveWP.Backend.Identity;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
+builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
@@ -27,7 +26,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<User.UserClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:User"]!));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 
 builder.Services.AddCors(options =>
 {
@@ -39,11 +40,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-
-
-//app.UseHttpsRedirection();
-
 app.UseCors("*");
+
+app.UseStaticFiles();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

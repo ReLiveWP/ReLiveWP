@@ -26,10 +26,12 @@ public static class IdentityExtensions
         if (opts.GrpcConfiguration != null)
         {
             collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient", opts.GrpcConfiguration);
+            collection.AddGrpcClient<ConnectedServices.ConnectedServicesClient>("Identity_OAuthClient", opts.GrpcConfiguration);
         }
         else
         {
             collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
+            collection.AddGrpcClient<ConnectedServices.ConnectedServicesClient>("Identity_OAuthClient");
         }
 
         collection.AddAuthentication(LiveIDAuthHandler.SchemeName)

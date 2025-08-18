@@ -85,5 +85,8 @@ module.exports = [
         },
         devServer: {
             historyApiFallback: true,
+            allowedHosts: [
+                'int.relivewp.net'
+            ]
         },
     }];

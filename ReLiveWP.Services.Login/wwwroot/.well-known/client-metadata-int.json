@@ -1,0 +1,14 @@
+{
+  "client_id": "https://login.int.relivewp.net/.well-known/client-metadata-int.json",
+  "application_type": "web",
+  "client_name": "ReLiveWP (Internal Testing)",
+  "client_uri": "https://login.int.relivewp.net",
+  "dpop_bound_access_tokens": true,
+  "grant_types": [ "authorization_code", "refresh_token" ],
+  "scope": "atproto transition:generic",
+  "redirect_uris": [ "https://login.int.relivewp.net/oauth/callback/atproto" ],
+  "response_types": [ "code" ],
+  "token_endpoint_auth_method": "private_key_jwt",
+  "token_endpoint_auth_signing_alg": "ES256",
+  "jwks_uri": "https://login.int.relivewp.net/oauth/jwks"
+}
