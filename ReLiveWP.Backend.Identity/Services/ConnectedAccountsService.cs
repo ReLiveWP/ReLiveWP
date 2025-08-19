@@ -1,6 +1,4 @@
 ﻿using System.Text.Json;
-using Duende.IdentityModel;
-using Duende.IdentityModel.OidcClient.DPoP;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
@@ -15,12 +13,11 @@ using ServiceCaps = ReLiveWP.Backend.Identity.Data.LiveConnectedServiceCapabilit
 
 namespace ReLiveWP.Backend.Identity.Services;
 
-public class OAuthService(IConfiguration configuration,
-                          IServiceProvider serviceProvider,
-                          IConnectedServicesContainer connectedServices,
-                          IClientAssertionService clientAssertionService,
-                          UserManager<LiveUser> userManager,
-                          LiveDbContext dbContext) : ReLiveWP.Services.Grpc.ConnectedServices.ConnectedServicesBase
+public class ConnectedAccountsService(IJWKProvider jwkProvider,
+                                      IServiceProvider serviceProvider,
+                                      IConnectedServicesContainer connectedServices,
+                                      UserManager<LiveUser> userManager,
+                                      LiveDbContext dbContext) : ReLiveWP.Services.Grpc.ConnectedServices.ConnectedServicesBase
 {
     #region Account Linking
 
@@ -83,7 +80,6 @@ public class OAuthService(IConfiguration configuration,
         };
 
         service = await serviceHandler.FinalizeAccountLinkAsync(service, pendingOauth, request.Code);
-        service.ServiceProfile = await serviceHandler.GetServiceProfileAsync(service);
 
         await dbContext.ConnectedServices.AddAsync(service);
         await dbContext.SaveChangesAsync();
@@ -133,56 +129,19 @@ public class OAuthService(IConfiguration configuration,
                 Flags = (ulong)item.Flags,
 
                 UserId = item.ServiceProfile.UserId,
-                UserName = item.ServiceProfile.Username,
-                EmailAddress = item.ServiceProfile.EmailAddress ?? ""
+                //UserName = item.ServiceProfile.Username,
+                //EmailAddress = item.ServiceProfile.EmailAddress ?? ""
             });
         }
 
         return result;
     }
 
-    [Authorize]
-    public override async Task<ConnectionCredentialsResponse> GetConnectionCredentials(ConnectionCredentialsRequest request, ServerCallContext context)
-    {
-        var key = configuration["AtProtoOAuth:JWK"]
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "No JsonWebKeys have been configured. This is bad!"));
-        var user = await userManager.GetUserAsync(context.GetHttpContext().User)
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "Invalid user was specified."));
-
-        var guid = Guid.Parse(request.ConnectionId);
-        var connectedService = await dbContext.ConnectedServices.FirstOrDefaultAsync(s => s.Id == guid);
-
-        // the service can't be used at this time, reject this request
-        if (connectedService == null || connectedService.ExpiresAt <= DateTimeOffset.Now || (connectedService.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
-            throw new RpcException(new Status(StatusCode.Unauthenticated, "This ticket has expired."));
-
-        if (!connectedServices.TryGetValue(connectedService.Service, out var serviceDescription))
-            throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
-
-        var response = new ConnectionCredentialsResponse()
-        {
-            Credentials = new ConnectionCredential()
-            {
-                AccessToken = connectedService.AccessToken,
-                ClientId = serviceDescription.ClientId,
-                ClientSecret = serviceDescription.ClientSecret ?? "",
-                ExpiresAt = Timestamp.FromDateTimeOffset(connectedService.ExpiresAt),
-                Issuer = connectedService.Issuer ?? serviceDescription.Issuer,
-                ServiceUrl = connectedService.ServiceUrl ?? "",
-                DpopKey  = key ?? "" // TODO: get rid of this
-            }
-        };
-
-        return response;
-    }
-
-
     #region Keys
 
-    public override Task<JsonWebKeysResponse> GetJsonWebKeys(Empty request, ServerCallContext context)
+    public override async Task<JsonWebKeysResponse> GetJsonWebKeys(Empty request, ServerCallContext context)
     {
-        var key = configuration["AtProtoOAuth:JWK"]
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "No JsonWebKeys have been configured. This is bad!"));
+        var key = await jwkProvider.GetJWK("Key1");
 
         var webKey = new JsonWebKey(key);
         var publicKey = new JsonWebKey
@@ -201,58 +160,7 @@ public class OAuthService(IConfiguration configuration,
         keySet.Keys.Add(publicKey);
 
         var keyString = JsonSerializer.Serialize(keySet);
-        return Task.FromResult(new JsonWebKeysResponse() { Keys = keyString });
-    }
-
-    [Authorize]
-    public override async Task<DPoPProofTokenResponse> GetDPoPProofToken(DPoPProofTokenRequest request, ServerCallContext context)
-    {
-        var key = configuration["AtProtoOAuth:JWK"]
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "No JsonWebKeys have been configured. This is bad!"));
-
-        var user = await userManager.GetUserAsync(context.GetHttpContext().User)
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "Invalid user was specified."));
-
-        var id = Guid.Parse(request.ConnectionId);
-        var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(s => s.Id == id)
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "Invalid connection."));
-
-        if (!connectedServices.TryGetValue(connection.Service, out var serviceDescription))
-            throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
-
-        var proofTokenFactory = new DPoPProofTokenFactory(key);
-        var proofRequest = new DPoPProofRequest
-        {
-            Method = request.Method,
-            Url = request.Url,
-            DPoPNonce = request.Nonce,
-            AccessToken = request.AccessToken
-        };
-
-        var proof = proofTokenFactory.CreateProofToken(proofRequest);
-
-        return new DPoPProofTokenResponse() { ProofToken = proof.ProofToken };
-    }
-
-    [Authorize]
-    public override async Task<ClientAssertionResponse> GetClientAssertion(ClientAssertionRequest request, ServerCallContext context)
-    {
-        var user = await userManager.GetUserAsync(context.GetHttpContext().User)
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "Invalid user was specified."));
-
-        var id = Guid.Parse(request.ConnectionId);
-        var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(s => s.Id == id)
-            ?? throw new RpcException(new Status(StatusCode.Unavailable, "Invalid connection."));
-
-        if (!connectedServices.TryGetValue(connection.Service, out var serviceDescription))
-            throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
-
-        var token = clientAssertionService.CreateClientAssertion(serviceDescription.ClientId, connection.Issuer!); // todo: not everything is going to want these specific parameters
-        return new ClientAssertionResponse()
-        {
-            AssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-            AssertionValue = token
-        };
+        return new JsonWebKeysResponse() { Keys = keyString };
     }
 
     #endregion

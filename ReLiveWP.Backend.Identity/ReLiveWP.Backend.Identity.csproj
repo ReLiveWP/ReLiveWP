@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Duende.IdentityModel.OidcClient" Version="6.0.1" />
     <PackageReference Include="Duende.IdentityModel.OidcClient.Extensions" Version="6.0.1" />
-    <PackageReference Include="FishyFlip" Version="3.11.0-dubious.1" />
+    <PackageReference Include="FishyFlip" Version="3.11.0--no-branch-.1" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.18" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.19" />

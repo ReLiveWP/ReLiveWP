@@ -14,10 +14,6 @@ service ConnectedServices {
 
   rpc GetSupportedConnections(google.protobuf.Empty) returns (SupportedConnectionsResponse);
   rpc GetConnections(ConnectionsRequest) returns (ConnectionsResponse);
-  rpc GetConnectionCredentials(ConnectionCredentialsRequest) returns (ConnectionCredentialsResponse);
-
-  rpc GetDPoPProofToken(DPoPProofTokenRequest) returns (DPoPProofTokenResponse);
-  rpc GetClientAssertion(ClientAssertionRequest) returns (ClientAssertionResponse);
 }
 
 message JsonWebKeysResponse {
@@ -73,43 +69,4 @@ message Connection {
 
 message ConnectionsResponse {
 	repeated Connection connections = 1;
-}
-
-message ConnectionCredentialsRequest {
-	string connectionId = 1;
-}
-
-message ConnectionCredential {
-	string accessToken = 1;
-	string clientId = 3;
-    google.protobuf.Timestamp expiresAt = 7;
-	optional string clientSecret = 4;
-	optional string serviceUrl = 5;
-	optional string issuer = 6;
-	optional string dpopKey = 8;
-}
-
-message ConnectionCredentialsResponse {
-	ConnectionCredential credentials = 1;
-}
-
-message DPoPProofTokenRequest {
-	string connectionId = 1;
-	string method = 2;
-	string url = 3;
-	optional string nonce = 4;
-	optional string accessToken = 5;
-}
-
-message DPoPProofTokenResponse {
-	string proofToken = 1;
-}
-
-message ClientAssertionRequest {
-	string connectionId = 1;
-}
-
-message ClientAssertionResponse {
-	string assertionType = 1;
-	string assertionValue = 2;
 }

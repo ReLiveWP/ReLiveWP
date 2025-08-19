@@ -5,12 +5,11 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ReLiveWP.Backend.Identity.Services
 {
-    public class ClientAssertionService(IConfiguration configuration) : IClientAssertionService
+    public class ClientAssertionService(IJWKProvider jwkProvider) : IClientAssertionService
     {
-        public string CreateClientAssertion(string clientId, string issuer)
+        public async Task<string> CreateClientAssertionAsync(string clientId, string issuer)
         {
-            var key = configuration["AtProtoOAuth:JWK"]
-                    ?? throw new RpcException(new Status(StatusCode.Unavailable, "No JsonWebKeys have been configured. This is bad!"));
+            var key = await jwkProvider.GetJWK("Key1");
 
             var issuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var expiresAt = issuedAt + 300;

@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Resources;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using System.Threading;
 using Duende.IdentityModel;
@@ -9,10 +10,14 @@ using Duende.IdentityModel.OidcClient;
 using Duende.IdentityModel.OidcClient.DPoP;
 using FishyFlip;
 using FishyFlip.Lexicon.App.Bsky.Actor;
+using FishyFlip.Lexicon.App.Bsky.Feed;
+using FishyFlip.Lexicon.App.Bsky.Labeler;
 using FishyFlip.Lexicon.Com.Atproto.Repo;
 using FishyFlip.Models;
 using FishyFlip.Tools;
 using Grpc.Core;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
@@ -33,15 +38,16 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
                                   IHttpMessageHandlerFactory httpHandlerFactory,
                                   ILogger<AtProtoOAuthProvider> logger,
                                   ILogger<ATProtocol> atProtoLogger,
-                                  IConfiguration configuration,
-                                  LiveDbContext liveDbContext) : IOAuthProvider
+                                  IJWKProvider jwkProvider) : IOAuthProvider
 {
-    public async Task<LivePendingOAuth> BeginAccountLinkAsync(LiveUser user, string identifier)
+    public async Task<LivePendingOAuth> BeginAccountLinkAsync(LiveUser user, string handle)
     {
         var description = connectedServices[AtProto.SERVICE_NAME];
 
-        if (identifier.StartsWith('@'))
-            identifier = identifier.Substring(1);
+        if (handle.StartsWith('@'))
+            handle = handle.Substring(1);
+
+        logger.LogInformation("Begin stage 1 linking user {UserId} to @{Handle}", user.Id, handle);
 
         var state = CryptoRandom.CreateUniqueId();
         var codeVerifier = CryptoRandom.CreateUniqueId(32);
@@ -49,7 +55,8 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
 
         var protocol = new ATProtocolBuilder()
             .Build();
-        var atHandle = new ATHandle(identifier);
+
+        var atHandle = new ATHandle(handle);
         var (did, _) = (await protocol.ResolveATIdentifierAsync(atHandle))
             .HandleResult();
 
@@ -62,13 +69,18 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         var pdsUrl = didDoc.GetPDSEndpointUrl()
            ?? throw new RpcException(new Status(StatusCode.NotFound, "No PDS url was specified in the DID doc."));
 
-        var resourceMetadata = await httpClient.GetFromJsonAsync<ProtectedResourceModel>(new Uri(pdsUrl, "/.well-known/oauth-protected-resource"));
+        logger.LogInformation("Found DID doc for {Did} w/ PDS {PDSUrl}", did, pdsUrl);
 
+        var resourceMetadata = await httpClient.GetFromJsonAsync<ProtectedResourceModel>(new Uri(pdsUrl, "/.well-known/oauth-protected-resource"));
         var authServer = resourceMetadata?.AuthorizationServers.FirstOrDefault()
            ?? throw new RpcException(new Status(StatusCode.NotFound, "No auth server was found."));
 
+        logger.LogInformation("Got auth server {AuthServer} from PDS", authServer);
+
         var cache = new DiscoveryCache(authServer, new DiscoveryPolicy() { DiscoveryDocumentPath = ".well-known/oauth-authorization-server" });
         var discovery = await cache.GetAsync();
+
+        logger.LogInformation("Got authorization endpoint {Endpoint} from discovery doc", discovery.AuthorizeEndpoint);
 
         var request = new RequestUrl(discovery.AuthorizeEndpoint!)
             .CreateAuthorizeUrl(
@@ -79,7 +91,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
                 state: state,
                 codeChallenge: codeChallenge,
                 codeChallengeMethod: "S256",
-                extra: new Parameters() { { AuthorizeRequest.LoginHint, identifier, ParameterReplaceBehavior.Single } }
+                extra: new Parameters() { { AuthorizeRequest.LoginHint, handle, ParameterReplaceBehavior.Single } }
             );
 
         var pending = new LivePendingOAuth()
@@ -96,20 +108,23 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             TokenEndpoint = discovery.TokenEndpoint
         };
 
+        logger.LogInformation("Successfully completed stage 1 account linking for user {UserId} to {DID}", user.Id, did);
+
         return pending;
     }
 
     public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService service, LivePendingOAuth state, string code)
     {
         var description = connectedServices[AtProto.SERVICE_NAME];
-        var key = configuration["AtProtoOAuth:JWK"]
-                ?? throw new RpcException(new Status(StatusCode.Unavailable, "No JsonWebKeys have been configured. This is bad!"));
+        var key = await jwkProvider.GetJWK("Key1");
+
+        logger.LogInformation("Beginning stage 2 account linking for {UserId}", state.UserId);
 
         var authServer = state.AuthorizationEndpoint!;
         var cache = new DiscoveryCache(authServer, new DiscoveryPolicy() { DiscoveryDocumentPath = ".well-known/oauth-authorization-server" });
         var doc = await cache.GetAsync();
 
-        var tokenString = clientAssertionService.CreateClientAssertion(description.ClientId, doc.Issuer!);
+        var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, doc.Issuer!);
 
         var handler = new ProofTokenMessageHandler(key, httpHandlerFactory.CreateHandler("AtProtoClient"));
         var client = new HttpClient(handler);
@@ -134,6 +149,8 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         var sub = tokenResult!.Json!.Value!.TryGetValue("sub");
         var subValue = sub!.ToString();
 
+        logger.LogInformation("Successfully completed stage 2 account linking for {UserId} to {DID}", state.UserId, subValue);
+
         service.Service = AtProto.SERVICE_NAME;
         service.ServiceUrl = state.Endpoint!;
         service.AccessToken = tokenResult.AccessToken!;
@@ -145,63 +162,71 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.AuthorizationEndpoint = doc.AuthorizeEndpoint;
         service.TokenEndpoint = doc.TokenEndpoint!;
         service.Issuer = doc.Issuer!;
+
         service.ServiceProfile.UserId = subValue;
+
+
+        var protocol = new ATProtocolBuilder()
+           .WithInstanceUrl(new Uri(service.ServiceUrl!))
+           .EnableAutoRenewSession(false)
+           .WithLogger(atProtoLogger)
+           .Build();
+
+        var profileView = (await protocol.GetProfileAsync(ATDid.Create(service.ServiceProfile.UserId)!))
+             .HandleResult()!;
+
+        service.ServiceProfile.Username = $"@{profileView.Handle}";
+        service.ServiceProfile.DisplayName = profileView.DisplayName;
+        service.ServiceProfile.AvatarUrl = profileView.Avatar;
 
         return service;
     }
 
-    public async Task<bool> RefreshTokensAsync(LiveConnectedService connectedService)
+    public async Task<bool> RefreshTokensAsync(LiveConnectedService service)
     {
-        return false;
-    }
-
-    public async Task<LiveConnectedServiceProfile> GetServiceProfileAsync(LiveConnectedService connectedService)
-    {
-        var description = connectedServices[AtProto.SERVICE_NAME];
-        var key = configuration["AtProtoOAuth:JWK"]
-                ?? throw new RpcException(new Status(StatusCode.Unavailable, "No JsonWebKeys have been configured. This is bad!"));
-
-        var protocol = new ATProtocolBuilder()
-            .WithInstanceUrl(new Uri(connectedService.ServiceUrl!))
-            .EnableAutoRenewSession(false)
-            .WithLogger(atProtoLogger)
-            .Build();
-
-        protocol.SessionUpdated += (o, e) =>
+        try
         {
-            var service = liveDbContext.ConnectedServices.Find(connectedService.Id);
-            if (service == null)
+            var key = await jwkProvider.GetJWK("Key1");
+            var description = connectedServices[AtProto.SERVICE_NAME];
+
+            var protocol = new ATProtocolBuilder()
+               .WithInstanceUrl(new Uri(service.ServiceUrl!))
+               .EnableAutoRenewSession(false)
+               .WithClientAssertionHandler(async () =>
+               {
+                   var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, service.Issuer!);
+                   return new ClientAssertion() { Type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", Value = tokenString };
+               })
+               .WithLogger(atProtoLogger)
+               .Build();
+
+            protocol.SessionUpdated += (o, e) =>
             {
-                return;
-            }
+                service.AccessToken = e.Session.Session.AccessJwt;
+                service.RefreshToken = e.Session.Session.RefreshJwt;
+            };
 
-            service.AccessToken = e.Session.Session.AccessJwt;
-            service.RefreshToken = e.Session.Session.RefreshJwt;
+            var describeRepo = (await protocol.DescribeRepoAsync(ATDid.Create(service.ServiceProfile.UserId)!))
+                 .HandleResult()!;
 
-            connectedService.AccessToken = e.Session.Session.AccessJwt;
-            connectedService.RefreshToken = e.Session.Session.RefreshJwt;
+            var session = new Session(describeRepo!.Did!, describeRepo.DidDoc, describeRepo.Handle!, null, service.AccessToken, service.RefreshToken, service.ExpiresAt.DateTime);
+            var authSession = new AuthSession(session, key);
 
-            liveDbContext.SaveChanges();
-        };
+            session = (await protocol.AuthenticateWithOAuth2SessionResultAsync(authSession, description.ClientId))
+                .HandleResult()!;
 
-        var describeRepo = (await protocol.DescribeRepoAsync(ATDid.Create(connectedService.ServiceProfile.UserId)!))
-             .HandleResult()!;
+            authSession = (await protocol.RefreshAuthSessionResultAsync())
+                .HandleResult()!;
 
-        connectedService.ServiceProfile.Username = $"@{describeRepo.Handle}";
+            service.AccessToken = authSession.Session.AccessJwt;
+            service.RefreshToken = authSession.Session.RefreshJwt;
+            service.ExpiresAt = authSession.Session.ExpiresIn;
 
-        var session = new Session(describeRepo!.Did!, describeRepo.DidDoc, describeRepo.Handle!, null, connectedService.AccessToken, "", connectedService.ExpiresAt.DateTime);
-        var authSession = new AuthSession(session, key);
-
-        session = (await protocol.AuthenticateWithOAuth2SessionResultAsync(authSession, description.ClientId))
-            .HandleResult()!;
-
-        var profile = (await protocol.GetProfileAsync(session.Did))
-            .HandleResult()!;
-
-        connectedService.ServiceProfile.DisplayName = profile.DisplayName;
-        connectedService.ServiceProfile.AvatarUrl = profile.Avatar;
-        connectedService.ServiceProfile.EmailAddress = session.Email;
-
-        return connectedService.ServiceProfile;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            return false;
+        }
     }
 }

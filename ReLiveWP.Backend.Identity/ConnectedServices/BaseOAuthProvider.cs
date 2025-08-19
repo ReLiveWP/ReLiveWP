@@ -7,12 +7,13 @@ using FishyFlip.Lexicon.Blue.Moji.Collection;
 using Grpc.Core;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity.Data;
+using ReLiveWP.Backend.Identity.Services;
 
 namespace ReLiveWP.Backend.Identity.ConnectedServices;
 
 public abstract class BaseOAuthProvider(string service,
                                         IConnectedServicesContainer connectedServices,
-                                        IConfiguration configuration) : IOAuthProvider
+                                        IJWKProvider jwkProvider) : IOAuthProvider
 {
     public Task<LivePendingOAuth> BeginAccountLinkAsync(LiveUser user, string _)
     {
@@ -56,8 +57,7 @@ public abstract class BaseOAuthProvider(string service,
     public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService connectedService, LivePendingOAuth state, string code)
     {
         var description = connectedServices[service];
-        var key = configuration["AtProtoOAuth:JWK"]
-                ?? throw new RpcException(new Status(StatusCode.Unavailable, "No JsonWebKeys have been configured. This is bad!"));
+        var key = await jwkProvider.GetJWK("Key1");
 
         var issuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var expiresAt = issuedAt + 300;

@@ -2,5 +2,5 @@
 
 public interface IClientAssertionService
 {
-    string CreateClientAssertion(string clientId, string issuer);
+    Task<string> CreateClientAssertionAsync(string clientId, string issuer);
 }

@@ -1,9 +1,14 @@
+using System.Net.Http.Headers;
 using System.Text;
+using Duende.IdentityModel.OidcClient.DPoP;
+using Grpc.Core;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using ReLiveWP.Backend.Identity;
 using ReLiveWP.Backend.Identity.ConnectedServices;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
@@ -12,7 +17,7 @@ using ServiceCaps = ReLiveWP.Backend.Identity.Data.LiveConnectedServiceCapabilit
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHttpClient("AtProtoClient",(c) =>
+builder.Services.AddHttpClient("AtProtoClient", (c) =>
 {
     c.DefaultRequestHeaders.Add("User-Agent", "ReLiveWP/1.0 (+https://github.com/ReLiveWP/ReLiveWP)");
 });
@@ -53,6 +58,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<IClientAssertionService, ClientAssertionService>();
+builder.Services.AddSingleton<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
 
 builder.Services.AddConnectedServices()
@@ -69,9 +75,9 @@ builder.Services.AddConnectedServices()
             OAuthHandler = (s) =>
             {
                 return Task.FromResult<IOAuthProvider>(s.GetRequiredService<AtProtoOAuthProvider>());
-            } 
+            }
         };
-    }); 
+    });
 
 builder.Services.AddGrpc();
 
@@ -85,15 +91,9 @@ app.UseAuthorization();
 // Configure the HTTP request pipeline.
 app.MapGrpcService<AuthenticationService>();
 app.MapGrpcService<UserService>();
-app.MapGrpcService<OAuthService>();
+app.MapGrpcService<ConnectedAccountsService>();
 
-app.Map("/xrpc/{**catchall}", async (
-    HttpContext context,
-    string catchall,
-    IHttpClientFactory factory) =>
-{
-
-});
+AtProtoProxy.Map(app);
 
 app.Run();
 
