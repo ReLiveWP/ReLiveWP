@@ -6,6 +6,7 @@ package device_registration;
 
 service DeviceRegistration {
   rpc RegisterDevice (DeviceRegistrationRequest) returns (DeviceRegistrationResponse);
+  rpc AssociateDeviceWithUser (DeviceAssociationRequest) returns (DeviceAssociationResponse);
 }
 
 message DeviceRegistrationRequest {
@@ -25,4 +26,13 @@ message DeviceRegistrationRequest {
 message DeviceRegistrationResponse {
   bool succeeded = 1;
   bool wasAlreadyRegistered = 2;
+}
+
+message DeviceAssociationRequest {
+	string deviceId = 1;
+	string userId = 2;
+}
+
+message DeviceAssociationResponse {
+	bool succeeded = 1;
 }

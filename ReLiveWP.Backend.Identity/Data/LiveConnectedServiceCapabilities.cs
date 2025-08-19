@@ -15,6 +15,7 @@ public enum LiveConnectedServiceCapabilities : uint
     SocialNotifications = 0x100,
     MarketplaceStream = 0x200,
     MarketplacePurchase = 0x400,
+    FileStorage = 0x800,
 
     Zune = 0x40000000,
     Xbox = 0x80000000

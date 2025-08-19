@@ -20,6 +20,8 @@ public class DeviceModel
     public string OSVersion { get; set; } = null!;
     public string Locale { get; set; } = null!;
 
+    public string? OwnerId { get; set; }
+
     public string? Manufacturer { get; set; }
     public string? Model { get; set; }
     public string? Operator { get; set; }

@@ -23,12 +23,16 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
-builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<User.UserClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+builder.Services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:ClientProvisioning"]!));
+builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
 
 builder.Services.AddCors(options =>
 {

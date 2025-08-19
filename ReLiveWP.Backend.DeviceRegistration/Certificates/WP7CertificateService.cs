@@ -95,10 +95,14 @@ public class WP7CertificateService(
         var chain = new X509Chain();
         chain.Build(deviceCert);
 
-        var deviceStore = new X509Certificate2Collection();
+        var list = new List<X509Certificate2>();
         foreach (var item in chain.ChainElements)
-            deviceStore.Add(item.Certificate);
+            list.Add(item.Certificate);
 
+        list.Add(deviceCert);
+        list.Reverse();
+
+        var deviceStore = new X509Certificate2Collection((X509Certificate2[])[.. list]);
         logger.LogInformation("Exported {Count} certificates into chain.", deviceStore.Count);
         return deviceStore.Export(X509ContentType.Pkcs7)!;
     }

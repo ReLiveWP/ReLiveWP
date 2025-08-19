@@ -51,19 +51,12 @@ namespace ReLiveWP.Backend.Identity.Services
 
             string[] policies = ["LEGACY", "HBI_KEY", "MBI", "MBI_KEY"];
 
-            var chars = user.Id.ToString();
-            var bytes = user.Id.ToByteArray();
-            var time_low = BitConverter.ToUInt32(bytes, 0);
-            var node = BitConverter.ToUInt32(bytes, 12);
-
-            var cid = chars[19..23] + chars[24..36];
-            var puid = ((ulong)time_low << 32) | node;
 
             var response = new SecurityTokensResponse()
             {
                 Code = S_OK,
-                Cid = cid,
-                Puid = puid,
+                Cid = user.Cid,
+                Puid = (ulong)user.Puid,
                 Username = user.UserName,
                 EmailAddress = user.Email
             };
@@ -100,11 +93,23 @@ namespace ReLiveWP.Backend.Identity.Services
 
         public override async Task<RegisterResponse> Register(RegisterRequest request, ServerCallContext context)
         {
-            if (await userManager.FindByEmailAsync(request.EmailAddress) != null)
+            if (await userManager.FindByNameAsync(request.Username) != null)
                 return new RegisterResponse() { Code = ERROR_ALREADY_EXISTS };
+
+            var userId = Guid.NewGuid();
+            var chars = userId.ToString();
+            var bytes = userId.ToByteArray();
+            var time_low = BitConverter.ToUInt32(bytes, 0);
+            var node = BitConverter.ToUInt32(bytes, 12);
+
+            var cid = chars[19..23] + chars[24..36];
+            var puid = ((ulong)time_low << 32) | node;
 
             var user = new LiveUser()
             {
+                Id = userId,
+                Cid = cid,
+                Puid = (long)puid,
                 UserName = request.Username,
                 Email = request.EmailAddress,
             };
@@ -115,7 +120,7 @@ namespace ReLiveWP.Backend.Identity.Services
                 throw new RpcException(new Status(StatusCode.FailedPrecondition, string.Join(", ", result.Errors.Select(s => s.Description))));
             }
 
-            return new RegisterResponse() { Code = S_OK };
+            return new RegisterResponse() { Code = S_OK, Id = user.Id.ToString(), Cid = cid, Puid = puid };
         }
 
         private JwtSecurityToken CreateToken(List<Claim> authClaims, DateTimeOffset expires)

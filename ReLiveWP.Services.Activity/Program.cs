@@ -23,6 +23,8 @@ builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+builder.Services.AddGrpcClient<User.UserClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 
 var app = builder.Build();
 

@@ -24,9 +24,12 @@ public class AtProtoProxy
 {
     public static void Map(WebApplication app)
     {
-        app.Map("/xrpc/{**catchall}", ProxyHandler);
+        app.Map("/xrpc/{**method}", ProxyHandler);
     }
 
+    // TODO: caching
+    //       make it faster
+    //       probably some security issues
     private static async Task ProxyHandler(HttpContext context,
                                            LiveDbContext dbContext,
                                            IJWKProvider jwkProvider,
@@ -34,56 +37,34 @@ public class AtProtoProxy
                                            UserManager<LiveUser> userManager,
                                            IConnectedServicesContainer connectedServices,
                                            IHttpMessageHandlerFactory factory,
-                                           string catchall)
+                                           ILogger<AtProtoProxy> logger,
+                                           string method)
     {
         try
         {
-            using var scope = services.CreateScope();
-
-            var connectionId = context.Request.Headers["X-Connection-ID"].ToString();
-
-            var user = await userManager.GetUserAsync(context.User)
-                ?? throw new InvalidOperationException("Invalid user was specified.");
-
-            var guid = Guid.Parse(connectionId);
-            var service = await dbContext.ConnectedServices.FirstOrDefaultAsync(s => s.Id == guid);
-
-            // the service can't be used at this time, reject this request
-            if (service == null ||
-                service.Service != AtProto.SERVICE_NAME ||
-                service.UserId != user.Id ||
-                (service.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
-                throw new InvalidOperationException("This ticket has expired.");
-
-            if (!connectedServices.TryGetValue(service.Service, out var serviceDescription))
-                throw new InvalidOperationException("This service is unsupported at this time.");
-
-            if (service.ExpiresAt <= DateTime.UtcNow)
+            var service = await GetServiceAsync(context, dbContext, services, userManager, connectedServices);
+            if (service == null)
             {
-                var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
-                if (!await handler.RefreshTokensAsync(service))
-                    throw new InvalidOperationException();
-
-                dbContext.ConnectedServices.Update(service);
-                await dbContext.SaveChangesAsync();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
             }
 
+            // create the DPoP handler using our key
             var key = await jwkProvider.GetJWK(service.DPoPKeyId!);
             using var innerHandler = factory.CreateHandler();
             using var tokenHandler = new ProofTokenMessageHandler(key, innerHandler);
-
             using var client = new HttpClient(tokenHandler);
-            var targetUrl = new Uri(new Uri(service.ServiceUrl!), "/xrpc/" + catchall + context.Request.QueryString);
+
+            var targetUrl = new Uri(new Uri(service.ServiceUrl!), "/xrpc/" + method + context.Request.QueryString);
             var targetRequest = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUrl);
 
-            // Copy headers except Host/Auth/DPoP
+            // copy all headers except our specific ones
             foreach (var header in context.Request.Headers)
             {
                 if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
                     header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase) ||
                     header.Key.Equals("DPoP", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("X-Connection-ID", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                    header.Key.Equals("X-Connection-ID", StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 targetRequest.Headers.TryAddWithoutValidation(header.Key, (IEnumerable<string>)header.Value);
@@ -94,6 +75,7 @@ public class AtProtoProxy
             if (context.Request.ContentLength > 0)
                 targetRequest.Content = new StreamContent(context.Request.Body);
 
+            // go go go
             using var resp = await client.SendAsync(targetRequest, HttpCompletionOption.ResponseHeadersRead, context.RequestAborted);
 
             context.Response.StatusCode = (int)resp.StatusCode;
@@ -111,12 +93,52 @@ public class AtProtoProxy
                 context.Response.Headers[header.Key] = header.Value.ToArray();
             }
 
-            await resp.Content.CopyToAsync(context.Response.Body);
+            await resp.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to proxy ATProto request");
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             return;
         }
+    }
+
+    private static async Task<LiveConnectedService?> GetServiceAsync(HttpContext context,
+                                                                      LiveDbContext dbContext,
+                                                                      IServiceProvider services,
+                                                                      UserManager<LiveUser> userManager,
+                                                                      IConnectedServicesContainer connectedServices)
+    {
+        using var scope = services.CreateScope();
+
+        var connectionId = context.Request.Headers["X-Connection-ID"].ToString();
+
+        var user = await userManager.GetUserAsync(context.User)
+            ?? throw new InvalidOperationException("Invalid user was specified.");
+
+        var guid = Guid.Parse(connectionId);
+        var service = await dbContext.ConnectedServices.FirstOrDefaultAsync(s => s.Id == guid);
+
+        // the service can't be used at this time, reject this request
+        if (service == null ||
+            service.Service != AtProto.SERVICE_NAME ||
+            service.UserId != user.Id ||
+            (service.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
+            throw new InvalidOperationException("This ticket has expired.");
+
+        if (!connectedServices.TryGetValue(service.Service, out var serviceDescription))
+            throw new InvalidOperationException("This service is unsupported at this time.");
+
+        if (service.ExpiresAt <= DateTime.UtcNow)
+        {
+            var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
+            if (!await handler.RefreshTokensAsync(service))
+                throw new InvalidOperationException("Token failed to refresh");
+
+            dbContext.ConnectedServices.Update(service);
+            await dbContext.SaveChangesAsync();
+        }
+
+        return service;
     }
 }

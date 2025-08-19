@@ -54,4 +54,18 @@ public class DeviceRegistrationService(ILogger<DeviceRegistrationService> logger
         await dbContext.SaveChangesAsync();
         return deviceRegistrationResponse;
     }
+
+    public override async Task<DeviceAssociationResponse> AssociateDeviceWithUser(DeviceAssociationRequest request, ServerCallContext context)
+    {
+        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.UniqueId == request.DeviceId);
+        if (device == null)
+        {
+            return new DeviceAssociationResponse() { Succeeded = false };
+        }
+
+        device.OwnerId = request.UserId;
+        await dbContext.SaveChangesAsync();
+
+        return new DeviceAssociationResponse() { Succeeded = true };
+    }
 }

@@ -240,6 +240,10 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Cid")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
@@ -274,6 +278,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long>("Puid")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("TEXT");
 
@@ -286,12 +293,16 @@ namespace ReLiveWP.Backend.Identity.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Cid");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("Puid");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });

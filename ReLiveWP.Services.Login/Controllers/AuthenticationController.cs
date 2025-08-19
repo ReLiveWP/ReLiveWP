@@ -1,3 +1,8 @@
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
+using Google.Protobuf;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
@@ -9,13 +14,19 @@ namespace ReLiveWP.Services.Login.Controllers;
 record class ErrorModel(uint ErrorCode);
 public record CreateAccountModel(string Username, string Password, string EmailAddress);
 public record UserModel(string Id, string Cid, string Puid, string Username, string EmailAddress);
+public record UserIdentityModel(string Id, string Cid, string Puid, string Username, string Password);
+
+public record ProvisionDeviceRequestModel(string DeviceId, string Csr);
+public record ProvisionDeviceResponseModel(UserIdentityModel Identity, SecurityTokenModel[] SecurityTokens, string DeviceCert);
 
 [ApiController]
 [Route("auth/[action]/{id?}")]
 public class AuthenticationController(
     ILogger<AuthenticationController> logger,
+    User.UserClient userClient,
     Authentication.AuthenticationClient authenticationClient,
-    User.UserClient userClient) : ControllerBase
+    DeviceRegistration.DeviceRegistrationClient deviceRegistrationClient,
+    ClientProvisioning.ClientProvisioningClient clientProvisioningClient) : ControllerBase
 {
     [Authorize]
     [ActionName("user")]
@@ -46,61 +57,131 @@ public class AuthenticationController(
     [HttpPost(Name = "request_tokens")]
     public async Task<ActionResult<SecurityTokensResponseModel>> RequestTokens([FromBody] SecurityTokensRequestModel request)
     {
-        SecurityTokensRequest grpcRequest;
-        if (request.Credentials.TryGetValue("ps:password", out var password))
+        try
         {
-            grpcRequest = new SecurityTokensRequest()
+            SecurityTokensRequest grpcRequest;
+            if (request.Credentials.TryGetValue("ps:password", out var password))
             {
-                Username = request.Identity,
+                grpcRequest = new SecurityTokensRequest()
+                {
+                    Username = request.Identity,
+                    Password = password,
+                };
+            }
+            else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values) && values.FirstOrDefault() != null)
+            {
+                var value = values.FirstOrDefault()!;
+                if (value.StartsWith("Bearer "))
+                    value = value[7..];
+
+                grpcRequest = new SecurityTokensRequest()
+                {
+                    Username = request.Identity,
+                    AuthToken = value
+                };
+            }
+            else
+            {
+                return Unauthorized();
+            }
+
+            foreach (var tokenRequest in request.TokenRequests)
+            {
+                var grpcTokenRequest = new SecurityTokenRequest()
+                {
+                    ServicePolicy = tokenRequest.ServicePolicy,
+                    ServiceTarget = tokenRequest.ServiceTarget
+                };
+
+                grpcRequest.Requests.Add(grpcTokenRequest);
+            }
+
+            var grpcResponse = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
+            Marshal.ThrowExceptionForHR((int)grpcResponse.Code); // TODO: fix all of this please god
+
+            var securityTokens = new List<SecurityTokenModel>();
+            foreach (var token in grpcResponse.Tokens)
+            {
+                securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
+                                                          token.Token,
+                                                          token.TokenType,
+                                                          token.Created.ToDateTimeOffset(),
+                                                          token.Expires.ToDateTimeOffset()));
+            }
+
+            return Ok(new SecurityTokensResponseModel(grpcResponse.Puid, grpcResponse.Cid, grpcResponse.Username, grpcResponse.EmailAddress, [.. securityTokens]));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new ErrorModel((uint)ex.HResult));
+        }
+    }
+
+    [Authorize]
+    [ActionName("provision_device")]
+    [HttpPost(Name = "provision_device")]
+    public async Task<ActionResult<ProvisionDeviceResponseModel>> ProvisionDevice([FromBody] ProvisionDeviceRequestModel request)
+    {
+        try
+        {
+            var userName = request.DeviceId + "-" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(8));
+            var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+            var account = await authenticationClient.RegisterAsync(new RegisterRequest() { Username = userName, EmailAddress = "", Password = password });
+            Marshal.ThrowExceptionForHR((int)account.Code); // TODO: fix all of this please god
+
+            var associationRequest = new DeviceAssociationRequest() { DeviceId = request.DeviceId, UserId = User.Id() };
+            var associationResponse = await deviceRegistrationClient.AssociateDeviceWithUserAsync(associationRequest);
+            if (!associationResponse.Succeeded)
+            {
+                // weird but not the end of the world tbh
+            }
+
+            var deviceCert = await clientProvisioningClient.ProvisionWP7DeviceAsync(new WP7ProvisioningRequest() { CertificateRequest = ByteString.FromBase64(request.Csr) });
+            if (!deviceCert.Succeeded)
+                throw new Exception("Failed to provision certificate");
+
+            var certificateCollection = new X509Certificate2Collection();
+            certificateCollection.Import(deviceCert.Certificate.ToByteArray());
+            var certificate = certificateCollection.First()!;
+            var encodedCertificate = Convert.ToBase64String(certificate.Export(X509ContentType.Pkcs7));
+
+            var grpcRequest = new SecurityTokensRequest()
+            {
+                Username = userName,
                 Password = password,
             };
-        }
-        else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values) && values.FirstOrDefault() != null)
-        {
-            var value = values.FirstOrDefault()!;
-            if (value.StartsWith("Bearer "))
-                value = value[7..];
 
-            grpcRequest = new SecurityTokensRequest()
-            {
-                Username = request.Identity,
-                AuthToken = value
-            };
-        }
-        else
-        {
-            return Unauthorized();
-        }
-
-        foreach (var tokenRequest in request.TokenRequests)
-        {
             var grpcTokenRequest = new SecurityTokenRequest()
             {
-                ServicePolicy = tokenRequest.ServicePolicy,
-                ServiceTarget = tokenRequest.ServiceTarget
+                ServicePolicy = "JWT",
+                ServiceTarget = "http://Passport.NET/tb"
             };
 
             grpcRequest.Requests.Add(grpcTokenRequest);
-        }
 
-        var grpcResponse = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
-        if ((grpcResponse.Code & 0x80000000) != 0)
+            var grpcResponse = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
+            Marshal.ThrowExceptionForHR((int)grpcResponse.Code); // TODO: fix all of this please god
+
+            var securityTokens = new List<SecurityTokenModel>();
+            foreach (var token in grpcResponse.Tokens)
+            {
+                securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
+                                                          token.Token,
+                                                          token.TokenType,
+                                                          token.Created.ToDateTimeOffset(),
+                                                          token.Expires.ToDateTimeOffset()));
+            }
+
+            var response = new ProvisionDeviceResponseModel(
+                new UserIdentityModel(userName, account.Cid, ((long)account.Puid).ToString(), userName, password),
+                [.. securityTokens],
+                encodedCertificate);
+
+            return response;
+        }
+        catch (Exception ex)
         {
-            return Unauthorized(new ErrorModel(grpcResponse.Code));
+            return BadRequest(new ErrorModel((uint)ex.HResult));
         }
-
-        var securityTokens = new List<SecurityTokenModel>();
-        foreach (var token in grpcResponse.Tokens)
-        {
-            securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
-                                                      token.Token,
-                                                      token.TokenType,
-                                                      token.Created.ToDateTimeOffset(),
-                                                      token.Expires.ToDateTimeOffset()));
-        }
-
-        return Ok(new SecurityTokensResponseModel(grpcResponse.Puid, grpcResponse.Cid, grpcResponse.Username, grpcResponse.EmailAddress, [.. securityTokens]));
     }
-
-    
 }

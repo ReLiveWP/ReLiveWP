@@ -1,21 +1,13 @@
 using System.Net;
-using System.Reflection;
-using System.Text;
 using Atom.Xml;
-using Duende.IdentityModel.Client;
 using FishyFlip;
-using FishyFlip.Lexicon;
 using FishyFlip.Lexicon.App.Bsky.Actor;
 using FishyFlip.Lexicon.App.Bsky.Embed;
 using FishyFlip.Lexicon.App.Bsky.Feed;
-using FishyFlip.Lexicon.Com.Atproto.Repo;
-using FishyFlip.Lexicon.Place.Stream;
 using FishyFlip.Models;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Razor;
-using Razor.Templating.Core;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Activity.Models;
 using ReLiveWP.Services.Grpc;
@@ -25,6 +17,7 @@ namespace ReLiveWP.Services.Activity.Controllers;
 public class ActivitiesController(
     ILogger<ActivitiesController> logger,
     ILogger<ATProtocol> atprotoLogger,
+    User.UserClient userClient,
     ConnectedServices.ConnectedServicesClient connectedServices) : Controller
 {
     [HttpPost]
@@ -40,7 +33,7 @@ public class ActivitiesController(
 
         var auth = Request.Headers.Authorization.ToString();
         var headers = new Metadata() { { "Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')) } };
-
+        var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
 
         var connectedServicesRequest = new ConnectionsRequest() { };
         var servicesResponse = await connectedServices.GetConnectionsAsync(connectedServicesRequest, headers);
@@ -90,7 +83,7 @@ public class ActivitiesController(
         do
         {
             var atFeed = (await protocol.Feed.GetAuthorFeedAsync(did, limit: Math.Max(10, count - feed.Entries.Count), cursor: cursor, includePins: false))
-                .HandleResult();
+                .HandleResult()!;
 
             cursor = WebUtility.UrlEncode(atFeed.Cursor);
 
@@ -126,7 +119,6 @@ public class ActivitiesController(
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
-        var actor = new ATDid("did:plc:7rfssi44thh6f4ywcl3u5nvt");
 
         var auth = Request.Headers.Authorization.ToString();
         var headers = new Metadata() { { "Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')) } };
@@ -154,7 +146,8 @@ public class ActivitiesController(
         atProto.Client.DefaultRequestHeaders.Add("Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')));
         atProto.Client.DefaultRequestHeaders.Add("X-Connection-Id", service.Id);
 
-        var atProfile = (await atProto.Actor.GetProfileAsync(actor))
+        var did = ATDid.Create(service.UserId)!;
+        var atProfile = (await atProto.Actor.GetProfileAsync(did))
             .HandleResult();
 
         if (atProfile == null)
@@ -264,6 +257,7 @@ public class ActivitiesController(
             ChangeType = "3",
             SourceId = "WL",
             ServiceActivityId = postId,
+            Reactions = postView.ReplyCount?.ToString() ?? ""
         };
 
         if (postView.Embed is ViewImages viewImages)
