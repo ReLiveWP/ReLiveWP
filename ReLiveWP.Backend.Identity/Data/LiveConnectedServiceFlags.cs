@@ -4,6 +4,7 @@
 public enum LiveConnectedServiceFlags : uint
 {
     None = 0,
+    NeedsRefresh = 1,
     /// <summary>
     /// Indicates the service needs reauthentication
     /// </summary>

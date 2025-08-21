@@ -1,9 +1,12 @@
+using System.ComponentModel.DataAnnotations;
 using System.Net;
+using System.Threading;
 using Atom.Xml;
 using FishyFlip;
 using FishyFlip.Lexicon.App.Bsky.Actor;
 using FishyFlip.Lexicon.App.Bsky.Embed;
 using FishyFlip.Lexicon.App.Bsky.Feed;
+using FishyFlip.Lexicon.Com.Atproto.Repo;
 using FishyFlip.Models;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +14,7 @@ using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Activity.Models;
 using ReLiveWP.Services.Grpc;
+using Link = Atom.Xml.Link;
 
 namespace ReLiveWP.Services.Activity.Controllers;
 
@@ -20,6 +24,26 @@ public class ActivitiesController(
     User.UserClient userClient,
     ConnectedServices.ConnectedServicesClient connectedServices) : Controller
 {
+
+    [HttpPost]
+    [Authorize]
+    [Route("/Users({id})/Status")]
+    [Produces("application/atom+xml")]
+    public async Task<ActionResult> PostAsync(long id, [FromBody] LiveEntry entry)
+    {
+        Response.Headers.Append("X-QueriedServices", "WL");
+        var (protocol, did) = await GetProtocolAsync();
+
+        var record = new Post();
+        record.Text = entry.Title.Value;
+        record.CreatedAt = DateTime.UtcNow;
+
+         _ = (await protocol.CreateRecordAsync(did, "app.bsky.feed.post", record, cancellationToken: HttpContext.RequestAborted))
+            .HandleResult();
+
+        return NoContent();
+    }
+
     [HttpPost]
     [Authorize]
     [Route("/Activities")]
@@ -31,50 +55,24 @@ public class ActivitiesController(
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
-        var auth = Request.Headers.Authorization.ToString();
-        var headers = new Metadata() { { "Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')) } };
-        var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
-
-        var connectedServicesRequest = new ConnectionsRequest() { };
-        var servicesResponse = await connectedServices.GetConnectionsAsync(connectedServicesRequest, headers);
-        if (servicesResponse.Connections.Count == 0)
-        {
-            return NoContent();
-        }
-
-        var service = servicesResponse.Connections.FirstOrDefault(s => s.Service == "atproto");
-        if (service is null)
-        {
-            return NoContent();
-        }
-
-        var protocol = new ATProtocolBuilder()
-             .WithInstanceUrl(new Uri("http://127.0.0.4:5001"))
-             .WithLogger(atprotoLogger)
-             .EnableAutoRenewSession(false)
-             .WithServiceEndpointUponLogin(false)
-             .Build();
-
-        protocol.Client.DefaultRequestHeaders.Add("Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')));
-        protocol.Client.DefaultRequestHeaders.Add("X-Connection-Id", service.Id);
-
-        var did = ATDid.Create(service.UserId)!;
+        var (protocol, did) = await GetProtocolAsync();
         var atProfile = (await protocol.Actor.GetProfileAsync(did))
             .HandleResult();
 
         if (atProfile == null)
             return NotFound();
 
-        var author = CreateAuthor(atProfile);
+        var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
+        var author = CreateAuthor(atProfile, userInfo);
         var feed = new LiveFeed()
         {
             Title = $"What's New with {author.Name}",
-            Id = "https://api.live.int.relivewp.net/Users('WL:-6296795494865413357')/Activities",
+            Id = $"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/Activities",
             Updated = DateTime.UtcNow,
             Author = author,
             Links =
             [
-                new Link("https://api.live.int.relivewp.net/Users('WL:-6296795494865413357')/Activities")
+                new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/Activities")
             ]
         };
 
@@ -102,7 +100,7 @@ public class ActivitiesController(
 
         if (!string.IsNullOrWhiteSpace(cursor))
         {
-            feed.Links.Add(new Link($"https://api.live.int.relivewp.net/Users('WL:-6296795494865413357')/Activities?cursor={cursor}", "next"));
+            feed.Links.Add(new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/Activities?cursor={cursor}", "next"));
         }
 
         return feed;
@@ -120,52 +118,26 @@ public class ActivitiesController(
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
-        var auth = Request.Headers.Authorization.ToString();
-        var headers = new Metadata() { { "Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')) } };
-
-        var connectedServicesRequest = new ConnectionsRequest() { };
-        var servicesResponse = await connectedServices.GetConnectionsAsync(connectedServicesRequest, headers);
-        if (servicesResponse.Connections.Count == 0)
-        {
-            return NoContent();
-        }
-
-        var service = servicesResponse.Connections.FirstOrDefault(s => s.Service == "atproto");
-        if (service is null)
-        {
-            return NoContent();
-        }
-
-        var atProto = new ATProtocolBuilder()
-             .WithInstanceUrl(new Uri("http://127.0.0.4:5001"))
-             .WithLogger(atprotoLogger)
-             .EnableAutoRenewSession(false)
-             .WithServiceEndpointUponLogin(false)
-             .Build();
-
-        atProto.Client.DefaultRequestHeaders.Add("Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')));
-        atProto.Client.DefaultRequestHeaders.Add("X-Connection-Id", service.Id);
-
-        var did = ATDid.Create(service.UserId)!;
+        var (atProto, did) = await GetProtocolAsync();
         var atProfile = (await atProto.Actor.GetProfileAsync(did))
             .HandleResult();
 
         if (atProfile == null)
             return NotFound();
 
-        var author = CreateAuthor(atProfile);
+        var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
+        var author = CreateAuthor(atProfile, userInfo);
         var feed = new LiveFeed()
         {
             Title = $"What's New with {author.Name}",
-            Id = "https://api.live.int.relivewp.net/Users('WL:-6296795494865413357')/ContactsActivities",
+            Id = $"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/ContactsActivities",
             Updated = DateTime.UtcNow,
             Author = author,
             Links =
             [
-                new Link("https://api.live.int.relivewp.net/Users('WL:-6296795494865413357')/ContactsActivities"),
+                new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/ContactsActivities"),
             ]
         };
-
 
         var cursor = "";
         do
@@ -190,18 +162,52 @@ public class ActivitiesController(
 
         if (!string.IsNullOrWhiteSpace(cursor))
         {
-            feed.Links.Add(new Link($"https://api.live.int.relivewp.net/Users('WL:-6296795494865413357')/ContactsActivities?cursor={cursor}", "next"));
+            feed.Links.Add(new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid})/ContactsActivities?cursor={cursor}", "next"));
         }
 
         return feed;
     }
 
-    private static LiveAuthor CreateAuthor(ProfileViewDetailed atProfile)
+
+    private async Task<(ATProtocol protocol, ATDid did)> GetProtocolAsync()
+    {
+        var auth = Request.Headers.Authorization.ToString();
+        var headers = new Metadata() { { "Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')) } };
+
+        var connectedServicesRequest = new ConnectionsRequest() { };
+        var servicesResponse = await connectedServices.GetConnectionsAsync(connectedServicesRequest, headers);
+        if (servicesResponse.Connections.Count == 0)
+        {
+            // TODO: http response code exception
+            throw new FileNotFoundException();
+        }
+
+        var service = servicesResponse.Connections.FirstOrDefault(s => s.Service == "atproto");
+        if (service is null)
+        {
+            // TODO: http response code exception
+            throw new FileNotFoundException();
+        }
+
+        var protocol = new ATProtocolBuilder()
+             .WithInstanceUrl(new Uri("http://127.0.0.4:5001"))
+             .WithLogger(atprotoLogger)
+             .EnableAutoRenewSession(false)
+             .WithServiceEndpointUponLogin(false)
+             .Build();
+
+        protocol.Client.DefaultRequestHeaders.Add("Authorization", string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' '))));
+        protocol.Client.DefaultRequestHeaders.Add("X-Connection-Id", service.Id);
+
+        return (protocol, ATDid.Create(service.UserId)!);
+    }
+
+    private static LiveAuthor CreateAuthor(ProfileViewDetailed atProfile, GetUserInfoResponse userInfo)
     {
         return new LiveAuthor()
         {
-            Id = "-6296795494865413357",
-            Name = atProfile.DisplayName,
+            Id = $"{(long)userInfo.Puid}",
+            Name = atProfile.DisplayName ?? $"@{atProfile.Handle}",
             Url = $"https://bsky.app/profile/{atProfile.Did}",
             Links =
             [
@@ -218,7 +224,7 @@ public class ActivitiesController(
         author ??= new LiveAuthor()
         {
             Id = "-" + postView.Author.Did.ToString().GetHashCode(), // HORRIBLE
-            Name = postView.Author.DisplayName,
+            Name = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,
             Url = $"https://bsky.app/profile/{postView.Author.Did}",
             Links =
             [

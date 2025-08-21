@@ -166,7 +166,11 @@ namespace ReLiveWP.Backend.Identity.Services
             {
                 var user = await userManager.FindByEmailAsync(request.Username);
                 if (user == null)
-                    return null;
+                {
+                    user = await userManager.FindByNameAsync(request.Username);
+                    if (user == null)
+                        return null;
+                }
 
                 if (!await userManager.CheckPasswordAsync(user, request.Password))
                     return null;

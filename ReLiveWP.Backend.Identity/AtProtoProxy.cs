@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Http.Headers;
 using Duende.IdentityModel.OidcClient.DPoP;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +29,12 @@ public class AtProtoProxy
         app.Map("/xrpc/{**method}", ProxyHandler);
     }
 
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
+    private static SemaphoreSlim GetOrCreateLock(Guid connectionId)
+    {
+        return _locks.GetOrAdd(connectionId, _ => new SemaphoreSlim(1, 1));
+    }
+
     // TODO: caching
     //       make it faster
     //       probably some security issues
@@ -42,58 +50,107 @@ public class AtProtoProxy
     {
         try
         {
-            var service = await GetServiceAsync(context, dbContext, services, userManager, connectedServices);
-            if (service == null)
+            context.Request.EnableBuffering();
+
+            var (service, serviceDescription) = await GetServiceAsync(context, dbContext, userManager, connectedServices);
+            if (service == null || serviceDescription == null)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
-            // create the DPoP handler using our key
-            var key = await jwkProvider.GetJWK(service.DPoPKeyId!);
-            using var innerHandler = factory.CreateHandler();
-            using var tokenHandler = new ProofTokenMessageHandler(key, innerHandler);
-            using var client = new HttpClient(tokenHandler);
+            var serviceLock = GetOrCreateLock(service.Id);
+            await serviceLock.WaitAsync(5000, context.RequestAborted);
 
-            var targetUrl = new Uri(new Uri(service.ServiceUrl!), "/xrpc/" + method + context.Request.QueryString);
-            var targetRequest = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUrl);
-
-            // copy all headers except our specific ones
-            foreach (var header in context.Request.Headers)
+            try
             {
-                if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("DPoP", StringComparison.OrdinalIgnoreCase) ||
-                    header.Key.Equals("X-Connection-ID", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                if (service.ExpiresAt <= DateTime.UtcNow ||
+                    (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
+                {
+                    using var scope = services.CreateScope();
+                    var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
+                    var succeeded = false;
+                    if (!(succeeded = await handler.RefreshTokensAsync(service)))
+                        service.Flags = LiveConnectedServiceFlags.Busted;
+                    else
+                        service.Flags = LiveConnectedServiceFlags.None;
 
-                targetRequest.Headers.TryAddWithoutValidation(header.Key, (IEnumerable<string>)header.Value);
+                    dbContext.ConnectedServices.Update(service);
+                    await dbContext.SaveChangesAsync();
+
+                    if (!succeeded)
+                    {
+                        throw new InvalidOperationException("Token failed to refresh");
+                    }
+                }
+
+                // create the DPoP handler using our key
+                var key = await jwkProvider.GetJWK(service.DPoPKeyId!);
+                using var innerHandler = factory.CreateHandler();
+                using var tokenHandler = new ProofTokenMessageHandler(key, innerHandler);
+                using var client = new HttpClient(tokenHandler);
+
+                var targetUrl = new Uri(new Uri(service.ServiceUrl!), "/xrpc/" + method + context.Request.QueryString);
+                var targetRequest = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUrl);
+
+                // copy all headers except our specific ones
+                foreach (var header in context.Request.Headers)
+                {
+                    if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
+                        header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase) ||
+                        header.Key.Equals("DPoP", StringComparison.OrdinalIgnoreCase) ||
+                        header.Key.Equals("X-Connection-ID", StringComparison.OrdinalIgnoreCase) ||
+                        header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    targetRequest.Headers.TryAddWithoutValidation(header.Key, (IEnumerable<string>)header.Value);
+                }
+
+                targetRequest.Headers.Authorization = new AuthenticationHeaderValue("DPoP", service.AccessToken);
+
+                if (context.Request.ContentLength > 0)
+                {
+                    targetRequest.Headers.TransferEncodingChunked = true;
+                    targetRequest.Content = new StreamContent(context.Request.Body);
+
+                    // TODO: this probably shouldn't be hardcoded, figure out wtf it's doing here
+                    targetRequest.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                }
+
+                // go go go
+                using var resp = await client.SendAsync(targetRequest, HttpCompletionOption.ResponseHeadersRead, context.RequestAborted);
+                if (resp.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    service.Flags |= LiveConnectedServiceFlags.NeedsRefresh;
+                    dbContext.ConnectedServices.Update(service);
+                    await dbContext.SaveChangesAsync();
+                }
+
+                context.Response.StatusCode = (int)resp.StatusCode;
+                foreach (var header in resp.Headers)
+                {
+                    if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    context.Response.Headers[header.Key] = header.Value.ToArray();
+                }
+
+                foreach (var header in resp.Content.Headers)
+                {
+                    if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    context.Response.Headers[header.Key] = header.Value.ToArray();
+                }
+
+                await resp.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
             }
-
-            targetRequest.Headers.Authorization = new AuthenticationHeaderValue("DPoP", service.AccessToken);
-
-            if (context.Request.ContentLength > 0)
-                targetRequest.Content = new StreamContent(context.Request.Body);
-
-            // go go go
-            using var resp = await client.SendAsync(targetRequest, HttpCompletionOption.ResponseHeadersRead, context.RequestAborted);
-
-            context.Response.StatusCode = (int)resp.StatusCode;
-            foreach (var header in resp.Headers)
+            finally
             {
-                if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                context.Response.Headers[header.Key] = header.Value.ToArray();
+                serviceLock.Release();
             }
-
-            foreach (var header in resp.Content.Headers)
-            {
-                if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                context.Response.Headers[header.Key] = header.Value.ToArray();
-            }
-
-            await resp.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
         }
         catch (Exception ex)
         {
@@ -103,14 +160,11 @@ public class AtProtoProxy
         }
     }
 
-    private static async Task<LiveConnectedService?> GetServiceAsync(HttpContext context,
+    private static async Task<(LiveConnectedService? service, ConnectedServiceDescription? serviceDescription)> GetServiceAsync(HttpContext context,
                                                                       LiveDbContext dbContext,
-                                                                      IServiceProvider services,
                                                                       UserManager<LiveUser> userManager,
                                                                       IConnectedServicesContainer connectedServices)
     {
-        using var scope = services.CreateScope();
-
         var connectionId = context.Request.Headers["X-Connection-ID"].ToString();
 
         var user = await userManager.GetUserAsync(context.User)
@@ -129,16 +183,6 @@ public class AtProtoProxy
         if (!connectedServices.TryGetValue(service.Service, out var serviceDescription))
             throw new InvalidOperationException("This service is unsupported at this time.");
 
-        if (service.ExpiresAt <= DateTime.UtcNow)
-        {
-            var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
-            if (!await handler.RefreshTokensAsync(service))
-                throw new InvalidOperationException("Token failed to refresh");
-
-            dbContext.ConnectedServices.Update(service);
-            await dbContext.SaveChangesAsync();
-        }
-
-        return service;
+        return (service, serviceDescription);
     }
 }

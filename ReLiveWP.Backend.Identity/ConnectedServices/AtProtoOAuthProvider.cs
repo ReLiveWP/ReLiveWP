@@ -167,7 +167,6 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
 
 
         var protocol = new ATProtocolBuilder()
-           .WithInstanceUrl(new Uri(service.ServiceUrl!))
            .EnableAutoRenewSession(false)
            .WithLogger(atProtoLogger)
            .Build();

@@ -14,7 +14,7 @@ namespace ReLiveWP.Services.Login.Controllers;
 record class ErrorModel(uint ErrorCode);
 public record CreateAccountModel(string Username, string Password, string EmailAddress);
 public record UserModel(string Id, string Cid, string Puid, string Username, string EmailAddress);
-public record UserIdentityModel(string Id, string Cid, string Puid, string Username, string Password);
+public record UserIdentityModel(string Id, string Cid, ulong Puid, string Username, string Password);
 
 public record ProvisionDeviceRequestModel(string DeviceId, string Csr);
 public record ProvisionDeviceResponseModel(UserIdentityModel Identity, SecurityTokenModel[] SecurityTokens, string DeviceCert);
@@ -113,7 +113,7 @@ public class AuthenticationController(
         }
         catch (Exception ex)
         {
-            return BadRequest(new ErrorModel((uint)ex.HResult));
+            return Unauthorized(new ErrorModel((uint)ex.HResult));
         }
     }
 
@@ -124,8 +124,8 @@ public class AuthenticationController(
     {
         try
         {
-            var userName = request.DeviceId + "-" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(8));
-            var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+            var userName = request.DeviceId + "_" + Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
+            var password = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
             var account = await authenticationClient.RegisterAsync(new RegisterRequest() { Username = userName, EmailAddress = "", Password = password });
             Marshal.ThrowExceptionForHR((int)account.Code); // TODO: fix all of this please god
 
@@ -143,7 +143,7 @@ public class AuthenticationController(
             var certificateCollection = new X509Certificate2Collection();
             certificateCollection.Import(deviceCert.Certificate.ToByteArray());
             var certificate = certificateCollection.First()!;
-            var encodedCertificate = Convert.ToBase64String(certificate.Export(X509ContentType.Pkcs7));
+            var encodedCertificate = Convert.ToBase64String(certificate.Export(X509ContentType.Cert));
 
             var grpcRequest = new SecurityTokensRequest()
             {
@@ -173,7 +173,7 @@ public class AuthenticationController(
             }
 
             var response = new ProvisionDeviceResponseModel(
-                new UserIdentityModel(userName, account.Cid, ((long)account.Puid).ToString(), userName, password),
+                new UserIdentityModel(userName, account.Cid, account.Puid, userName, password),
                 [.. securityTokens],
                 encodedCertificate);
 

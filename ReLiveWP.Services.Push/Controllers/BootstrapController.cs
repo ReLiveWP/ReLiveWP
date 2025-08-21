@@ -7,6 +7,6 @@ public class BootstrapController : Controller
 {
     public IActionResult Index(string version)
     {
-        return Content("Dip: tcps://172.16.0.2:2345\n");
+        return Content("Dip:tcp://172.16.0.2:2345");
     }
 }
