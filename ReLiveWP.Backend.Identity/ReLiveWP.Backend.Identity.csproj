@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Protobuf Include="../protos/authentication.proto" GrpcServices="Server">
       <Link>Protos\authentication.proto</Link>
     </Protobuf>

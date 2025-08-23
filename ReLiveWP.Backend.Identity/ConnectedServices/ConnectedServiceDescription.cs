@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.OAuth;
-using ReLiveWP.Backend.Identity.Data;
+﻿using ReLiveWP.Identity.Data;
 
 namespace ReLiveWP.Backend.Identity.ConnectedServices;
 

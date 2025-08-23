@@ -128,7 +128,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
         var postId = postView.Uri.Rkey;
         var postEntry = new EntryModel()
         {
-            Id = postId,
+            Id = postView.Uri.ToString(),
             EntryType = EntryType.Post,
             Title = "Post",
             Content = post.Text ?? "",

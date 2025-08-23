@@ -7,6 +7,7 @@ using Grpc.Core;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
+using ReLiveWP.Identity.Data;
 
 namespace ReLiveWP.Backend.Identity.ConnectedServices;
 

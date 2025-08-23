@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
+using ReLiveWP.Identity.Data;
 
 namespace ReLiveWP.Backend.Identity.Data;
 

@@ -49,9 +49,6 @@ namespace ReLiveWP.Backend.Identity.Services
                 return new SecurityTokensResponse() { Code = PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD };
             }
 
-            string[] policies = ["LEGACY", "HBI_KEY", "MBI", "MBI_KEY"];
-
-
             var response = new SecurityTokensResponse()
             {
                 Code = S_OK,

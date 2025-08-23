@@ -1,26 +1,16 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Resources;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text.Json.Serialization;
-using System.Threading;
+﻿using System.Text.Json.Serialization;
 using Duende.IdentityModel;
 using Duende.IdentityModel.Client;
-using Duende.IdentityModel.OidcClient;
 using Duende.IdentityModel.OidcClient.DPoP;
 using FishyFlip;
 using FishyFlip.Lexicon.App.Bsky.Actor;
-using FishyFlip.Lexicon.App.Bsky.Feed;
-using FishyFlip.Lexicon.App.Bsky.Labeler;
 using FishyFlip.Lexicon.Com.Atproto.Repo;
 using FishyFlip.Models;
 using FishyFlip.Tools;
 using Grpc.Core;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
+using ReLiveWP.Identity.Data;
 using static Duende.IdentityModel.OidcConstants;
 using Status = Grpc.Core.Status;
 

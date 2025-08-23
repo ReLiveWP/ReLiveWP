@@ -1,19 +1,14 @@
-using System.Net.Http.Headers;
 using System.Text;
-using Duende.IdentityModel.OidcClient.DPoP;
-using Grpc.Core;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity;
 using ReLiveWP.Backend.Identity.ConnectedServices;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
 
-using ServiceCaps = ReLiveWP.Backend.Identity.Data.LiveConnectedServiceCapabilities;
+using ServiceCaps = ReLiveWP.Identity.Data.LiveConnectedServiceCapabilities;
 
 var builder = WebApplication.CreateBuilder(args);
 

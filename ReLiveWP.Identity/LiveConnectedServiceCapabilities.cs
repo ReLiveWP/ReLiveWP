@@ -1,4 +1,4 @@
-﻿namespace ReLiveWP.Backend.Identity.Data;
+﻿namespace ReLiveWP.Identity.Data;
 
 [Flags]
 public enum LiveConnectedServiceCapabilities : uint

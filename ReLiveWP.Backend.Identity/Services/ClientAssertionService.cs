@@ -1,6 +1,5 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Grpc.Core;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ReLiveWP.Backend.Identity.Services

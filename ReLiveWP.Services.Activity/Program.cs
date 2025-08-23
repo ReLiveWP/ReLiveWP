@@ -1,8 +1,5 @@
-using System.Reflection.Metadata;
-using System.Text.Json;
 using Atom.Formatters;
 using ReLiveWP.Identity;
-using ReLiveWP.Services.Activity;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);

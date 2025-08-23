@@ -1,13 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net;
-using System.Threading;
-using Atom.Xml;
-using FishyFlip;
-using FishyFlip.Lexicon.App.Bsky.Actor;
-using FishyFlip.Lexicon.App.Bsky.Embed;
-using FishyFlip.Lexicon.App.Bsky.Feed;
-using FishyFlip.Lexicon.Com.Atproto.Repo;
-using FishyFlip.Models;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,8 +17,8 @@ public class ActivitiesController(
 {
     [HttpPost]
     [Authorize]
-    [Route("/Users({id})/Status")]
     [Produces("application/atom+xml")]
+    [Route("/Users({id})/Status")]
     public async Task<ActionResult> PostAsync(long id, [FromBody] LiveEntry entry)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
@@ -48,9 +38,9 @@ public class ActivitiesController(
 
     [HttpPost]
     [Authorize]
+    [Produces("application/atom+xml")]
     [Route("/Activities", Name = "activities_route")]
     [Route("/Users({provider}:{id})/Activities", Name = "activities_route_for_user")]
-    [Produces("application/atom+xml")]
     public async Task<ActionResult<LiveFeed>> Activities(
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "Count")] int count = 10,
@@ -91,9 +81,9 @@ public class ActivitiesController(
 
     [HttpGet]
     [Authorize]
+    [Produces("application/atom+xml")]
     [Route("/ContactsActivities", Name = "contacts_activities_route")]
     [Route("/Users({provider}:{id})/ContactsActivities", Name = "contacts_activities_route_for_user")]
-    [Produces("application/atom+xml")]
     public async Task<ActionResult<LiveFeed>> ContactsActivities(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
@@ -135,8 +125,8 @@ public class ActivitiesController(
 
     [HttpGet]
     [Authorize]
-    [Route("/Activity({provider}:{id})", Name = "activity")]
     [Produces("application/atom+xml")]
+    [Route("/Activity({provider}:{id})", Name = "activity")]
     public async Task<ActionResult<LiveFeed>> Activity(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
@@ -149,8 +139,8 @@ public class ActivitiesController(
 
     [HttpGet]
     [Authorize]
-    [Route("/Activity({provider}:{id})/Replies", Name = "activity_replies")]
     [Produces("application/atom+xml")]
+    [Route("/Activity({provider}:{id})/Replies", Name = "activity_replies")]
     public async Task<ActionResult<LiveFeed>> ActivityReplies(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",

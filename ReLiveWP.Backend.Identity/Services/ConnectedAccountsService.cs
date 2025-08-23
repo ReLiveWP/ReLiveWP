@@ -9,7 +9,7 @@ using ReLiveWP.Backend.Identity.ConnectedServices;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Services.Grpc;
 
-using ServiceCaps = ReLiveWP.Backend.Identity.Data.LiveConnectedServiceCapabilities;
+using ServiceCaps = ReLiveWP.Identity.Data.LiveConnectedServiceCapabilities;
 
 namespace ReLiveWP.Backend.Identity.Services;
 
@@ -129,7 +129,7 @@ public class ConnectedAccountsService(IJWKProvider jwkProvider,
                 Flags = (ulong)item.Flags,
 
                 UserId = item.ServiceProfile.UserId,
-                //UserName = item.ServiceProfile.Username,
+                UserName = item.ServiceProfile.Username,
                 //EmailAddress = item.ServiceProfile.EmailAddress ?? ""
             });
         }
