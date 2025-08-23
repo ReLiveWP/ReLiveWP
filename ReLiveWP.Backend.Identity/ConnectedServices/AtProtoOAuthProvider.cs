@@ -34,8 +34,8 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
     {
         var description = connectedServices[AtProto.SERVICE_NAME];
 
-        if (handle.StartsWith('@'))
-            handle = handle.Substring(1);
+        while (handle.StartsWith('@'))
+            handle = handle[1..];
 
         logger.LogInformation("Begin stage 1 linking user {UserId} to @{Handle}", user.Id, handle);
 
@@ -43,7 +43,9 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         var codeVerifier = CryptoRandom.CreateUniqueId(32);
         var codeChallenge = codeVerifier.ToSha256();
 
-        var protocol = new ATProtocolBuilder()
+        using var protocol = new ATProtocolBuilder()
+            .EnableAutoRenewSession(false)
+            .WithLogger(atProtoLogger)
             .Build();
 
         var atHandle = new ATHandle(handle);
@@ -52,7 +54,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
 
         logger.LogInformation("Mapped handle @{Handle} to {Did}", atHandle.ToString(), did.ToString());
 
-        var httpClient = httpClientFactory.CreateClient("AtProtoClient");
+        using var httpClient = httpClientFactory.CreateClient("AtProtoClient");
         var didDoc = (await httpClient.GetDidDocAsync(did))
             .HandleResult() ?? throw new RpcException(new Status(StatusCode.NotFound, "No DID doc was found for the given handle"));
 
@@ -116,8 +118,8 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
 
         var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, doc.Issuer!);
 
-        var handler = new ProofTokenMessageHandler(key, httpHandlerFactory.CreateHandler("AtProtoClient"));
-        var client = new HttpClient(handler);
+        using var handler = new ProofTokenMessageHandler(key, httpHandlerFactory.CreateHandler("AtProtoClient"));
+        using var client = new HttpClient(handler);
         var tokenResult = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
         {
             Address = doc.TokenEndpoint,
@@ -136,7 +138,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             throw new RpcException(new Status(StatusCode.Internal, $"{tokenResult.Error} ({tokenResult.ErrorDescription})"));
         }
 
-        var sub = tokenResult!.Json!.Value!.TryGetValue("sub");
+        var sub = tokenResult.Json!.Value!.TryGetValue("sub");
         var subValue = sub!.ToString();
 
         logger.LogInformation("Successfully completed stage 2 account linking for {UserId} to {DID}", state.UserId, subValue);
@@ -152,21 +154,21 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.AuthorizationEndpoint = doc.AuthorizeEndpoint;
         service.TokenEndpoint = doc.TokenEndpoint!;
         service.Issuer = doc.Issuer!;
-
         service.ServiceProfile.UserId = subValue;
 
+        {
+            using var protocol = new ATProtocolBuilder()
+               .EnableAutoRenewSession(false)
+               .WithLogger(atProtoLogger)
+               .Build();
 
-        var protocol = new ATProtocolBuilder()
-           .EnableAutoRenewSession(false)
-           .WithLogger(atProtoLogger)
-           .Build();
+            var profileView = (await protocol.GetProfileAsync(ATDid.Create(service.ServiceProfile.UserId)!))
+                 .HandleResult()!;
 
-        var profileView = (await protocol.GetProfileAsync(ATDid.Create(service.ServiceProfile.UserId)!))
-             .HandleResult()!;
-
-        service.ServiceProfile.Username = $"@{profileView.Handle}";
-        service.ServiceProfile.DisplayName = profileView.DisplayName;
-        service.ServiceProfile.AvatarUrl = profileView.Avatar;
+            service.ServiceProfile.Username = $"@{profileView.Handle}";
+            service.ServiceProfile.DisplayName = profileView.DisplayName;
+            service.ServiceProfile.AvatarUrl = profileView.Avatar;
+        }
 
         return service;
     }
@@ -181,6 +183,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             using var protocol = new ATProtocolBuilder()
                .WithInstanceUrl(new Uri(service.ServiceUrl!))
                .EnableAutoRenewSession(false)
+               .WithServiceEndpointUponLogin(false)
                .WithClientAssertionHandler(async () =>
                {
                    var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, service.Issuer!);
@@ -202,7 +205,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             var session = new Session(describeRepo!.Did!, describeRepo.DidDoc, describeRepo.Handle!, null, service.AccessToken, service.RefreshToken, service.ExpiresAt.DateTime);
             var authSession = new AuthSession(session, key);
 
-            session = (await protocol.AuthenticateWithOAuth2SessionResultAsync(authSession, description.ClientId))
+            session = (await protocol.AuthenticateWithOAuth2SessionResultAsync(authSession, description.ClientId, service.Issuer))
                 .HandleResult()!;
 
             authSession = (await protocol.RefreshAuthSessionResultAsync())

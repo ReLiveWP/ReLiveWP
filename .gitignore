@@ -358,3 +358,5 @@ MigrationBackup/
 /ReLiveWP.Backend.DeviceUpdate/SyncUpdates
 /ReLiveWP.Backend.DeviceUpdate/UpdateRegulation
 /ReLiveWP.Backend.DeviceUpdate/wwwroot
+
+!packages/*

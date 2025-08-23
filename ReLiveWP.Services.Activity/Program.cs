@@ -33,11 +33,7 @@ builder.Services.AddGrpcClient<User.UserClient>(
 var app = builder.Build();
 
 app.UseResponseCompression();
-
 app.UseAuthentication();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

@@ -60,7 +60,8 @@ public class AtProtoProxy
             }
 
             var serviceLock = GetOrCreateLock(service.Id);
-            await serviceLock.WaitAsync(5000, context.RequestAborted);
+            if (!await serviceLock.WaitAsync(10000, context.RequestAborted))
+                return;
 
             try
             {
@@ -81,12 +82,13 @@ public class AtProtoProxy
 
                 // create the DPoP handler using our key
                 var key = await jwkProvider.GetJWK(service.DPoPKeyId!);
+
                 using var innerHandler = factory.CreateHandler();
                 using var tokenHandler = new ProofTokenMessageHandler(key, innerHandler);
                 using var client = new HttpClient(tokenHandler);
 
                 var targetUrl = new Uri(new Uri(service.ServiceUrl!), "/xrpc/" + method + context.Request.QueryString);
-                var targetRequest = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUrl);
+                using var targetRequest = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUrl);
 
                 // copy all headers except our specific ones
                 foreach (var header in context.Request.Headers)

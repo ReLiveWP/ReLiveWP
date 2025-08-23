@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity;
 using ReLiveWP.Backend.Identity.ConnectedServices;
 using ReLiveWP.Backend.Identity.Data;
+using ReLiveWP.Backend.Identity.Grpc;
 using ReLiveWP.Backend.Identity.Services;
 
 using ServiceCaps = ReLiveWP.Identity.Data.LiveConnectedServiceCapabilities;

@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using Atom.Xml;
+using FishyFlip.Lexicon.App.Bsky.Feed;
 using ReLiveWP.Services.Activity.Models;
 
 namespace ReLiveWP.Services.Activity.Services;
@@ -28,6 +30,29 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> 
         }
     }
 
+    private static readonly EntryModel DefaultEntry = new EntryModel()
+    {
+        Id = "NotARealPost",
+        Author = new ProfileModel()
+        {
+            Id = "NotARealUser",
+            DisplayName = "ReLive System",
+            AvatarUrl = "",
+            CanonicalUrl = "",
+            IsMe = true,
+        },
+        ProviderId = "ALL",
+        EntryType = EntryType.Article,
+        Title = "Nothing to see here!",
+        Content = "You've not linked any accounts yet! If you want to see your social feeds here, visit https://link.relivewp.net to get started!",
+        Published = new DateTime(2025, 08, 01),
+        Categories = ["post"],
+        Generator = $"ReLive System",
+        CanonicalUrl = $"",
+        CanReply = false,
+        ReplyCount = 0
+    };
+
     public override string Name => "All Feeds";
     public override string ProviderId => "ALL";
 
@@ -35,28 +60,7 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> 
     {
         if (providers.Count == 0)
         {
-            yield return new EntryModel()
-            {
-                Id = "NotARealPost",
-                Author = new ProfileModel()
-                {
-                    Id = "NotARealUser",
-                    DisplayName = "ReLive System",
-                    AvatarUrl = "",
-                    CanonicalUrl = "",
-                    IsMe = context == ActivitiesContext.My
-                },
-                ProviderId = this.ProviderId,
-                EntryType = EntryType.Article,
-                Title = "Nothing to see here!",
-                Content = "You've not linked any accounts yet! If you want to see your social feeds here, visit http://link.relivewp.net to get started!",
-                Published = new DateTime(2025, 08, 01),
-                Categories = ["post"],
-                Generator = $"ReLive System",
-                CanonicalUrl = $"",
-                CanReply = false,
-                ReplyCount = 0
-            };
+            yield return DefaultEntry;
 
             yield break;
         }
