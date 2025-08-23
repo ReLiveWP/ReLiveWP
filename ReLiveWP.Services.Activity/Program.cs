@@ -32,8 +32,6 @@ builder.Services.AddGrpcClient<User.UserClient>(
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-
 app.UseResponseCompression();
 
 app.UseAuthentication();

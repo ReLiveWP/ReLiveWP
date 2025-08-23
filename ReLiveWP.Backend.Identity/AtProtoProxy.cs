@@ -71,17 +71,12 @@ public class AtProtoProxy
                     var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
                     var succeeded = false;
                     if (!(succeeded = await handler.RefreshTokensAsync(service)))
-                        service.Flags = LiveConnectedServiceFlags.Busted;
+                        service.Flags = LiveConnectedServiceFlags.NeedsRefresh;
                     else
                         service.Flags = LiveConnectedServiceFlags.None;
 
                     dbContext.ConnectedServices.Update(service);
                     await dbContext.SaveChangesAsync();
-
-                    if (!succeeded)
-                    {
-                        throw new InvalidOperationException("Token failed to refresh");
-                    }
                 }
 
                 // create the DPoP handler using our key

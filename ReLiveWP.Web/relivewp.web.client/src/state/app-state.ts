@@ -12,7 +12,8 @@ type AppState = {
     isAuthenticated: Signal<boolean>,
     accentStack: Signal<AccentColor[]>
     accent: Signal<AccentColor>,
-    accentColor: Signal<string>
+    accentColor: Signal<string>,
+    authenticatedFetch: Signal<typeof fetch>
 }
 
 const AppStateContext = createContext<AppState>(null);
@@ -53,11 +54,22 @@ function createAppStateSignals(): AppState {
             blue: "#1BA1E2",
             magenta: "#D80073",
             zune: "#f10da1",
-        })[accent.value])
+        })[accent.value]),
+        authenticatedFetch: computed(() => {
+            return (url, opts) => {
+                const options = { ...opts };
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token.value}`
+                };
+
+                return fetch(url, options);
+            }
+        })
     };
 }
 
-function configureAppStateEffects({ token, user }: AppState) {
+function configureAppStateEffects({ token, user, authenticatedFetch }: AppState) {
     effect(() => {
         const value = token.value;
         if (!value) {
@@ -71,11 +83,11 @@ function configureAppStateEffects({ token, user }: AppState) {
 
         (async () => {
             try {
-                const response = await fetch(ENDPOINT_GET_USER, {
+                const _fetch = authenticatedFetch.value;
+                const response = await _fetch(ENDPOINT_GET_USER, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
-                        'Authorization': `Bearer ${value}`
                     }
                 });
 

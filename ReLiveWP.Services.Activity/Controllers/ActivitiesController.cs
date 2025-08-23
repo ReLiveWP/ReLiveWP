@@ -1,3 +1,4 @@
+using FishyFlip.Lexicon.Com.Whtwnd.Blog;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -63,13 +64,13 @@ public class ActivitiesController(
             ]
         };
 
-        var provider = await GetProtocolAsync();
+        var provider = await GetAllFeedsProviderAsync();
         if (provider == null)
             return feed;
 
         await foreach (var item in provider.GetEntriesAsync(ActivitiesContext.My, count))
         {
-            var liveEntry = CreatePostEntry(provider, item, author);
+            var liveEntry = CreatePostEntry(item, author);
             if (liveEntry == null)
                 continue;
 
@@ -103,17 +104,20 @@ public class ActivitiesController(
             Author = author,
             Links =
             [
-                new Link(this.Url.Link("contacts_activities_route", new { })),
+                new Link(this.Url.Link("contacts_activities_route_for_user", new { provider = "WL", id = userInfo.Puid.ToString() })),
             ]
         };
 
-        var provider = await GetProtocolAsync();
+        var provider = await GetAllFeedsProviderAsync();
         if (provider == null)
+        {
+            // TODO: add a system thing to say "link accounts"
             return feed;
+        }
 
         await foreach (var item in provider.GetEntriesAsync(type == "media" ? ActivitiesContext.Media : ActivitiesContext.Contacts, count))
         {
-            var liveEntry = CreatePostEntry(provider, item, author);
+            var liveEntry = CreatePostEntry(item, author);
             if (liveEntry == null)
                 continue;
 
@@ -151,22 +155,27 @@ public class ActivitiesController(
         return NoContent();
     }
 
-    private async Task<BlueskyActivityProvider?> GetProtocolAsync()
+    private async Task<ActivityProviderBase?> GetAllFeedsProviderAsync()
     {
         var auth = Request.Headers.Authorization.ToString();
         var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
 
         var headers = new Metadata() { { "Authorization", authHeader } };
         var servicesResponse = await connectedServices.GetConnectionsAsync(new ConnectionsRequest(), headers);
-        var service = servicesResponse.Connections.FirstOrDefault(s => s.Service == "atproto");
-        if (service is null)
+
+        List<BlueskyActivityProvider> providers = [];
+        foreach (var connection in servicesResponse.Connections)
         {
-            return null;
+            if (connection.Service == "atproto")
+            {
+                providers.Add(ActivatorUtilities.CreateInstance<BlueskyActivityProvider>(serviceProvider, authHeader, connection));
+            }
         }
 
-        return ActivatorUtilities.CreateInstance<BlueskyActivityProvider>(serviceProvider, authHeader, service);
+        return new FeedCoalescingActivityProvider([.. providers]);
     }
 
+    // TODO: move this to an adapter class
     private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo)
     {
         return new LiveAuthor()
@@ -178,12 +187,12 @@ public class ActivitiesController(
         };
     }
 
-    private LiveEntry? CreatePostEntry(ActivityProviderBase provider, EntryModel entryModel, LiveAuthor meAuthor)
+    private LiveEntry? CreatePostEntry(EntryModel entryModel, LiveAuthor meAuthor)
     {
         var entryAuthor = entryModel.Author;
         var author = new LiveAuthor()
         {
-            Id = $"{provider.ProviderId}:{entryAuthor.Id}", // HORRIBLE
+            //Id = $"{provider.ProviderId}:{entryAuthor.Id}", // HORRIBLE
             Name = entryAuthor.DisplayName,
             Url = entryAuthor.CanonicalUrl,
             Links =
@@ -192,7 +201,7 @@ public class ActivitiesController(
             ]
         };
 
-        var activityInfo = new { provider = provider.ProviderId, id = entryModel.Id };
+        var activityInfo = new { provider = entryModel.ProviderId, id = entryModel.Id };
         var id = this.Url.Link("activity", activityInfo)!;
 
         var postEntry = new LiveEntry()
@@ -214,25 +223,31 @@ public class ActivitiesController(
             Categories = [.. entryModel.Categories.Select(c => new LiveCategory(c))],
             Generator = entryModel.Generator,
 
-            ActivityVerb = "http://activitystrea.ms/schema/1.0/post",
-            Activities =
+            ActivityVerb = entryModel.EntryType switch
             {
-                new()
-                {
-                    ObjectType = "http://activitystrea.ms/schema/1.0/status",
-                    Id = id,
-                    Title = entryModel.Title,
-                    Content = entryModel.Content,
-                }
+                EntryType.Article => "http://activitystrea.ms/schema/1.0/article",
+                _ => "http://activitystrea.ms/schema/1.0/post",
             },
-            ActivityId = entryModel.Id,
+            Activities = [],
 
+            ActivityId = entryModel.Id,
             AppId = "6262816084389410",
             ChangeType = "0",
             SourceId = "WL",
             ServiceActivityId = entryModel.Id,
             Reactions = []
         };
+
+        if (entryModel.EntryType == EntryType.Post)
+        {
+            postEntry.Activities.Add(new()
+            {
+                ObjectType = "http://activitystrea.ms/schema/1.0/status",
+                Id = id,
+                Title = entryModel.Title,
+                Content = entryModel.Content,
+            });
+        }
 
         foreach (var item in entryModel.AdditionalActivities)
         {

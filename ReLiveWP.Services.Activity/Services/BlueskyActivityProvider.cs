@@ -9,11 +9,6 @@ using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Activity.Services;
 
-public enum ActivitiesContext
-{
-    My, Contacts, Media
-}
-
 public class BlueskyActivityProvider : ActivityProviderBase
 {
     private const string PopularWithFriendsUri = "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/with-friends";
@@ -21,6 +16,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
 
     private readonly ATProtocol protocol;
     private readonly ATDid did;
+    private readonly string handle;
 
     private readonly IConfiguration configuration;
     private readonly ILogger<BlueskyActivityProvider> logger;
@@ -38,6 +34,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
         this.configuration = configuration;
         this.logger = logger;
 
+        this.handle = atprotoConnection.UserName;
         this.did = ATDid.Create(atprotoConnection.UserId)!;
         Debug.Assert(this.did != null);
 
@@ -128,14 +125,15 @@ public class BlueskyActivityProvider : ActivityProviderBase
         var postId = postView.Uri.Rkey;
         var postEntry = new EntryModel()
         {
-            Id = postView.Uri.ToString(),
+            Id = $"{postView.Uri.Identity}+{postView.Uri.Collection}+{postView.Uri.Rkey}",
+            ProviderId = this.ProviderId,
             EntryType = EntryType.Post,
             Title = "Post",
             Content = post.Text ?? "",
             Published = post.CreatedAt ?? DateTime.Now,
             Author = author,
             Categories = ["status"],
-            Generator = "Bluesky",
+            Generator = $"via. {this.handle}",
             CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}/{postId}",
             CanReply = !(postView.Viewer?.ReplyDisabled ?? false),
             ReplyCount = (int)(postView.ReplyCount ?? 0),

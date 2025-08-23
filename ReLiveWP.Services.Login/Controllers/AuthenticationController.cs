@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using Google.Protobuf;
+using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
@@ -17,13 +18,15 @@ public record UserModel(string Id, string Cid, string Puid, string Username, str
 public record UserIdentityModel(string Id, string Cid, long Puid, string Username, string Password);
 public record ProvisionDeviceRequestModel(string DeviceId, string Csr);
 public record ProvisionDeviceResponseModel(UserIdentityModel Identity, SecurityTokenModel[] SecurityTokens, string DeviceCert);
+public record ConnectionModel(string Id, string Url, string Name);
+public record ConnectionModels(Dictionary<string, List<ConnectionModel>> Connections);
 
 [ApiController]
 [Route("auth/[action]/{id?}")]
-public class AuthenticationController(
-    ILogger<AuthenticationController> logger,
+public class AuthenticationController( 
     User.UserClient userClient,
     Authentication.AuthenticationClient authenticationClient,
+    ConnectedServices.ConnectedServicesClient connectedServicesClient,
     DeviceRegistration.DeviceRegistrationClient deviceRegistrationClient,
     ClientProvisioning.ClientProvisioningClient clientProvisioningClient) : ControllerBase
 {
@@ -42,6 +45,30 @@ public class AuthenticationController(
             return NotFound(); // this is pretty bad, maybe 500 is better?
 
         return new UserModel(User.Id()!, user.Cid, user.Puid.ToString(), user.Username, user.EmailAddress);
+    }
+
+    [Authorize]
+    [Route("/auth/user/@me/linked-accounts")]
+    public async Task<ActionResult<ConnectionModels>> GetLinkedAccounts()
+    {
+        var auth = Request.Headers.Authorization.ToString();
+        var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
+        var connections = await connectedServicesClient.GetConnectionsAsync(new ConnectionsRequest(), new Metadata() { { "Authorization", authHeader } });
+        if (connections == null)
+            return NotFound(); // this is pretty bad, maybe 500 is better?
+
+        var connectionModels = new Dictionary<string, List<ConnectionModel>>();
+        foreach (var connection in connections.Connections)
+        {
+            if (!connectionModels.TryGetValue(connection.Service, out var connectionList))
+            {
+                connectionModels[connection.Service] = connectionList = [];
+            }
+
+            connectionList.Add(new ConnectionModel(connection.Id, connection.ServiceUrl, connection.UserName));
+        }
+
+        return new ConnectionModels(connectionModels);
     }
 
 

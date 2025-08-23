@@ -1,7 +1,7 @@
-import { AccountType } from "../linked-acounts";
+import { AccountType } from "../state/linked-accounts";
 import { AccountLinkEntry } from "./AccountLinkEntry";
 
-export const AccountTypeGroup = ({ group }: { group: [string, AccountType[]] }) => (
+const AccountTypeGroup = ({ group }: { group: [string, AccountType[]] }) => (
     <>
         <h4>{group[0]}</h4>
         <dl>
@@ -9,3 +9,5 @@ export const AccountTypeGroup = ({ group }: { group: [string, AccountType[]] }) 
         </dl>
     </>
 );
+
+export default AccountTypeGroup;

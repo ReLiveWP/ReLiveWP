@@ -1,8 +1,7 @@
 ﻿
-namespace ReLiveWP.Backend.Identity.Services
+namespace ReLiveWP.Backend.Identity.Services;
+
+public interface IJWKProvider
 {
-    public interface IJWKProvider
-    {
-        Task<string> GetJWK(string keyId);
-    }
+    Task<string> GetJWK(string keyId);
 }

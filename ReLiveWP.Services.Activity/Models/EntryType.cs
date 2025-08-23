@@ -2,5 +2,5 @@
 
 public enum EntryType
 {
-    Post
+    Post, Article
 }

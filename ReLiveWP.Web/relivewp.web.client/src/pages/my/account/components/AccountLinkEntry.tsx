@@ -1,5 +1,6 @@
-import { AccountInfo, AccountType, AccountTypes, linkInfo } from "../linked-acounts";
-import { AddAnotherButton } from "./AddAnotherButton";
+import { useContext } from "preact/hooks";
+import { AddAccountButton } from "./AddAnotherButton";
+import { AccountInfo, AccountType, AccountTypes, LinkedAccountsContext } from "../state/linked-accounts";
 
 
 export const AccountLinkInfo = ({ accountInfo }: { accountInfo: AccountInfo }) => (
@@ -11,8 +12,9 @@ export const AccountLinkInfo = ({ accountInfo }: { accountInfo: AccountInfo }) =
 
 
 export const AccountLinkEntry = ({ type }: { type: AccountType; }) => {
+    const { linkedAccounts } = useContext(LinkedAccountsContext);
     const { name, icon: Icon, allowsMany } = AccountTypes[type];
-    const accountInfo = linkInfo[type];
+    const accountInfo = linkedAccounts.value.connections[type];
     const accounts = accountInfo
         ?.map(a => <AccountLinkInfo key={name + '_' + a.name} accountInfo={a} />);
 
@@ -22,10 +24,10 @@ export const AccountLinkEntry = ({ type }: { type: AccountType; }) => {
             {accounts?.length ? (
                 <>
                     {accounts}
-                    {allowsMany ? (<AddAnotherButton service={type} />) : undefined}
+                    {allowsMany ? (<AddAccountButton service={type} text="add another" />) : undefined}
                 </>
             ) : (
-                <dd><a>link account</a></dd>
+                <AddAccountButton service={type} text="link account" />
             )}
         </>
     );

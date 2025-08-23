@@ -2,6 +2,11 @@
 
 namespace ReLiveWP.Services.Activity.Services;
 
+public enum ActivitiesContext
+{
+    My, Contacts, Media
+}
+
 public abstract class ActivityProviderBase
 {
     public abstract string Name { get; }

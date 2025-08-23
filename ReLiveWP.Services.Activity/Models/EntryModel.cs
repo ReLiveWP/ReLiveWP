@@ -3,6 +3,7 @@
 public class EntryModel
 {
     public required string Id { get; set; }
+    public required string ProviderId { get; set; }
     public required EntryType EntryType { get; set; } = EntryType.Post;
     public required ProfileModel Author { get; set; }
     public required DateTimeOffset Published { get; set; }
