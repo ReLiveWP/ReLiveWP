@@ -1,9 +1,16 @@
+using System.Reflection.Metadata;
 using System.Text.Json;
 using Atom.Formatters;
 using ReLiveWP.Identity;
+using ReLiveWP.Services.Activity;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddResponseCompression((o) =>
+{
+    o.MimeTypes = ["application/atom+xml", .. o.MimeTypes];
+});
 
 builder.Services.AddControllers(c =>
 {
@@ -29,6 +36,8 @@ builder.Services.AddGrpcClient<User.UserClient>(
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+
+app.UseResponseCompression();
 
 app.UseAuthentication();
 

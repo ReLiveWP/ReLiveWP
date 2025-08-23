@@ -2,4 +2,4 @@
 
 namespace ReLiveWP.Services.Login.Models;
 
-public record SecurityTokensResponseModel(ulong Puid, string Cid, string Username, string EmailAddress, SecurityTokenModel[] SecurityTokens);
+public record SecurityTokensResponseModel(long Puid, string Cid, string Username, string EmailAddress, SecurityTokenModel[] SecurityTokens);

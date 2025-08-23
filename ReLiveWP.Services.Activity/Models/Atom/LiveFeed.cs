@@ -2,7 +2,7 @@
 using Atom.Attributes;
 using Atom.Xml;
 
-namespace ReLiveWP.Services.Activity.Models;
+namespace ReLiveWP.Services.Activity.Models.Atom;
 
 [NamespacePrefix("live", Constants.Live_Namespace)]
 [NamespacePrefix("activity", Constants.ActivityStreams_Namespace)]
@@ -10,7 +10,7 @@ namespace ReLiveWP.Services.Activity.Models;
 [NamespacePrefix("media", Constants.Media_Namespace)]
 [XmlInclude(typeof(LiveAuthor))]
 [XmlInclude(typeof(LiveEntry))]
-[XmlRoot(ElementName = "feed", Namespace = Atom.Constants.ATOM_NAMESPACE)]
+[XmlRoot(ElementName = "feed", Namespace = Constants.Atom_Namespace)]
 public class LiveFeed : Feed
 {
 }

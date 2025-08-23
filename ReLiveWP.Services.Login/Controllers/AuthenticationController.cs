@@ -14,8 +14,7 @@ namespace ReLiveWP.Services.Login.Controllers;
 record class ErrorModel(uint ErrorCode);
 public record CreateAccountModel(string Username, string Password, string EmailAddress);
 public record UserModel(string Id, string Cid, string Puid, string Username, string EmailAddress);
-public record UserIdentityModel(string Id, string Cid, ulong Puid, string Username, string Password);
-
+public record UserIdentityModel(string Id, string Cid, long Puid, string Username, string Password);
 public record ProvisionDeviceRequestModel(string DeviceId, string Csr);
 public record ProvisionDeviceResponseModel(UserIdentityModel Identity, SecurityTokenModel[] SecurityTokens, string DeviceCert);
 

@@ -35,7 +35,7 @@ public class AccountController(User.UserClient userService, Authentication.Authe
 
         var resp = new SignInResponse();
         resp.AccountInfo.ZuneTag = userInfo.Username;
-        resp.AccountInfo.Xuid = userInfo.Puid;
+        resp.AccountInfo.Xuid = (ulong)userInfo.Puid;
         resp.AccountInfo.UserReadID = new Guid(uid);
         resp.AccountInfo.UserWriteID = new Guid(uid);
         resp.AccountInfo.Locale = "en-GB";

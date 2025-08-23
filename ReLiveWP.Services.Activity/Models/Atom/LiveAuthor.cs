@@ -1,9 +1,9 @@
 ﻿using System.Xml.Serialization;
 using Atom.Xml;
 
-namespace ReLiveWP.Services.Activity.Models;
+namespace ReLiveWP.Services.Activity.Models.Atom;
 
-[XmlRoot("author", Namespace = Atom.Constants.ATOM_NAMESPACE)]
+[XmlRoot("author", Namespace = Constants.Atom_Namespace)]
 public class LiveAuthor : Author
 {
     [XmlElement("id", Namespace = Constants.Live_Namespace)]

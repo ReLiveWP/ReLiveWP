@@ -56,7 +56,7 @@ namespace ReLiveWP.Backend.Identity.Services
             {
                 Code = S_OK,
                 Cid = user.Cid,
-                Puid = (ulong)user.Puid,
+                Puid = user.Puid,
                 Username = user.UserName,
                 EmailAddress = user.Email
             };
@@ -103,13 +103,13 @@ namespace ReLiveWP.Backend.Identity.Services
             var node = BitConverter.ToUInt32(bytes, 12);
 
             var cid = chars[19..23] + chars[24..36];
-            var puid = ((ulong)time_low << 32) | node;
+            var puid = (long)(((ulong)time_low << 32) | node);
 
             var user = new LiveUser()
             {
                 Id = userId,
                 Cid = cid,
-                Puid = (long)puid,
+                Puid = puid,
                 UserName = request.Username,
                 Email = request.EmailAddress,
             };

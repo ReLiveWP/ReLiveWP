@@ -40,6 +40,9 @@ namespace Atom.Xml
             set => Updated = DateTime.Parse(value, null, System.Globalization.DateTimeStyles.AdjustToUniversal);
         }
 
+        [XmlAttribute(AttributeName = "count", Namespace = "http://purl.org/syndication/thread/1.0")]
+        public string Count { get; set; }
+
         [XmlAttribute(AttributeName = "id")]
 #if NETSTANDARD
         [System.ComponentModel.DataAnnotations.Key]

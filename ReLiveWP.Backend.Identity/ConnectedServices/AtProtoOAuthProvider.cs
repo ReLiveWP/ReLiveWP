@@ -188,7 +188,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             var key = await jwkProvider.GetJWK("Key1");
             var description = connectedServices[AtProto.SERVICE_NAME];
 
-            var protocol = new ATProtocolBuilder()
+            using var protocol = new ATProtocolBuilder()
                .WithInstanceUrl(new Uri(service.ServiceUrl!))
                .EnableAutoRenewSession(false)
                .WithClientAssertionHandler(async () =>
@@ -203,6 +203,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             {
                 service.AccessToken = e.Session.Session.AccessJwt;
                 service.RefreshToken = e.Session.Session.RefreshJwt;
+                service.ExpiresAt = e.Session.Session.ExpiresIn;
             };
 
             var describeRepo = (await protocol.DescribeRepoAsync(ATDid.Create(service.ServiceProfile.UserId)!))
@@ -225,6 +226,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to refresh AtProto token.");
             return false;
         }
     }

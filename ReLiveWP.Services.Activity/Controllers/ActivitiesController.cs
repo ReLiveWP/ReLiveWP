@@ -13,18 +13,18 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Activity.Models;
+using ReLiveWP.Services.Activity.Models.Atom;
+using ReLiveWP.Services.Activity.Services;
 using ReLiveWP.Services.Grpc;
 using Link = Atom.Xml.Link;
 
 namespace ReLiveWP.Services.Activity.Controllers;
 
 public class ActivitiesController(
-    ILogger<ActivitiesController> logger,
-    ILogger<ATProtocol> atprotoLogger,
+    IServiceProvider serviceProvider,
     User.UserClient userClient,
     ConnectedServices.ConnectedServicesClient connectedServices) : Controller
 {
-
     [HttpPost]
     [Authorize]
     [Route("/Users({id})/Status")]
@@ -32,75 +32,58 @@ public class ActivitiesController(
     public async Task<ActionResult> PostAsync(long id, [FromBody] LiveEntry entry)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
-        var (protocol, did) = await GetProtocolAsync();
+        //var (protocol, did) = await GetProtocolAsync();
 
-        var record = new Post();
-        record.Text = entry.Title.Value;
-        record.CreatedAt = DateTime.UtcNow;
+        //var record = new Post
+        //{
+        //    Text = entry.Title.Value,
+        //    CreatedAt = DateTime.UtcNow
+        //};
 
-         _ = (await protocol.CreateRecordAsync(did, "app.bsky.feed.post", record, cancellationToken: HttpContext.RequestAborted))
-            .HandleResult();
+        //_ = (await protocol.CreateRecordAsync(did, "app.bsky.feed.post", record, cancellationToken: HttpContext.RequestAborted))
+        //    .HandleResult();
 
         return NoContent();
     }
 
     [HttpPost]
     [Authorize]
-    [Route("/Activities")]
+    [Route("/Activities", Name = "activities_route")]
+    [Route("/Users({provider}:{id})/Activities", Name = "activities_route_for_user")]
     [Produces("application/atom+xml")]
     public async Task<ActionResult<LiveFeed>> Activities(
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "Count")] int count = 10,
+        [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
-        var (protocol, did) = await GetProtocolAsync();
-        var atProfile = (await protocol.Actor.GetProfileAsync(did))
-            .HandleResult();
-
-        if (atProfile == null)
-            return NotFound();
-
         var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
-        var author = CreateAuthor(atProfile, userInfo);
+        var author = CreateAuthor(userInfo);
         var feed = new LiveFeed()
         {
             Title = $"What's New with {author.Name}",
-            Id = $"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/Activities",
+            Id = this.Url.Link("activities_route", new { }),
             Updated = DateTime.UtcNow,
             Author = author,
             Links =
             [
-                new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/Activities")
+                new Link(this.Url.Link("activities_route", new { })),
             ]
         };
 
-        var cursor = "";
+        var provider = await GetProtocolAsync();
+        if (provider == null)
+            return feed;
 
-        do
+        await foreach (var item in provider.GetEntriesAsync(ActivitiesContext.My, count))
         {
-            var atFeed = (await protocol.Feed.GetAuthorFeedAsync(did, limit: Math.Max(10, count - feed.Entries.Count), cursor: cursor, includePins: false))
-                .HandleResult()!;
+            var liveEntry = CreatePostEntry(provider, item, author);
+            if (liveEntry == null)
+                continue;
 
-            cursor = WebUtility.UrlEncode(atFeed.Cursor);
-
-            foreach (var feedViewPost in atFeed.Feed)
-            {
-                if (feed.Entries.Count == count)
-                    break;
-
-                var entry = CreatePostEntry(feedViewPost, author);
-                if (entry == null)
-                    continue;
-
-                feed.Entries.Add(entry);
-            }
-        } while (feed.Entries.Count < count && !string.IsNullOrWhiteSpace(cursor));
-
-        if (!string.IsNullOrWhiteSpace(cursor))
-        {
-            feed.Links.Add(new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/Activities?cursor={cursor}", "next"));
+            feed.Entries.Add(liveEntry);
         }
 
         return feed;
@@ -108,179 +91,171 @@ public class ActivitiesController(
 
     [HttpGet]
     [Authorize]
-    [Route("/ContactsActivities")]
+    [Route("/ContactsActivities", Name = "contacts_activities_route")]
+    [Route("/Users({provider}:{id})/ContactsActivities", Name = "contacts_activities_route_for_user")]
     [Produces("application/atom+xml")]
     public async Task<ActionResult<LiveFeed>> ContactsActivities(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
+        [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
-        var (atProto, did) = await GetProtocolAsync();
-        var atProfile = (await atProto.Actor.GetProfileAsync(did))
-            .HandleResult();
-
-        if (atProfile == null)
-            return NotFound();
-
         var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
-        var author = CreateAuthor(atProfile, userInfo);
+        var author = CreateAuthor(userInfo);
         var feed = new LiveFeed()
         {
             Title = $"What's New with {author.Name}",
-            Id = $"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/ContactsActivities",
+            Id = this.Url.Link("contacts_activities_route", new { }),
             Updated = DateTime.UtcNow,
             Author = author,
             Links =
             [
-                new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid}')/ContactsActivities"),
+                new Link(this.Url.Link("contacts_activities_route", new { })),
             ]
         };
 
-        var cursor = "";
-        do
+        var provider = await GetProtocolAsync();
+        if (provider == null)
+            return feed;
+
+        await foreach (var item in provider.GetEntriesAsync(type == "media" ? ActivitiesContext.Media : ActivitiesContext.Contacts, count))
         {
-            var atFeed = (await atProto.GetTimelineAsync(limit: Math.Max(10, count - feed.Entries.Count), cursor: cursor))
-                .HandleResult()!;
+            var liveEntry = CreatePostEntry(provider, item, author);
+            if (liveEntry == null)
+                continue;
 
-            cursor = WebUtility.UrlEncode(atFeed.Cursor);
-
-            foreach (var feedViewPost in atFeed.Feed)
-            {
-                if (feed.Entries.Count == count)
-                    break;
-
-                var entry = CreatePostEntry(feedViewPost);
-                if (entry == null)
-                    continue;
-
-                feed.Entries.Add(entry);
-            }
-        } while (feed.Entries.Count < count && !string.IsNullOrWhiteSpace(cursor));
-
-        if (!string.IsNullOrWhiteSpace(cursor))
-        {
-            feed.Links.Add(new Link($"https://api.live.int.relivewp.net/Users('WL:{(long)userInfo.Puid})/ContactsActivities?cursor={cursor}", "next"));
+            feed.Entries.Add(liveEntry);
         }
 
         return feed;
     }
 
+    [HttpGet]
+    [Authorize]
+    [Route("/Activity({provider}:{id})", Name = "activity")]
+    [Produces("application/atom+xml")]
+    public async Task<ActionResult<LiveFeed>> Activity(
+        [FromQuery(Name = "Count")] int count = 10,
+        [FromQuery(Name = "Source")] string source = "WL",
+        [FromQuery(Name = "Type")] string type = "all",
+        [FromQuery(Name = "$format")] string format = "atom10",
+        [FromQuery(Name = "$xslt")] string? xslt = null)
+    {
+        return NoContent();
+    }
 
-    private async Task<(ATProtocol protocol, ATDid did)> GetProtocolAsync()
+    [HttpGet]
+    [Authorize]
+    [Route("/Activity({provider}:{id})/Replies", Name = "activity_replies")]
+    [Produces("application/atom+xml")]
+    public async Task<ActionResult<LiveFeed>> ActivityReplies(
+        [FromQuery(Name = "Count")] int count = 10,
+        [FromQuery(Name = "Source")] string source = "WL",
+        [FromQuery(Name = "Type")] string type = "all",
+        [FromQuery(Name = "$format")] string format = "atom10",
+        [FromQuery(Name = "$xslt")] string? xslt = null)
+    {
+        return NoContent();
+    }
+
+    private async Task<BlueskyActivityProvider?> GetProtocolAsync()
     {
         var auth = Request.Headers.Authorization.ToString();
-        var headers = new Metadata() { { "Authorization", "Bearer " + auth.Substring(auth.IndexOf(' ')) } };
+        var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
 
-        var connectedServicesRequest = new ConnectionsRequest() { };
-        var servicesResponse = await connectedServices.GetConnectionsAsync(connectedServicesRequest, headers);
-        if (servicesResponse.Connections.Count == 0)
-        {
-            // TODO: http response code exception
-            throw new FileNotFoundException();
-        }
-
+        var headers = new Metadata() { { "Authorization", authHeader } };
+        var servicesResponse = await connectedServices.GetConnectionsAsync(new ConnectionsRequest(), headers);
         var service = servicesResponse.Connections.FirstOrDefault(s => s.Service == "atproto");
         if (service is null)
         {
-            // TODO: http response code exception
-            throw new FileNotFoundException();
+            return null;
         }
 
-        var protocol = new ATProtocolBuilder()
-             .WithInstanceUrl(new Uri("http://127.0.0.4:5001"))
-             .WithLogger(atprotoLogger)
-             .EnableAutoRenewSession(false)
-             .WithServiceEndpointUponLogin(false)
-             .Build();
-
-        protocol.Client.DefaultRequestHeaders.Add("Authorization", string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' '))));
-        protocol.Client.DefaultRequestHeaders.Add("X-Connection-Id", service.Id);
-
-        return (protocol, ATDid.Create(service.UserId)!);
+        return ActivatorUtilities.CreateInstance<BlueskyActivityProvider>(serviceProvider, authHeader, service);
     }
 
-    private static LiveAuthor CreateAuthor(ProfileViewDetailed atProfile, GetUserInfoResponse userInfo)
+    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo)
     {
         return new LiveAuthor()
         {
             Id = $"{(long)userInfo.Puid}",
-            Name = atProfile.DisplayName ?? $"@{atProfile.Handle}",
-            Url = $"https://bsky.app/profile/{atProfile.Did}",
-            Links =
-            [
-                new Link(atProfile.Avatar, "preview", "image/jpeg")
-            ]
+            Name = userInfo.Username,
+            Url = this.Url.Link("activities_route_for_user", new { id = userInfo.Puid, provider = "WL" }),
+            Links = []
         };
     }
 
-    private static LiveEntry? CreatePostEntry(FeedViewPost feedViewPost, LiveAuthor? author = null)
+    private LiveEntry? CreatePostEntry(ActivityProviderBase provider, EntryModel entryModel, LiveAuthor meAuthor)
     {
-        if (feedViewPost.Post is not { Record: Post post } postView || feedViewPost.Reply is { })
-            return null;
-
-        author ??= new LiveAuthor()
+        var entryAuthor = entryModel.Author;
+        var author = new LiveAuthor()
         {
-            Id = "-" + postView.Author.Did.ToString().GetHashCode(), // HORRIBLE
-            Name = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,
-            Url = $"https://bsky.app/profile/{postView.Author.Did}",
+            Id = $"{provider.ProviderId}:{entryAuthor.Id}", // HORRIBLE
+            Name = entryAuthor.DisplayName,
+            Url = entryAuthor.CanonicalUrl,
             Links =
             [
-                new Link(postView.Author.Avatar, "preview", "image/jpeg")
+                new Link(entryAuthor.AvatarUrl, "preview", "image/jpeg")
             ]
         };
 
-        var postId = postView.Uri.Rkey;
+        var activityInfo = new { provider = provider.ProviderId, id = entryModel.Id };
+        var id = this.Url.Link("activity", activityInfo)!;
+
         var postEntry = new LiveEntry()
         {
-            Id = $"https://api.live.int.relivewp.net/Users('WL:{author.Id}')/Activities('WL:{WebUtility.UrlEncode(postId)}')",
-            Title = "Post",
-            Summary = post.Text,
-            Published = post.CreatedAt,
-            Updated = post.CreatedAt,
-            Author = author,
+            Id = id,
+            Title = entryModel.Title,
+            Summary = entryModel.Content,
+            Published = entryModel.Published.UtcDateTime,
+            Updated = entryModel.Published.UtcDateTime,
+            Author = entryAuthor.IsMe ? meAuthor : author,
             Links =
             [
-                new Link(author.Url + $"/post/{WebUtility.UrlEncode(postId)}", "alternate", "text/html"),
+                new Link(this.Url.Link("activity_replies", activityInfo), "replies", "application/atom+xml")
+                {
+                    Count = entryModel.ReplyCount?.ToString() ?? ""
+                },
+                new Link(entryModel.CanonicalUrl, "alternate", "text/html"),
             ],
-            Categories = [new("status")],
-            Generator = "Bluesky",
+            Categories = [.. entryModel.Categories.Select(c => new LiveCategory(c))],
+            Generator = entryModel.Generator,
+
             ActivityVerb = "http://activitystrea.ms/schema/1.0/post",
             Activities =
             {
                 new()
                 {
                     ObjectType = "http://activitystrea.ms/schema/1.0/status",
-                    Id = $"https://api.live.int.relivewp.net/Users('WL:{author.Id}')/Activities('WL:{WebUtility.UrlEncode(postId)}')",
-                    Title = "Post",
-                    Content = post.Text,
+                    Id = id,
+                    Title = entryModel.Title,
+                    Content = entryModel.Content,
                 }
             },
-            ActivityId = postId,
+            ActivityId = entryModel.Id,
+
             AppId = "6262816084389410",
-            ChangeType = "3",
+            ChangeType = "0",
             SourceId = "WL",
-            ServiceActivityId = postId,
-            Reactions = postView.ReplyCount?.ToString() ?? ""
+            ServiceActivityId = entryModel.Id,
+            Reactions = []
         };
 
-        if (postView.Embed is ViewImages viewImages)
+        foreach (var item in entryModel.AdditionalActivities)
         {
-            postEntry.Categories.Add(new Category("media"));
-            postEntry.Categories.Add(new Category("photo"));
-
-            foreach (var image in viewImages.Images)
+            if (item is PhotoActivityModel photo)
             {
-                postEntry.Activities.Add(new ActivityObject()
+                postEntry.Activities.Add(new LiveActivityObject()
                 {
                     ObjectType = "http://activitystrea.ms/schema/1.0/photo",
-                    Id = image.Fullsize,
+                    Id = photo.CanonicalUrl,
                     Links =
                     [
-                        new Link(image.Thumb, "preview", image.Type),
-                        new Link(image.Fullsize, "alternate", image.Type),
+                        new Link(photo.ThumbnailUrl, "preview", photo.MimeType),
+                        new Link(photo.FullSizeUrl, "alternate", photo.MimeType)
                     ]
                 });
             }

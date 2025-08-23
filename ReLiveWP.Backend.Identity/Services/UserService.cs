@@ -15,7 +15,7 @@ public class UserService(UserManager<LiveUser> userManager) : User.UserBase
         var response = new GetUserInfoResponse()
         {
             Cid = user.Cid,
-            Puid = (ulong)user.Puid,
+            Puid = user.Puid,
             Username = user.UserName,
             EmailAddress = user.Email
         };
