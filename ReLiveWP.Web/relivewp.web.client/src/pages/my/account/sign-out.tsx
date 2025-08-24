@@ -1,6 +1,6 @@
-import { useAppState } from "../../../state/app-state";
-
 import "./sign-out.scss"
+
+import { useAppState } from "~/state/app-state";
 
 export default function SignOut() {
     const { token } = useAppState();

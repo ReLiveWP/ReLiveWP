@@ -1,9 +1,10 @@
+import "./link-account-dialog.scss"
+
+import { Signal, useSignal } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks"
 
-import "./link-account-dialog.scss"
-import { useAppState } from "../../../../state/app-state";
-import { ENDPOINT_BEGIN_ACCOUNT_LINKING } from "../../../../util/endpoints";
-import { type Signal, useSignal, useSignalEffect } from "@preact/signals";
+import { ENDPOINT_BEGIN_ACCOUNT_LINKING } from "~/util/endpoints";
+import { useAppState } from "~/state/app-state";
 
 type Stage = 1 | 2 | 3 | 4 | -1;
 

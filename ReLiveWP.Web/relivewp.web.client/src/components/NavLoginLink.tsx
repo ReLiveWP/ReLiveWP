@@ -1,6 +1,6 @@
-import { Show } from "@preact/signals/utils";
-import { useAppState } from "../state/app-state";
 import Link from "./Link";
+import { Show } from "@preact/signals/utils";
+import { useAppState } from "~/state/app-state";
 
 const NavLoginLink = () => {
     const appState = useAppState();

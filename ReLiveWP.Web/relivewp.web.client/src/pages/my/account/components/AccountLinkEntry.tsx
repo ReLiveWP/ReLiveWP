@@ -1,7 +1,7 @@
-import { useContext } from "preact/hooks";
-import { AddAccountButton } from "./AddAnotherButton";
 import { AccountInfo, AccountType, AccountTypes, LinkedAccountsContext } from "../state/linked-accounts";
 
+import { AddAccountButton } from "./AddAnotherButton";
+import { useContext } from "preact/hooks";
 
 export const AccountLinkInfo = ({ accountInfo }: { accountInfo: AccountInfo }) => (
     <>

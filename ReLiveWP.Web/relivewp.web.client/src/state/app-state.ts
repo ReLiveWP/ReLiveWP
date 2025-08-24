@@ -1,8 +1,9 @@
-import { computed, effect, Signal } from "@preact/signals"
+import { Signal, computed, effect } from "@preact/signals"
+
+import { ENDPOINT_GET_USER } from "../util/endpoints";
+import { User } from "../util/auth-types";
 import { createContext } from "preact"
 import { useContext } from "preact/hooks";
-import { ENDPOINT_GET_USER } from "../util/endpoints";
-import { type User } from "../util/auth-types";
 
 export type AccentColor = 'red' | 'purple' | 'teal' | 'pink' | 'green' | 'yellow' | 'blue' | 'magenta' | 'zune';
 

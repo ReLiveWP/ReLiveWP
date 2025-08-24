@@ -1,8 +1,9 @@
 import { ErrorBoundary, Route, Router } from "preact-iso";
+
+import GoHome from "~/components/GoHome";
 import Login from "./login";
 import Register from "./register";
-import GoHome from "../../components/GoHome";
-import { useAccentColor } from "../../util/effects";
+import { useAccentColor } from "~/util/effects";
 
 export default function Index() {
     useAccentColor('magenta');

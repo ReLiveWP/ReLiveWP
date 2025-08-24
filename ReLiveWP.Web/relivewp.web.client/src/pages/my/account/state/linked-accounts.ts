@@ -1,4 +1,3 @@
-import { createContext } from "preact";
 import BlueskyIcon from "../icons/bluesky";
 import DropboxIcon from "../icons/dropbox";
 import GoogleDriveIcon from "../icons/google-drive";
@@ -6,6 +5,7 @@ import MastodonIcon from "../icons/mastodon";
 import MisskeyIcon from "../icons/misskey";
 import OneDriveIcon from "../icons/onedrive";
 import { Signal } from "@preact/signals";
+import { createContext } from "preact";
 
 export const AccountTypes = {
     "atproto": {

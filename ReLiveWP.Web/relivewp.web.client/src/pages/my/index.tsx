@@ -1,10 +1,10 @@
-import { Show } from "@preact/signals/utils";
-import { useAppState } from "../../state/app-state"
 import { ErrorBoundary, Route, Router } from "preact-iso";
-import GoHome from "../../components/GoHome";
-import Account from "./account";
-import { useAccentColor } from "../../util/effects";
 
+import Account from "./account";
+import GoHome from "~/components/GoHome";
+import { Show } from "@preact/signals/utils";
+import { useAccentColor } from "~/util/effects";
+import { useAppState } from "~/state/app-state"
 
 export default function MyRouter() {
     const appState = useAppState();

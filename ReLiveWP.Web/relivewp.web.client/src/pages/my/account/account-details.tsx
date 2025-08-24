@@ -1,4 +1,4 @@
-import { useAppState } from "../../../state/app-state";
+import { useAppState } from "~/state/app-state";
 
 export default function AccountDetails() {
     const { user } = useAppState();

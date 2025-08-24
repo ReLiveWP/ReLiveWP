@@ -1,5 +1,6 @@
-import { useContext } from "preact/hooks";
 import { AccountType, OpenDialogContext } from "../state/linked-accounts";
+
+import { useContext } from "preact/hooks";
 
 export const AddAccountButton = ({ text, service }: { text: string, service: AccountType }) => {
     const context = useContext(OpenDialogContext)

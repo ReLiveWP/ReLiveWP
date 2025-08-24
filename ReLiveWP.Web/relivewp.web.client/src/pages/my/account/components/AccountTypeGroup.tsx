@@ -1,5 +1,5 @@
-import { AccountType } from "../state/linked-accounts";
 import { AccountLinkEntry } from "./AccountLinkEntry";
+import { AccountType } from "../state/linked-accounts";
 
 const AccountTypeGroup = ({ group }: { group: [string, AccountType[]] }) => (
     <>

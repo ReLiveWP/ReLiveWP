@@ -1,6 +1,5 @@
 import "./nav-header.scss"
 
-
 import Link from "./Link";
 import NavLoginLink from "./NavLoginLink";
 import NavLogo from "./NavLogo";

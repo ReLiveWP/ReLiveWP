@@ -1,5 +1,5 @@
-import { useLocation } from "preact-iso";
 import { useEffect } from "preact/hooks";
+import { useLocation } from "preact-iso";
 
 const GoHome = () => {
     const location = useLocation();

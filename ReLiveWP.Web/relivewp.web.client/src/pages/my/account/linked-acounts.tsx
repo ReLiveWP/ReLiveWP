@@ -1,14 +1,13 @@
+import "./linked-accounts.scss"
+
+import { AccountType, AccountTypeGroups, Connections, LinkedAccountsContext, OpenDialogContext } from "./state/linked-accounts";
 import { useSignal, useSignalEffect } from "@preact/signals";
-import { useState } from "preact/hooks";
 
 import AccountTypeGroup from "./components/AccountTypeGroup";
+import { ENDPOINT_GET_LINKED_ACCOUNTS } from "~/util/endpoints";
 import LinkAccountDialog from "./components/LinkAccountDialog";
-
-import { useAppState } from "../../../state/app-state";
-import { AccountType, AccountTypeGroups, Connections, LinkedAccountsContext, OpenDialogContext } from "./state/linked-accounts";
-import { ENDPOINT_GET_LINKED_ACCOUNTS } from "../../../util/endpoints";
-
-import "./linked-accounts.scss"
+import { useAppState } from "~/state/app-state";
+import { useState } from "preact/hooks";
 
 export default function LinkedAccounts() {
     const { authenticatedFetch } = useAppState();

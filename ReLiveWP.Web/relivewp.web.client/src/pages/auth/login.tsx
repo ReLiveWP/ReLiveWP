@@ -1,11 +1,10 @@
-
-import { useTitle } from "../../util/effects";
-import { signal, useSignal } from "@preact/signals";
-
 import "./login.scss"
-import { useAppState } from "../../state/app-state";
+
+import { ENDPOINT_REQUEST_TOKENS } from "~/util/endpoints";
+import { useAppState } from "~/state/app-state";
 import { useLocation } from "preact-iso";
-import { ENDPOINT_REQUEST_TOKENS } from "../../util/endpoints";
+import { useSignal } from "@preact/signals";
+import { useTitle } from "~/util/effects";
 
 export default function Login() {
     useTitle("login");

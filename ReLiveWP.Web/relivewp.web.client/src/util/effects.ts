@@ -1,5 +1,6 @@
-import { useEffect } from "preact/hooks";
 import { AccentColor, useAppState } from "../state/app-state";
+
+import { useEffect } from "preact/hooks";
 
 export function useTitle(title: string) {
     return useEffect(() => {

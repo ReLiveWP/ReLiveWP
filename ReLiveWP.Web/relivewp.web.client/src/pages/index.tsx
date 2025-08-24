@@ -1,9 +1,7 @@
-import { useEffect } from 'preact/hooks'
-
 import "./index.scss"
 
-import Lumia800 from "../../static/lumia-800.jpg"
-import { useTitle } from '../util/effects';
+import Lumia800 from "~/static/lumia-800.jpg"
+import { useTitle } from '~/util/effects';
 
 const Index = () => {
     useTitle("home");

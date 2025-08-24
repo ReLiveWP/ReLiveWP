@@ -1,4 +1,5 @@
 import { ComponentChildren, RenderableProps } from 'preact';
+
 import { useLocation } from 'preact-iso'
 
 type LinkProps = {

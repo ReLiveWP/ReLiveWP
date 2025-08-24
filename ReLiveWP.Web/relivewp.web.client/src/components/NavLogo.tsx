@@ -1,5 +1,5 @@
 import { JSX } from "preact/jsx-runtime";
-import { useAppState } from "../state/app-state"
+import { useAppState } from "~/state/app-state"
 
 const NavLogo = ({ class: className }: { class: string }) => {
     const { accent } = useAppState();

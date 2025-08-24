@@ -1,10 +1,11 @@
+import "./index.scss"
+
 import { ErrorBoundary, LocationProvider, Route, Router } from "preact-iso";
 
-import "./index.scss"
-import Link from "../../../components/Link";
-import SignOut from "./sign-out";
 import AccountDetails from "./account-details";
+import Link from "~/components/Link";
 import LinkedAccounts from "./linked-acounts";
+import SignOut from "./sign-out";
 
 export default function Account() {
     return (

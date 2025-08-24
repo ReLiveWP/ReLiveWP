@@ -1,12 +1,10 @@
+import { AppStateProvider, createAppState, useAppState } from "./state/app-state";
+import { ErrorBoundary, LocationProvider, Route, Router, lazy } from "preact-iso";
+import { useAccentColor, useTitle } from "./util/effects";
 
-import { ErrorBoundary, lazy, LocationProvider, Route, Router } from "preact-iso";
-
+import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import Home from "./pages/index"
 import NavHeader from "./components/NavHeader"
-import AuthenticatedRoute from "./components/AuthenticatedRoute";
-
-import { AppStateProvider, createAppState, useAppState } from "./state/app-state";
-import { useAccentColor, useTitle } from "./util/effects";
 import { useSignalEffect } from "@preact/signals";
 
 const Auth = lazy(() => import('./pages/auth'));
