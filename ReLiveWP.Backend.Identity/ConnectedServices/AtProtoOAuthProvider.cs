@@ -156,19 +156,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.Issuer = doc.Issuer!;
         service.ServiceProfile.UserId = subValue;
 
-        {
-            using var protocol = new ATProtocolBuilder()
-               .EnableAutoRenewSession(false)
-               .WithLogger(atProtoLogger)
-               .Build();
-
-            var profileView = (await protocol.GetProfileAsync(ATDid.Create(service.ServiceProfile.UserId)!))
-                 .HandleResult()!;
-
-            service.ServiceProfile.Username = $"@{profileView.Handle}";
-            service.ServiceProfile.DisplayName = profileView.DisplayName;
-            service.ServiceProfile.AvatarUrl = profileView.Avatar;
-        }
+        await FetchUserInfoForService(service);
 
         return service;
     }
@@ -215,12 +203,37 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             service.RefreshToken = authSession.Session.RefreshJwt;
             service.ExpiresAt = authSession.Session.ExpiresIn;
 
+            await FetchUserInfoForService(service);
+
             return true;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to refresh AtProto token.");
+            logger.LogError(ex, "Failed to refresh AT Proto token.");
             return false;
+        }
+    }
+
+    private async Task FetchUserInfoForService(LiveConnectedService service)
+    {
+        try
+        {
+
+            using var protocol = new ATProtocolBuilder()
+               .EnableAutoRenewSession(false)
+               .WithLogger(atProtoLogger)
+               .Build();
+
+            var profileView = (await protocol.GetProfileAsync(ATDid.Create(service.ServiceProfile.UserId)!))
+                 .HandleResult()!;
+
+            service.ServiceProfile.Username = $"@{profileView.Handle}";
+            service.ServiceProfile.DisplayName = profileView.DisplayName;
+            service.ServiceProfile.AvatarUrl = profileView.Avatar;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Couldn't fetch user information for {ServiceId} ({UserId})", service.Id, service.UserId);
         }
     }
 }

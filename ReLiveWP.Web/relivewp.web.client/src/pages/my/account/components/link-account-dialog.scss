@@ -1,14 +1,55 @@
+.accent-zune .link-account-dialog h1 {
+    &::before {
+        background-image: linear-gradient(to left, var(--accent-colour-zune1), var(--accent-colour-zune2));
+    }
+}
+
 .link-account-dialog {
-    min-width: 480px;
-    min-height: 360px;
+    border: none;
+    box-shadow: 0px 0px 6px #999;
+    width: 100%;
+    height: 100%;
+    max-width: 480px;
+    max-height: 360px;
+
+    padding: 20px 30px 30px 30px;
+    background: radial-gradient(circle at top 30px right 30px, var(--accent-colour-bg-2), white 60%);
+    color: #666;
+
+    &::backdrop {
+        background-color: rgba(255, 255, 255, 0.66);
+    }
+
+    h1 {
+        margin-top: 0;
+        text-transform: lowercase;
+        color: #333;
+
+        &::before {
+            display: block;
+            content: ' ';
+            width: 110px;
+            height: 6px;
+            background: var(--accent-colour);
+            position: absolute;
+            top: 0;
+        }
+    }
+
+    .error {
+        color: #e60c00;
+    }
 
     label,
     input {
         display: block;
     }
 
-    label,
-    .submit {
+    label {
+        text-transform: lowercase;
+        font-variant: small-caps;
+        font-weight: 500;
+        font-size: 10.5pt;
         margin-top: 16px;
         margin-bottom: 2px;
     }
@@ -23,7 +64,11 @@
         display: inline;
     }
 
-    .submit {
-        min-width: 72px;
+    .submit,
+    input[type=submit],
+    button {
+        position: absolute;
+        bottom: 30px;
+        right: 30px;
     }
 }

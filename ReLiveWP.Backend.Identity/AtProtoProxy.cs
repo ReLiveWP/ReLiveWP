@@ -29,12 +29,6 @@ public class AtProtoProxy
         app.Map("/xrpc/{**method}", ProxyHandler);
     }
 
-    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
-    private static SemaphoreSlim GetOrCreateLock(Guid connectionId)
-    {
-        return _locks.GetOrAdd(connectionId, _ => new SemaphoreSlim(1, 1));
-    }
-
     // TODO: caching
     //       make it faster
     //       probably some security issues
@@ -46,6 +40,7 @@ public class AtProtoProxy
                                            IConnectedServicesContainer connectedServices,
                                            IHttpMessageHandlerFactory factory,
                                            ILogger<AtProtoProxy> logger,
+                                           ServiceTokenLocks tokenLocks,
                                            string method)
     {
         try
@@ -59,9 +54,18 @@ public class AtProtoProxy
                 return;
             }
 
-            var serviceLock = GetOrCreateLock(service.Id);
+            var serviceLock = tokenLocks.GetOrCreateLock(service.Id);
             if (!await serviceLock.WaitAsync(10000, context.RequestAborted))
                 return;
+
+            // refresh after the lock is acquired in case something else changed in the meantime, we dont want to lock
+            // without knowing the service is real, but that creates a chicken and egg problem so we'll just run it twice.
+            (service, serviceDescription) = await GetServiceAsync(context, dbContext, userManager, connectedServices);
+            if (service == null || serviceDescription == null)
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
 
             try
             {
@@ -72,7 +76,7 @@ public class AtProtoProxy
                     var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
                     var succeeded = false;
                     if (!(succeeded = await handler.RefreshTokensAsync(service)))
-                        service.Flags = LiveConnectedServiceFlags.NeedsRefresh;
+                        service.Flags = LiveConnectedServiceFlags.Busted;
                     else
                         service.Flags = LiveConnectedServiceFlags.None;
 

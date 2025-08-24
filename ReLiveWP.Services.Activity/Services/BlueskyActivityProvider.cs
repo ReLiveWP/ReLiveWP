@@ -117,6 +117,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
         {
             IsMe = postView.Author.Did.Equals(this.did),
             Id = $"at:{postView.Author.Did}",
+            ScreenName = $"@{postView.Author.Handle}",
             DisplayName = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,
             CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}",
             AvatarUrl = postView.Author.Avatar!
@@ -133,7 +134,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
             Published = post.CreatedAt ?? DateTime.Now,
             Author = author,
             Categories = ["status"],
-            Generator = $"via. {this.handle}",
+            Generator = "Bluesky",
             CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}/{postId}",
             CanReply = !(postView.Viewer?.ReplyDisabled ?? false),
             ReplyCount = (int)(postView.ReplyCount ?? 0),

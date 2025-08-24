@@ -192,8 +192,9 @@ public class ActivitiesController(
         var entryAuthor = entryModel.Author;
         var author = new LiveAuthor()
         {
-            //Id = $"{provider.ProviderId}:{entryAuthor.Id}", // HORRIBLE
+            Id = entryAuthor.IsMe ? meAuthor.Id : null, // HORRIBLE
             Name = entryAuthor.DisplayName,
+            ScreenName = entryAuthor.ScreenName,
             Url = entryAuthor.CanonicalUrl,
             Links =
             [

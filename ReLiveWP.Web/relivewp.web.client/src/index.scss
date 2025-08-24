@@ -1,13 +1,49 @@
 :root {
   --accent-colour-red: #e60c00;
+  --accent-colour-red-bg-1: #ffe1e0;
+  --accent-colour-red-bg-2: #fff0f0;
+  --accent-colour-red-bg-3: #ffffff;
+
   --accent-colour-teal: #00ABA9;
+  --accent-colour-teal-bg-1: #e0fffe;
+  --accent-colour-teal-bg-2: #f0fffe;
+  --accent-colour-teal-bg-3: #fcffff;
+
   --accent-colour-purple: #A200FF;
+  --accent-colour-purple-bg-1: #f4e0ff;
+  --accent-colour-purple-bg-2: #faf0ff;
+  --accent-colour-purple-bg-3: #fefcff;
+
   --accent-colour-pink: #E671B8;
+  --accent-colour-pink-bg-1: #ffe0f3;
+  --accent-colour-pink-bg-2: #fff0f9;
+  --accent-colour-pink-bg-3: #fffcfe;
+
   --accent-colour-green: #339933;
+  --accent-colour-green-bg-1: #e0ffe0;
+  --accent-colour-green-bg-2: #f0fff0;
+  --accent-colour-green-bg-3: #fcfffc;
+
   --accent-colour-yellow: #F09609;
+  --accent-colour-yellow-bg-1: #fff3e0;
+  --accent-colour-yellow-bg-2: #fff9f0;
+  --accent-colour-yellow-bg-3: #fffefc;
+
   --accent-colour-blue: #1BA1E2;
+  --accent-colour-blue-bg-1: #e0f5ff;
+  --accent-colour-blue-bg-2: #f0faff;
+  --accent-colour-blue-bg-3: #fafdff;
+
   --accent-colour-magenta: #D80073;
+  --accent-colour-magenta-bg-1: #ffe0f1;
+  --accent-colour-magenta-bg-2: #fff0f8;
+  --accent-colour-magenta-bg-3: #fffcfe;
+
   --accent-colour-zune1: #f10da1;
+  --accent-colour-zune1-bg-1: #ffe9e0;
+  --accent-colour-zune1-bg-2: #fff4f0;
+  --accent-colour-zune1-bg-3: #fffdfc;
+
   --accent-colour-zune2: #e95214;
 
   --accent-gradient-red: linear-gradient(to bottom, #ffe1e0, #fff0f0 80px, #ffffff 200px);
@@ -39,56 +75,83 @@ body {
   flex-direction: column;
 }
 
-body.accent-red {
+.accent-red {
   --accent-colour: var(--accent-colour-red);
+  --accent-colour-bg-1: var(--accent-colour-red-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-red-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-red-bg-3);
   accent-color: var(--accent-colour-red);
   background: var(--accent-gradient-red);
 }
 
-body.accent-teal {
+.accent-teal {
   --accent-colour: var(--accent-colour-teal);
+  --accent-colour-bg-1: var(--accent-colour-teal-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-teal-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-teal-bg-3);
   accent-color: var(--accent-colour-teal);
   background: var(--accent-gradient-teal);
 }
 
-body.accent-purple {
+.accent-purple {
   --accent-colour: var(--accent-colour-purple);
+  --accent-colour-bg-1: var(--accent-colour-purple-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-purple-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-purple-bg-3);
   accent-color: var(--accent-colour-purple);
   background: var(--accent-gradient-purple);
 }
 
-body.accent-pink {
+.accent-pink {
   --accent-colour: var(--accent-colour-pink);
+  --accent-colour-bg-1: var(--accent-colour-pink-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-pink-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-pink-bg-3);
   accent-color: var(--accent-colour-pink);
   background: var(--accent-gradient-pink);
 }
 
-body.accent-green {
+.accent-green {
   --accent-colour: var(--accent-colour-green);
+  --accent-colour-bg-1: var(--accent-colour-green-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-green-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-green-bg-3);
   accent-color: var(--accent-colour-green);
   background: var(--accent-gradient-green);
 }
 
-body.accent-yellow {
+.accent-yellow {
   --accent-colour: var(--accent-colour-yellow);
+  --accent-colour-bg-1: var(--accent-colour-yellow-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-yellow-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-yellow-bg-3);
   accent-color: var(--accent-colour-yellow);
   background: var(--accent-gradient-yellow);
 }
 
-body.accent-blue {
+.accent-blue {
   --accent-colour: var(--accent-colour-blue);
+  --accent-colour-bg-1: var(--accent-colour-blue-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-blue-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-blue-bg-3);
   accent-color: var(--accent-colour-blue);
   background: var(--accent-gradient-blue);
 }
 
-body.accent-magenta {
+.accent-magenta {
   --accent-colour: var(--accent-colour-magenta);
+  --accent-colour-bg-1: var(--accent-colour-magenta-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-magenta-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-magenta-bg-3);
   accent-color: var(--accent-colour-magenta);
   background: var(--accent-gradient-magenta);
 }
 
-body.accent-zune {
+.accent-zune {
   --accent-colour: linear-gradient(to bottom, var(--accent-colour-zune1), var(--accent-colour-zune2));
+  --accent-colour-bg-1: var(--accent-colour-zune1-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-zune1-bg-2);
+  --accent-colour-bg-2: var(--accent-colour-zune1-bg-3);
   accent-color: var(--accent-colour-zune1);
   background: var(--accent-gradient-zune);
 
@@ -99,7 +162,7 @@ body.accent-zune {
   }
 
   .background-accent {
-    background-image:  linear-gradient(to left, var(--accent-colour-zune1), var(--accent-colour-zune2));
+    background-image: linear-gradient(to left, var(--accent-colour-zune1), var(--accent-colour-zune2));
   }
 }
 
@@ -112,7 +175,7 @@ body.accent-zune {
 }
 
 
-input {
+input, button {
   font-family: var(--font-family);
 }
 

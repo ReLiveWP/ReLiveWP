@@ -37,6 +37,7 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> 
         {
             Id = "NotARealUser",
             DisplayName = "ReLive System",
+            ScreenName = "@relive.system",
             AvatarUrl = "",
             CanonicalUrl = "",
             IsMe = true,

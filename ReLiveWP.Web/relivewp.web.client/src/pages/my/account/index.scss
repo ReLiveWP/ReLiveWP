@@ -27,6 +27,10 @@ main:has(.my-account) {
     button,
     input[type="submit"] {
         font-size: 9pt;
+        min-width: 72px;
+        height: 21px;
+        margin: 0px;
+        padding: 0px 12px 0px 12px;
         font-variant: small-caps;
     }
 

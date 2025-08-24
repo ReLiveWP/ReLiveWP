@@ -53,6 +53,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddSingleton<ServiceTokenLocks>();
 builder.Services.AddSingleton<IClientAssertionService, ClientAssertionService>();
 builder.Services.AddSingleton<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
@@ -76,6 +77,8 @@ builder.Services.AddConnectedServices()
     });
 
 builder.Services.AddGrpc();
+
+builder.Services.AddHostedService<TokenRefreshService>();
 
 var app = builder.Build();
 

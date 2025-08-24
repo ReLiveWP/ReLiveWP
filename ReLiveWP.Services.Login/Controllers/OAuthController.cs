@@ -8,7 +8,6 @@ using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Login.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("oauth/[action]/{service?}")]
     public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClient) : Controller
@@ -17,6 +16,7 @@ namespace ReLiveWP.Services.Login.Controllers
         public record BeginAccountLinkResponse(string RedirectUri);
 
         [HttpPost]
+        [Authorize]
         [ActionName("begin-account-link")]
         public async Task<ActionResult<BeginAccountLinkResponse>> BeginAccountLink([FromBody] BeginAcountLinkModel model)
         {
