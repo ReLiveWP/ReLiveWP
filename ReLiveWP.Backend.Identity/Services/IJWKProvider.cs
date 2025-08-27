@@ -3,5 +3,6 @@ namespace ReLiveWP.Backend.Identity.Services;
 
 public interface IJWKProvider
 {
-    Task<string> GetJWK(string keyId);
+    Task<(string id, string key)> PickKeyAsync();
+    Task<string> GetJWKAsync(string keyId);
 }

@@ -85,7 +85,7 @@ public class AtProtoProxy
                 }
 
                 // create the DPoP handler using our key
-                var key = await jwkProvider.GetJWK(service.DPoPKeyId!);
+                var key = await jwkProvider.GetJWKAsync(service.DPoPKeyId!);
 
                 using var innerHandler = factory.CreateHandler();
                 using var tokenHandler = new ProofTokenMessageHandler(key, innerHandler);

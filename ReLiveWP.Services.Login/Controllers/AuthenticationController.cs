@@ -23,7 +23,7 @@ public record ConnectionModels(Dictionary<string, List<ConnectionModel>> Connect
 
 [ApiController]
 [Route("auth/[action]/{id?}")]
-public class AuthenticationController( 
+public class AuthenticationController(
     User.UserClient userClient,
     Authentication.AuthenticationClient authenticationClient,
     ConnectedServices.ConnectedServicesClient connectedServicesClient,
@@ -53,12 +53,12 @@ public class AuthenticationController(
     {
         var auth = Request.Headers.Authorization.ToString();
         var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
-        var connections = await connectedServicesClient.GetConnectionsAsync(new ConnectionsRequest(), new Metadata() { { "Authorization", authHeader } });
+        var connections = connectedServicesClient.GetConnections(new ConnectionsRequest(), new Metadata() { { "Authorization", authHeader } });
         if (connections == null)
             return NotFound(); // this is pretty bad, maybe 500 is better?
 
         var connectionModels = new Dictionary<string, List<ConnectionModel>>();
-        foreach (var connection in connections.Connections)
+        await foreach (var connection in connections.ResponseStream.ReadAllAsync())
         {
             if (!connectionModels.TryGetValue(connection.Service, out var connectionList))
             {

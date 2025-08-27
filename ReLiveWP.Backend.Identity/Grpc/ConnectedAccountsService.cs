@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
@@ -106,22 +107,22 @@ public class ConnectedAccountsService(IJWKProvider jwkProvider,
         return Task.FromResult(response);
     }
 
+
     [Authorize]
-    public override async Task<ConnectionsResponse> GetConnections(ConnectionsRequest request, ServerCallContext context)
+    public override async Task GetConnections(ConnectionsRequest request, IServerStreamWriter<Connection> responseStream, ServerCallContext context)
     {
         var user = await userManager.GetUserAsync(context.GetHttpContext().User)
             ?? throw new RpcException(new Status(StatusCode.Unavailable, "Invalid user was specified."));
 
-        var result = new ConnectionsResponse();
         var connections = dbContext.ConnectedServices.Where(c =>
             c.UserId == user.Id &&
             (!request.HasCapabilities || (c.EnabledCapabilities & (ServiceCaps)request.Capabilities) == (ServiceCaps)request.Capabilities) &&
             (request.Services.Count == 0 || request.Services.Contains(c.Service))
-        );
+        ).AsAsyncEnumerable();
 
-        foreach (var item in connections)
+        await foreach (var item in connections)
         {
-            result.Connections.Add(new Connection()
+            await responseStream.WriteAsync(new Connection()
             {
                 Id = item.Id.ToString(),
                 Service = item.Service,
@@ -134,31 +135,30 @@ public class ConnectedAccountsService(IJWKProvider jwkProvider,
                 //EmailAddress = item.ServiceProfile.EmailAddress ?? ""
             });
         }
-
-        return result;
     }
 
     #region Keys
 
     public override async Task<JsonWebKeysResponse> GetJsonWebKeys(Empty request, ServerCallContext context)
     {
-        var key = await jwkProvider.GetJWK("Key1");
-
-        var webKey = new JsonWebKey(key);
-        var publicKey = new JsonWebKey
-        {
-            Kty = webKey.Kty,
-            Crv = webKey.Crv,
-            X = webKey.X,
-            Y = webKey.Y,
-            Kid = "Key1"
-        };
-
-        publicKey.KeyOps.Add("sign");
-        publicKey.KeyOps.Add("verify");
-
         var keySet = new JsonWebKeySet();
-        keySet.Keys.Add(publicKey);
+
+        await foreach (var item in dbContext.DPoPKeys)
+        {
+            var webKey = new JsonWebKey(item.Key);
+            var publicKey = new JsonWebKey
+            {
+                Kty = webKey.Kty,
+                Crv = webKey.Crv,
+                X = webKey.X,
+                Y = webKey.Y,
+                Kid = item.Id
+            };
+
+            publicKey.KeyOps.Add("sign");
+            publicKey.KeyOps.Add("verify");
+            keySet.Keys.Add(publicKey);
+        }
 
         var keyString = JsonSerializer.Serialize(keySet);
         return new JsonWebKeysResponse() { Keys = keyString };

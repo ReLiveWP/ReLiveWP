@@ -13,7 +13,7 @@ service ConnectedServices {
   rpc FinaliseAccountLinkingForService(FinaliseAccountLinkingRequest) returns (FinaliseAccountLinkingResponse);
 
   rpc GetSupportedConnections(google.protobuf.Empty) returns (SupportedConnectionsResponse);
-  rpc GetConnections(ConnectionsRequest) returns (ConnectionsResponse);
+  rpc GetConnections(ConnectionsRequest) returns (stream Connection);
 }
 
 message JsonWebKeysResponse {
@@ -65,8 +65,4 @@ message Connection {
 	string userId = 6;
 	optional string userName = 7;
 	optional string emailAddress = 8;
-}
-
-message ConnectionsResponse {
-	repeated Connection connections = 1;
 }

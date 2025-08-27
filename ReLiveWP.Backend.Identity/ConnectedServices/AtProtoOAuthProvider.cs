@@ -108,7 +108,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
     public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService service, LivePendingOAuth state, string code)
     {
         var description = connectedServices[AtProto.SERVICE_NAME];
-        var key = await jwkProvider.GetJWK("Key1");
+        var (keyId, key) = await jwkProvider.PickKeyAsync();
 
         logger.LogInformation("Beginning stage 2 account linking for {UserId}", state.UserId);
 
@@ -116,7 +116,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         var cache = new DiscoveryCache(authServer, new DiscoveryPolicy() { DiscoveryDocumentPath = ".well-known/oauth-authorization-server" });
         var doc = await cache.GetAsync();
 
-        var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, doc.Issuer!);
+        var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, doc.Issuer!, keyId);
 
         using var handler = new ProofTokenMessageHandler(key, httpHandlerFactory.CreateHandler("AtProtoClient"));
         using var client = new HttpClient(handler);
@@ -150,7 +150,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.ExpiresAt = DateTimeOffset.Now + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
         service.EnabledCapabilities = LiveConnectedServiceCapabilities.None;
-        service.DPoPKeyId = "Key1";
+        service.DPoPKeyId = keyId;
         service.AuthorizationEndpoint = doc.AuthorizeEndpoint;
         service.TokenEndpoint = doc.TokenEndpoint!;
         service.Issuer = doc.Issuer!;
@@ -165,7 +165,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
     {
         try
         {
-            var key = await jwkProvider.GetJWK("Key1");
+            var key = await jwkProvider.GetJWKAsync(service.DPoPKeyId!);
             var description = connectedServices[AtProto.SERVICE_NAME];
 
             using var protocol = new ATProtocolBuilder()
@@ -174,7 +174,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
                .WithServiceEndpointUponLogin(false)
                .WithClientAssertionHandler(async () =>
                {
-                   var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, service.Issuer!);
+                   var tokenString = await clientAssertionService.CreateClientAssertionAsync(description.ClientId, service.Issuer!, service.DPoPKeyId!);
                    return new ClientAssertion() { Type = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", Value = tokenString };
                })
                .WithLogger(atProtoLogger)

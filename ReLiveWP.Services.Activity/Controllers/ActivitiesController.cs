@@ -161,10 +161,10 @@ public class ActivitiesController(
         var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
 
         var headers = new Metadata() { { "Authorization", authHeader } };
-        var servicesResponse = await connectedServices.GetConnectionsAsync(new ConnectionsRequest(), headers);
+        var servicesResponse = connectedServices.GetConnections(new ConnectionsRequest(), headers);
 
         List<BlueskyActivityProvider> providers = [];
-        foreach (var connection in servicesResponse.Connections)
+        await foreach (var connection in servicesResponse.ResponseStream.ReadAllAsync())
         {
             if (connection.Service == "atproto")
             {

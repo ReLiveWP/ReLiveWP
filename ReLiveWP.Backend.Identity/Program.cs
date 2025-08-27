@@ -1,4 +1,8 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Duende.IdentityModel.Jwk;
+using Duende.IdentityModel.OidcClient.DPoP;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -54,8 +58,8 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<ServiceTokenLocks>();
-builder.Services.AddSingleton<IClientAssertionService, ClientAssertionService>();
-builder.Services.AddSingleton<IJWKProvider, JWKProvider>();
+builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
+builder.Services.AddScoped<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
 
 builder.Services.AddConnectedServices()
@@ -102,4 +106,18 @@ static void ApplyMigrations(WebApplication app)
     using var dbContext = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
 
     dbContext.Database.Migrate();
+
+    if (dbContext.DPoPKeys.Count() == 0)
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            var keyId = $"Key{i}";
+            var jwk = JsonWebKeys.CreateECDsa("ES256");
+            jwk.KeyId = keyId;
+
+            dbContext.DPoPKeys.Add(new LiveDPoPKey() { Id = keyId, Key = JsonSerializer.Serialize(jwk) });
+        }
+
+        dbContext.SaveChanges();
+    }
 }

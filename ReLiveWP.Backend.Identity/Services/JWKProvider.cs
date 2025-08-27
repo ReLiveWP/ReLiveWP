@@ -1,10 +1,22 @@
-﻿namespace ReLiveWP.Backend.Identity.Services;
+﻿using Microsoft.EntityFrameworkCore;
+using ReLiveWP.Backend.Identity.Data;
 
-public class JWKProvider(IConfiguration configuration) : IJWKProvider
+namespace ReLiveWP.Backend.Identity.Services;
+
+public class JWKProvider(
+    LiveDbContext liveDbContext) : IJWKProvider
 {
-    public async Task<string> GetJWK(string keyId)
+    public async Task<(string id, string key)> PickKeyAsync()
     {
-        return configuration["AtProtoOAuth:JWK"]
-                ?? throw new InvalidOperationException("No JsonWebKeys have been configured. This is bad!");
+        var keys = await liveDbContext.DPoPKeys.ToListAsync();
+        var num = Random.Shared.Next(keys.Count);
+
+        return (keys[num].Id, keys[num].Key);
+    }
+
+    public async Task<string> GetJWKAsync(string keyId)
+    {
+        var keys = await liveDbContext.DPoPKeys.FirstAsync(k => k.Id == keyId);
+        return keys.Key;
     }
 }

@@ -9,17 +9,8 @@ namespace ReLiveWP.Backend.DeviceRegistration.Services
 {
     public class ClientProvisioningService(
         ILogger<ClientProvisioningService> logger,
-        ICertificateService wp7CertificateService,
-        RootCACertificateProvider caProvider) : ClientProvisioning.ClientProvisioningBase
+        ICertificateService wp7CertificateService) : ClientProvisioning.ClientProvisioningBase
     {
-        public override Task<CACertificateResponse> GetCACertificate(Empty request, ServerCallContext context)
-        {
-            var cert = caProvider.GetOrGenerateRootCACert(true);
-            var data = cert.Export(X509ContentType.Pkcs12);
-
-            return Task.FromResult(new CACertificateResponse() { Certificate = ByteString.CopyFrom(data) });
-        }
-
         public override Task<DeviceProvisioningResponse> ProvisionWP7Device(WP7ProvisioningRequest request, ServerCallContext context)
         {
             try

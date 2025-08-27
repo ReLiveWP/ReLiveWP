@@ -17,7 +17,10 @@ public class LiveConnectedService
     public required LiveConnectedServiceFlags Flags { get; set; }
          = LiveConnectedServiceFlags.None;
     public required LiveConnectedServiceCapabilities EnabledCapabilities { get; set; }
+
     public string? DPoPKeyId { get; set; }
+    public LiveDPoPKey? DPoPKey { get; set; }
+
     public string? ServiceUrl { get; set; }
     public string? AuthorizationEndpoint { get; set; }
     public string? TokenEndpoint { get; set; }

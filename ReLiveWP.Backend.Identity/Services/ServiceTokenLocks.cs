@@ -4,6 +4,7 @@ namespace ReLiveWP.Backend.Identity.Services;
 
 public class ServiceTokenLocks
 {
+    // todo: so much about this sucks
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
     public SemaphoreSlim GetOrCreateLock(Guid connectionId)
     {

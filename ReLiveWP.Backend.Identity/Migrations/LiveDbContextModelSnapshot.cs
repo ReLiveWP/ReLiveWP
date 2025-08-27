@@ -163,9 +163,25 @@ namespace ReLiveWP.Backend.Identity.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DPoPKeyId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("ConnectedServices");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveDPoPKey", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DPoPKeys");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LivePendingOAuth", b =>
@@ -360,6 +376,10 @@ namespace ReLiveWP.Backend.Identity.Migrations
 
             modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveConnectedService", b =>
                 {
+                    b.HasOne("ReLiveWP.Backend.Identity.Data.LiveDPoPKey", "DPoPKey")
+                        .WithMany()
+                        .HasForeignKey("DPoPKeyId");
+
                     b.HasOne("ReLiveWP.Backend.Identity.Data.LiveUser", "User")
                         .WithMany("ConnectedServices")
                         .HasForeignKey("UserId")
@@ -394,6 +414,8 @@ namespace ReLiveWP.Backend.Identity.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("LiveConnectedServiceId");
                         });
+
+                    b.Navigation("DPoPKey");
 
                     b.Navigation("ServiceProfile")
                         .IsRequired();

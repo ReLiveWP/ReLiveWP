@@ -6,16 +6,11 @@ option csharp_namespace = "ReLiveWP.Services.Grpc";
 package client_provisioning;
 
 service ClientProvisioning {
-  rpc GetCACertificate(google.protobuf.Empty) returns (CACertificateResponse);
   rpc ProvisionWP7Device (WP7ProvisioningRequest) returns (DeviceProvisioningResponse);
 }
 
 message WP7ProvisioningRequest {
   bytes certificateRequest = 1;
-}
-
-message CACertificateResponse {
-  bytes certificate = 1;
 }
 
 message DeviceProvisioningResponse {

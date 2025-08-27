@@ -1,5 +1,5 @@
 {
-  "client_id": "https://login.relivewp.net/.well-known/client-metadata.json",
+  "client_id": "https://login.relivewp.net/oauth-client-metadata.json",
   "application_type": "web",
   "client_name": "ReLiveWP",
   "client_uri": "https://login.relivewp.net",

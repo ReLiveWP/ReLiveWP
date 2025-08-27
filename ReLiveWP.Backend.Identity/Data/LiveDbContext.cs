@@ -6,6 +6,7 @@ namespace ReLiveWP.Backend.Identity.Data;
 public class LiveDbContext(DbContextOptions<LiveDbContext> options) 
     : IdentityDbContext<LiveUser, LiveRole, Guid>(options)
 {
+    public DbSet<LiveDPoPKey> DPoPKeys { get; set; }
     public DbSet<LivePendingOAuth> PendingOAuths { get; set; }
     public DbSet<LiveConnectedService> ConnectedServices { get; set; }
 
@@ -16,6 +17,9 @@ public class LiveDbContext(DbContextOptions<LiveDbContext> options)
         builder.Entity<LiveUser>()
             .HasMany(p => p.PendingOAuths)
             .WithOne(p => p.User);
+
+        builder.Entity<LiveConnectedService>()
+            .HasOne(u => u.DPoPKey);
 
         builder.Entity<LiveUser>()
             .HasMany(p => p.ConnectedServices)

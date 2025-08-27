@@ -6,9 +6,9 @@ namespace ReLiveWP.Backend.Identity.Services
 {
     public class ClientAssertionService(IJWKProvider jwkProvider) : IClientAssertionService
     {
-        public async Task<string> CreateClientAssertionAsync(string clientId, string issuer)
+        public async Task<string> CreateClientAssertionAsync(string clientId, string issuer, string keyId)
         {
-            var key = await jwkProvider.GetJWK("Key1");
+            var key = await jwkProvider.GetJWKAsync(keyId);
 
             var issuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var expiresAt = issuedAt + 300;
@@ -26,7 +26,7 @@ namespace ReLiveWP.Backend.Identity.Services
             var token = new JwtSecurityToken(
                 expires: DateTimeOffset.Now.AddMinutes(5).UtcDateTime,
                 claims: authClaims,
-                signingCredentials: new SigningCredentials(new JsonWebKey(key) { KeyId = "Key1" }, SecurityAlgorithms.EcdsaSha256)
+                signingCredentials: new SigningCredentials(new JsonWebKey(key) { KeyId = keyId }, SecurityAlgorithms.EcdsaSha256)
             );
 
             var tokenString = new JwtSecurityTokenHandler()
