@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FishyFlip" Version="3.11.0-dubious.1" />
+    <PackageReference Include="FishyFlip" Version="4.1.0-alpha.2" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="MisskeySharp" Version="0.23.9.309" />
     <PackageReference Include="Razor.Templating.Core" Version="2.1.0" />

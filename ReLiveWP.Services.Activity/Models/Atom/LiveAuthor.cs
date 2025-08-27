@@ -7,10 +7,10 @@ namespace ReLiveWP.Services.Activity.Models.Atom;
 public class LiveAuthor : Author
 {
     [XmlElement("id", Namespace = Constants.Live_Namespace)]
-    public string Id { get; set; }
+    public string? Id { get; set; }
 
     [XmlElement("ScreenName", Namespace = Constants.Live_Namespace)]
-    public string ScreenName { get; set; }
+    public string? ScreenName { get; set; }
 
     [XmlElement(ElementName = "link")]
     public List<Link> Links { get; set; } = new List<Link>();

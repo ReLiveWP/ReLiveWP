@@ -1,5 +1,6 @@
 using Atom.Formatters;
 using ReLiveWP.Identity;
+using ReLiveWP.Services.Activity.Services;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +30,9 @@ builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ActivityProviderService>();
 
 var app = builder.Build();
 

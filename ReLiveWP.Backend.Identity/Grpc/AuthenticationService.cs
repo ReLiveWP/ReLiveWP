@@ -11,7 +11,8 @@ using ReLiveWP.Services.Grpc;
 namespace ReLiveWP.Backend.Identity.Grpc
 {
     public class AuthenticationService(IConfiguration configuration,
-                        UserManager<LiveUser> userManager) : Authentication.AuthenticationBase
+        ILogger<AuthenticationService> logger,
+        UserManager<LiveUser> userManager) : Authentication.AuthenticationBase
     {
         private const string JwtIssuer = "https://relivewp.net/";
 
@@ -155,7 +156,11 @@ namespace ReLiveWP.Backend.Identity.Grpc
 
             var handler = new JwtSecurityTokenHandler();
 
-            return await handler.ValidateTokenAsync(token, validationParameters);
+            var response = await handler.ValidateTokenAsync(token, validationParameters);
+            if (!response.IsValid)
+                logger.LogWarning(response.Exception, "Invalid token request?");
+
+            return response;
         }
         private async Task<LiveUser?> GetUserForSecurityTokenAsync(SecurityTokensRequest request)
         {

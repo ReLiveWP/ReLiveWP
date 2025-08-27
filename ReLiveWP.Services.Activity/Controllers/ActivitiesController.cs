@@ -1,5 +1,4 @@
-using FishyFlip.Lexicon.Com.Whtwnd.Blog;
-using Grpc.Core;
+using System.Xml.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
@@ -11,47 +10,43 @@ using Link = Atom.Xml.Link;
 
 namespace ReLiveWP.Services.Activity.Controllers;
 
+public class Identifiers
+{
+    [XmlElement("Identifier")]
+    public List<Identifier> IdentifierList { get; set; } = [];
+}
+
+public class Identifier
+{
+    [XmlElement]
+    public string SourceId { get; set; } = default!;
+    [XmlElement]
+    public string ObjectId { get; set; } = default!;
+}
+
+[Authorize]
+[Controller]
+[Consumes("application/atom+xml")]
+[Produces("application/atom+xml")]
 public class ActivitiesController(
-    IServiceProvider serviceProvider,
     User.UserClient userClient,
-    ConnectedServices.ConnectedServicesClient connectedServices) : Controller
+    ActivityProviderService activityProvider) : Controller
 {
     [HttpPost]
-    [Authorize]
-    [Produces("application/atom+xml")]
-    [Route("/Users({id})/Status")]
-    public async Task<ActionResult> PostAsync(long id, [FromBody] LiveEntry entry)
-    {
-        Response.Headers.Append("X-QueriedServices", "WL");
-        //var (protocol, did) = await GetProtocolAsync();
-
-        //var record = new Post
-        //{
-        //    Text = entry.Title.Value,
-        //    CreatedAt = DateTime.UtcNow
-        //};
-
-        //_ = (await protocol.CreateRecordAsync(did, "app.bsky.feed.post", record, cancellationToken: HttpContext.RequestAborted))
-        //    .HandleResult();
-
-        return NoContent();
-    }
-
-    [HttpPost]
-    [Authorize]
-    [Produces("application/atom+xml")]
     [Route("/Activities", Name = "activities_route")]
-    [Route("/Users({provider}:{id})/Activities", Name = "activities_route_for_user")]
     public async Task<ActionResult<LiveFeed>> Activities(
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Type")] string type = "all",
-        [FromQuery(Name = "$xslt")] string? xslt = null)
+        [FromQuery(Name = "$xslt")] string? xslt = null,
+        [FromBody] Identifiers? identifiers = null)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
         var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
-        var author = CreateAuthor(userInfo);
+
+        var requestedId = identifiers?.IdentifierList?.FirstOrDefault()?.ObjectId;
+        var author = CreateAuthor(userInfo, requestedId);
         var feed = new LiveFeed()
         {
             Title = $"What's New with {author.Name}",
@@ -64,7 +59,7 @@ public class ActivitiesController(
             ]
         };
 
-        var provider = await GetAllFeedsProviderAsync();
+        var provider = await activityProvider.GetActivityProviderAsync();
         if (provider == null)
             return feed;
 
@@ -81,10 +76,8 @@ public class ActivitiesController(
     }
 
     [HttpGet]
-    [Authorize]
     [Produces("application/atom+xml")]
     [Route("/ContactsActivities", Name = "contacts_activities_route")]
-    [Route("/Users({provider}:{id})/ContactsActivities", Name = "contacts_activities_route_for_user")]
     public async Task<ActionResult<LiveFeed>> ContactsActivities(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
@@ -104,16 +97,13 @@ public class ActivitiesController(
             Author = author,
             Links =
             [
-                new Link(this.Url.Link("contacts_activities_route_for_user", new { provider = "WL", id = userInfo.Puid.ToString() })),
+                new Link(this.Url.Link("contacts_activities_route_for_user", new { provider = "WL", id = author.Id })),
             ]
         };
 
-        var provider = await GetAllFeedsProviderAsync();
+        var provider = await activityProvider.GetActivityProviderAsync();
         if (provider == null)
-        {
-            // TODO: add a system thing to say "link accounts"
             return feed;
-        }
 
         await foreach (var item in provider.GetEntriesAsync(type == "media" ? ActivitiesContext.Media : ActivitiesContext.Contacts, count))
         {
@@ -128,7 +118,6 @@ public class ActivitiesController(
     }
 
     [HttpGet]
-    [Authorize]
     [Produces("application/atom+xml")]
     [Route("/Activity({provider}:{id})", Name = "activity")]
     public async Task<ActionResult<LiveFeed>> Activity(
@@ -142,7 +131,6 @@ public class ActivitiesController(
     }
 
     [HttpGet]
-    [Authorize]
     [Produces("application/atom+xml")]
     [Route("/Activity({provider}:{id})/Replies", Name = "activity_replies")]
     public async Task<ActionResult<LiveFeed>> ActivityReplies(
@@ -155,32 +143,12 @@ public class ActivitiesController(
         return NoContent();
     }
 
-    private async Task<ActivityProviderBase?> GetAllFeedsProviderAsync()
-    {
-        var auth = Request.Headers.Authorization.ToString();
-        var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
-
-        var headers = new Metadata() { { "Authorization", authHeader } };
-        var servicesResponse = connectedServices.GetConnections(new ConnectionsRequest(), headers);
-
-        List<BlueskyActivityProvider> providers = [];
-        await foreach (var connection in servicesResponse.ResponseStream.ReadAllAsync())
-        {
-            if (connection.Service == "atproto")
-            {
-                providers.Add(ActivatorUtilities.CreateInstance<BlueskyActivityProvider>(serviceProvider, authHeader, connection));
-            }
-        }
-
-        return new FeedCoalescingActivityProvider([.. providers]);
-    }
-
     // TODO: move this to an adapter class
-    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo)
+    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, string? requestedPuid = null)
     {
         return new LiveAuthor()
         {
-            Id = $"{(long)userInfo.Puid}",
+            Id = $"{(requestedPuid ?? userInfo.Puid.ToString())}",
             Name = userInfo.Username,
             Url = this.Url.Link("activities_route_for_user", new { id = userInfo.Puid, provider = "WL" }),
             Links = []
@@ -192,7 +160,7 @@ public class ActivitiesController(
         var entryAuthor = entryModel.Author;
         var author = new LiveAuthor()
         {
-            Id = entryAuthor.IsMe ? meAuthor.Id : null, // HORRIBLE
+            Id = entryAuthor.IsMe ? meAuthor.Id : null, // TODO: this will eventually do some funky "Windows Live" mapping
             Name = entryAuthor.DisplayName,
             ScreenName = entryAuthor.ScreenName,
             Url = entryAuthor.CanonicalUrl,

@@ -3,6 +3,7 @@ using System.Net;
 using FishyFlip;
 using FishyFlip.Lexicon.App.Bsky.Embed;
 using FishyFlip.Lexicon.App.Bsky.Feed;
+using FishyFlip.Lexicon.Com.Atproto.Repo;
 using FishyFlip.Models;
 using ReLiveWP.Services.Activity.Models;
 using ReLiveWP.Services.Grpc;
@@ -49,6 +50,18 @@ public class BlueskyActivityProvider : ActivityProviderBase
         protocol.Client.DefaultRequestHeaders.Add("X-Connection-Id", atprotoConnection.Id);
 
         this.protocol = protocol;
+    }
+
+    public override async Task CreatePostAsync(string text)
+    {
+        var record = new Post
+        {
+            Text = text,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _ = (await protocol.CreateRecordAsync(did, "app.bsky.feed.post", record))
+            .HandleResult();
     }
 
     public override async IAsyncEnumerable<EntryModel> GetEntriesAsync(ActivitiesContext context, int count)

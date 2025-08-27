@@ -1,7 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Atom.Xml;
-using FishyFlip.Lexicon.App.Bsky.Feed;
-using ReLiveWP.Services.Activity.Models;
+﻿using ReLiveWP.Services.Activity.Models;
 
 namespace ReLiveWP.Services.Activity.Services;
 
@@ -74,5 +71,10 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> 
         {
             yield return item;
         }
+    }
+
+    public override async Task CreatePostAsync(string text)
+    {
+        await Task.WhenAll(providers.Select(s => s.CreatePostAsync(text)));
     }
 }
