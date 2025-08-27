@@ -13,7 +13,7 @@ public class SubscriptionInfo
     public bool SubscriptionPendingCancel { get; set; }
     public string SubscriptionStartDate { get; set; } = DateTime.Now.AddDays(-5).ToString();
     public string SubscriptionEndDate { get; set; } = DateTime.Now.AddDays(5).ToString();
-    public string SubscriptionMeteringCertificate { get; set; }
-    public string LastLabelTakedownDate { get; set; }
+    public string? SubscriptionMeteringCertificate { get; set; }
+    public string? LastLabelTakedownDate { get; set; }
     public TunerRegisterInfo MediaTypeTunerRegisterInfo { get; set; }
 }

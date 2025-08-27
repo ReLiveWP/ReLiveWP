@@ -11,7 +11,7 @@ public class SignInResponse
     public SubscriptionInfo SubscriptionInfo { get; set; } = new SubscriptionInfo();
 
     [XmlArrayItem(Type = typeof(MediaTypeTunerRegisterInfo))]
-    public List<TunerRegisterInfo> TunerRegisterInfo = new List<TunerRegisterInfo>()
+    public List<TunerRegisterInfo> TunerRegisterInfo { get; set; } = new List<TunerRegisterInfo>()
     {
         new MediaTypeTunerRegisterInfo() { RegisterType = TunerRegisterType.AppStore, Activated = true },
         new MediaTypeTunerRegisterInfo() { RegisterType = TunerRegisterType.Subscription, Activated = true, Activable = true }
