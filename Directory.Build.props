@@ -1,5 +1,6 @@
 <Project>
   <PropertyGroup>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(MSBuildProjectName)</OutputPath>
+    <PublishDir>$(MSBuildThisFileDirectory)publish\$(TargetFramework)\$(RuntimeIdentifier)\$(MSBuildProjectName)</PublishDir>
   </PropertyGroup>
 </Project>

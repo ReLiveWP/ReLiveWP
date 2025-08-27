@@ -10,7 +10,7 @@ namespace ReLiveWP.Services.Login.Controllers
 {
     [ApiController]
     [Route("oauth/[action]/{service?}")]
-    public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClient) : Controller
+    public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClient, IConfiguration configuration) : Controller
     {
         public record BeginAcountLinkModel(string Service, string? Identifier = null);
         public record BeginAccountLinkResponse(string RedirectUri);
@@ -52,7 +52,7 @@ namespace ReLiveWP.Services.Login.Controllers
 
             await oAuthClient.FinaliseAccountLinkingForServiceAsync(request);
 
-            return Redirect("https://int.relivewp.net/login-complete");
+            return Redirect(configuration["OAuth:LoginCompleteUrl"]!);
         }
 
         [AllowAnonymous]
