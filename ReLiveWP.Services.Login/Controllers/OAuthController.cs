@@ -1,66 +1,61 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Login.Models;
 
-namespace ReLiveWP.Services.Login.Controllers
+namespace ReLiveWP.Services.Login.Controllers;
+
+[ApiController]
+[Route("oauth/[action]/{service?}")]
+public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClient, IConfiguration configuration) : Controller
 {
-    [ApiController]
-    [Route("oauth/[action]/{service?}")]
-    public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClient, IConfiguration configuration) : Controller
+    [HttpPost]
+    [Authorize]
+    [ActionName("begin-account-link")]
+    public async Task<ActionResult<BeginAccountLinkResponse>> BeginAccountLink([FromBody] BeginAcountLinkModel model)
     {
-        public record BeginAcountLinkModel(string Service, string? Identifier = null);
-        public record BeginAccountLinkResponse(string RedirectUri);
-
-        [HttpPost]
-        [Authorize]
-        [ActionName("begin-account-link")]
-        public async Task<ActionResult<BeginAccountLinkResponse>> BeginAccountLink([FromBody] BeginAcountLinkModel model)
+        var headers = new Metadata
         {
-            var headers = new Metadata
-            {
-                { "Authorization", Request.Headers.Authorization.ToString() }
-            };
+            { "Authorization", Request.Headers.Authorization.ToString() }
+        };
 
-            var response = await oAuthClient.BeginAccountLinkingForServiceAsync(
-                new() { Service = model.Service, Identifer = model.Identifier },
-                headers);
+        var response = await oAuthClient.BeginAccountLinkingForServiceAsync(
+            new() { Service = model.Service, Identifer = model.Identifier },
+            headers);
 
-            return new BeginAccountLinkResponse(response.RedirectUri);
+        return new BeginAccountLinkResponse(response.RedirectUri);
+    }
+
+    [AllowAnonymous]
+    [ActionName("callback")]
+    public async Task<ActionResult> OAuthCallback(string service, string state, string issuer = "", string code = null, string error = null, string error_description = null)
+    {
+        if (code == null)
+        {
+            // error case
+            return Unauthorized();
         }
 
-        [AllowAnonymous]
-        [ActionName("callback")]
-        public async Task<ActionResult> OAuthCallback(string service, string state, string issuer = "", string code = null, string error = null, string error_description = null)
+        var request = new FinaliseAccountLinkingRequest()
         {
-            if (code == null)
-            {
-                // error case
-                return Unauthorized();
-            }
+            Service = service,
+            State = state,
+            Issuer = issuer,
+            Code = code
+        };
 
-            var request = new FinaliseAccountLinkingRequest()
-            {
-                Service = service,
-                State = state,
-                Issuer = issuer,
-                Code = code
-            };
+        await oAuthClient.FinaliseAccountLinkingForServiceAsync(request);
 
-            await oAuthClient.FinaliseAccountLinkingForServiceAsync(request);
+        return Redirect(configuration["OAuth:LoginCompleteUrl"]!);
+    }
 
-            return Redirect(configuration["OAuth:LoginCompleteUrl"]!);
-        }
-
-        [AllowAnonymous]
-        [ActionName("jwks")]
-        public async Task<ActionResult> GetPubKeys()
-        {
-            var response = await oAuthClient.GetJsonWebKeysAsync(new Empty());
-            return Content(response.Keys, "application/json");
-        }
+    [AllowAnonymous]
+    [ActionName("jwks")]
+    public async Task<ActionResult> GetPubKeys()
+    {
+        var response = await oAuthClient.GetJsonWebKeysAsync(new Empty());
+        return Content(response.Keys, "application/json");
     }
 }

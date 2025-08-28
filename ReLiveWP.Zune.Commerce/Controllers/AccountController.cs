@@ -33,21 +33,18 @@ public class AccountController(User.UserClient userService, Authentication.Authe
         var zuneId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.TunerInfo.ID)));
         var uid = User.Id()!;
 
-        var resp = new SignInResponse();
-        resp.AccountState = new AccountState();
-        resp.AccountInfo = new AccountInfo()
+        var resp = new SignInResponse
         {
-            ZuneTag = userInfo.Username,
-            Xuid = (ulong)userInfo.Puid,
-            UserReadID = new Guid(uid),
-            UserWriteID = new Guid(uid),
-            Locale = "en-GB",
+            AccountState = new AccountState(),
+            AccountInfo = new AccountInfo()
+            {
+                ZuneTag = userInfo.Username,
+                Xuid = (ulong)userInfo.Puid,
+                UserReadID = new Guid(uid),
+                UserWriteID = new Guid(uid),
+                Locale = "en-GB",
+            }
         };
-        //resp.AccountInfo.ZuneTag = userInfo.Username;
-        //resp.AccountInfo.Xuid = (ulong)userInfo.Puid;
-        //resp.AccountInfo.UserReadID = new Guid(uid);
-        //resp.AccountInfo.UserWriteID = new Guid(uid);
-        //resp.AccountInfo.Locale = "en-GB";
 
         resp.SubscriptionInfo.BillingInstanceId = new Guid(uid);
 

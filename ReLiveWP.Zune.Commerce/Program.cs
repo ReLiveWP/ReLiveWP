@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLiveIDAuthentication(o =>
 {
     o.GrpcConfiguration = (c) => c.Address = new Uri(builder.Configuration["Endpoints:Identity"]!);
-    o.LiveIDConfiguration = (c) => c.ValidServiceTargets = ["live.zune.net", "live.xbox.com", "kdc.xboxlive.com"];
+    o.LiveIDConfiguration = (c) => c.ValidServiceTargets = ["http://Passport.NET/tb", "live.zune.net", "live.xbox.com", "mobilling.microsoft.com", "kdc.xboxlive.com"];
 });
 
 builder.Services.AddControllers(o =>
