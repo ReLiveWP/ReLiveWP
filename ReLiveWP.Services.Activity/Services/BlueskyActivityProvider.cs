@@ -129,7 +129,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
         var author = new ProfileModel()
         {
             IsMe = postView.Author.Did.Equals(this.did),
-            Id = $"at:{postView.Author.Did}",
+            Id = $"{postView.Author.Did}",
             ScreenName = $"@{postView.Author.Handle}",
             DisplayName = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,
             CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}",
@@ -166,7 +166,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
                     ThumbnailUrl = image.Thumb,
                     FullSizeUrl = image.Fullsize,
                     CanonicalUrl = image.Fullsize,
-                    MimeType = image.Type
+                    MimeType = "image/jpeg"
                 });
             }
         }

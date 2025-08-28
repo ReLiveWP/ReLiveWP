@@ -73,7 +73,7 @@ public abstract class BaseOAuthProvider(string service,
         connectedService.Service = service;
         connectedService.AccessToken = tokenResult.AccessToken!;
         connectedService.RefreshToken = tokenResult.RefreshToken!;
-        connectedService.ExpiresAt = DateTimeOffset.Now + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
+        connectedService.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         connectedService.Flags = LiveConnectedServiceFlags.None;
         connectedService.EnabledCapabilities = LiveConnectedServiceCapabilities.None;
         return connectedService;

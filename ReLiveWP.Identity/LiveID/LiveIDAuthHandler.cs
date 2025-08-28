@@ -17,13 +17,16 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
 {
     public const string SchemeName = "LiveID";
     private readonly Authentication.AuthenticationClient authenticationClient;
+    private readonly ILogger<LiveIDAuthHandler> logger;
 
     public LiveIDAuthHandler(
+        ILoggerFactory loggerFactory,
+        ILogger<LiveIDAuthHandler> logger,
         GrpcClientFactory grpcClientFactory,
         IOptionsMonitor<LiveIDAuthOptions> options,
-        ILoggerFactory logger,
-        UrlEncoder encoder) : base(options, logger, encoder)
+        UrlEncoder encoder) : base(options, loggerFactory, encoder)
     {
+        this.logger = logger;
         this.authenticationClient = grpcClientFactory.CreateClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
     }
 
@@ -54,16 +57,22 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue("Authorization", out var value))
+        {
+            logger.LogInformation("No authorization header found!");
             return AuthenticateResult.NoResult();
+        }
 
         var authHeader = value.ToString();
         var token = authHeader;
-        if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            token = authHeader["Bearer ".Length..].Trim();
-        else if (authHeader.StartsWith("WLID1.0 ", StringComparison.OrdinalIgnoreCase))
-            token = authHeader["WLID1.0 ".Length..].Trim();
+        if (authHeader.StartsWith("Bearer", StringComparison.OrdinalIgnoreCase))
+            token = authHeader["Bearer".Length..].Trim();
+        else if (authHeader.StartsWith("WLID1.0", StringComparison.OrdinalIgnoreCase))
+            token = authHeader["WLID1.0".Length..].Trim();
         else
+        {
+            logger.LogInformation("Invalid authorization header found! Probably missing a token!");
             return AuthenticateResult.NoResult();
+        }
 
         var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
         foreach (var validService in Options.ValidServiceTargets)
@@ -78,11 +87,15 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to validate token!");
             return AuthenticateResult.Fail($"Auth service error: {ex.Message}");
         }
 
         if (reply.Code > 0)
+        {
+            logger.LogError("Failed to validate with code {ErrorCode:X2}!", reply.Code);
             return AuthenticateResult.Fail("Invalid token");
+        }
 
         var claims = reply.Claims.Select(c => new Claim(c.Type, c.Value));
         var identity = new ClaimsIdentity(claims, SchemeName);

@@ -6,8 +6,8 @@ using ReLiveWP.Services.Activity.Services;
 namespace ReLiveWP.Services.Activity.Controllers;
 
 [Controller]
-[Route("/Users({id}/[action]")]
-[Route("/Users({provider}:{id}/[action]")]
+[Route("/Users({id})/[action]")]
+[Route("/Users({provider}:{id})/[action]")]
 [Produces("application/atom+xml")]
 public class UsersController(ActivityProviderService activityProvider) : Controller
 {
@@ -27,8 +27,8 @@ public class UsersController(ActivityProviderService activityProvider) : Control
         return NoContent();
     }
 
-    [ActionName("contacts_activities_route_for_user")]
-    public async Task<ActionResult> ContactsActivities(
+    [Route("/Users({provider}:{id})/ContactsActivities", Name = "contacts_activities_route_for_user")]
+    public Task<ActionResult> ContactsActivities(
         string id,
         string? provider = null,
         [FromQuery(Name = "Count")] int count = 10,
@@ -37,12 +37,12 @@ public class UsersController(ActivityProviderService activityProvider) : Control
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
-        return NoContent();
+        return Task.FromResult<ActionResult>(NoContent());
     }
 
 
-    [ActionName("activities_route_for_user")]
-    public async Task<ActionResult> Activities(
+    [Route("/Users({provider}:{id})/Activities", Name = "activities_route_for_user")]
+    public Task<ActionResult> Activities(
         string id,
         string? provider = null,
         [FromQuery(Name = "Count")] int count = 10,
@@ -51,6 +51,6 @@ public class UsersController(ActivityProviderService activityProvider) : Control
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
-        return NoContent();
+        return Task.FromResult<ActionResult>(NoContent());
     }
 }

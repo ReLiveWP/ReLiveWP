@@ -26,9 +26,9 @@ public class Identifier
 
 [Authorize]
 [Controller]
-[Consumes("application/atom+xml")]
 [Produces("application/atom+xml")]
 public class ActivitiesController(
+    ILogger<ActivitiesController> logger,
     User.UserClient userClient,
     ActivityProviderService activityProvider) : Controller
 {
@@ -120,32 +120,35 @@ public class ActivitiesController(
     [HttpGet]
     [Produces("application/atom+xml")]
     [Route("/Activity({provider}:{id})", Name = "activity")]
-    public async Task<ActionResult<LiveFeed>> Activity(
+    public Task<ActionResult<LiveFeed>> Activity(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
-        return NoContent();
+        return Task.FromResult<ActionResult<LiveFeed>>(NoContent());
     }
 
     [HttpGet]
     [Produces("application/atom+xml")]
     [Route("/Activity({provider}:{id})/Replies", Name = "activity_replies")]
-    public async Task<ActionResult<LiveFeed>> ActivityReplies(
+    public Task<ActionResult<LiveFeed>> ActivityReplies(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
-        return NoContent();
+        return Task.FromResult<ActionResult<LiveFeed>>(NoContent());
     }
 
     // TODO: move this to an adapter class
     private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, string? requestedPuid = null)
     {
+        if (requestedPuid != null && userInfo.Puid.ToString() != requestedPuid)
+            logger.LogError("Requested PUID and User PUID do not match!! {RequestedPuid} != {UserPuid}", requestedPuid, userInfo.Puid);
+
         return new LiveAuthor()
         {
             Id = $"{(requestedPuid ?? userInfo.Puid.ToString())}",
@@ -158,7 +161,7 @@ public class ActivitiesController(
     private LiveEntry? CreatePostEntry(EntryModel entryModel, LiveAuthor meAuthor)
     {
         var entryAuthor = entryModel.Author;
-        var author = new LiveAuthor()
+        var author = entryAuthor.IsMe ? meAuthor : new LiveAuthor()
         {
             Id = entryAuthor.IsMe ? meAuthor.Id : null, // TODO: this will eventually do some funky "Windows Live" mapping
             Name = entryAuthor.DisplayName,

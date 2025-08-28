@@ -47,31 +47,41 @@ public class AtProtoProxy
         {
             context.Request.EnableBuffering();
 
+            logger.LogInformation("Proxying /xrpc/{method}", method);
+
             var (service, serviceDescription) = await GetServiceAsync(context, dbContext, userManager, connectedServices);
             if (service == null || serviceDescription == null)
             {
+                logger.LogInformation("Failed to get service.");
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
 
             var serviceLock = tokenLocks.GetOrCreateLock(service.Id);
-            if (!await serviceLock.WaitAsync(10000, context.RequestAborted))
-                return;
-
-            // refresh after the lock is acquired in case something else changed in the meantime, we dont want to lock
-            // without knowing the service is real, but that creates a chicken and egg problem so we'll just run it twice.
-            (service, serviceDescription) = await GetServiceAsync(context, dbContext, userManager, connectedServices);
-            if (service == null || serviceDescription == null)
+            if (!await serviceLock.WaitAsync(5000, context.RequestAborted))
             {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                logger.LogError("Failed to aquire lock on service {ServiceId}!", service.Id);
+                context.Response.StatusCode = StatusCodes.Status408RequestTimeout;
                 return;
             }
 
             try
             {
+                // refresh after the lock is acquired in case something else changed in the meantime, we dont want to lock
+                // without knowing the service is real, but that creates a chicken and egg problem so we'll just run it twice.
+                (service, serviceDescription) = await GetServiceAsync(context, dbContext, userManager, connectedServices);
+                if (service == null || serviceDescription == null)
+                {
+                    logger.LogWarning("Failed to get service {ServiceId} after lock!!", service?.Id);
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+
                 if (service.ExpiresAt <= DateTime.UtcNow ||
                     (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
                 {
+                    logger.LogInformation("Service {ServiceId} required refresh, working...", service.Id);
+
                     using var scope = services.CreateScope();
                     var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
                     var succeeded = false;
@@ -82,6 +92,8 @@ public class AtProtoProxy
 
                     dbContext.ConnectedServices.Update(service);
                     await dbContext.SaveChangesAsync();
+
+                    logger.LogInformation("Service refreshed! New status {ServiceStatus}", service.Flags);
                 }
 
                 // create the DPoP handler using our key
@@ -147,6 +159,8 @@ public class AtProtoProxy
                 }
 
                 await resp.Content.CopyToAsync(context.Response.Body, context.RequestAborted);
+
+                logger.LogInformation("Proxied /xrpc/{method} for {ServiceId}!", method, service.Id);
             }
             finally
             {

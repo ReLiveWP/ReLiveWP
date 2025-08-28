@@ -147,7 +147,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.ServiceUrl = state.Endpoint!;
         service.AccessToken = tokenResult.AccessToken!;
         service.RefreshToken = tokenResult.RefreshToken!;
-        service.ExpiresAt = DateTimeOffset.Now + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
+        service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
         service.EnabledCapabilities = LiveConnectedServiceCapabilities.None;
         service.DPoPKeyId = keyId;
@@ -184,7 +184,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             {
                 service.AccessToken = e.Session.Session.AccessJwt;
                 service.RefreshToken = e.Session.Session.RefreshJwt;
-                service.ExpiresAt = e.Session.Session.ExpiresIn;
+                service.ExpiresAt = e.Session.Session.ExpiresIn.ToUniversalTime();
             };
 
             var describeRepo = (await protocol.DescribeRepoAsync(ATDid.Create(service.ServiceProfile.UserId)!))
@@ -201,7 +201,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
 
             service.AccessToken = authSession.Session.AccessJwt;
             service.RefreshToken = authSession.Session.RefreshJwt;
-            service.ExpiresAt = authSession.Session.ExpiresIn;
+            service.ExpiresAt = authSession.Session.ExpiresIn.ToUniversalTime();
 
             await FetchUserInfoForService(service);
 
