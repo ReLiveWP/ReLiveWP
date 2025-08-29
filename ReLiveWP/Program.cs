@@ -4,7 +4,15 @@ using ReLiveWP.Services;
 using ReLiveWP;
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<AspireProcessLauncher>();
+
+if (Environment.GetEnvironmentVariable("DEBUG_SESSION_PORT") != null)
+{
+    builder.Services.AddHostedService<AspireProcessLauncher>();
+}
+else
+{
+    builder.Services.AddHostedService<StandardProcessLauncher>();
+}
 
 var identity = builder.AddProject("ReLiveWP.Backend.Identity");
 var registration = builder.AddProject("ReLiveWP.Backend.DeviceRegistration");
@@ -30,5 +38,5 @@ builder.AddProject("ReLiveWP.Zune.Commerce")
 builder.AddProject("ReLiveWP.Web.Server", "ReLiveWP.Web/ReLiveWP.Web.Server")
     .DependsOn(identity);
 
-var app = builder.Build();
-app.Run();
+builder.Build()
+    .Run();

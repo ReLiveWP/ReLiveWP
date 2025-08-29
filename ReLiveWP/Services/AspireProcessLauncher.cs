@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -13,6 +14,7 @@ namespace ReLiveWP.Services;
 internal class AspireProcessLauncher : IHostedService
 {
     private readonly string hostVar;
+    private readonly string? certVar;
     private readonly HttpClient httpClient;
     private readonly IProjectMetadata[] projects;
     private readonly CancellationTokenSource cts = new();
@@ -22,9 +24,13 @@ internal class AspireProcessLauncher : IHostedService
     {
         projects = [.. services.GetServices<IProjectMetadata>()];
         hostVar = Environment.GetEnvironmentVariable("DEBUG_SESSION_PORT")!;
+        certVar = Environment.GetEnvironmentVariable("DEBUG_SESSION_SERVER_CERTIFICATE");
+
         var tokenVar = Environment.GetEnvironmentVariable("DEBUG_SESSION_TOKEN");
-        var certVar = Environment.GetEnvironmentVariable("DEBUG_SESSION_SERVER_CERTIFICATE");
         var idPrefix = Environment.GetEnvironmentVariable("DCP_INSTANCE_ID_PREFIX");
+
+        Debug.Assert(hostVar != null, "Couldn't find DEBUG_SESSION_PORT environment variable, are you missing an Aspire plugin?");
+        Debug.Assert(tokenVar != null, "Couldn't find DEBUG_SESSION_TOKEN environment variable, are you missing an Aspire plugin?");
 
         var idBytes = new byte[6];
         Random.Shared.NextBytes(idBytes);
@@ -55,6 +61,11 @@ internal class AspireProcessLauncher : IHostedService
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         await cts.CancelAsync();
+
+        foreach (var project in (string[])[.. projectNames.Keys])
+        {
+            await StopProjectAsync(project);
+        }
     }
 
     private async Task LaunchProjectAsync(string projectName, string? projectRelativePath, IReadOnlyList<string> args, IReadOnlyDictionary<string, string> environment)
@@ -64,14 +75,15 @@ internal class AspireProcessLauncher : IHostedService
 
         var payload = new
         {
-            launch_configurations = (object[])[
+            launch_configurations = new[]
+            {
                 new
                 {
                     type = "project",
                     project_path = project,
                     launch_profile = "http",
                 }
-            ],
+            },
             env = environment.Select(e => new { name = e.Key, value = e.Value }).ToArray(),
             args
         };
@@ -94,10 +106,25 @@ internal class AspireProcessLauncher : IHostedService
         }
     }
 
+    private async Task StopProjectAsync(string id)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"run_session/{id}?api-version=2024-03-03");
+
+        var response = await httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(body);
+        }
+
+        response.EnsureSuccessStatusCode();
+        projectNames.Remove(id);
+    }
+
     private async Task ConnectAsync(CancellationToken token)
     {
         var ws = new ClientWebSocket();
-        await ws.ConnectAsync(new Uri("wss://" + hostVar + "/run_session/notify"), httpClient, token);
+        await ws.ConnectAsync(new Uri((certVar != null ? "wss://" : "ws://") + hostVar + "/run_session/notify"), httpClient, token);
 
         _ = Task.Run(() => WebSocketListenLoop(ws, token));
     }
