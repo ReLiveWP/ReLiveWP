@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ReLiveWP": {
+      "commandName": "Project",
+      "workingDirectory": "$(MSBuildProjectDirectory)"
+    }
+  }
+}
