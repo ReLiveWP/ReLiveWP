@@ -2,7 +2,10 @@
   "profiles": {
     "ReLiveWP": {
       "commandName": "Project",
-      "workingDirectory": "$(MSBuildProjectDirectory)"
+      "workingDirectory": "$(MSBuildProjectDirectory)",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
     }
   }
 }

@@ -35,8 +35,8 @@ builder.AddProject("ReLiveWP.Zune.Catalog");
 builder.AddProject("ReLiveWP.Zune.Commerce")
     .DependsOn(identity);
 
-builder.AddProject("ReLiveWP.Web.Server", "ReLiveWP.Web/ReLiveWP.Web.Server")
-    .DependsOn(identity);
+// builder.AddProject("ReLiveWP.Web.Server", "ReLiveWP.Web/ReLiveWP.Web.Server")
+//     .DependsOn(identity);
 
 builder.Build()
     .Run();
