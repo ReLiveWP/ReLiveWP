@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -8,8 +8,8 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..</DockerfileContext>
     <SpaRoot>..\relivewp.web.client</SpaRoot>
-    <SpaProxyLaunchCommand>pnpm run dev</SpaProxyLaunchCommand>
-    <SpaProxyServerUrl>https://localhost:59768</SpaProxyServerUrl>
+    <SpaProxyLaunchCommand>pnpm run start</SpaProxyLaunchCommand>
+    <SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl>
   </PropertyGroup>
 
   <ItemGroup>

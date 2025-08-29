@@ -13,7 +13,7 @@ namespace ReLiveWP.Services.Push;
 public class PushTcpService(ILogger<PushTcpService> logger) : IHostedService
 {
     private readonly TcpListener tcpListener = new TcpListener(IPAddress.Any, 2345);
-    private readonly X509Certificate2 serverCert = new X509Certificate2("172.16.0.2.pfx");
+    //private readonly X509Certificate2 serverCert = new X509Certificate2("172.16.0.2.pfx");
 
 
     public Task StartAsync(CancellationToken cancellationToken)
