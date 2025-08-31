@@ -33,6 +33,9 @@ builder.AddProject("ReLiveWP.Services.Push");
 builder.AddProject("ReLiveWP.Services.AddressBook")
     .DependsOn(identity);
 
+builder.AddProject("ReLiveWP.Services.Exchange")
+    .DependsOn(identity);
+
 builder.AddProject("ReLiveWP.Zune.Catalog");
 
 builder.AddProject("ReLiveWP.Zune.Commerce")

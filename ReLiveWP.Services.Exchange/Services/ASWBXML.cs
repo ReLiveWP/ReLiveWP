@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using System.Runtime.Serialization;
+using System.Xml;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
@@ -513,6 +514,7 @@ class ASWBXML
         codePages[14].AddToken(0x38, "ApplicationName");
         codePages[14].AddToken(0x39, "ApprovedApplicationList");
         codePages[14].AddToken(0x3A, "Hash");
+        codePages[14].AddToken(0x3B, "AccountOnlyRemoteWipe");
         #endregion
 
         // Code Page 15: Search
@@ -779,15 +781,25 @@ class ASWBXML
         codePages[24].AddToken(0x18, "RemoveRightsManagementDistribution");
         #endregion
 
-        // Code Page 0xFE: Windows Phone Bullshit
-        #region Windows Phone Bullshit Code Page
+        // Code Page 0xFE: Windows Live
+        #region Windows Live Code Page
         codePages[0xFE] = new ASWBXMLCodePage();
-        codePages[0xFE].Namespace = "WindowsPhone";
-        codePages[0xFE].Xmlns = "phone";
+        codePages[0xFE].Namespace = "WindowsLive";
+        codePages[0xFE].Xmlns = "live";
 
-        codePages[0xFE].AddToken(0x5, "Unknown1");
-        codePages[0xFE].AddToken(0x6, "Unknown2");
-        codePages[0xFE].AddToken(0x7, "SecurityDescriptor");
+        codePages[0xFE].AddToken(0x5, "Annotations");
+        codePages[0xFE].AddToken(0x6, "Annotation");
+        codePages[0xFE].AddToken(0x7, "Name");
+        codePages[0xFE].AddToken(0x8, "Value");
+        codePages[0xFE].AddToken(0x9, "SystemCategories");
+        codePages[0xFE].AddToken(0xA, "CategoryId");
+        // not a bug they skipped one
+        codePages[0xFE].AddToken(0xC, "CategoryMode");
+        codePages[0xFE].AddToken(0xD, "SentTime");
+        codePages[0xFE].AddToken(0xE, "SentItem");
+        codePages[0xFE].AddToken(0xF, "SimSlotNumber");
+        codePages[0xFE].AddToken(0x10, "MmsMessageId");
+        codePages[0xFE].AddToken(0x11, "ExtensionType");
         #endregion
 
         #endregion
@@ -808,6 +820,11 @@ class ASWBXML
         xmlw.Flush();
 
         return sw.ToString();
+    }
+
+    public XmlDocument GetXmlDocument()
+    {
+        return (XmlDocument)xmlDoc.Clone();
     }
 
     public void LoadBytes(byte[] byteWBXML)
@@ -1060,6 +1077,11 @@ class ASWBXML
     {
         foreach (XmlAttribute attribute in node.Attributes)
         {
+            if (attribute.Value == "http://www.w3.org/2001/XMLSchema-instance")
+                continue;
+            if (attribute.Value == "http://www.w3.org/2001/XMLSchema")
+                continue;
+
             int codePage = GetCodePageByNamespace(attribute.Value);
 
             if (attribute.Name.ToUpper() == "XMLNS")
