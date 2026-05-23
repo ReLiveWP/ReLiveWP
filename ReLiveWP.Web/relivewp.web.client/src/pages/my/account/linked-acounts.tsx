@@ -1,7 +1,7 @@
 import "./linked-accounts.scss"
 
 import { AccountType, AccountTypeGroups, Connections, LinkedAccountsContext, OpenDialogContext } from "./state/linked-accounts";
-import { useSignal, useSignalEffect } from "@preact/signals";
+import { Signal, useSignal, useSignalEffect } from "@preact/signals";
 
 import AccountTypeGroup from "./components/AccountTypeGroup";
 import { ENDPOINT_GET_LINKED_ACCOUNTS } from "~/util/endpoints";
@@ -29,7 +29,6 @@ export default function LinkedAccounts() {
             });
 
             if (!response.ok) {
-                // todo: errored
                 return;
             }
 
@@ -50,8 +49,8 @@ export default function LinkedAccounts() {
     return (
         <OpenDialogContext.Provider value={openDialog}>
             {!!linkedAccounts.value ? (
-                <LinkedAccountsContext.Provider value={{ linkedAccounts }}>
-                    <LinkAccountDialog isShown={isOpen} onClose={onClose} service={service} />
+                <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts as Signal<Connections> }}>
+                    <LinkAccountDialog isShown={isOpen} onClose={onClose} service={service!} />
                     <div class="linked-accounts">
                         {Object.entries(AccountTypeGroups)
                             .map(group => (<AccountTypeGroup key={group[0]} group={group} />))}

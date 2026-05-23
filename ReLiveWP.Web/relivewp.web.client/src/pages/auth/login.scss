@@ -19,14 +19,22 @@
     }
 
     .checkbox {
-        display: inline;
+        display: inline-block;
+        margin: 0px 6px 0 0;
+        width: 14px;
+        height: 14px;
+        vertical-align: middle;
+    }
+
+    .remember-me-text {
+        vertical-align: middle;
     }
 
     .forgot-link {
         font-size: 9pt;
     }
 
-    input[type="checkbox"] > span {
+    input[type="checkbox"]>span {
         display: inline-block;
         position: relative;
         top: -1px;

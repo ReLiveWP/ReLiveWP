@@ -26,7 +26,7 @@ declare module "*.avif" {
     const content: any;
     export default content;
 }
-declare module "*.wasm" {
+declare module "*.scss" {
     const content: any;
     export default content;
 }

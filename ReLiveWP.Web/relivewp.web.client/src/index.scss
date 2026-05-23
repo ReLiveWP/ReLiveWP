@@ -175,7 +175,8 @@ body {
 }
 
 
-input, button {
+input,
+button {
   font-family: var(--font-family);
 }
 
@@ -222,4 +223,10 @@ h3 {
 a {
   text-decoration: none;
   color: #888;
+}
+
+button,
+input[type="submit"] {
+  min-width: 72px;
+  min-height: 21px;
 }

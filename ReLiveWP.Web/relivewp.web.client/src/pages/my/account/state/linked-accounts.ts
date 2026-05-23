@@ -60,5 +60,5 @@ export type LinkedAccountsContext = {
     linkedAccounts: Signal<Connections>
 }
 
-export const OpenDialogContext = createContext<(service: AccountType) => void>(null);
-export const LinkedAccountsContext = createContext<LinkedAccountsContext>(null);
+export const OpenDialogContext = createContext<(service: AccountType) => void>(null!);
+export const LinkedAccountsContext = createContext<LinkedAccountsContext>(null!);

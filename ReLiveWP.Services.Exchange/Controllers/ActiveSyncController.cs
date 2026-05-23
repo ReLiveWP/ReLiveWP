@@ -35,7 +35,7 @@ public class ActiveSyncController : ControllerBase
             await Request.Body.CopyToAsync(memoryStream);
 
             var data = memoryStream.ToArray();
-            _logger.LogInformation("Got bytes {bytes}", string.Join(" ", data.Select(c => c.ToString("X2"))));
+            //_logger.LogInformation("Got bytes {bytes}", string.Join(" ", data.Select(c => c.ToString("X2"))));
 
 
             var decoder = new ASWBXML();
@@ -43,7 +43,6 @@ public class ActiveSyncController : ControllerBase
 
             var xml = decoder.GetXmlDocument();
             _logger.LogInformation("Got XML {xml}", xml.OuterXml);
-
 
             Response.Headers.ContentType = "application/vnd.ms-sync.wbxml";
 

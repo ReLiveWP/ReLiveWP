@@ -8,7 +8,7 @@ import { useContext } from "preact/hooks";
 export type AccentColor = 'red' | 'purple' | 'teal' | 'pink' | 'green' | 'yellow' | 'blue' | 'magenta' | 'zune';
 
 type AppState = {
-    token: Signal<string>,
+    token: Signal<string | null>,
     user: Signal<User>,
     isAuthenticated: Signal<boolean>,
     accentStack: Signal<AccentColor[]>
@@ -17,7 +17,7 @@ type AppState = {
     authenticatedFetch: Signal<typeof fetch>
 }
 
-const AppStateContext = createContext<AppState>(null);
+const AppStateContext = createContext<AppState>(null!);
 const AppStateProvider = AppStateContext.Provider;
 
 function useAppState() {
@@ -57,11 +57,12 @@ function createAppStateSignals(): AppState {
             zune: "#f10da1",
         })[accent.value]),
         authenticatedFetch: computed(() => {
+            const value = token.value;
             return (url, opts) => {
                 const options = { ...opts };
                 options.headers = {
                     ...options.headers,
-                    'Authorization': `Bearer ${token.value}`
+                    'Authorization': `Bearer ${value}`
                 };
 
                 return fetch(url, options);

@@ -14,6 +14,6 @@ if (window.location.pathname === '/login-complete') {
 }
 else {
     if (typeof window !== "undefined") {
-        render(<Main />, document.getElementById("app"));
+        render(<Main />, document.getElementById("app")!);
     }
 }

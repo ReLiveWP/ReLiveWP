@@ -5,7 +5,7 @@ import { useAppState } from "~/state/app-state";
 export default function SignOut() {
     const { token } = useAppState();
     const signOut = () => {
-        token.value = null;
+        token.value = null!;
     }
 
     return (

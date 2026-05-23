@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity;
+using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.ConnectedServices;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Grpc;
@@ -56,6 +57,10 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<TokenManager>();
+builder.Services.AddScoped<LiveIdDeviceCertificateService>();
+builder.Services.AddScoped<RootCACertificateProvider>();
 
 builder.Services.AddSingleton<ServiceTokenLocks>();
 builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
@@ -109,7 +114,7 @@ static void ApplyMigrations(WebApplication app)
 
     if (dbContext.DPoPKeys.Count() == 0)
     {
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 1; i++)
         {
             var keyId = $"Key{i}";
             var jwk = JsonWebKeys.CreateECDsa("ES256");

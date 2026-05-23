@@ -303,6 +303,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -319,6 +322,8 @@ namespace ReLiveWP.Backend.Identity.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.HasIndex("Puid");
+
+                    b.HasIndex("Type");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });

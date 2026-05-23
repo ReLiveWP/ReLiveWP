@@ -1,10 +1,26 @@
 import "./link-account-dialog.scss"
 
-import { Signal, useSignal } from "@preact/signals";
+import { Signal, useSignal, signal } from "@preact/signals";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks"
 
 import { ENDPOINT_BEGIN_ACCOUNT_LINKING } from "~/util/endpoints";
 import { useAppState } from "~/state/app-state";
+
+const REQUIRES_HANDLE = ['atproto', 'misskey', 'mastodon']
+const SERVICE_DATA = {
+    "mastodon": {
+        title: "ActivityPub Handle",
+        placeholder: "@wamwoowam@snug.moe"
+    },
+    "misskey": {
+        title: "ActivityPub Handle",
+        placeholder: "@wamwoowam@snug.moe"
+    },
+    "atproto": {
+        title: "Bluesky Handle",
+        placeholder: "@wamwoowam.co.uk"
+    }
+}
 
 type Stage = 1 | 2 | 3 | 4 | -1;
 
@@ -12,22 +28,17 @@ type LinkAccountState = {
     handle: Signal<string>;
     redirectUrl: Signal<string>;
     state: Signal<Stage>;
-    error: Signal<string>;
+    error: Signal<string | null>;
 }
 
 function LinkAccountDialogStage1({ onSubmit, handle, error, service }: LinkAccountState & { onSubmit: (e: SubmitEvent) => void, service: string }) {
-    let title = <label htmlFor="handle">Bluesky Handle</label>;
-    let placeholder = "@wamwoowam.co.uk";
-    if (service == "mastodon" || service == "misskey") {
-        title = <label htmlFor="handle">ActivityPub Handle</label>;
-        placeholder = "@wamwoowam@snug.moe"
-    }
+    const { title, placeholder } = SERVICE_DATA[service as keyof typeof SERVICE_DATA];
 
     return (
         <form onSubmit={onSubmit}>
             <h1>who are you?</h1>
 
-            {title}
+            <label htmlFor="handle">{title}</label>
             <input id="handle"
                 type="text"
                 class="textbox"
@@ -42,7 +53,7 @@ function LinkAccountDialogStage1({ onSubmit, handle, error, service }: LinkAccou
     );
 }
 
-function LinkAccountDialogStage2({ service, handle, redirectUrl, error, state, showWindow }: LinkAccountState & { showWindow: Function, service: string }) {
+function LinkAccountDialogStage2({ service, handle, redirectUrl, error, state }: LinkAccountState & { service: string }) {
     const { authenticatedFetch: { value: _fetch } } = useAppState();
     const beginAccountLinking = async () => {
         const response = await _fetch(ENDPOINT_BEGIN_ACCOUNT_LINKING, {
@@ -55,7 +66,7 @@ function LinkAccountDialogStage2({ service, handle, redirectUrl, error, state, s
         });
 
         if (!response.ok) {
-            if (["atproto", "misskey", "mastodon"].includes(service)) {
+            if (REQUIRES_HANDLE.includes(service)) {
                 error.value = "We couldn't find that handle, try again.";
                 state.value = 1;
             }
@@ -63,14 +74,14 @@ function LinkAccountDialogStage2({ service, handle, redirectUrl, error, state, s
                 error.value = "Something went wrong, try linking again later.";
                 state.value = -1;
             }
+        } else {
+            const { redirect_uri } = await response.json();
+
+            state.value = 3;
+            redirectUrl.value = redirect_uri;
+
+            window.open(redirect_uri, "_blank");
         }
-
-        const { redirect_uri } = await response.json();
-
-        state.value = 3;
-        redirectUrl.value = redirect_uri;
-
-        showWindow(redirect_uri);
     }
 
     useEffect(() => {
@@ -85,11 +96,11 @@ function LinkAccountDialogStage2({ service, handle, redirectUrl, error, state, s
     );
 }
 
-function LinkAccountDialogStage3({ redirectUrl, state, showWindow }: LinkAccountState & { showWindow: Function }) {
+function LinkAccountDialogStage3({ redirectUrl, state }: LinkAccountState) {
     return (
         <>
             <h1>nothing to see here!</h1>
-            <p>We're signing you in, you should see a new window. If not <a href="#" onClick={() => showWindow(redirectUrl.value)}>click here to open one manually.</a></p>
+            <p>We're signing you in, you should see a new window. If not <a href={redirectUrl.value} target="_blank">click here to open one manually.</a></p>
             <button onClick={() => state.value = 1}>cancel</button>
         </>
     );
@@ -136,6 +147,7 @@ function LinkAccountDialogStage4({ onFinish }: { onFinish: (e: SubmitEvent) => v
             </label> */}
             <h1>all done!</h1>
             <p>You can now use services from this account on your device. Have fun!</p>
+            <p>Please note that changes may take a few minutes to propagate.</p>
             <input type="submit" class="submit" value="finish" />
         </form>
     );
@@ -146,16 +158,16 @@ export default function LinkAccountDialog({ isShown, onClose, service }
     : { isShown: boolean, onClose: Function, service: string }) {
     const dialogRef = useRef<HTMLDialogElement>(null)
     const [state, setState] = useState({
-        handle: useSignal(""),
-        redirectUrl: useSignal(""),
-        state: useSignal<Stage>(1),
-        error: useSignal<string>(null)
+        handle: signal(""),
+        redirectUrl: signal(""),
+        state: signal<Stage>(1),
+        error: signal<string | null>(null)
     })
 
     const stage = state.state;
 
     useLayoutEffect(() => {
-        if (!["atproto", "mastodon", "misskey"].includes(service) && stage.value == 1 && !!service) {
+        if (!REQUIRES_HANDLE.includes(service) && stage.value == 1 && !!service) {
             stage.value = 2;
         }
         else {
@@ -173,7 +185,21 @@ export default function LinkAccountDialog({ isShown, onClose, service }
         }
     }, [isShown])
 
-    const onSubmit = async (e: SubmitEvent) => {
+    useEffect(() => {
+        const channel = new BroadcastChannel("a0eb0210-bc9a-4bc5-be15-44ff49b71027");
+        const onMessage = () => {
+            stage.value = 4;
+        }
+
+        channel.addEventListener("message", onMessage);
+
+        return () => {
+            channel.removeEventListener("message", onMessage);
+            channel.close();
+        }
+    })
+
+    const onSubmit = (e: SubmitEvent) => {
         e.preventDefault();
         stage.value = 2;
     }
@@ -183,21 +209,6 @@ export default function LinkAccountDialog({ isShown, onClose, service }
         onClose();
     }
 
-    const showWindow = (redirectUri: string) => {
-        const handle = window.open(
-            redirectUri,
-            "oauthWindow",
-        );
-
-        const channel = new BroadcastChannel("a0eb0210-bc9a-4bc5-be15-44ff49b71027");
-        const onMessage = () => {
-            handle.close();
-            stage.value = 4;
-            channel.removeEventListener("message", onMessage);
-        }
-
-        channel.addEventListener("message", onMessage);
-    }
 
     const StateMachine = ({ state: s }: { state: Stage }) => {
         switch (s) {
@@ -207,11 +218,11 @@ export default function LinkAccountDialog({ isShown, onClose, service }
                 );
             case 2:
                 return (
-                    <LinkAccountDialogStage2 {...state} service={service} showWindow={showWindow} />
+                    <LinkAccountDialogStage2 {...state} service={service} />
                 );
             case 3:
                 return (
-                    <LinkAccountDialogStage3 {...state} showWindow={showWindow} />
+                    <LinkAccountDialogStage3 {...state} />
                 )
             case 4:
                 return (

@@ -133,7 +133,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
             ScreenName = $"@{postView.Author.Handle}",
             DisplayName = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,
             CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}",
-            AvatarUrl = postView.Author.Avatar!
+            AvatarUrl = FixImageUrl(postView.Author.Avatar!)!
         };
 
         var postId = postView.Uri.Rkey;
@@ -163,9 +163,9 @@ public class BlueskyActivityProvider : ActivityProviderBase
                 postEntry.AdditionalActivities.Add(new PhotoActivityModel()
                 {
                     Id = image.Fullsize,
-                    ThumbnailUrl = image.Thumb,
-                    FullSizeUrl = image.Fullsize,
-                    CanonicalUrl = image.Fullsize,
+                    ThumbnailUrl = FixImageUrl(image.Thumb)!,
+                    FullSizeUrl = FixImageUrl(image.Fullsize)!,
+                    CanonicalUrl = FixImageUrl(image.Fullsize)!,
                     MimeType = "image/jpeg"
                 });
             }
@@ -174,5 +174,12 @@ public class BlueskyActivityProvider : ActivityProviderBase
         // TODO: video
 
         return postEntry;
+    }
+
+    private static string? FixImageUrl(string? url)
+    {
+        if (url == null) return url;
+
+        return $"{url}@jpeg";
     }
 }

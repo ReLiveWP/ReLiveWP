@@ -5,6 +5,7 @@ import { useAppState } from "~/state/app-state";
 import { useLocation } from "preact-iso";
 import { useSignal } from "@preact/signals";
 import { useTitle } from "~/util/effects";
+import { toString } from "~/util/hresult";
 
 export default function Login() {
     useTitle("login");
@@ -13,6 +14,7 @@ export default function Login() {
     const password = useSignal("");
     const rememberMe = useSignal(true);
     const isDisabled = useSignal(false);
+    const error = useSignal<string | null>(null)
 
     const appState = useAppState();
     const location = useLocation();
@@ -22,7 +24,6 @@ export default function Login() {
 
         isDisabled.value = true;
         try {
-            const endpoint = ENDPOINT_REQUEST_TOKENS;
             const payload = {
                 identity: username,
                 credentials: {
@@ -35,7 +36,7 @@ export default function Login() {
             };
 
             const payloadText = JSON.stringify(payload);
-            const response = await fetch(endpoint, {
+            const response = await fetch(ENDPOINT_REQUEST_TOKENS, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -45,6 +46,8 @@ export default function Login() {
             });
 
             if (!response.ok) {
+                const { error_code }: { error_code: number } = await response.json();
+                error.value = toString(error_code);
                 return; // todo: show errors
             }
 
@@ -53,8 +56,9 @@ export default function Login() {
             appState.token.value = security_tokens[0].token;
 
             location.route("/");
-        } catch {
+        } catch (e: any) {
             // todo: show errors
+            error.value = e.message;
         } finally {
             isDisabled.value = false;
         }
@@ -92,6 +96,8 @@ export default function Login() {
                         disabled={isDisabled}></input>
                     <span class="remember-me-text">Remember me</span>
                 </label>
+
+                {error && <p class="error">{error}</p>}
 
                 <input type="submit" class="submit" value="Sign in" disabled={isDisabled} />
             </form>

@@ -10,7 +10,7 @@ namespace ReLiveWP.Zune.Commerce.Controllers;
 [Route("/account/{action}")]
 [Route("/{version}/account/{action}")]
 [Route("/{version}/{language}/account/{action}")]
-public class AccountController(User.UserClient userService, Authentication.AuthenticationClient authService) : Controller
+public class AccountController(User.UserClient userService) : Controller
 {
     [HttpPost]
     public async Task<ActionResult<SignInResponse>> SignIn([FromBody] SignInRequest request)
@@ -26,13 +26,9 @@ public class AccountController(User.UserClient userService, Authentication.Authe
             value = value[8..];
 
         var userInfo = await userService.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
-        var tokenRequest = new SecurityTokensRequest() { AuthToken = value, Requests = { new SecurityTokenRequest() { ServiceTarget = "commerce.zune.net", ServicePolicy = "COOKIE" } } };
-        var tokenResponse = await authService.GetSecurityTokensAsync(tokenRequest);
 
-        // do we know this is how this works?
-        var zuneId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.TunerInfo.ID)));
+
         var uid = User.Id()!;
-
         var resp = new SignInResponse
         {
             AccountState = new AccountState(),
@@ -50,7 +46,7 @@ public class AccountController(User.UserClient userService, Authentication.Authe
 
         // this is a login token sent for other requests (like purchases)
         // asp.net core authrorization when:tm:
-        Response.Cookies.Append("ZuneECommerce", tokenResponse.Tokens.First().Token);
+        Response.Cookies.Append("ZuneECommerce", value);
 
         return Ok(resp);
     }

@@ -23,7 +23,7 @@ const AccentHandler = () => {
         body.className = 'accent-' + accent.value;
 
         const themeTag = document.querySelector('meta[name="theme-color"]');
-        themeTag.setAttribute("content", accentColor.value)
+        themeTag?.setAttribute("content", accentColor.value)
     });
 
     useAccentColor('red');

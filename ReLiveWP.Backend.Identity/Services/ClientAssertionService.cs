@@ -4,30 +4,35 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace ReLiveWP.Backend.Identity.Services
 {
-    public class ClientAssertionService(IJWKProvider jwkProvider) : IClientAssertionService
+    public class ClientAssertionService(IJWKProvider jwkProvider, ILogger<ClientAssertionService> logger) : IClientAssertionService
     {
         public async Task<string> CreateClientAssertionAsync(string clientId, string issuer, string keyId)
         {
             var key = await jwkProvider.GetJWKAsync(keyId);
-
             var issuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var expiresAt = issuedAt + 300;
+
+            var jKey = new JsonWebKey(key);
+            logger.LogInformation("Using key {KeyId}", jKey.KeyId);
 
             var authClaims = new List<Claim>()
             {
-                new Claim(JwtRegisteredClaimNames.Iss, clientId),
                 new Claim(JwtRegisteredClaimNames.Sub, clientId),
-                new Claim(JwtRegisteredClaimNames.Aud, issuer),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, issuedAt.ToString(), ClaimValueTypes.Integer64),
-                new Claim(JwtRegisteredClaimNames.Exp, expiresAt.ToString(), ClaimValueTypes.Integer64)
             };
 
             var token = new JwtSecurityToken(
+                issuer: clientId,
+                audience: issuer,
                 expires: DateTimeOffset.Now.AddMinutes(5).UtcDateTime,
                 claims: authClaims,
-                signingCredentials: new SigningCredentials(new JsonWebKey(key) { KeyId = keyId }, SecurityAlgorithms.EcdsaSha256)
+                signingCredentials: new SigningCredentials(jKey, SecurityAlgorithms.EcdsaSha256)
             );
+
+            var handler = new JwtSecurityTokenHandler();
+            var written = handler.WriteToken(token);
+            var decoded = handler.ReadJwtToken(written);
+            logger.LogInformation("Key {KeyId} X {X} Y {Y}", decoded.Header.Kid, jKey.X, jKey.Y);
 
             var tokenString = new JwtSecurityTokenHandler()
                 .WriteToken(token);

@@ -7,9 +7,11 @@ import "google/protobuf/timestamp.proto";
 package identity;
 
 service Authentication {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
   rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyTokenResponse);
-  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
 }
 
 message RegisterRequest {
@@ -23,6 +25,21 @@ message RegisterResponse {
   optional string id = 2;
   optional int64 puid = 3;
   optional string cid = 4;
+}
+
+message RegisterDeviceRequest {
+  string deviceId = 1;
+  string username = 2;
+  string password = 3;
+  repeated SecurityTokenRequest requests = 4;
+}
+
+message RegisterDeviceResponse {
+  uint32 code = 1;
+  optional string id = 2;
+  optional int64 puid = 3;
+  optional string cid = 4;
+  repeated SecurityTokenResponse tokens = 5;
 }
 
 message SecurityTokenRequest {
@@ -42,6 +59,7 @@ message SecurityTokensRequest {
 message SecurityTokenResponse {
   string serviceTarget = 1;
   string token = 2;
+  optional string refreshToken = 6;
   string tokenType = 3; 
 
   google.protobuf.Timestamp created = 4;
@@ -71,4 +89,14 @@ message VerifyTokenRequest {
 message VerifyTokenResponse {
   uint32 code = 1;
   repeated ClaimMessage claims = 2;
+}
+
+message DeviceCertificateRequest {
+  bytes certificateRequest = 1;
+  string puid = 2;
+}
+
+message DeviceCertificateResponse {
+  bool succeeded = 1;
+  bytes certificate = 2;
 }

@@ -152,10 +152,9 @@ public class ConnectedAccountsService(IJWKProvider jwkProvider,
                 Crv = webKey.Crv,
                 X = webKey.X,
                 Y = webKey.Y,
-                Kid = item.Id
+                Kid = webKey.KeyId
             };
 
-            publicKey.KeyOps.Add("sign");
             publicKey.KeyOps.Add("verify");
             keySet.Keys.Add(publicKey);
         }

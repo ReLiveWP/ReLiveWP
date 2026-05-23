@@ -36,7 +36,7 @@ public class AuthenticationController(
         if (user == null)
             return NotFound(); // this is pretty bad, maybe 500 is better?
 
-        return new UserModel(User.Id()!, user.Cid, user.Puid.ToString(), user.Username, user.EmailAddress);
+        return new UserModel(User.Id()!, user.Cid, user.Puid, user.Username, user.EmailAddress);
     }
 
     [Authorize]
@@ -77,6 +77,7 @@ public class AuthenticationController(
     {
         try
         {
+            // TODO oh boy howdy this needs to go away
             SecurityTokensRequest grpcRequest;
             if (request.Credentials.TryGetValue("ps:password", out var password))
             {
@@ -135,71 +136,46 @@ public class AuthenticationController(
         }
     }
 
+    [ActionName("register_device")]
+    [HttpPost(Name = "register_device")]
+    public async Task<ActionResult<CreateDeviceAccountResponseModel>> RegisterDevice([FromBody] CreateDeviceAccountModel request)
+    {
+        var response = await authenticationClient.RegisterDeviceAsync(new RegisterDeviceRequest()
+        {
+            DeviceId = request.DeviceId,
+            Username = request.Username,
+            Password = request.Password,
+            Requests =
+            {
+                new SecurityTokenRequest()
+                {
+                    ServiceTarget = "http://Passport.NET/tb",
+                    ServicePolicy = "LEGACY"
+                }
+            }
+        });
+
+        var responseModel = new CreateDeviceAccountResponseModel(
+            new UserModel(response.Id, response.Cid, response.Puid, request.Username, $"{response.Puid}@devices.relivewp.net"),
+            [.. response.Tokens.Select(s =>
+                new SecurityTokenModel(s.ServiceTarget, s.Token, s.TokenType, s.Created.ToDateTimeOffset(), s.Expires.ToDateTimeOffset()))]);
+
+        return responseModel;
+    }
+
+
     [Authorize]
     [ActionName("provision_device")]
     [HttpPost(Name = "provision_device")]
     public async Task<ActionResult<ProvisionDeviceResponseModel>> ProvisionDevice([FromBody] ProvisionDeviceRequestModel request)
     {
-        try
+        var puid = User.Claims.FirstOrDefault(c => c.Type == "puid")?.Value;
+        var deviceCert = await authenticationClient.GetDeviceCertificateAsync(new DeviceCertificateRequest()
         {
-            var userName = request.DeviceId + "_" + Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
-            var password = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-            var account = await authenticationClient.RegisterAsync(new RegisterRequest() { Username = userName, EmailAddress = "", Password = password });
-            Marshal.ThrowExceptionForHR((int)account.Code); // TODO: fix all of this please god
+            Puid = puid,
+            CertificateRequest = ByteString.FromBase64(request.Csr)
+        });
 
-            var associationRequest = new DeviceAssociationRequest() { DeviceId = request.DeviceId, UserId = User.Id() };
-            var associationResponse = await deviceRegistrationClient.AssociateDeviceWithUserAsync(associationRequest);
-            if (!associationResponse.Succeeded)
-            {
-                // weird but not the end of the world tbh
-            }
-
-            var deviceCert = await clientProvisioningClient.ProvisionWP7DeviceAsync(new WP7ProvisioningRequest() { CertificateRequest = ByteString.FromBase64(request.Csr) });
-            if (!deviceCert.Succeeded)
-                throw new Exception("Failed to provision certificate");
-
-            var certificateCollection = new X509Certificate2Collection();
-            certificateCollection.Import(deviceCert.Certificate.ToByteArray());
-            var certificate = certificateCollection.First()!;
-            var encodedCertificate = Convert.ToBase64String(certificate.Export(X509ContentType.Cert));
-
-            var grpcRequest = new SecurityTokensRequest()
-            {
-                Username = userName,
-                Password = password,
-            };
-
-            var grpcTokenRequest = new SecurityTokenRequest()
-            {
-                ServicePolicy = "JWT",
-                ServiceTarget = "http://Passport.NET/tb"
-            };
-
-            grpcRequest.Requests.Add(grpcTokenRequest);
-
-            var grpcResponse = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
-            Marshal.ThrowExceptionForHR((int)grpcResponse.Code); // TODO: fix all of this please god
-
-            var securityTokens = new List<SecurityTokenModel>();
-            foreach (var token in grpcResponse.Tokens)
-            {
-                securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
-                                                          token.Token,
-                                                          token.TokenType,
-                                                          token.Created.ToDateTimeOffset(),
-                                                          token.Expires.ToDateTimeOffset()));
-            }
-
-            var response = new ProvisionDeviceResponseModel(
-                new UserIdentityModel(userName, account.Cid, account.Puid, userName, password),
-                [.. securityTokens],
-                encodedCertificate);
-
-            return response;
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new ErrorModel((uint)ex.HResult));
-        }
+        return Ok(new ProvisionDeviceResponseModel(deviceCert.Certificate.ToBase64()));
     }
 }
