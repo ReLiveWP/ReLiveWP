@@ -14,7 +14,7 @@ type AppState = {
     accentStack: Signal<AccentColor[]>
     accent: Signal<AccentColor>,
     accentColor: Signal<string>,
-    authenticatedFetch: Signal<typeof fetch>
+    authenticatedFetch: Signal<typeof fetch | undefined>
 }
 
 const AppStateContext = createContext<AppState>(null!);
@@ -22,6 +22,15 @@ const AppStateProvider = AppStateContext.Provider;
 
 function useAppState() {
     return useContext(AppStateContext);
+}
+
+function useAuthenticatedFetch(): typeof fetch {
+    const appState = useAppState();
+    const func = appState.authenticatedFetch.value;
+    if (func === undefined)
+        throw new Error("Attempted to use authenticated fetch while unauthenticated!");
+
+    return func;
 }
 
 function createAppState() {
@@ -58,6 +67,9 @@ function createAppStateSignals(): AppState {
         })[accent.value]),
         authenticatedFetch: computed(() => {
             const value = token.value;
+            if (!value)
+                return undefined;
+
             return (url, opts) => {
                 const options = { ...opts };
                 options.headers = {
@@ -86,7 +98,7 @@ function configureAppStateEffects({ token, user, authenticatedFetch }: AppState)
         (async () => {
             try {
                 const _fetch = authenticatedFetch.value;
-                const response = await _fetch(ENDPOINT_GET_USER, {
+                const response = await _fetch!(ENDPOINT_GET_USER, {
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
@@ -106,4 +118,4 @@ function configureAppStateEffects({ token, user, authenticatedFetch }: AppState)
     });
 }
 
-export { useAppState, createAppState, AppStateProvider, AppState }
+export { useAppState, createAppState, useAuthenticatedFetch, AppStateProvider, AppState }

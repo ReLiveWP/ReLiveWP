@@ -7,6 +7,7 @@ package device_registration;
 service DeviceRegistration {
   rpc RegisterDevice (DeviceRegistrationRequest) returns (DeviceRegistrationResponse);
   rpc AssociateDeviceWithUser (DeviceAssociationRequest) returns (DeviceAssociationResponse);
+  rpc DevicesForUser(DevicesForUserRequest) returns (stream Device);
 }
 
 message DeviceRegistrationRequest {
@@ -35,4 +36,19 @@ message DeviceAssociationRequest {
 
 message DeviceAssociationResponse {
 	bool succeeded = 1;
+}
+
+message DevicesForUserRequest {
+	string userId = 1;
+}
+
+message Device {
+	optional string manufacturer = 1;
+	optional string model = 2;
+	optional string operator = 3;
+	optional string imei = 4;
+
+	string osVersion = 5;
+	string locale = 6;
+	string uniqueId = 7;
 }

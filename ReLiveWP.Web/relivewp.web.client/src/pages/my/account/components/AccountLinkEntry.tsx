@@ -1,22 +1,32 @@
-import { AccountInfo, AccountType, AccountTypes, LinkedAccountsContext } from "../state/linked-accounts";
+import { AccountInfo, AccountType, AccountTypes, useLinkedAccounts, useOpenDialog } from "../state/linked-accounts";
 
 import { AddAccountButton } from "./AddAnotherButton";
-import { useContext } from "preact/hooks";
 
-export const AccountLinkInfo = ({ accountInfo }: { accountInfo: AccountInfo }) => (
-    <>
-        <dd><a href={accountInfo.url} target="_blank">{accountInfo.name}</a></dd>
-        <dd><button>options</button> <button>unlink account</button></dd>
-    </>
-);
+import Attention from "~/static/attention.png"
+
+export const AccountLinkInfo = ({ type, accountInfo }: { type: AccountType, accountInfo: AccountInfo }) => {
+    const openDialog = useOpenDialog();
+
+    return (
+        <>
+            <dd><a href={accountInfo.url} target="_blank">{accountInfo.name}</a> {accountInfo.needs_relink && <img class="attention" alt={"Account requires attention!"} src={Attention} />}</dd>
+            <dd>
+                <button>options</button>
+                {accountInfo.needs_relink && <button onClick={() => openDialog({ dialog: 'relink', id: accountInfo.id })}>fix account</button>}
+                <button onClick={() => openDialog({ dialog: 'unlink', id: accountInfo.id, service: type })}>unlink account</button>
+            </dd>
+        </>
+    );
+}
 
 
 export const AccountLinkEntry = ({ type }: { type: AccountType; }) => {
-    const { linkedAccounts } = useContext(LinkedAccountsContext);
+    const { linkedAccounts } = useLinkedAccounts();
+    console.log(linkedAccounts.value);
     const { name, icon: Icon, allowsMany } = AccountTypes[type];
-    const accountInfo = linkedAccounts.value.connections[type];
+    const accountInfo = linkedAccounts.value.connections?.[type];
     const accounts = accountInfo
-        ?.map(a => <AccountLinkInfo key={name + '_' + a.name} accountInfo={a} />);
+        ?.map(a => <AccountLinkInfo key={name + '_' + a.name} type={type} accountInfo={a} />);
 
     return (
         <>

@@ -1,0 +1,70 @@
+using Duende.IdentityModel;
+using Duende.IdentityModel.Client;
+using Grpc.Core;
+using ReLiveWP.Backend.ConnectedServices.Data;
+
+namespace ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+
+public abstract class BaseOAuthProvider(string service,
+                                        IConnectedServicesContainer connectedServices,
+                                        IHttpClientFactory httpClientFactory) : IOAuthProvider
+{
+    public abstract Task<bool> RefreshTokensAsync(LiveConnectedService connectedService);
+
+    public Task<LivePendingOAuth> BeginAccountLinkAsync(Guid userId, string _)
+    {
+        var description = connectedServices[service];
+
+        var state = CryptoRandom.CreateUniqueId();
+        var authServer = description.AuthorizationEndpoint
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "No auth server was found."));
+
+        var request = new RequestUrl(authServer)
+            .CreateAuthorizeUrl(
+                clientId: description.ClientId,
+                responseType: "code",
+                scope: description.Scopes,
+                redirectUri: description.RedirectUri,
+                state: state
+            );
+
+        var pending = new LivePendingOAuth()
+        {
+            UserId = userId,
+            State = state,
+            Service = service,
+            ExpiresAt = DateTimeOffset.Now.AddMinutes(5),
+            RedirectUri = request,
+            TokenEndpoint = description.TokenEndpoint
+        };
+
+        return Task.FromResult(pending);
+    }
+
+    public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService connectedService, LivePendingOAuth state, string code)
+    {
+        var description = connectedServices[service];
+
+        using var client = httpClientFactory.CreateClient();
+        var tokenResult = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
+        {
+            Address = description.TokenEndpoint,
+            ClientId = description.ClientId,
+            ClientCredentialStyle = ClientCredentialStyle.PostBody,
+            Code = code,
+            RedirectUri = description.RedirectUri,
+            CodeVerifier = state.CodeVerifier,
+        });
+
+        if (tokenResult.IsError)
+            throw new RpcException(new Status(StatusCode.Internal, $"{tokenResult.Error} ({tokenResult.ErrorDescription})"));
+
+        connectedService.Service = service;
+        connectedService.AccessToken = tokenResult.AccessToken!;
+        connectedService.RefreshToken = tokenResult.RefreshToken!;
+        connectedService.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
+        connectedService.Flags = LiveConnectedServiceFlags.None;
+        connectedService.EnabledCapabilities = LiveConnectedServiceCapabilities.None;
+        return connectedService;
+    }
+}

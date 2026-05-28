@@ -2,9 +2,31 @@
     &::before {
         background-image: linear-gradient(to left, var(--accent-colour-zune1), var(--accent-colour-zune2));
     }
+
+    h1 ::before {
+        background: var(--accent-colour);
+    }
 }
 
 .link-account-dialog {
+    background: radial-gradient(circle at top 30px right 30px, var(--accent-colour-bg-2), white 60%);
+
+    h1::before {
+        background: var(--accent-colour);
+    }
+}
+
+.unlink-account-dialog {
+    background: radial-gradient(circle at top 30px right 30px, #ffe1e0, white 60%);
+
+    h1::before {
+        background: #e60c00;
+    }
+}
+
+
+.link-account-dialog,
+.unlink-account-dialog {
     border: none;
     box-shadow: 0px 0px 6px #999;
     width: 100%;
@@ -13,11 +35,18 @@
     max-height: 360px;
 
     padding: 20px 30px 30px 30px;
-    background: radial-gradient(circle at top 30px right 30px, var(--accent-colour-bg-2), white 60%);
     color: #666;
 
     &::backdrop {
         background-color: rgba(255, 255, 255, 0.66);
+    }
+
+    &.disabled {
+        pointer-events: none;
+
+        &>* {
+            opacity: 0.66;
+        }
     }
 
     h1 {
@@ -30,7 +59,6 @@
             content: ' ';
             width: 110px;
             height: 6px;
-            background: var(--accent-colour);
             position: absolute;
             top: 0;
         }
@@ -71,4 +99,20 @@
         bottom: 30px;
         right: 30px;
     }
+
+    .buttons {
+        position: absolute;
+        bottom: 30px;
+        right: 30px;
+
+        display: flex;
+        gap: 8px;
+
+        button,
+        .submit,
+        input[type=submit] {
+            position: initial;
+        }
+    }
+
 }

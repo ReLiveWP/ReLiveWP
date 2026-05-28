@@ -13,7 +13,8 @@ public static class IdentityExtensions
     {
         public AddLiveIDAuthenticationOptions() { }
 
-        public Action<GrpcClientFactoryOptions>? GrpcConfiguration { internal get; set; }
+        public Action<GrpcClientFactoryOptions>? IdentityGrpcConfiguration { internal get; set; }
+        public Action<GrpcClientFactoryOptions>? ConnectedServicesGrpcConfiguration { internal get; set; }
         public Action<LiveIDAuthOptions>? LiveIDConfiguration { internal get; set; }
         public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
     }
@@ -23,14 +24,21 @@ public static class IdentityExtensions
         var opts = new AddLiveIDAuthenticationOptions();
         options(opts);
 
-        if (opts.GrpcConfiguration != null)
+        if (opts.IdentityGrpcConfiguration != null)
         {
-            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient", opts.GrpcConfiguration);
-            collection.AddGrpcClient<ConnectedServices.ConnectedServicesClient>("Identity_OAuthClient", opts.GrpcConfiguration);
+            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient", opts.IdentityGrpcConfiguration);
         }
         else
         {
-            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
+            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient");;
+        }
+
+        if (opts.ConnectedServicesGrpcConfiguration != null)
+        {
+            collection.AddGrpcClient<ConnectedServices.ConnectedServicesClient>("Identity_OAuthClient", opts.ConnectedServicesGrpcConfiguration);
+        }
+        else
+        {
             collection.AddGrpcClient<ConnectedServices.ConnectedServicesClient>("Identity_OAuthClient");
         }
 

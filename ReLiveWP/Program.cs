@@ -15,6 +15,8 @@ else
 }
 
 var identity = builder.AddProject("ReLiveWP.Backend.Identity");
+var connectedServices = builder.AddProject("ReLiveWP.Backend.ConnectedServices")
+    .DependsOn(identity);
 var registration = builder.AddProject("ReLiveWP.Backend.DeviceRegistration");
 var deviceUpdate = builder.AddProject("ReLiveWP.Backend.DeviceUpdate");
 
@@ -23,10 +25,12 @@ builder.AddProject("ReLiveWP.Services.Activation")
 
 builder.AddProject("ReLiveWP.Services.Login")
     .DependsOn(identity)
+    .DependsOn(connectedServices)
     .DependsOn(registration);
 
 builder.AddProject("ReLiveWP.Services.Activity")
-    .DependsOn(identity);
+    .DependsOn(identity)
+    .DependsOn(connectedServices);
 
 builder.AddProject("ReLiveWP.Services.Push");
 

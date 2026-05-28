@@ -1,3 +1,4 @@
+import { useContext } from "preact/hooks";
 import BlueskyIcon from "../icons/bluesky";
 import DropboxIcon from "../icons/dropbox";
 import GoogleDriveIcon from "../icons/google-drive";
@@ -48,8 +49,10 @@ export const AccountTypeGroups: { [key: string]: AccountType[] } = {
 }
 
 export type AccountInfo = {
-    name: string,
+    id: string
+    name: string
     url: string
+    needs_relink: boolean
 }
 
 export type Connections = {
@@ -58,7 +61,21 @@ export type Connections = {
 
 export type LinkedAccountsContext = {
     linkedAccounts: Signal<Connections>
+    doRefresh: () => void
 }
 
-export const OpenDialogContext = createContext<(service: AccountType) => void>(null!);
+export type OpenDialogAction =
+    | { dialog: 'link'; service: AccountType }
+    | { dialog: 'unlink'; service: AccountType; id: string }
+    | { dialog: 'relink'; id: string };
+
+export const OpenDialogContext = createContext<(action: OpenDialogAction) => void>(null!);
 export const LinkedAccountsContext = createContext<LinkedAccountsContext>(null!);
+
+export function useOpenDialog() {
+    return useContext(OpenDialogContext);
+}
+
+export function useLinkedAccounts() {
+    return useContext(LinkedAccountsContext);
+}

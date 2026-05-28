@@ -1,5 +1,7 @@
 DeviceRegistration = http://127.0.0.2:5000
 Identity = http://127.0.0.4:5000
+ConnectedServices:Grpc = http://127.0.0.5:5000
+ConnectedServices:Proxy = http://127.0.0.4:5001
 
 Activation = http://localhost:10000
 ClientConfiguration = http://localhost:10001

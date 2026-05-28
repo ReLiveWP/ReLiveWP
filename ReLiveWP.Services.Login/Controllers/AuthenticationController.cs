@@ -57,7 +57,7 @@ public class AuthenticationController(
                 connectionModels[connection.Service] = connectionList = [];
             }
 
-            connectionList.Add(new ConnectionModel(connection.Id, connection.ServiceUrl, connection.UserName));
+            connectionList.Add(new ConnectionModel(connection.Id, connection.ServiceUrl, connection.UserName, (connection.Flags & 0x80000000UL) != 0));
         }
 
         return new ConnectionModels(connectionModels);

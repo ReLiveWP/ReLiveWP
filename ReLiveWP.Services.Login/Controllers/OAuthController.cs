@@ -28,6 +28,40 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
         return new BeginAccountLinkResponse(response.RedirectUri);
     }
 
+    [HttpPost]
+    [Authorize]
+    [ActionName("begin-relink")]
+    public async Task<ActionResult<BeginAccountLinkResponse>> BeginRelink([FromBody] BeginRelinkModel model)
+    {
+        var headers = new Metadata
+        {
+            { "Authorization", Request.Headers.Authorization.ToString() }
+        };
+
+        var response = await oAuthClient.BeginRelinkForConnectionAsync(
+            new() { ConnectionId = model.ConnectionId },
+            headers);
+
+        return new BeginAccountLinkResponse(response.RedirectUri);
+    }
+
+    [HttpDelete]
+    [Authorize]
+    [ActionName("link")]
+    public async Task<ActionResult> DeleteLink(string connectionId)
+    {
+        var headers = new Metadata
+        {
+            { "Authorization", Request.Headers.Authorization.ToString() }
+        };
+
+        await oAuthClient.DeleteConnectionAsync(
+            new() { ConnectionId = connectionId },
+            headers);
+
+        return NoContent();
+    }
+
     [AllowAnonymous]
     [ActionName("callback")]
     public async Task<ActionResult> OAuthCallback(string service, string state, string issuer = "", string code = null, string error = null, string error_description = null)

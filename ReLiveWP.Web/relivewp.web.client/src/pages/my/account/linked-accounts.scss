@@ -15,7 +15,16 @@
     dl {
         margin-top: 4px;
     }
+
     dd {
         margin-bottom: 4px;
+
+        button {
+            margin-right: 2px;
+        }
+    }
+
+    img.attention {
+        vertical-align: middle;
     }
 }

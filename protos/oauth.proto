@@ -12,6 +12,10 @@ service ConnectedServices {
   rpc BeginAccountLinkingForService(BeginAccountLinkingRequest) returns (BeginAccountLinkingResponse);
   rpc FinaliseAccountLinkingForService(FinaliseAccountLinkingRequest) returns (FinaliseAccountLinkingResponse);
 
+  rpc BeginRelinkForConnection(BeginRelinkRequest) returns (BeginAccountLinkingResponse);
+
+  rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
+
   rpc GetSupportedConnections(google.protobuf.Empty) returns (SupportedConnectionsResponse);
   rpc GetConnections(ConnectionsRequest) returns (stream Connection);
 }
@@ -23,6 +27,10 @@ message JsonWebKeysResponse {
 message BeginAccountLinkingRequest {
 	string service = 1;
 	string identifer = 2;
+}
+
+message BeginRelinkRequest {
+	string connectionId = 1;
 }
 
 message BeginAccountLinkingResponse {
@@ -65,4 +73,12 @@ message Connection {
 	string userId = 6;
 	optional string userName = 7;
 	optional string emailAddress = 8;
+}
+
+message DeleteConnectionRequest {
+	string connectionId = 1;
+}
+
+message DeleteConnectionResponse {
+
 }

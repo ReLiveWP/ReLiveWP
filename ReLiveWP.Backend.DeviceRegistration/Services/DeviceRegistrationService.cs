@@ -68,4 +68,23 @@ public class DeviceRegistrationService(ILogger<DeviceRegistrationService> logger
 
         return new DeviceAssociationResponse() { Succeeded = true };
     }
+
+    public override async Task DevicesForUser(DevicesForUserRequest request, IServerStreamWriter<Device> responseStream, ServerCallContext context)
+    {
+        foreach (var device in dbContext.Devices.Where(d => d.OwnerId == request.UserId))
+        {
+            var resp = new Device()
+            {
+                Manufacturer = device.Manufacturer,
+                Model = device.Model,
+                Operator = device.Operator,
+                Imei = device.IMEI,
+                OsVersion = device.OSVersion,
+                Locale = device.Locale,
+                UniqueId = device.UniqueId,
+            };
+
+            await responseStream.WriteAsync(resp);
+        }
+    }
 }

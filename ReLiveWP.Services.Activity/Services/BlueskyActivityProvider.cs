@@ -28,19 +28,19 @@ public class BlueskyActivityProvider : ActivityProviderBase
     public BlueskyActivityProvider(string authHeader,
                                    Connection atprotoConnection,
                                    IConfiguration configuration,
-                                   ILogger<BlueskyActivityProvider> logger)
+                                   ILoggerFactory loggerFactory)
     {
         Debug.Assert(atprotoConnection.Service == "atproto");
 
         this.configuration = configuration;
-        this.logger = logger;
+        this.logger = loggerFactory.CreateLogger<BlueskyActivityProvider>();
 
         this.handle = atprotoConnection.UserName;
         this.did = ATDid.Create(atprotoConnection.UserId)!;
         Debug.Assert(this.did != null);
 
         var protocol = new ATProtocolBuilder()
-             .WithInstanceUrl(new Uri(this.configuration["Endpoints:ATProtoProxy"]!))
+             .WithInstanceUrl(new Uri(new Uri(this.configuration["Endpoints:ConnectedServices:Proxy"]!), "/proxy/atproto"))
              .WithLogger(logger)
              .EnableAutoRenewSession(false)
              .WithServiceEndpointUponLogin(false)
