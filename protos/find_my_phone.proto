@@ -1,0 +1,39 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+option csharp_namespace = "ReLiveWP.Services.Grpc.FindMyPhone";
+
+package find_my_phone;
+
+service FindMyPhone {
+  rpc RegisterDevice (RegisterDeviceRequest) returns (RegisterDeviceResponse);
+  rpc GetDevicesForUser(GetDevicesForUserRequest) returns (stream UserDevice);
+}
+
+message RegisterDeviceRequest {
+	string userId = 1;
+	string deviceGuid = 2;
+	map<string, string> device_props = 3; 
+}
+
+message RegisterDeviceResponse {
+	int32 code = 1;
+	string message = 2;
+	bool enabled = 3;
+}
+
+message GetDevicesForUserRequest {
+	string userId = 1;
+}
+
+message UserDevice {
+	optional string manufacturer = 1;
+	optional string model = 2;
+	optional string operator = 3;
+	optional string phone_number = 4;
+
+	string osVersion = 5;
+	string locale = 6;
+	string uniqueId = 7;
+	string friendlyName = 8;
+}

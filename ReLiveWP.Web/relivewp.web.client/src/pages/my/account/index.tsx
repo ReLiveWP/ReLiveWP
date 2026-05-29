@@ -6,6 +6,7 @@ import AccountDetails from "./account-details";
 import Link from "~/components/Link";
 import LinkedAccounts from "./linked-acounts";
 import SignOut from "./sign-out";
+import Devices from "./devices";
 
 export default function Account() {
     return (
@@ -34,7 +35,7 @@ export default function Account() {
                             <Router>
                                 <Route default component={AccountDetails} />
                                 <Route path="/links" component={LinkedAccounts} />
-                                <Route path="/devices" component={() => (<p>devices</p>)} />
+                                <Route path="/devices" component={Devices} />
                                 <Route path="/sign-out" component={SignOut} />
                             </Router>
                         </ErrorBoundary>

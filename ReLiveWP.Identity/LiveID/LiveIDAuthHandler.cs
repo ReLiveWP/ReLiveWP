@@ -56,7 +56,7 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
     /// <returns></returns>
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue("Authorization", out var value))
+        if (!Request.Headers.TryGetValue(Options.HeaderNameOverride ?? "Authorization", out var value))
         {
             logger.LogInformation("No authorization header found!");
             return AuthenticateResult.NoResult();
@@ -69,10 +69,7 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         else if (authHeader.StartsWith("WLID1.0", StringComparison.OrdinalIgnoreCase))
             token = authHeader["WLID1.0".Length..].Trim();
         else
-        {
-            logger.LogInformation("Invalid authorization header found! Probably missing a token!");
-            return AuthenticateResult.NoResult();
-        }
+            token = authHeader;
 
         var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
         foreach (var validService in Options.ValidServiceTargets)

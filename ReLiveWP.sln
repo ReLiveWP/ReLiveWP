@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.5.11723.231 stable
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37111.16 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReLiveWP.Services.Activation", "ReLiveWP.Services.Activation\ReLiveWP.Services.Activation.csproj", "{23C095D9-5F72-4086-AEC3-18EB5557B904}"
 EndProject
@@ -50,6 +50,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Services.AddressBook", "ReLiveWP.Services.AddressBook\ReLiveWP.Services.AddressBook.csproj", "{665232DA-627F-4B37-8C47-9EF67CF8E473}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Backend.ConnectedServices", "ReLiveWP.Backend.ConnectedServices\ReLiveWP.Backend.ConnectedServices.csproj", "{84D2CB75-61FA-4EE5-B87C-187625001048}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Services.FindMyPhone", "ReLiveWP.Services.FindMyPhone\ReLiveWP.Services.FindMyPhone.csproj", "{556D013D-5AED-4334-BFF9-8736FC770202}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Backend.Skybox", "ReLiveWP.Backend.Skybox\ReLiveWP.Backend.Skybox.csproj", "{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -275,6 +279,30 @@ Global
 		{84D2CB75-61FA-4EE5-B87C-187625001048}.Release|x64.Build.0 = Release|Any CPU
 		{84D2CB75-61FA-4EE5-B87C-187625001048}.Release|x86.ActiveCfg = Release|Any CPU
 		{84D2CB75-61FA-4EE5-B87C-187625001048}.Release|x86.Build.0 = Release|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Debug|x64.Build.0 = Debug|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Debug|x86.Build.0 = Debug|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Release|Any CPU.Build.0 = Release|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Release|x64.ActiveCfg = Release|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Release|x64.Build.0 = Release|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Release|x86.ActiveCfg = Release|Any CPU
+		{556D013D-5AED-4334-BFF9-8736FC770202}.Release|x86.Build.0 = Release|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Debug|x64.Build.0 = Debug|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Debug|x86.Build.0 = Debug|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|x64.ActiveCfg = Release|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|x64.Build.0 = Release|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|x86.ActiveCfg = Release|Any CPU
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -299,6 +327,8 @@ Global
 		{068FFC10-11D5-4B02-B1EC-A3D9412E53BF} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{665232DA-627F-4B37-8C47-9EF67CF8E473} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{84D2CB75-61FA-4EE5-B87C-187625001048} = {8377506A-7CF3-4F8F-9DD5-5CE8A66B4B42}
+		{556D013D-5AED-4334-BFF9-8736FC770202} = {EE4591F3-A643-48B8-A378-624DF4CB6394}
+		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4} = {8377506A-7CF3-4F8F-9DD5-5CE8A66B4B42}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C918B561-B888-4A59-8EE2-3B9DAE8E3302}

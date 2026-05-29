@@ -35,11 +35,11 @@ export default function LinkAccountDialog({ onClose, service }: {
 
     const renderStage = () => {
         switch (stage.value) {
-            case 'handle':   return <HandleStage />;
-            case 'loading':  return <LoadingStage />;
+            case 'handle': return <HandleStage />;
+            case 'loading': return <LoadingStage />;
             case 'redirect': return <RedirectStage />;
-            case 'done':     return <DoneStage />;
-            case 'error':    return <ErrorStage />;
+            case 'done': return <DoneStage />;
+            case 'error': return <ErrorStage />;
         }
     };
 

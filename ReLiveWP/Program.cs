@@ -20,6 +20,10 @@ var connectedServices = builder.AddProject("ReLiveWP.Backend.ConnectedServices")
 var registration = builder.AddProject("ReLiveWP.Backend.DeviceRegistration");
 var deviceUpdate = builder.AddProject("ReLiveWP.Backend.DeviceUpdate");
 
+
+var skybox = builder.AddProject("ReLiveWP.Backend.Skybox")
+    .DependsOn(identity);
+
 builder.AddProject("ReLiveWP.Services.Activation")
     .DependsOn(registration);
 
@@ -43,6 +47,10 @@ builder.AddProject("ReLiveWP.Services.Exchange")
 builder.AddProject("ReLiveWP.Zune.Catalog");
 
 builder.AddProject("ReLiveWP.Zune.Commerce")
+    .DependsOn(identity);
+
+builder.AddProject("ReLiveWP.Services.FindMyPhone")
+    .DependsOn(skybox)
     .DependsOn(identity);
 
 // builder.AddProject("ReLiveWP.Web.Server", "ReLiveWP.Web/ReLiveWP.Web.Server")

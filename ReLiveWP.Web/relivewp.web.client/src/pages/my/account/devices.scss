@@ -1,0 +1,29 @@
+.devices {
+    dl {
+        dt {
+            font-size: 10.5pt;
+            font-weight: 500;
+            font-variant: small-caps;
+        }
+    }
+
+    .device-view {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+    }
+
+    .info {
+        grid-column: 2;
+    }
+
+    .image {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        img {
+            max-width: 200px;
+            max-height: 200px;
+
+        }
+    }
+}

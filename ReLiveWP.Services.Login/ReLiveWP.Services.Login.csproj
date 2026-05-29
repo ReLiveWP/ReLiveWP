@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="libphonenumber-csharp" Version="9.0.31" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="Google.Protobuf" Version="3.32.0" />
     <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
@@ -43,6 +44,9 @@
     </Protobuf>
     <Protobuf Include="../protos/client_provisioning.proto" GrpcServices="Client">
       <Link>Protos\client_provisioning.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/find_my_phone.proto" GrpcServices="Client">
+      <Link>Protos\find_my_phone.proto</Link>
     </Protobuf>
   </ItemGroup>
 

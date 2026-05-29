@@ -34,6 +34,10 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>
+    <ProjectReference Include="..\ReLiveWP.Backend.Skybox\ReLiveWP.Backend.Skybox.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
     <ProjectReference Include="..\ReLiveWP.Services.Activation\ReLiveWP.Services.Activation.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
@@ -55,6 +59,10 @@
       <Private>false</Private>
     </ProjectReference>
     <ProjectReference Include="..\ReLiveWP.Services.Push\ReLiveWP.Services.Push.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\ReLiveWP.Services.FindMyPhone\ReLiveWP.Services.FindMyPhone.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>
