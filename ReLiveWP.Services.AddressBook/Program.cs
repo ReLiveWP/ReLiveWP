@@ -2,6 +2,7 @@ using ReLiveWP.Services.AddressBook.Services;
 using SoapCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 // Add services to the container.
 

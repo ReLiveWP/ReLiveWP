@@ -55,6 +55,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Services.FindMyPho
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Backend.Skybox", "ReLiveWP.Backend.Skybox\ReLiveWP.Backend.Skybox.csproj", "{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.ServiceDefaults", "ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj", "{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8B5B5771-03B6-486F-8DA4-1435097FEADB}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
@@ -308,6 +310,18 @@ Global
 		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|x64.Build.0 = Release|Any CPU
 		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|x86.ActiveCfg = Release|Any CPU
 		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4}.Release|x86.Build.0 = Release|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Debug|x64.Build.0 = Debug|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Debug|x86.Build.0 = Debug|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Release|x64.ActiveCfg = Release|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Release|x64.Build.0 = Release|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Release|x86.ActiveCfg = Release|Any CPU
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -334,6 +348,7 @@ Global
 		{84D2CB75-61FA-4EE5-B87C-187625001048} = {8377506A-7CF3-4F8F-9DD5-5CE8A66B4B42}
 		{556D013D-5AED-4334-BFF9-8736FC770202} = {EE4591F3-A643-48B8-A378-624DF4CB6394}
 		{D3C5D9AB-0AF6-8AE8-715B-AC47E2AFDEE4} = {8377506A-7CF3-4F8F-9DD5-5CE8A66B4B42}
+		{E5F6A1B2-C3D4-4E5F-9012-3456789ABCDE} = {563909B7-5F9F-4E92-A01E-4B306DF190A9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C918B561-B888-4A59-8EE2-3B9DAE8E3302}

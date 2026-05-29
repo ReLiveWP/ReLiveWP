@@ -4,6 +4,7 @@ using ReLiveWP.Backend.DeviceRegistration.Data;
 using ReLiveWP.Backend.DeviceRegistration.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 // Add services to the container.
 builder.Services.AddGrpc();

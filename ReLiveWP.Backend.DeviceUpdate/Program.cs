@@ -3,6 +3,7 @@ using System.Text;
 using System.Xml;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 var app = builder.Build();
 

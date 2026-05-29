@@ -4,6 +4,7 @@ using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.FindMyPhone;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>

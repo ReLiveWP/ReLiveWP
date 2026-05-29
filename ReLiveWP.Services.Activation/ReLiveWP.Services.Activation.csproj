@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Protobuf Include="../protos/client_provisioning.proto" GrpcServices="Client">
       <Link>Protos\client_provisioning.proto</Link>
     </Protobuf>

@@ -9,6 +9,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="GetExtendedUpdateInfo\" />
     <Folder Include="Packages\" />
     <Folder Include="UpdateRegulation\" />

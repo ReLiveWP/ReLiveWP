@@ -9,6 +9,7 @@ using ReLiveWP.Backend.Identity.Grpc;
 using ReLiveWP.Backend.Identity.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<LiveDbContext>(options => options.UseSqlite(connectionString));

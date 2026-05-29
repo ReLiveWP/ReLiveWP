@@ -4,6 +4,7 @@ using ReLiveWP.Services.Activity.Services;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 builder.Services.AddResponseCompression((o) =>
 {

@@ -3,6 +3,7 @@ using ReLiveWP.Backend.Skybox.Data;
 using ReLiveWP.Backend.Skybox.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 // Add services to the container.
 builder.Services.AddGrpc();

@@ -3,6 +3,7 @@ using ReLiveWP.Zune;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 builder.Services.AddLiveIDAuthentication(o =>
 {

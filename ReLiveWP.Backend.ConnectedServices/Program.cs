@@ -16,6 +16,7 @@ using ReLiveWP.Identity;
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 builder.Services.AddHttpClient("AtProtoClient", c =>
 {

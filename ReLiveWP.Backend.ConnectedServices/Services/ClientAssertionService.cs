@@ -32,7 +32,6 @@ public class ClientAssertionService(IJWKProvider jwkProvider, ILogger<ClientAsse
         var handler = new JwtSecurityTokenHandler();
         var written = handler.WriteToken(token);
         var decoded = handler.ReadJwtToken(written);
-        logger.LogInformation("Key {KeyId} X {X} Y {Y}", decoded.Header.Kid, jKey.X, jKey.Y);
 
         return handler.WriteToken(token);
     }

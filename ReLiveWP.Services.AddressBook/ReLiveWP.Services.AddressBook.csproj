@@ -4,4 +4,8 @@
     <PackageReference Include="SoapCore" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+  </ItemGroup>
+
 </Project>

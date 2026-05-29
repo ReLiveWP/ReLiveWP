@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

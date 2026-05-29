@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Libraries\Atom\Atom.csproj" />
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

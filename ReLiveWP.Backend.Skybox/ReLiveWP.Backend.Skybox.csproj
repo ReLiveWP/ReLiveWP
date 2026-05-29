@@ -22,4 +22,8 @@
     <PackageReference Include="Portable.BouncyCastle" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+  </ItemGroup>
+
 </Project>

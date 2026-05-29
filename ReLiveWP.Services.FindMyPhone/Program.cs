@@ -5,6 +5,7 @@ using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc.FindMyPhone;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceEndpoints();
 
 builder.Services.AddLiveIDAuthentication(o =>
 {
