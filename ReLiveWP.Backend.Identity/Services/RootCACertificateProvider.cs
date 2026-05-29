@@ -16,7 +16,7 @@ public class RootCACertificateProvider(
             logger.LogDebug("Looking for certificate with CN \"{Name}\"", caDistinguishedName);
 
             using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
-            store.Open(OpenFlags.ReadWrite);
+            store.Open(OpenFlags.ReadOnly);
 
             var collection = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, caDistinguishedName, false);
 
@@ -24,7 +24,7 @@ public class RootCACertificateProvider(
             {
                 var foundCert = collection[0];
                 logger.LogDebug("Found certificate {Cert}", foundCert.Thumbprint);
-                return includePrivateKey ? foundCert : new X509Certificate2(foundCert.RawData);
+                return includePrivateKey ? foundCert : X509CertificateLoader.LoadCertificate(foundCert.RawData);
             }
             else
             {
@@ -38,7 +38,7 @@ public class RootCACertificateProvider(
         var caCertFilePassword = configuration["CertificateGeneration:RootCACertPassword"];
         if (!string.IsNullOrWhiteSpace(caCertFile))
         {
-            var certificate = new X509Certificate2(caCertFile, caCertFilePassword);
+            var certificate = X509CertificateLoader.LoadPkcs12FromFile(caCertFile, caCertFilePassword);
             return certificate;
         }
 

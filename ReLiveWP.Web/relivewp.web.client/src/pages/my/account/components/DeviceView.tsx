@@ -13,16 +13,16 @@ export default function DeviceView({ device }: { device: Device }) {
 
                 <div class="info">
                     <dl>
-                        <dt>Model</dt>
+                        <dt>model</dt>
                         <dd>{device.manufacturer} {device.model}</dd>
-                        <dt>OS Version</dt>
+                        <dt>os version</dt>
                         <dd>{device.os_version}</dd>
                         {device.operator && <>
-                            <dt>Carrier</dt>
+                            <dt>carrier</dt>
                             <dd>{device.operator}</dd>
                         </>}
                         {device.phone_number && <>
-                            <dt>Phone Number</dt>
+                            <dt>phone number</dt>
                             <dd>{device.phone_number}</dd>
                         </>}
                     </dl>
