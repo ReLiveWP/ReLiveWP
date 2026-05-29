@@ -18,9 +18,7 @@ namespace ReLiveWP.Services.Login.Controllers;
 public class AuthenticationController(
     User.UserClient userClient,
     Authentication.AuthenticationClient authenticationClient,
-    ConnectedServices.ConnectedServicesClient connectedServicesClient,
-    DeviceRegistration.DeviceRegistrationClient deviceRegistrationClient,
-    ClientProvisioning.ClientProvisioningClient clientProvisioningClient) : ControllerBase
+    ConnectedServices.ConnectedServicesClient connectedServicesClient) : ControllerBase
 {
     [Authorize]
     [ActionName("user")]
