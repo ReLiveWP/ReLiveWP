@@ -36,4 +36,14 @@ message UserDevice {
 	string locale = 6;
 	string uniqueId = 7;
 	string friendlyName = 8;
+
+	optional int32 colour_theme = 9;
+	optional string accent_colour = 10;
+	optional int32 lcid = 11;
+	optional string timezone = 12;
+
+	optional int32 battery_level = 13;
+	optional int64 storage_remaining = 14;
+	optional bool pin_locked = 15;
+	optional bool sim_locked = 16;
 }

@@ -11,7 +11,7 @@ import { Dialogs } from "./components/Dialogs";
 
 export default function LinkedAccounts() {
     const fetch = useAuthenticatedFetch()
-    const linkedAccounts = useSignal<Connections>({} as Connections)
+    const linkedAccounts = useSignal<Connections>(null! as Connections)
 
     const doRefresh = useCallback(async () => {
         const response = await fetch(ENDPOINT_GET_LINKED_ACCOUNTS, {

@@ -47,6 +47,10 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>
+    <ProjectReference Include="..\ReLiveWP.Services.Devices\ReLiveWP.Services.Devices.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
     <ProjectReference Include="..\ReLiveWP.Services.Exchange\ReLiveWP.Services.Exchange.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>

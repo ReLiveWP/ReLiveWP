@@ -20,6 +20,8 @@ public class SkyboxDeviceService(SkyDbContext dbContext) : FindMyPhone.FindMyPho
         var device = new SkyDevice()
         {
             OwnerId = userId,
+
+            // Correlates to UniqueId in DeviceRegistration
             DeviceGuid = request.DeviceGuid,
 
             Make = request.DeviceProps["SkyProfile.Make"],
@@ -63,13 +65,26 @@ public class SkyboxDeviceService(SkyDbContext dbContext) : FindMyPhone.FindMyPho
             {
                 Manufacturer = device.Make,
                 Model = device.Model,
-                Operator = device.MobileOperator,
-                PhoneNumber  = device.PhoneNumber,
                 OsVersion = device.OSVersion,
                 FriendlyName = device.FriendlyName,
                 Locale = device.LCID.ToString(),
                 UniqueId = device.DeviceGuid,
+                ColourTheme = device.ColorTheme,
+                AccentColour = "#" + (device.ColorAccent & 0x00FFFFFF).ToString("x6"),
+
+                Lcid = device.LCID,
+                Timezone = device.TZ,
+                BatteryLevel = device.BatteryLevel,
+                StorageRemaining = device.StorageRemaining,
+                PinLocked = device.PinLocked,
+                SimLocked = device.SimLocked
             };
+
+            if (!string.IsNullOrEmpty(device.MobileOperator))
+                resp.Operator = device.MobileOperator;
+
+            if (!string.IsNullOrWhiteSpace(device.PhoneNumber))
+                resp.PhoneNumber = device.PhoneNumber;
 
             await responseStream.WriteAsync(resp);
         }

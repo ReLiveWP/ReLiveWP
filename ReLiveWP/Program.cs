@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ReLiveWP.Services;
 using ReLiveWP;
@@ -53,8 +53,10 @@ builder.AddProject("ReLiveWP.Services.FindMyPhone")
     .DependsOn(skybox)
     .DependsOn(identity);
 
-// builder.AddProject("ReLiveWP.Web.Server", "ReLiveWP.Web/ReLiveWP.Web.Server")
-//     .DependsOn(identity);
+builder.AddProject("ReLiveWP.Services.Devices")
+    .DependsOn(skybox)
+    .DependsOn(identity);
+
 
 builder.Build()
     .Run();

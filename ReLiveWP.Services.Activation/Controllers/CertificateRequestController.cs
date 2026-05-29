@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Pkcs;
 using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Grpc.DeviceRegistration;
 
 namespace ReLiveWP.Services.Activation.Controllers;
 

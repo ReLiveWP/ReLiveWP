@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Grpc.DeviceRegistration;
 
 namespace ReLiveWP.Services.Activation;
 
@@ -17,9 +18,9 @@ public class Startup(IConfiguration configuration)
         services.AddControllers();
 
         services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
-            o => o.Address = new Uri(Configuration["Endpoints:DeviceRegistration"]));
+            o => o.Address = new Uri(Configuration["Endpoints:DeviceRegistration"]!));
         services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
-            o => o.Address = new Uri(Configuration["Endpoints:ClientProvisioning"]));
+            o => o.Address = new Uri(Configuration["Endpoints:ClientProvisioning"]!));
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

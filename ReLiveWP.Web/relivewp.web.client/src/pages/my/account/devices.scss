@@ -25,4 +25,23 @@
             max-height: 200px;
         }
     }
+
+    .colour-icon {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        outline: 1px solid black;
+        vertical-align: text-bottom;
+    }
+
+    .os-icon {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        vertical-align: text-bottom;
+    }
+
+    .os-version {
+        margin-left: 23px;
+    }
 }

@@ -6,7 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="Grpc.Net.Client" />
@@ -39,9 +38,6 @@
     </Protobuf>
     <Protobuf Include="../protos/client_provisioning.proto" GrpcServices="Client">
       <Link>Protos\client_provisioning.proto</Link>
-    </Protobuf>
-    <Protobuf Include="../protos/find_my_phone.proto" GrpcServices="Client">
-      <Link>Protos\find_my_phone.proto</Link>
     </Protobuf>
   </ItemGroup>
 

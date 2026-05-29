@@ -11,15 +11,19 @@ export type Device = {
     model: string,
     operator: string | undefined,
     phone_number: string | undefined,
+    imei: string | undefined;
     os_version: string,
     locale: string
+    timezone: string
+    accent_colour: string
+    colour_theme: number
 };
 
 type Devices = Device[];
 
 export default function Devices() {
     const fetch = useAuthenticatedFetch()
-    const devices = useSignal<Devices>([])
+    const devices = useSignal<Devices>(null!)
 
     const doRefresh = useCallback(async () => {
         const response = await fetch(ENDPOINT_GET_DEVICES, {
@@ -35,17 +39,16 @@ export default function Devices() {
         doRefresh();
     }, []);
 
-    if (!devices.value) {
-        return <span>Fetching your accounts...</span>;
-    }
-
     return (
         <div class="devices">
-            <h4>Connected devices</h4>
-            <dl>
-                {devices.value
-                    .map(device => <DeviceView device={device} />)}
-            </dl>
+            {!devices.value ?
+                <span>Fetching your devices...</span> :
+                (
+                    <dl>
+                        {devices.value
+                            .map(device => <DeviceView device={device} />)}
+                    </dl>
+                )}
         </div>
     );
 }

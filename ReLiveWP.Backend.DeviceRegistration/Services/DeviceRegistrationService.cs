@@ -2,8 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.DeviceRegistration.Data;
 using ReLiveWP.Backend.DeviceRegistration.Model;
-using ReLiveWP.Services.Grpc;
-using static ReLiveWP.Services.Grpc.DeviceRegistration;
+using ReLiveWP.Services.Grpc.DeviceRegistration;
+using static ReLiveWP.Services.Grpc.DeviceRegistration.DeviceRegistration;
 
 namespace ReLiveWP.Backend.DeviceRegistration.Services;
 
@@ -86,5 +86,24 @@ public class DeviceRegistrationService(ILogger<DeviceRegistrationService> logger
 
             await responseStream.WriteAsync(resp);
         }
+    }
+
+    public override async Task<Device> DeviceById(DeviceByIdRequest request, ServerCallContext context)
+    {
+        var device = await dbContext.Devices.FirstOrDefaultAsync(r => r.UniqueId == request.DeviceId.ToUpperInvariant())
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+        var resp = new Device()
+        {
+            Manufacturer = device.Manufacturer,
+            Model = device.Model,
+            Operator = device.Operator,
+            Imei = device.IMEI,
+            OsVersion = device.OSVersion,
+            Locale = device.Locale,
+            UniqueId = device.UniqueId,
+        };
+
+        return resp;
     }
 }

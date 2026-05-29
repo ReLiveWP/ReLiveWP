@@ -3,6 +3,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Security.Claims;
+using System.Text;
 using System.Text.Encodings.Web;
 using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authentication;
@@ -63,8 +64,24 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
 
         var authHeader = value.ToString();
-        var token = authHeader;
-        if (authHeader.StartsWith("Bearer", StringComparison.OrdinalIgnoreCase))
+        string token;
+
+        if (Options.AcceptBasicAuth && authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        {
+            // EAS Basic auth: Authorization: Basic base64(username:access_token)
+            // The password field carries the access token; username is ignored for verification.
+            var encoded = authHeader["Basic ".Length..].Trim();
+            string decoded;
+            try { decoded = Encoding.UTF8.GetString(Convert.FromBase64String(encoded)); }
+            catch { return AuthenticateResult.Fail("Malformed Basic auth header"); }
+
+            var colon = decoded.IndexOf(':');
+            if (colon < 0)
+                return AuthenticateResult.Fail("Malformed Basic auth header: missing colon");
+
+            token = decoded[(colon + 1)..];
+        }
+        else if (authHeader.StartsWith("Bearer", StringComparison.OrdinalIgnoreCase))
             token = authHeader["Bearer".Length..].Trim();
         else if (authHeader.StartsWith("WLID1.0", StringComparison.OrdinalIgnoreCase))
             token = authHeader["WLID1.0".Length..].Trim();
@@ -119,6 +136,8 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
 
         Response.StatusCode = 401;
+        if (Options.AcceptBasicAuth)
+            Response.Headers.WWWAuthenticate = $"Basic realm=\"{Options.BasicAuthRealm}\"";
         await Response.WriteAsync("Unauthorized");
     }
 

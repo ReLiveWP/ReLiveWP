@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option csharp_namespace = "ReLiveWP.Services.Grpc";
+option csharp_namespace = "ReLiveWP.Services.Grpc.DeviceRegistration";
 
 package device_registration;
 
@@ -8,6 +8,7 @@ service DeviceRegistration {
   rpc RegisterDevice (DeviceRegistrationRequest) returns (DeviceRegistrationResponse);
   rpc AssociateDeviceWithUser (DeviceAssociationRequest) returns (DeviceAssociationResponse);
   rpc DevicesForUser(DevicesForUserRequest) returns (stream Device);
+  rpc DeviceById(DeviceByIdRequest) returns (Device);
 }
 
 message DeviceRegistrationRequest {
@@ -40,6 +41,10 @@ message DeviceAssociationResponse {
 
 message DevicesForUserRequest {
 	string userId = 1;
+}
+
+message DeviceByIdRequest {
+	string deviceId = 1;
 }
 
 message Device {

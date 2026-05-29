@@ -1,7 +1,8 @@
 using System.Text.Json;
 using ReLiveWP.Identity;
-using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Devices.Services;
 using ReLiveWP.Services.Grpc.DeviceRegistration;
+using ReLiveWP.Services.Grpc.FindMyPhone;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -26,16 +27,11 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
-builder.Services.AddGrpcClient<User.UserClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
-builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
-builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!));
-builder.Services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:ClientProvisioning"]!));
+builder.Services.AddGrpcClient<FindMyPhone.FindMyPhoneClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Skybox"]!));
 builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
+
 
 
 builder.Services.AddCors(options =>
@@ -45,6 +41,9 @@ builder.Services.AddCors(options =>
                           .WithHeaders("*")
                           .WithMethods("*"));
 });
+
+builder.Services.AddSingleton<ICarrierLookupService, CarrierLookupService>();
+builder.Services.AddHostedService(sp => (CarrierLookupService)sp.GetRequiredService<ICarrierLookupService>());
 
 var app = builder.Build();
 
