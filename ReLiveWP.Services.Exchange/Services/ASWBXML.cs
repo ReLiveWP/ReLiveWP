@@ -970,13 +970,10 @@ class ASWBXML
         switch (node.NodeType)
         {
             case XmlNodeType.Element:
-                if (node.Attributes.Count > 0)
+                int requiredCodePage = GetCodePageByNamespace(node.NamespaceURI);
+                if (requiredCodePage != -1 && requiredCodePage != currentCodePage)
                 {
-                    ParseXmlnsAttributes(node);
-                }
-
-                if (SetCodePageByXmlns(node.Prefix))
-                {
+                    currentCodePage = requiredCodePage;
                     byteList.Add((byte)GlobalTokens.SWITCH_PAGE);
                     byteList.Add((byte)currentCodePage);
                 }
