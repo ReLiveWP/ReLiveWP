@@ -9,8 +9,8 @@ public enum LiveUserType
     Device
 }
 
-[Index(nameof(Cid))]
-[Index(nameof(Puid))]
+[Index(nameof(Cid), IsUnique = true)]
+[Index(nameof(Puid), IsUnique = true)]
 [Index(nameof(Type))]
 public class LiveUser : IdentityUser<Guid>
 {
