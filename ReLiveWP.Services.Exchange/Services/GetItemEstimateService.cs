@@ -1,19 +1,13 @@
-using Microsoft.EntityFrameworkCore;
-using ReLiveWP.Services.Exchange.Data;
-using ReLiveWP.Services.Exchange.Data.Entities;
+using Grpc.Core;
 using ReLiveWP.Services.Exchange.Models;
+using ReLiveWP.Services.Grpc.Mailbox;
+using ProtoFolderType = ReLiveWP.Services.Grpc.Mailbox.FolderType;
+using EasFolderType = ReLiveWP.Services.Exchange.Models.FolderType;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
-// Backs the GetItemEstimate command. Returns the number of items that would be
-// sent in the next Sync for each requested collection, using the same watermark
-// and SyncEngine.Collapse logic as ItemSyncService.
-public class GetItemEstimateService
+public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
 {
-    private readonly ExchangeDbContext _db;
-
-    public GetItemEstimateService(ExchangeDbContext db) => _db = db;
-
     public async Task<GetItemEstimateResponse> EstimateAsync(
         string userId, string deviceId, GetItemEstimateRequest request, CancellationToken ct = default)
     {
@@ -21,9 +15,8 @@ public class GetItemEstimateService
 
         foreach (var coll in request.Collections?.Items ?? [])
         {
-            var collection = await EstimateCollectionAsync(userId, deviceId, coll, ct);
-            if (collection != null)
-                response.Responses.Add(collection);
+            var r = await EstimateCollectionAsync(userId, deviceId, coll, ct);
+            if (r is not null) response.Responses.Add(r);
         }
 
         return response;
@@ -34,44 +27,53 @@ public class GetItemEstimateService
     {
         var collectionId = req.CollectionId;
 
-        var state = await _db.SyncStates.SingleOrDefaultAsync(
-            s => s.UserId == userId && s.DeviceId == deviceId && s.CollectionId == collectionId, ct);
-
-        if (state is null)
-            return MakeError(collectionId, 3); // state not primed — client must Sync(SyncKey=0) first
+        SyncState? state;
+        try
+        {
+            state = await mailbox.GetSyncStateAsync(
+                new GetSyncStateRequest { UserId = userId, DeviceId = deviceId, CollectionId = collectionId },
+                cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            return MakeError(collectionId, 3);
+        }
 
         if (state.SyncKey != req.SyncKey)
-            return MakeError(collectionId, 4); // invalid SyncKey
+            return MakeError(collectionId, 4);
 
         int estimate;
 
         if (state.Watermark == -1)
         {
-            // First real sync pending — all live items will come down as Adds
-            estimate = await _db.Items
-                .CountAsync(i => i.UserId == userId && i.CollectionId == collectionId && i.DeletedAt == null, ct);
+            estimate = (await mailbox.CountLiveItemsAsync(
+                new CountLiveItemsRequest { UserId = userId, CollectionId = collectionId },
+                cancellationToken: ct)).Count;
         }
         else
         {
-            var events = await _db.ItemEvents
-                .Where(e => e.UserId == userId && e.CollectionId == collectionId && e.Id > state.Watermark)
-                .ToListAsync(ct);
-
-            var delta = SyncEngine.Collapse(events);
+            var events = await ReadAllItemEventsAsync(userId, collectionId, state.Watermark, ct);
+            var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.Id, e.ServerId, e.EventType)).ToList());
             estimate = delta.Added.Count + delta.Updated.Count + delta.Deleted.Count;
         }
 
-        var folder = await _db.Folders.FirstOrDefaultAsync(
-            f => f.UserId == userId && f.Id == collectionId, ct);
-
-        if (folder == null)
-            return null;
-
-        var itemClass = folder?.Type switch
+        Folder? folder;
+        try
         {
-            FolderType.CalendarDefault or FolderType.Calendar => "Calendar",
-            FolderType.ContactsDefault or FolderType.Contacts or FolderType.MeContact => "Contacts",
-            FolderType.TasksDefault or FolderType.Task => "Tasks",
+            folder = await mailbox.GetFolderAsync(
+                new GetFolderRequest { UserId = userId, ServerId = collectionId },
+                cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            return null;
+        }
+
+        var itemClass = folder.Type switch
+        {
+            ProtoFolderType.CalendarDefault or ProtoFolderType.Calendar => "Calendar",
+            ProtoFolderType.ContactsDefault or ProtoFolderType.Contacts or ProtoFolderType.MeContact => "Contacts",
+            ProtoFolderType.TasksDefault or ProtoFolderType.Task => "Tasks",
             _ => "Email",
         };
 
@@ -85,6 +87,17 @@ public class GetItemEstimateService
                 Estimate = estimate,
             },
         };
+    }
+
+    private async Task<List<ItemEvent>> ReadAllItemEventsAsync(
+        string userId, string collectionId, long afterWatermark, CancellationToken ct)
+    {
+        var result = new List<ItemEvent>();
+        using var call = mailbox.GetItemEvents(new GetItemEventsRequest
+        { UserId = userId, CollectionId = collectionId, AfterWatermark = afterWatermark });
+        await foreach (var e in call.ResponseStream.ReadAllAsync(ct))
+            result.Add(e);
+        return result;
     }
 
     private static GieResponse MakeError(string collectionId, int status) => new()

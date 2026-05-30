@@ -1,17 +1,11 @@
-using Microsoft.EntityFrameworkCore;
-using ReLiveWP.Services.Exchange.Data;
-using ReLiveWP.Services.Exchange.Data.Entities;
+using Grpc.Core;
 using ReLiveWP.Services.Exchange.Models;
+using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
-// Handles the Settings command: stores DeviceInformation and returns UserInformation.
-public class SettingsService
+public class SettingsService(MailboxStore.MailboxStoreClient mailbox)
 {
-    private readonly ExchangeDbContext _db;
-
-    public SettingsService(ExchangeDbContext db) => _db = db;
-
     public async Task<SettingsResponse> HandleAsync(
         string userId, string deviceId, SettingsRequest request, CancellationToken ct = default)
     {
@@ -29,52 +23,35 @@ public class SettingsService
     private async Task<SettingsDeviceInformationResponse> HandleDeviceInformationAsync(
         string userId, string deviceId, DeviceInformationSet set, CancellationToken ct)
     {
-        var info = await _db.DeviceInfos.SingleOrDefaultAsync(
-            d => d.UserId == userId && d.DeviceId == deviceId, ct);
+        var req = new UpsertDeviceInfoRequest { UserId = userId, DeviceId = deviceId };
+        if (set.Model is not null)          req.Model           = set.Model;
+        if (set.IMEI is not null)           req.Imei            = set.IMEI;
+        if (set.FriendlyName is not null)   req.FriendlyName    = set.FriendlyName;
+        if (set.OS is not null)             req.Os              = set.OS;
+        if (set.OSLanguage is not null)     req.OsLanguage      = set.OSLanguage;
+        if (set.PhoneNumber is not null)    req.PhoneNumber     = set.PhoneNumber;
+        if (set.UserAgent is not null)      req.UserAgent       = set.UserAgent;
+        if (set.EnableOutboundSMS.HasValue) req.EnableOutboundSms = set.EnableOutboundSMS.Value;
+        if (set.MobileOperator is not null) req.MobileOperator  = set.MobileOperator;
 
-        if (info is null)
-        {
-            info = new DeviceInfo { UserId = userId, DeviceId = deviceId };
-            _db.DeviceInfos.Add(info);
-        }
+        await mailbox.UpsertDeviceInfoAsync(req, cancellationToken: ct);
 
-        info.Model = set.Model;
-        info.IMEI = set.IMEI;
-        info.FriendlyName = set.FriendlyName;
-        info.OS = set.OS;
-        info.OSLanguage = set.OSLanguage;
-        info.PhoneNumber = set.PhoneNumber;
-        info.UserAgent = set.UserAgent;
-        info.EnableOutboundSMS = set.EnableOutboundSMS;
-        info.MobileOperator = set.MobileOperator;
-        info.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync(ct);
-
-        return new SettingsDeviceInformationResponse
-        {
-            Set = new SettingsStatusOnly { Status = 1 },
-        };
+        return new SettingsDeviceInformationResponse { Set = new SettingsStatusOnly { Status = 1 } };
     }
 
-    private SettingsUserInformationResponse HandleUserInformation(string userId)
+    private static SettingsUserInformationResponse HandleUserInformation(string userId)
     {
-        // Protocol 14.1: EmailAddresses belongs inside Accounts/Account, not under Get directly.
-        // PrimarySmtpAddress identifies the default sending address for SendMail.
         var email = userId.Contains('@') ? userId : null;
-        var displayName = email is not null
-            ? email[..email.IndexOf('@')]
-            : userId;
+        var displayName = email is not null ? email[..email.IndexOf('@')] : userId;
 
         var account = new UserAccount
         {
-            // Primary account has no AccountId per spec
-            AccountName = email ?? userId,
+            AccountName     = email ?? userId,
             UserDisplayName = displayName,
-            SendDisabled = 0,
-            EmailAddresses = email is not null ? new UserEmailAddresses
+            SendDisabled    = 0,
+            EmailAddresses  = email is not null ? new UserEmailAddresses
             {
-                SMTPAddresses = [email],
+                SMTPAddresses      = [email],
                 PrimarySmtpAddress = email,
             } : null,
         };
@@ -82,10 +59,7 @@ public class SettingsService
         return new SettingsUserInformationResponse
         {
             Status = 1,
-            Get = new UserInformationResponseGet
-            {
-                Accounts = new UserAccounts { Items = [account] },
-            },
+            Get    = new UserInformationResponseGet { Accounts = new UserAccounts { Items = [account] } },
         };
     }
 }

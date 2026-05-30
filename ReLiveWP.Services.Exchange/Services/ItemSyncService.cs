@@ -1,65 +1,59 @@
 using System.Xml;
 using System.Xml.Serialization;
-using Microsoft.EntityFrameworkCore;
-using ReLiveWP.Services.Exchange.Data;
-using ReLiveWP.Services.Exchange.Data.Entities;
+using Grpc.Core;
 using ReLiveWP.Services.Exchange.Models;
+using ReLiveWP.Services.Grpc.Mailbox;
+using ProtoFolderType = ReLiveWP.Services.Grpc.Mailbox.FolderType;
+using ReLiveWP.Services.Exchange.Extensions;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
 // Backs per-collection item sync (email, contacts, calendar, tasks).
-// Uses the same event-sourcing watermark pattern as FolderSyncService via SyncEngine.Collapse.
-//
-// SyncKey lifecycle:
-//   "0"  → client is initialising; server allocates state and returns SyncKey="1", no items.
-//   "1"  → first real sync; server returns all current items as Adds (watermark sentinel = -1).
-//   "N"  → incremental; server returns only changes since the previous watermark.
-//
-// Recovery sync (client re-sends the previous SyncKey after a dropped response) is not yet
-// supported; an InvalidSyncKey (status 3) is returned instead.
-public class ItemSyncService
+// Data access is via the MailboxStore gRPC client. All sync logic
+// (SyncKey lifecycle, SyncEngine.Collapse, XML serialization) stays here.
+public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
 {
-    private readonly ExchangeDbContext _db;
-    private readonly UserService _users;
-
-    public ItemSyncService(ExchangeDbContext db, UserService users)
-    {
-        _db = db;
-        _users = users;
-    }
-
     public async Task<SyncCollection> SyncAsync(
         string userId, string deviceId, SyncCollection request, CancellationToken ct = default)
     {
         var collectionId = request.CollectionId;
-        // GetChanges defaults to 1 (true) when absent per spec.
         bool getChanges = request.GetChanges.GetValueOrDefault(1) != 0;
 
-        var state = await _db.SyncStates.SingleOrDefaultAsync(
-            s => s.UserId == userId && s.DeviceId == deviceId && s.CollectionId == collectionId, ct);
+        SyncState? state;
+        try
+        {
+            state = await mailbox.GetSyncStateAsync(
+                new GetSyncStateRequest { UserId = userId, DeviceId = deviceId, CollectionId = collectionId },
+                cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            state = null;
+        }
 
         SyncCollection result;
 
         if (request.SyncKey == "0")
         {
-            // Cache annotation names declared in Options so they survive across sync rounds.
             var annotationNames = request.Options?.Annotations?.RequestedNames();
             result = await InitialSyncAsync(userId, deviceId, collectionId, state, annotationNames, ct);
         }
         else if (state is null || state.SyncKey != request.SyncKey)
         {
             if (state is not null)
-            {
-                state.SyncKey = "0";
-                state.Watermark = 0;
-                state.LastSeenAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync(ct);
-            }
+                await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+                {
+                    UserId = userId,
+                    DeviceId = deviceId,
+                    CollectionId = collectionId,
+                    SyncKey = "0",
+                    Watermark = 0,
+                }, cancellationToken: ct);
+
             return new SyncCollection { CollectionId = collectionId, SyncKey = "0", Status = 3 };
         }
         else
         {
-            // Restore the sticky annotation names cached at SyncKey=0.
             var annotationNames = ParseCachedAnnotationNames(state.CachedAnnotationNames);
             result = await IncrementalSyncAsync(userId, collectionId, state, getChanges, annotationNames, ct);
         }
@@ -75,104 +69,120 @@ public class ItemSyncService
         return result;
     }
 
-    // SyncKey=0: allocate state, return new key with no items.
-    // Watermark=-1 is a sentinel meaning "first real sync pending".
+    // ── SyncKey=0 initialisation ──────────────────────────────────────────────
+
     private async Task<SyncCollection> InitialSyncAsync(
         string userId, string deviceId, string collectionId, SyncState? state,
         IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
     {
-        if (state is null)
+        var cached = requestedAnnotations is { Count: > 0 }
+            ? string.Join(",", requestedAnnotations) : null;
+
+        await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
         {
-            state = new SyncState { UserId = userId, DeviceId = deviceId, CollectionId = collectionId };
-            _db.SyncStates.Add(state);
-        }
-        state.SyncKey = "1";
-        state.Watermark = -1;
-        state.LastSeenAt = DateTime.UtcNow;
-        state.CachedAnnotationNames = requestedAnnotations is { Count: > 0 }
-            ? string.Join(",", requestedAnnotations)
-            : null;
-        await _db.SaveChangesAsync(ct);
+            UserId = userId,
+            DeviceId = deviceId,
+            CollectionId = collectionId,
+            SyncKey = "1",
+            Watermark = -1,
+            CachedAnnotationNames = cached ?? string.Empty,
+        }, cancellationToken: ct);
+
         return new SyncCollection { CollectionId = collectionId, SyncKey = "1", Status = 1 };
     }
+
+    // ── Incremental / first-real-sync ─────────────────────────────────────────
 
     private async Task<SyncCollection> IncrementalSyncAsync(
         string userId, string collectionId, SyncState state, bool getChanges,
         IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
     {
-        // Watermark=-1: first real sync — enumerate all live items directly.
         if (state.Watermark == -1)
         {
-            long tip = await _db.ItemEvents
-                .Where(e => e.UserId == userId && e.CollectionId == collectionId)
-                .MaxAsync(e => (long?)e.Id, ct) ?? 0;
+            // First real sync: enumerate all live items + advance watermark.
+            var tip = (await mailbox.GetItemEventTipAsync(
+                new ItemEventTipRequest { UserId = userId, CollectionId = collectionId },
+                cancellationToken: ct)).Value;
 
-            var all = await _db.Items
-                .Where(i => i.UserId == userId && i.CollectionId == collectionId && i.DeletedAt == null)
-                .ToListAsync(ct);
+            var items = await ReadAllItemsAsync(userId, collectionId, ct);
 
-            await AttachContactAnnotationsAsync(all, requestedAnnotations, ct);
-
-            state.SyncKey = SyncEngine.NextSyncKey(state.SyncKey);
-            state.Watermark = tip;
-            state.LastSeenAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(ct);
-
-            var commands = all.Count > 0 ? new SyncCommands
+            var newKey = SyncEngine.NextSyncKey(state.SyncKey);
+            await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
             {
-                Add = all.Select(i => new SyncAdd { ServerId = i.ServerId, ApplicationData = Serialize(i, requestedAnnotations) }).ToList(),
+                UserId = userId,
+                DeviceId = state.DeviceId,
+                CollectionId = collectionId,
+                SyncKey = newKey,
+                Watermark = tip,
+                CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+            }, cancellationToken: ct);
+
+            var commands = items.Count > 0 ? new SyncCommands
+            {
+                Add = [.. items.Select(i => new SyncAdd { ServerId = i.ServerId, ApplicationData = Serialize(i, requestedAnnotations) })],
             } : null;
 
-            return new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, Status = 1, Commands = commands };
+            return new SyncCollection { CollectionId = collectionId, SyncKey = newKey, Status = 1, Commands = commands };
         }
 
         if (!getChanges)
         {
-            state.LastSeenAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(ct);
+            await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+            {
+                UserId = userId,
+                DeviceId = state.DeviceId,
+                CollectionId = collectionId,
+                SyncKey = state.SyncKey,
+                Watermark = state.Watermark,
+                CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+            }, cancellationToken: ct);
             return new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, Status = 1 };
         }
 
-        var events = await _db.ItemEvents
-            .Where(e => e.UserId == userId && e.CollectionId == collectionId && e.Id > state.Watermark)
-            .ToListAsync(ct);
+        var events = await ReadAllItemEventsAsync(userId, collectionId, state.Watermark, ct);
 
         if (events.Count == 0)
         {
-            state.LastSeenAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(ct);
+            await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+            {
+                UserId = userId,
+                DeviceId = state.DeviceId,
+                CollectionId = collectionId,
+                SyncKey = state.SyncKey,
+                Watermark = state.Watermark,
+                CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+            }, cancellationToken: ct);
+
             return new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, Status = 1 };
         }
 
-        var delta = SyncEngine.Collapse(events);
+        var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.Id, e.ServerId, e.EventType)).ToList());
         var ids = delta.Added.Concat(delta.Updated).ToList();
-        var itemList = await _db.Items
-                .Where(i => i.UserId == userId && ids.Contains(i.ServerId))
-                .ToListAsync(ct);
-
-        await AttachContactAnnotationsAsync(itemList, requestedAnnotations, ct);
-
-        var items = itemList.ToDictionary(i => i.ServerId);
+        var itemMap = (await ReadItemsByIdsAsync(userId, ids, ct)).ToDictionary(i => i.ServerId);
 
         var cmds = new SyncCommands
         {
-            Add = delta.Added.Where(items.ContainsKey)
-                .Select(id => new SyncAdd { ServerId = id, ApplicationData = Serialize(items[id], requestedAnnotations) }).ToList(),
-            Change = delta.Updated.Where(items.ContainsKey)
-                .Select(id => new SyncChange { ServerId = id, ApplicationData = Serialize(items[id], requestedAnnotations) }).ToList(),
-            Delete = delta.Deleted.Select(id => new SyncItemRef { ServerId = id }).ToList(),
+            Add = [.. delta.Added.Where(itemMap.ContainsKey).Select(id => new SyncAdd { ServerId = id, ApplicationData = Serialize(itemMap[id], requestedAnnotations) })],
+            Change = [.. delta.Updated.Where(itemMap.ContainsKey).Select(id => new SyncChange { ServerId = id, ApplicationData = Serialize(itemMap[id], requestedAnnotations) })],
+            Delete = [.. delta.Deleted.Select(id => new SyncItemRef { ServerId = id })],
         };
 
-        state.SyncKey = SyncEngine.NextSyncKey(state.SyncKey);
-        state.Watermark = delta.Watermark;
-        state.LastSeenAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(ct);
+        var nextKey = SyncEngine.NextSyncKey(state.SyncKey);
+        await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+        {
+            UserId = userId,
+            DeviceId = state.DeviceId,
+            CollectionId = collectionId,
+            SyncKey = nextKey,
+            Watermark = delta.Watermark,
+            CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+        }, cancellationToken: ct);
 
         bool hasChanges = cmds.Add.Count + cmds.Change.Count + cmds.Delete.Count > 0;
         return new SyncCollection
         {
             CollectionId = collectionId,
-            SyncKey = state.SyncKey,
+            SyncKey = nextKey,
             Status = 1,
             Commands = hasChanges ? cmds : null,
         };
@@ -205,7 +215,10 @@ public class ItemSyncService
 
         foreach (var delete in cmds.Delete)
         {
-            if (!await _users.DeleteItemAsync(userId, delete.ServerId, ct))
+            var result = await mailbox.DeleteItemAsync(
+                new DeleteItemRequest { UserId = userId, ServerId = delete.ServerId },
+                cancellationToken: ct);
+            if (!result.Found)
                 responses.Change.Add(new SyncResponseChange { ServerId = delete.ServerId, Status = 8 });
         }
 
@@ -216,58 +229,211 @@ public class ItemSyncService
     private async Task<(string? serverId, int status)> HandleAddAsync(
         string userId, string collectionId, string itemClass, ApplicationData? appData, CancellationToken ct)
     {
-        var item = CreateItem(userId, collectionId, itemClass, appData);
-        if (item is null) return (null, 6);
-        var serverId = await _users.AddItemAsync(item, ct);
-        return (serverId, 1);
+        var req = BuildCreateRequest(userId, collectionId, itemClass, appData);
+        if (req is null) return (null, 6);
+        var item = await mailbox.CreateItemAsync(req, cancellationToken: ct);
+        return (item.ServerId, 1);
     }
 
     private async Task<int> HandleChangeAsync(
         string userId, string itemClass, SyncChange change, CancellationToken ct)
     {
-        bool ok = await _users.UpdateItemAsync(userId, change.ServerId,
-            item => ApplyApplicationData(item, itemClass, change.ApplicationData), ct);
-        return ok ? 1 : 8;
+        Item existing;
+        try
+        {
+            existing = await mailbox.GetItemAsync(
+                new GetItemRequest { UserId = userId, ServerId = change.ServerId },
+                cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            return 8;
+        }
+
+        var req = BuildUpdateRequest(userId, itemClass, change.ServerId, change.ApplicationData, existing);
+        if (req is null) return 8;
+
+        var result = await mailbox.UpdateItemAsync(req, cancellationToken: ct);
+        return result.Found ? 1 : 8;
     }
 
-    private static Item? CreateItem(string userId, string collectionId, string itemClass, ApplicationData? appData) =>
+    // ── Request builders ──────────────────────────────────────────────────────
+
+    private static CreateItemRequest? BuildCreateRequest(
+        string userId, string collectionId, string itemClass, ApplicationData? appData) =>
         itemClass switch
         {
-            "Contact" => DeserializeAppData<ContactData>(appData)?.ToEntity(userId, collectionId),
-            "Calendar" => DeserializeAppData<CalendarData>(appData)?.ToEntity(userId, collectionId),
+            "Contact" when DeserializeAppData<ContactData>(appData) is { } cd =>
+                new CreateItemRequest
+                {
+                    UserId = userId,
+                    CollectionId = collectionId,
+                    Contact = cd.ToProtoContact()
+                },
+            "Calendar" when DeserializeAppData<CalendarData>(appData) is { } cal =>
+                new CreateItemRequest
+                {
+                    UserId = userId,
+                    CollectionId = collectionId,
+                    Calendar = cal.ToProtoCalendar()
+                },
             _ => null,
         };
 
-    private static void ApplyApplicationData(Item item, string itemClass, ApplicationData? appData)
-    {
-        switch (itemClass)
+    private static UpdateItemRequest? BuildUpdateRequest(
+        string userId, string itemClass, string serverId, ApplicationData? appData, Item existing) =>
+        itemClass switch
         {
-            case "Contact" when item is ContactItem c:
-                var cd = DeserializeAppData<ContactData>(appData);
-                if (cd is not null) ApplyContactData(c, cd);
-                break;
-            case "Calendar" when item is CalendarItem cal:
-                var calData = DeserializeAppData<CalendarData>(appData);
-                if (calData is not null) ApplyCalendarData(cal, calData);
-                break;
-        }
+            "Contact" when DeserializeAppData<ContactData>(appData) is { } cd =>
+                new UpdateItemRequest
+                {
+                    UserId = userId,
+                    ServerId = serverId,
+                    Contact = ApplyContactChange(existing.Contact, cd)
+                },
+            "Calendar" when DeserializeAppData<CalendarData>(appData) is { } cal =>
+                new UpdateItemRequest
+                {
+                    UserId = userId,
+                    ServerId = serverId,
+                    Calendar = ApplyCalendarChange(existing.Calendar, cal)
+                },
+            _ => null,
+        };
+
+    // ── EAS XML ↔ proto item field mapping ────────────────────────────────────
+
+    // These map EAS XML DTOs (from WBXML decode) → proto ContactItem / CalendarItem.
+    // The proto then goes to MailboxStore for persistence. On the read side, the stored
+    // proto is serialized back to EAS XML for the device response.
+    private static ContactItem ApplyContactChange(ContactItem existing, ContactData cd)
+    {
+        // Full replace: start from the stored state and overwrite with EAS payload.
+        // This preserves server-side fields (WeightedRank, annotation) not present in
+        // the client's Change payload.
+        var c = existing.Clone();
+        if (cd.FirstName is not null) c.FirstName = cd.FirstName;
+        if (cd.MiddleName is not null) c.MiddleName = cd.MiddleName;
+        if (cd.LastName is not null) c.LastName = cd.LastName;
+        if (cd.Title is not null) c.Title = cd.Title;
+        if (cd.Suffix is not null) c.Suffix = cd.Suffix;
+        if (cd.FileAs is not null) c.FileAs = cd.FileAs;
+        if (cd.Alias is not null) c.Alias = cd.Alias;
+        if (cd.NickName is not null) c.NickName = cd.NickName;
+        if (cd.YomiFirstName is not null) c.YomiFirstName = cd.YomiFirstName;
+        if (cd.YomiLastName is not null) c.YomiLastName = cd.YomiLastName;
+        if (cd.YomiCompanyName is not null) c.YomiCompanyName = cd.YomiCompanyName;
+        if (cd.CompanyName is not null) c.CompanyName = cd.CompanyName;
+        if (cd.Department is not null) c.Department = cd.Department;
+        if (cd.JobTitle is not null) c.JobTitle = cd.JobTitle;
+        if (cd.OfficeLocation is not null) c.OfficeLocation = cd.OfficeLocation;
+        if (cd.AccountName is not null) c.AccountName = cd.AccountName;
+        if (cd.ManagerName is not null) c.ManagerName = cd.ManagerName;
+        if (cd.CustomerId is not null) c.CustomerId = cd.CustomerId;
+        if (cd.GovernmentId is not null) c.GovernmentId = cd.GovernmentId;
+        if (cd.AssistantName is not null) c.AssistantName = cd.AssistantName;
+        if (cd.Email1Address is not null) c.Email1Address = cd.Email1Address;
+        if (cd.Email2Address is not null) c.Email2Address = cd.Email2Address;
+        if (cd.Email3Address is not null) c.Email3Address = cd.Email3Address;
+        if (cd.BusinessPhoneNumber is not null) c.BusinessPhoneNumber = cd.BusinessPhoneNumber;
+        if (cd.Business2PhoneNumber is not null) c.Business2PhoneNumber = cd.Business2PhoneNumber;
+        if (cd.BusinessFaxNumber is not null) c.BusinessFaxNumber = cd.BusinessFaxNumber;
+        if (cd.HomePhoneNumber is not null) c.HomePhoneNumber = cd.HomePhoneNumber;
+        if (cd.Home2PhoneNumber is not null) c.Home2PhoneNumber = cd.Home2PhoneNumber;
+        if (cd.HomeFaxNumber is not null) c.HomeFaxNumber = cd.HomeFaxNumber;
+        if (cd.MobilePhoneNumber is not null) c.MobilePhoneNumber = cd.MobilePhoneNumber;
+        if (cd.CarPhoneNumber is not null) c.CarPhoneNumber = cd.CarPhoneNumber;
+        if (cd.PagerNumber is not null) c.PagerNumber = cd.PagerNumber;
+        if (cd.RadioPhoneNumber is not null) c.RadioPhoneNumber = cd.RadioPhoneNumber;
+        if (cd.AssistantPhoneNumber is not null) c.AssistantPhoneNumber = cd.AssistantPhoneNumber;
+        if (cd.CompanyMainPhone is not null) c.CompanyMainPhone = cd.CompanyMainPhone;
+        if (cd.MMS is not null) c.Mms = cd.MMS;
+        if (cd.IMAddress is not null) c.ImAddress = cd.IMAddress;
+        if (cd.IMAddress2 is not null) c.ImAddress2 = cd.IMAddress2;
+        if (cd.IMAddress3 is not null) c.ImAddress3 = cd.IMAddress3;
+        if (cd.BusinessAddressStreet is not null) c.BusinessAddressStreet = cd.BusinessAddressStreet;
+        if (cd.BusinessAddressCity is not null) c.BusinessAddressCity = cd.BusinessAddressCity;
+        if (cd.BusinessAddressState is not null) c.BusinessAddressState = cd.BusinessAddressState;
+        if (cd.BusinessAddressPostalCode is not null) c.BusinessAddressPostalCode = cd.BusinessAddressPostalCode;
+        if (cd.BusinessAddressCountry is not null) c.BusinessAddressCountry = cd.BusinessAddressCountry;
+        if (cd.HomeAddressStreet is not null) c.HomeAddressStreet = cd.HomeAddressStreet;
+        if (cd.HomeAddressCity is not null) c.HomeAddressCity = cd.HomeAddressCity;
+        if (cd.HomeAddressState is not null) c.HomeAddressState = cd.HomeAddressState;
+        if (cd.HomeAddressPostalCode is not null) c.HomeAddressPostalCode = cd.HomeAddressPostalCode;
+        if (cd.HomeAddressCountry is not null) c.HomeAddressCountry = cd.HomeAddressCountry;
+        if (cd.OtherAddressStreet is not null) c.OtherAddressStreet = cd.OtherAddressStreet;
+        if (cd.OtherAddressCity is not null) c.OtherAddressCity = cd.OtherAddressCity;
+        if (cd.OtherAddressState is not null) c.OtherAddressState = cd.OtherAddressState;
+        if (cd.OtherAddressPostalCode is not null) c.OtherAddressPostalCode = cd.OtherAddressPostalCode;
+        if (cd.OtherAddressCountry is not null) c.OtherAddressCountry = cd.OtherAddressCountry;
+        if (cd.Spouse is not null) c.Spouse = cd.Spouse;
+        if (cd.WebPage is not null) c.WebPage = cd.WebPage;
+        if (cd.Picture is not null) c.Picture = Google.Protobuf.ByteString.CopyFrom(cd.Picture);
+        if (cd.Birthday.HasValue) c.Birthday = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(
+            DateTime.SpecifyKind(cd.Birthday.Value, DateTimeKind.Utc));
+        if (cd.Anniversary.HasValue) c.Anniversary = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(
+            DateTime.SpecifyKind(cd.Anniversary.Value, DateTimeKind.Utc));
+
+        var notes = cd.Body?.Data ?? cd.BodyLegacy;
+        if (notes is not null) c.Notes = notes;
+
+        return c;
     }
 
-    // ── Serialization ─────────────────────────────────────────────────────────
+    private static CalendarItem ApplyCalendarChange(CalendarItem existing, CalendarData cd)
+    {
+        var cal = existing.Clone();
+        if (cd.Timezone is not null) cal.Timezone = cd.Timezone;
+        if (cd.StartTime.HasValue) cal.StartTime = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(cd.StartTime.Value, DateTimeKind.Utc));
+        if (cd.EndTime.HasValue) cal.EndTime = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(cd.EndTime.Value, DateTimeKind.Utc));
+        if (cd.DtStamp.HasValue) cal.DtStamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(cd.DtStamp.Value, DateTimeKind.Utc));
+        if (cd.Uid is not null) cal.Uid = cd.Uid;
+        if (cd.Subject is not null) cal.Subject = cd.Subject;
+        if (cd.Location is not null) cal.Location = cd.Location;
+        if (cd.OrganizerName is not null) cal.OrganizerName = cd.OrganizerName;
+        if (cd.OrganizerEmail is not null) cal.OrganizerEmail = cd.OrganizerEmail;
+        if (cd.Reminder.HasValue) cal.Reminder = cd.Reminder.Value;
+        if (cd.AllDayEvent.HasValue) cal.AllDayEvent = cd.AllDayEvent != 0;
+        if (cd.BusyStatus.HasValue) cal.BusyStatus = cd.BusyStatus.Value;
+        if (cd.Sensitivity.HasValue) cal.Sensitivity = cd.Sensitivity.Value;
+        if (cd.MeetingStatus.HasValue) cal.MeetingStatus = cd.MeetingStatus.Value;
+        if (cd.ResponseType.HasValue) cal.ResponseType = cd.ResponseType.Value;
+        if (cd.ResponseRequested.HasValue) cal.ResponseRequested = cd.ResponseRequested != 0;
+        if (cd.DisallowNewTimeProposal.HasValue) cal.DisallowNewTimeProposal = cd.DisallowNewTimeProposal != 0;
+        var notes = cd.Body?.Data ?? cd.BodyLegacy;
+        if (notes is not null) cal.Notes = notes;
+        if (cd.BodyTruncated.HasValue) cal.BodyTruncated = cd.BodyTruncated != 0;
+        if (cd.Recurrence is { } r)
+        {
+            if (r.Type.HasValue) cal.RecurrenceType = r.Type.Value;
+            if (r.Occurrences.HasValue) cal.RecurrenceOccurrences = r.Occurrences.Value;
+            if (r.Interval.HasValue) cal.RecurrenceInterval = r.Interval.Value;
+            if (r.WeekOfMonth.HasValue) cal.RecurrenceWeekOfMonth = r.WeekOfMonth.Value;
+            if (r.DayOfWeek.HasValue) cal.RecurrenceDayOfWeek = r.DayOfWeek.Value;
+            if (r.MonthOfYear.HasValue) cal.RecurrenceMonthOfYear = r.MonthOfYear.Value;
+            if (r.DayOfMonth.HasValue) cal.RecurrenceDayOfMonth = r.DayOfMonth.Value;
+            if (r.CalendarType.HasValue) cal.RecurrenceCalendarType = r.CalendarType.Value;
+            if (r.IsLeapMonth.HasValue) cal.RecurrenceIsLeapMonth = r.IsLeapMonth != 0;
+            if (r.FirstDayOfWeek.HasValue) cal.RecurrenceFirstDayOfWeek = r.FirstDayOfWeek.Value;
+        }
+        return cal;
+    }
+
+    // ── Serialization: proto Item → EAS ApplicationData ──────────────────────
 
     private static ApplicationData? Serialize(Item item, IReadOnlySet<string>? requestedAnnotations = null)
     {
-        var appData = item switch
+        var appData = item.BodyCase switch
         {
-            ContactItem c   => DtoToApplicationData(ContactData.CreateFrom(c)),
-            CalendarItem cal => DtoToApplicationData(CalendarData.CreateFrom(cal)),
+            Item.BodyOneofCase.Contact => item.Contact.ToApplicationData(),
+            Item.BodyOneofCase.Calendar => item.Calendar.ToApplicationData(),
             _ => null,
         };
 
-        if (appData is not null && item is ContactItem contact &&
-            contact.Annotation is not null && requestedAnnotations is { Count: > 0 })
+        if (appData is not null && item.BodyCase == Item.BodyOneofCase.Contact
+            && item.Contact.Annotation is not null && requestedAnnotations is { Count: > 0 })
         {
-            var annotations = contact.Annotation.BuildAnnotations(requestedAnnotations);
+            var annotations = BuildAnnotations(item.Contact.Annotation, requestedAnnotations);
             if (annotations is not null)
                 InjectAnnotations(appData, annotations);
         }
@@ -275,7 +441,29 @@ public class ItemSyncService
         return appData;
     }
 
-    // Serialize the Annotations DTO to a standalone XmlElement and append it to ApplicationData.
+    private static Annotations? BuildAnnotations(ContactAnnotation ann, IReadOnlySet<string> requested)
+    {
+        var items = new List<Annotation>();
+
+        void Add(string name, string? value)
+        {
+            if (requested.Contains(name) && value is not null)
+                items.Add(new Annotation { Name = name, Value = value });
+        }
+
+        Add("CID", ann.HasCid ? ann.Cid.ToString() : null);
+        Add("OID", ann.HasObjectId ? ann.ObjectId : null);
+        Add("WLID", ann.HasWlId ? ann.WlId : null);
+        Add("IMMRI", ann.HasImMri ? ann.ImMri : null);
+        Add("Type", ann.HasContactType ? ann.ContactType : null);
+        Add("UserTileUrl", ann.HasUserTileUrl ? ann.UserTileUrl : null);
+        Add("UserTileHash", ann.HasUserTileHash ? ann.UserTileHash : null);
+        Add("TrustLevel", ann.HasTrustLevel ? ann.TrustLevel.ToString() : null);
+        Add("FavoriteOrder", ann.HasFavoriteOrder ? ann.FavoriteOrder.ToString() : null);
+
+        return items.Count > 0 ? new Annotations { Items = items } : null;
+    }
+
     private static void InjectAnnotations(ApplicationData appData, Annotations annotations)
     {
         var serializer = new XmlSerializer(typeof(Annotations));
@@ -286,164 +474,67 @@ public class ItemSyncService
         appData.Elements.Add(doc.DocumentElement!);
     }
 
-    // Load ContactAnnotation rows for any ContactItems in the list and stitch them on.
-    // Uses a second targeted query rather than EF TPH Include to avoid navigation ambiguity.
-    private async Task AttachContactAnnotationsAsync(
-        List<Item> items, IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
+    // ── gRPC stream helpers ───────────────────────────────────────────────────
+
+    private async Task<List<Item>> ReadAllItemsAsync(string userId, string collectionId, CancellationToken ct)
     {
-        if (requestedAnnotations is null or { Count: 0 }) return;
-
-        var contactIds = items.OfType<ContactItem>().Select(c => c.Id).ToList();
-        if (contactIds.Count == 0) return;
-
-        var annotations = await _db.ContactAnnotations
-            .Where(a => contactIds.Contains(a.ContactItemId))
-            .ToDictionaryAsync(a => a.ContactItemId, ct);
-
-        foreach (var contact in items.OfType<ContactItem>())
-            if (annotations.TryGetValue(contact.Id, out var ann))
-                contact.Annotation = ann;
+        var result = new List<Item>();
+        using var call = mailbox.ListItems(new ListItemsRequest
+        { UserId = userId, CollectionId = collectionId, IncludeDeleted = false }, cancellationToken: ct);
+        await foreach (var i in call.ResponseStream.ReadAllAsync(ct))
+            result.Add(i);
+        return result;
     }
 
-    // Restore the sticky annotation name set from its comma-separated cache string.
-    private static IReadOnlySet<string>? ParseCachedAnnotationNames(string? cached)
+    private async Task<List<Item>> ReadItemsByIdsAsync(string userId, List<string> serverIds, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(cached)) return null;
-        return cached.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+        var result = new List<Item>();
+        using var call = mailbox.GetItems(new GetItemsRequest { UserId = userId, ServerIds = { serverIds } }, cancellationToken: ct);
+        await foreach (var i in call.ResponseStream.ReadAllAsync(ct))
+            result.Add(i);
+        return result;
     }
 
-    private static void ApplyContactData(ContactItem c, ContactData data)
+    private async Task<List<ItemEvent>> ReadAllItemEventsAsync(
+        string userId, string collectionId, long afterWatermark, CancellationToken ct)
     {
-        c.FirstName = data.FirstName; c.MiddleName = data.MiddleName;
-        c.LastName = data.LastName; c.Title = data.Title;
-        c.Suffix = data.Suffix; c.FileAs = data.FileAs;
-        c.Alias = data.Alias; c.NickName = data.NickName;
-        c.YomiFirstName = data.YomiFirstName; c.YomiLastName = data.YomiLastName;
-        c.YomiCompanyName = data.YomiCompanyName;
-        c.CompanyName = data.CompanyName; c.Department = data.Department;
-        c.JobTitle = data.JobTitle; c.OfficeLocation = data.OfficeLocation;
-        c.AccountName = data.AccountName; c.ManagerName = data.ManagerName;
-        c.CustomerId = data.CustomerId; c.GovernmentId = data.GovernmentId;
-        c.AssistantName = data.AssistantName;
-        c.Email1Address = data.Email1Address; c.Email2Address = data.Email2Address;
-        c.Email3Address = data.Email3Address;
-        c.BusinessPhoneNumber = data.BusinessPhoneNumber;
-        c.Business2PhoneNumber = data.Business2PhoneNumber;
-        c.BusinessFaxNumber = data.BusinessFaxNumber;
-        c.HomePhoneNumber = data.HomePhoneNumber;
-        c.Home2PhoneNumber = data.Home2PhoneNumber;
-        c.HomeFaxNumber = data.HomeFaxNumber;
-        c.MobilePhoneNumber = data.MobilePhoneNumber;
-        c.CarPhoneNumber = data.CarPhoneNumber;
-        c.PagerNumber = data.PagerNumber; c.RadioPhoneNumber = data.RadioPhoneNumber;
-        c.AssistantPhoneNumber = data.AssistantPhoneNumber;
-        c.CompanyMainPhone = data.CompanyMainPhone;
-        c.MMS = data.MMS;
-        c.IMAddress = data.IMAddress; c.IMAddress2 = data.IMAddress2;
-        c.IMAddress3 = data.IMAddress3;
-        c.BusinessAddressStreet = data.BusinessAddressStreet;
-        c.BusinessAddressCity = data.BusinessAddressCity;
-        c.BusinessAddressState = data.BusinessAddressState;
-        c.BusinessAddressPostalCode = data.BusinessAddressPostalCode;
-        c.BusinessAddressCountry = data.BusinessAddressCountry;
-        c.HomeAddressStreet = data.HomeAddressStreet;
-        c.HomeAddressCity = data.HomeAddressCity;
-        c.HomeAddressState = data.HomeAddressState;
-        c.HomeAddressPostalCode = data.HomeAddressPostalCode;
-        c.HomeAddressCountry = data.HomeAddressCountry;
-        c.OtherAddressStreet = data.OtherAddressStreet;
-        c.OtherAddressCity = data.OtherAddressCity;
-        c.OtherAddressState = data.OtherAddressState;
-        c.OtherAddressPostalCode = data.OtherAddressPostalCode;
-        c.OtherAddressCountry = data.OtherAddressCountry;
-        c.Spouse = data.Spouse; c.WebPage = data.WebPage;
-        c.Birthday = data.Birthday; c.Anniversary = data.Anniversary;
-        c.Picture = data.Picture;
-        c.Notes = data.Body?.Data ?? data.BodyLegacy;
+        var result = new List<ItemEvent>();
+        using var call = mailbox.GetItemEvents(new GetItemEventsRequest
+        { UserId = userId, CollectionId = collectionId, AfterWatermark = afterWatermark }, cancellationToken: ct);
+        await foreach (var e in call.ResponseStream.ReadAllAsync(ct))
+            result.Add(e);
+        return result;
     }
 
-    private static void ApplyCalendarData(CalendarItem cal, CalendarData data)
-    {
-        cal.Timezone = data.Timezone;
-        cal.StartTime = data.StartTime; cal.EndTime = data.EndTime;
-        cal.DtStamp = data.DtStamp; cal.Uid = data.Uid;
-        cal.Subject = data.Subject; cal.Location = data.Location;
-        cal.Reminder = data.Reminder;
-        cal.AllDayEvent = data.AllDayEvent switch { 1 => true, 0 => false, _ => null };
-        cal.BusyStatus = data.BusyStatus; cal.Sensitivity = data.Sensitivity;
-        cal.MeetingStatus = data.MeetingStatus;
-        cal.OrganizerName = data.OrganizerName; cal.OrganizerEmail = data.OrganizerEmail;
-        cal.ResponseType = data.ResponseType;
-        cal.ResponseRequested = data.ResponseRequested switch { 1 => true, 0 => false, _ => null };
-        cal.DisallowNewTimeProposal = data.DisallowNewTimeProposal switch { 1 => true, 0 => false, _ => null };
-        cal.Notes = data.Body?.Data ?? data.BodyLegacy;
-        cal.BodyTruncated = data.BodyTruncated switch { 1 => true, 0 => false, _ => null };
-        if (data.Recurrence is { } r)
-        {
-            cal.RecurrenceType = r.Type; cal.RecurrenceOccurrences = r.Occurrences;
-            cal.RecurrenceInterval = r.Interval; cal.RecurrenceWeekOfMonth = r.WeekOfMonth;
-            cal.RecurrenceDayOfWeek = r.DayOfWeek; cal.RecurrenceMonthOfYear = r.MonthOfYear;
-            cal.RecurrenceDayOfMonth = r.DayOfMonth; cal.RecurrenceCalendarType = r.CalendarType;
-            cal.RecurrenceIsLeapMonth = r.IsLeapMonth switch { 1 => true, 0 => false, _ => null };
-            cal.RecurrenceFirstDayOfWeek = r.FirstDayOfWeek;
-        }
-    }
 
     private async Task<string> GetItemClassAsync(string userId, string collectionId, CancellationToken ct)
     {
-        var folder = await _db.Folders.FirstOrDefaultAsync(f => f.UserId == userId && f.Id == collectionId, ct);
-        return folder?.Type switch
+        try
         {
-            FolderType.CalendarDefault or FolderType.Calendar => "Calendar",
-            FolderType.ContactsDefault or FolderType.Contacts => "Contact",
-            FolderType.TasksDefault or FolderType.Task => "Task",
-            _ => "Email",
-        };
-    }
-
-    // ── XML round-trip helpers ────────────────────────────────────────────────
-
-    // Serialize a typed DTO to an ApplicationData bag by extracting child elements
-    // from a temporary XmlDocument. Namespace URIs are preserved so ASWBXML can
-    // select the correct code page (e.g. "Contacts" → code page 1).
-    // xsi:nil elements (XmlSerializer's encoding of null Nullable<T> fields) are
-    // stripped — ASWBXML has no code page for the xsi namespace and produces
-    // invalid bytes for attribute-bearing elements.
-    private static ApplicationData DtoToApplicationData<T>(T dto) where T : class
-    {
-        var serializer = new XmlSerializer(typeof(T));
-        var doc = new XmlDocument();
-        using var sw = new StringWriter();
-        serializer.Serialize(sw, dto);
-        doc.LoadXml(sw.ToString());
-        StripNilElements(doc.DocumentElement!);
-        var appData = new ApplicationData();
-        foreach (XmlNode child in doc.DocumentElement!.ChildNodes)
-            if (child is XmlElement el)
-                appData.Elements.Add(el);
-        return appData;
-    }
-
-    // Recursively remove any element that carries xsi:nil="true".
-    // These are emitted by XmlSerializer for null Nullable<T> properties and are
-    // semantically equivalent to an absent element in EAS — they carry no data.
-    private static void StripNilElements(XmlNode node)
-    {
-        const string Xsi = "http://www.w3.org/2001/XMLSchema-instance";
-        List<XmlNode>? remove = null;
-        foreach (XmlNode child in node.ChildNodes)
-        {
-            if (child is XmlElement el && el.GetAttribute("nil", Xsi) == "true")
-                (remove ??= []).Add(el);
-            else
-                StripNilElements(child);
+            var folder = await mailbox.GetFolderAsync(
+                new GetFolderRequest { UserId = userId, ServerId = collectionId },
+                cancellationToken: ct);
+            return folder.Type switch
+            {
+                ProtoFolderType.CalendarDefault or ProtoFolderType.Calendar => "Calendar",
+                ProtoFolderType.ContactsDefault or ProtoFolderType.Contacts or ProtoFolderType.MeContact => "Contact",
+                ProtoFolderType.TasksDefault or ProtoFolderType.Task => "Task",
+                _ => "Email",
+            };
         }
-        if (remove is not null)
-            foreach (var el in remove)
-                node.RemoveChild(el);
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            return "Email";
+        }
     }
 
-    // Reconstruct a typed DTO from an ApplicationData bag (client-supplied elements).
+    private static IReadOnlySet<string>? ParseCachedAnnotationNames(string? cached)
+    {
+        if (string.IsNullOrEmpty(cached)) return null;
+
+        return cached.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+    }
+
     private static T? DeserializeAppData<T>(ApplicationData? appData) where T : class
     {
         if (appData?.Elements is null or { Count: 0 }) return null;

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using ReLiveWP.Services.Exchange.Models;
+using ReLiveWP.Services.Exchange.Middleware;
 
 namespace ReLiveWP.Services.Exchange.Services;
 

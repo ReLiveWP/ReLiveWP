@@ -1,19 +1,21 @@
-using ReLiveWP.Services.Exchange.Data.Entities;
+using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
 public record SyncDelta(List<string> Added, List<string> Updated, List<string> Deleted, long Watermark);
 
-// Shared sync utilities used by both FolderSyncService and ItemSyncService.
+// Minimal event projection passed to Collapse — decoupled from both the EF entity
+// and the specific proto message type (FolderEvent vs ItemEvent share the same fields).
+public record SyncEvent(long Id, string ServerId, ChangeEventType EventType);
+
 public static class SyncEngine
 {
-    // Collapses an unordered window of change-log events into the net set of
-    // Add/Update/Delete ServerIds a device needs, plus the new watermark.
-    // An item Added then Deleted within the same window is silently dropped —
-    // the device never saw it, so there is nothing to do.
-    public static SyncDelta Collapse(IReadOnlyList<IChangeEvent> events)
+    // Collapses a window of change-log events into the net Add/Update/Delete set a
+    // device needs, plus the new watermark. An item Added then Deleted in the same
+    // window is silently dropped — the device never saw it.
+    public static SyncDelta Collapse(IReadOnlyList<SyncEvent> events)
     {
-        var added = new List<string>();
+        var added   = new List<string>();
         var updated = new List<string>();
         var deleted = new List<string>();
         long watermark = 0;
@@ -22,7 +24,7 @@ public static class SyncEngine
         {
             var ordered = group.OrderBy(e => e.Id).ToList();
             var first = ordered[0].EventType;
-            var last = ordered[^1].EventType;
+            var last  = ordered[^1].EventType;
 
             if (first == ChangeEventType.Add && last == ChangeEventType.Delete)
                 continue;
@@ -30,7 +32,7 @@ public static class SyncEngine
             switch (last)
             {
                 case ChangeEventType.Delete: deleted.Add(group.Key); break;
-                case ChangeEventType.Add: added.Add(group.Key); break;
+                case ChangeEventType.Add:    added.Add(group.Key);   break;
                 case ChangeEventType.Update:
                     (first == ChangeEventType.Add ? added : updated).Add(group.Key);
                     break;

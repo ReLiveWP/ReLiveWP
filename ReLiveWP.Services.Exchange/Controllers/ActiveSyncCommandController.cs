@@ -3,7 +3,6 @@ using System.Xml.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Services.Exchange.Middleware;
-using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Exchange.Services;
 
 namespace ReLiveWP.Services.Exchange.Controllers;
