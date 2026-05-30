@@ -18,12 +18,6 @@ public class ActiveSyncContext
     // Null when the identity token does not carry a puid claim.
     public long? Cid { get; set; }
 
-    // ── Windows Live annotation subscriptions ─────────────────────────────────
-    // Names the client requested at FolderSync level (e.g. "SID").
-    public IReadOnlySet<string>? FolderSyncAnnotations { get; set; }
-
-    // Names the client requested per Sync collection, keyed by collectionId.
-    public Dictionary<string, IReadOnlySet<string>> SyncAnnotations { get; set; } = new();
 
     // ── Command-specific URI parameters ──────────────────────────────────────
     public string? AttachmentName { get; set; }    // GetAttachment: attachment filename (tag 0)

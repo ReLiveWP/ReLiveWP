@@ -24,7 +24,7 @@ public class FolderSyncService
     }
 
     public async Task<FolderSync> SyncAsync(string userId, string deviceId, string? clientSyncKey,
-        CancellationToken ct = default)
+        IReadOnlySet<string>? requestedAnnotations = null, CancellationToken ct = default)
     {
         clientSyncKey ??= "0";
 
@@ -32,7 +32,7 @@ public class FolderSyncService
             s => s.UserId == userId && s.DeviceId == deviceId && s.CollectionId == HierarchyId, ct);
 
         if (clientSyncKey == "0")
-            return await InitialSyncAsync(userId, deviceId, state, ct);
+            return await InitialSyncAsync(userId, deviceId, state, requestedAnnotations, ct);
 
         if (state is null || state.SyncKey != clientSyncKey)
         {
@@ -47,20 +47,27 @@ public class FolderSyncService
                 await _db.SaveChangesAsync(ct);
             }
 
-            return await InitialSyncAsync(userId, deviceId, state, ct);
+            return await InitialSyncAsync(userId, deviceId, state, requestedAnnotations, ct);
         }
 
-        return await IncrementalSyncAsync(userId, state, ct);
+        return await IncrementalSyncAsync(userId, state, requestedAnnotations, ct);
     }
 
+    // True when the client declared at least one of the ABCH folder identity annotations.
+    private static bool AbchAnnotationsRequested(IReadOnlySet<string>? requested) =>
+        requested is not null &&
+        (requested.Contains("SID") || requested.Contains("AN") || requested.Contains("DomainId"));
+
     private async Task<FolderSync> InitialSyncAsync(string userId, string deviceId, SyncState? state,
-        CancellationToken ct)
+        IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
     {
         long tip = await _db.FolderEvents.Where(e => e.UserId == userId)
             .MaxAsync(e => (long?)e.Id, ct) ?? 0;
 
+        bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
         var folders = await _db.Folders
-            .Where(f => f.UserId == userId && f.DeletedAt == null)
+            .Where(f => f.UserId == userId && f.DeletedAt == null &&
+                        (!f.IsHidden || abchRequested))
             .ToListAsync(ct);
 
         if (state is null)
@@ -73,13 +80,14 @@ public class FolderSyncService
         state.LastSeenAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        var changes = new Changes { Add = folders.Select(ToFolderChange).ToList() };
+        var changes = new Changes { Add = folders.Select(f => ToFolderChange(f, requestedAnnotations)).ToList() };
         changes.Count = changes.Add.Count;
 
         return new FolderSync { Status = StatusSuccess, SyncKey = "1", Changes = changes };
     }
 
-    private async Task<FolderSync> IncrementalSyncAsync(string userId, SyncState state, CancellationToken ct)
+    private async Task<FolderSync> IncrementalSyncAsync(string userId, SyncState state,
+        IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
     {
         var events = await _db.FolderEvents
             .Where(e => e.UserId == userId && e.Id > state.Watermark)
@@ -94,15 +102,17 @@ public class FolderSyncService
 
         var delta = SyncEngine.Collapse(events);
 
+        bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
         var ids = delta.Added.Concat(delta.Updated).ToList();
         var folders = await _db.Folders
-            .Where(f => f.UserId == userId && ids.Contains(f.Id))
+            .Where(f => f.UserId == userId && ids.Contains(f.Id) &&
+                        (!f.IsHidden || abchRequested))
             .ToDictionaryAsync(f => f.Id, ct);
 
         var changes = new Changes
         {
-            Add = delta.Added.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id])).ToList(),
-            Update = delta.Updated.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id])).ToList(),
+            Add = delta.Added.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id], requestedAnnotations)).ToList(),
+            Update = delta.Updated.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id], requestedAnnotations)).ToList(),
             Delete = delta.Deleted.Select(id => new FolderChange { ServerId = id }).ToList(),
         };
         changes.Count = changes.Add.Count + changes.Update.Count + changes.Delete.Count;
@@ -115,11 +125,50 @@ public class FolderSyncService
         return new FolderSync { Status = StatusSuccess, SyncKey = state.SyncKey, Changes = changes };
     }
 
-    private static FolderChange ToFolderChange(Folder f) => new()
+    private static FolderChange ToFolderChange(Folder f, IReadOnlySet<string>? requested) => new()
     {
         ServerId = f.Id,
         ParentId = f.ParentServerId,
         DisplayName = f.DisplayName,
         Type = f.Type,
+        Annotations = BuildFolderAnnotations(f, requested),
+    };
+
+    // Populate per-folder Live annotations for ABCH/social contact folders.
+    // Only adds annotations whose names the client declared in the request.
+    private static Annotations? BuildFolderAnnotations(Folder f, IReadOnlySet<string>? requested)
+    {
+        if (requested is null || requested.Count == 0 || f.SourceId is null)
+            return null;
+
+        var items = new List<Annotation>();
+
+        void Add(string name, string? value)
+        {
+            if (requested.Contains(name) && value is not null)
+                items.Add(new Annotation { Name = name, Value = value });
+        }
+
+        Add("SID", f.SourceId);
+        Add("AN", f.AccountName);
+
+        // Map the short SourceId string to its canonical numeric DomainId.
+        // Emit only when the mapping is known so clients don't see a stale/wrong value.
+        if (requested.Contains("DomainId") && KnownDomainIds.TryGetValue(f.SourceId, out var domainId))
+            items.Add(new Annotation { Name = "DomainId", Value = domainId.ToString() });
+
+        return items.Count > 0 ? new Annotations { Items = items } : null;
+    }
+
+    // Subset of ContactDomainProperties relevant to our provisioned folders.
+    private static readonly Dictionary<string, int> KnownDomainIds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ABCH"]  = 18,
+        ["FB"]    = 7,
+        ["LI"]    = 8,
+        ["GOOG"]  = 20,
+        ["YHOO"]  = 21,
+        ["TWITR"] = 22,
+        ["SKYPE"] = 129,
     };
 }

@@ -13,4 +13,6 @@ public class SyncState
     public string SyncKey { get; set; } = "0";
     public long Watermark { get; set; }        // -1 = first real sync pending (items only)
     public DateTime LastSeenAt { get; set; }
+    // Comma-separated annotation names subscribed at SyncKey=0; null = none requested
+    public string? CachedAnnotationNames { get; set; }
 }

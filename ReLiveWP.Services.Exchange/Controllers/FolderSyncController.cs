@@ -30,22 +30,9 @@ public class FolderSyncController(ILogger<FolderSyncController> logger,
 
         await provisioningService.EnsureProvisionedAsync(userId, ct);
 
-        // Extract annotation subscription before syncing (client sends Name-only entries)
-        var requestedAnnotations = request?.Annotations?.RequestedNames();
-        if (requestedAnnotations is { Count: > 0 })
-            EasContext.FolderSyncAnnotations = requestedAnnotations;
+        var response = await folderSync.SyncAsync(userId, EasContext.DeviceId, request?.SyncKey,
+            request?.Annotations?.RequestedNames(), ct);
 
-        var response = await folderSync.SyncAsync(userId, EasContext.DeviceId, request?.SyncKey, ct);
-
-        // Populate FolderSync-level annotation response.
-        // SID identifies the user's own Live contact store — we use their PUID (CID).
-        if (EasContext.FolderSyncAnnotations?.Contains("SID") == true && EasContext.Cid is { } cid)
-        {
-            response.Annotations = new Annotations
-            {
-                Items = [new Annotation { Name = "SID", Value = cid.ToString() }]
-            };
-        }
 
         await WriteWbxmlResponseAsync(response, logger);
     }

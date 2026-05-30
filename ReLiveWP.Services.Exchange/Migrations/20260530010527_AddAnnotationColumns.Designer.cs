@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ReLiveWP.Services.Exchange.Data;
 
@@ -10,9 +11,11 @@ using ReLiveWP.Services.Exchange.Data;
 namespace ReLiveWP.Services.Exchange.Migrations
 {
     [DbContext(typeof(ExchangeDbContext))]
-    partial class ExchangeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260530010527_AddAnnotationColumns")]
+    partial class AddAnnotationColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.8");

@@ -93,4 +93,8 @@ public class FolderChange
             Type = (FolderType)value;
         }
     }
+
+    [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
+    public Annotations? Annotations { get; set; }
+    public bool ShouldSerializeAnnotations() => Annotations?.Items is { Count: > 0 };
 }

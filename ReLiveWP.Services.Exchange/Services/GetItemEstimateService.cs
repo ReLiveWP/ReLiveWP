@@ -20,12 +20,16 @@ public class GetItemEstimateService
         var response = new GetItemEstimateResponse();
 
         foreach (var coll in request.Collections?.Items ?? [])
-            response.Responses.Add(await EstimateCollectionAsync(userId, deviceId, coll, ct));
+        {
+            var collection = await EstimateCollectionAsync(userId, deviceId, coll, ct);
+            if (collection != null)
+                response.Responses.Add(collection);
+        }
 
         return response;
     }
 
-    private async Task<GieResponse> EstimateCollectionAsync(
+    private async Task<GieResponse?> EstimateCollectionAsync(
         string userId, string deviceId, GieRequestCollection req, CancellationToken ct)
     {
         var collectionId = req.CollectionId;
@@ -60,11 +64,14 @@ public class GetItemEstimateService
         var folder = await _db.Folders.FirstOrDefaultAsync(
             f => f.UserId == userId && f.Id == collectionId, ct);
 
+        if (folder == null)
+            return null;
+
         var itemClass = folder?.Type switch
         {
             FolderType.CalendarDefault or FolderType.Calendar => "Calendar",
-            FolderType.ContactsDefault or FolderType.Contacts => "Contacts",
-            FolderType.TasksDefault or FolderType.Task         => "Tasks",
+            FolderType.ContactsDefault or FolderType.Contacts or FolderType.MeContact => "Contacts",
+            FolderType.TasksDefault or FolderType.Task => "Tasks",
             _ => "Email",
         };
 

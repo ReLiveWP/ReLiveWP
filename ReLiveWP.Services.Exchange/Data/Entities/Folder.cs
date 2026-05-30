@@ -13,5 +13,6 @@ public class Folder
     public DateTime? DeletedAt { get; set; }
     public ICollection<Item> FolderItems { get; set; } = new List<Item>();
     public string? SourceId { get; set; } = null;
+    public string? AccountName { get; set; } = null;
     public bool IsHidden { get; set; } = false;
 }
