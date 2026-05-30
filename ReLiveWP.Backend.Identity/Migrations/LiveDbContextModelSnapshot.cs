@@ -208,7 +208,8 @@ namespace ReLiveWP.Backend.Identity.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Cid");
+                    b.HasIndex("Cid")
+                        .IsUnique();
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -217,7 +218,8 @@ namespace ReLiveWP.Backend.Identity.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
-                    b.HasIndex("Puid");
+                    b.HasIndex("Puid")
+                        .IsUnique();
 
                     b.HasIndex("Type");
 

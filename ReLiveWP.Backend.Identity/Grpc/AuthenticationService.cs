@@ -26,7 +26,7 @@ public class AuthenticationService(
         if (await userManager.FindByNameAsync(request.Username) != null)
             return new RegisterResponse() { Code = ERROR_ALREADY_EXISTS };
 
-        var (userId, cid, puid) = UserUtils.GenerateUserId();
+        var (userId, cid, puid) = UserUtils.GenerateUserIds(LiveUserType.User);
 
         var user = new LiveUser()
         {
@@ -106,7 +106,7 @@ public class AuthenticationService(
         if (await userManager.FindByNameAsync(request.Username) != null)
             return new RegisterDeviceResponse() { Code = ERROR_ALREADY_EXISTS };
 
-        var (userId, cid, puid) = UserUtils.GenerateUserId();
+        var (userId, cid, puid) = UserUtils.GenerateUserIds(LiveUserType.Device);
 
         var user = new LiveUser()
         {
