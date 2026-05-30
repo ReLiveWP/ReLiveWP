@@ -44,11 +44,11 @@ public class ProvisioningService(
             var serverId = Guid.NewGuid().ToString("N");
             var folder = new Folder
             {
-                UserId        = userId,
-                Id            = serverId,
+                UserId = userId,
+                Id = serverId,
                 ParentServerId = "0",
-                DisplayName   = name,
-                Type          = type,
+                DisplayName = name,
+                Type = type,
             };
 
             if (type == FolderType.MeContact)
@@ -57,19 +57,23 @@ public class ProvisioningService(
                 // Hidden so it doesn't appear as a user-visible contacts folder.
                 folder.SourceId = "ABCH";
                 folder.IsHidden = true;
+            }
+
+            if (type == FolderType.ContactsDefault)
+            {
                 meContactFolderId = serverId;
             }
 
             db.Folders.Add(folder);
             db.FolderEvents.Add(new FolderEvent
             {
-                UserId         = userId,
-                EventType      = ChangeEventType.Add,
-                ServerId       = serverId,
+                UserId = userId,
+                EventType = ChangeEventType.Add,
+                ServerId = serverId,
                 ParentServerId = "0",
-                DisplayName    = name,
-                FolderType     = type,
-                OccurredAt     = now,
+                DisplayName = name,
+                FolderType = type,
+                OccurredAt = now,
             });
         }
 
@@ -82,12 +86,12 @@ public class ProvisioningService(
 
             var contact = new ContactItem
             {
-                UserId       = userId,
+                UserId = userId,
                 CollectionId = meContactFolderId,
-                Id           = contactId,
-                ServerId     = contactId,
-                FileAs       = userInfo.Username,
-                FirstName    = userInfo.Username,
+                Id = contactId,
+                ServerId = contactId,
+                FileAs = userInfo.Username,
+                FirstName = userInfo.Username,
                 Email1Address = userInfo.EmailAddress,
             };
 
@@ -99,20 +103,21 @@ public class ProvisioningService(
             contact.Annotation = new ContactAnnotation
             {
                 ContactItemId = contactId,
-                Cid           = userInfo.Puid > 0 ? userInfo.Puid : null,
-                ObjectId      = userId,
-                WLId          = userInfo.EmailAddress,
-                ContactType   = "Me",
+                Cid = userInfo.Puid,
+                ObjectId = userId,
+                WLId = userInfo.EmailAddress,
+                ImMri = "WL:" + userInfo.Puid,
+                ContactType = "Me",
             };
 
             db.Items.Add(contact);
             db.ItemEvents.Add(new ItemEvent
             {
-                UserId       = userId,
+                UserId = userId,
                 CollectionId = meContactFolderId,
-                EventType    = ChangeEventType.Add,
-                ServerId     = contactId,
-                OccurredAt   = now,
+                EventType = ChangeEventType.Add,
+                ServerId = contactId,
+                OccurredAt = now,
             });
         }
 

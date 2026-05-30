@@ -35,9 +35,6 @@ public class ItemSyncService
         // GetChanges defaults to 1 (true) when absent per spec.
         bool getChanges = request.GetChanges.GetValueOrDefault(1) != 0;
 
-        // Extract annotation subscription for this collection (may be null = no annotations)
-        var requestedAnnotations = request.Options?.Annotations?.RequestedNames();
-
         var state = await _db.SyncStates.SingleOrDefaultAsync(
             s => s.UserId == userId && s.DeviceId == deviceId && s.CollectionId == collectionId, ct);
 
@@ -45,7 +42,9 @@ public class ItemSyncService
 
         if (request.SyncKey == "0")
         {
-            result = await InitialSyncAsync(userId, deviceId, collectionId, state, ct);
+            // Cache annotation names declared in Options so they survive across sync rounds.
+            var annotationNames = request.Options?.Annotations?.RequestedNames();
+            result = await InitialSyncAsync(userId, deviceId, collectionId, state, annotationNames, ct);
         }
         else if (state is null || state.SyncKey != request.SyncKey)
         {
@@ -60,8 +59,9 @@ public class ItemSyncService
         }
         else
         {
-            result = await IncrementalSyncAsync(userId, collectionId, state, getChanges,
-                requestedAnnotations, ct);
+            // Restore the sticky annotation names cached at SyncKey=0.
+            var annotationNames = ParseCachedAnnotationNames(state.CachedAnnotationNames);
+            result = await IncrementalSyncAsync(userId, collectionId, state, getChanges, annotationNames, ct);
         }
 
         if (request.Commands is { } cmds && (cmds.Add.Count > 0 || cmds.Change.Count > 0 || cmds.Delete.Count > 0))
@@ -78,7 +78,8 @@ public class ItemSyncService
     // SyncKey=0: allocate state, return new key with no items.
     // Watermark=-1 is a sentinel meaning "first real sync pending".
     private async Task<SyncCollection> InitialSyncAsync(
-        string userId, string deviceId, string collectionId, SyncState? state, CancellationToken ct)
+        string userId, string deviceId, string collectionId, SyncState? state,
+        IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
     {
         if (state is null)
         {
@@ -88,6 +89,9 @@ public class ItemSyncService
         state.SyncKey = "1";
         state.Watermark = -1;
         state.LastSeenAt = DateTime.UtcNow;
+        state.CachedAnnotationNames = requestedAnnotations is { Count: > 0 }
+            ? string.Join(",", requestedAnnotations)
+            : null;
         await _db.SaveChangesAsync(ct);
         return new SyncCollection { CollectionId = collectionId, SyncKey = "1", Status = 1 };
     }
@@ -107,7 +111,7 @@ public class ItemSyncService
                 .Where(i => i.UserId == userId && i.CollectionId == collectionId && i.DeletedAt == null)
                 .ToListAsync(ct);
 
-            await LoadContactAnnotationsAsync(all, requestedAnnotations, ct);
+            await AttachContactAnnotationsAsync(all, requestedAnnotations, ct);
 
             state.SyncKey = SyncEngine.NextSyncKey(state.SyncKey);
             state.Watermark = tip;
@@ -146,7 +150,7 @@ public class ItemSyncService
                 .Where(i => i.UserId == userId && ids.Contains(i.ServerId))
                 .ToListAsync(ct);
 
-        await LoadContactAnnotationsAsync(itemList, requestedAnnotations, ct);
+        await AttachContactAnnotationsAsync(itemList, requestedAnnotations, ct);
 
         var items = itemList.ToDictionary(i => i.ServerId);
 
@@ -251,7 +255,7 @@ public class ItemSyncService
 
     // ── Serialization ─────────────────────────────────────────────────────────
 
-    private static ApplicationData? Serialize(Item item, IReadOnlySet<string>? requestedAnnotations)
+    private static ApplicationData? Serialize(Item item, IReadOnlySet<string>? requestedAnnotations = null)
     {
         var appData = item switch
         {
@@ -260,47 +264,34 @@ public class ItemSyncService
             _ => null,
         };
 
-        // Append <live:Annotations> to ApplicationData when the client subscribed and
-        // this contact has annotation data stored.
-        if (appData is not null
-            && requestedAnnotations is { Count: > 0 }
-            && item is ContactItem contact
-            && contact.Annotation?.BuildAnnotations(requestedAnnotations) is { } annotations)
+        if (appData is not null && item is ContactItem contact &&
+            contact.Annotation is not null && requestedAnnotations is { Count: > 0 })
         {
-            appData.Elements.Add(BuildAnnotationsElement(annotations));
+            var annotations = contact.Annotation.BuildAnnotations(requestedAnnotations);
+            if (annotations is not null)
+                InjectAnnotations(appData, annotations);
         }
 
         return appData;
     }
 
-    // Build a <live:Annotations> XmlElement from a populated Annotations model.
-    private static XmlElement BuildAnnotationsElement(Annotations annotations)
+    // Serialize the Annotations DTO to a standalone XmlElement and append it to ApplicationData.
+    private static void InjectAnnotations(ApplicationData appData, Annotations annotations)
     {
+        var serializer = new XmlSerializer(typeof(Annotations));
         var doc = new XmlDocument();
-        var root = doc.CreateElement("Annotations", Constants.WindowsLive);
-        foreach (var ann in annotations.Items)
-        {
-            var annEl  = doc.CreateElement("Annotation", Constants.WindowsLive);
-            var nameEl = doc.CreateElement("Name",       Constants.WindowsLive);
-            nameEl.InnerText = ann.Name;
-            annEl.AppendChild(nameEl);
-            if (ann.Value is not null)
-            {
-                var valEl = doc.CreateElement("Value", Constants.WindowsLive);
-                valEl.InnerText = ann.Value;
-                annEl.AppendChild(valEl);
-            }
-            root.AppendChild(annEl);
-        }
-        return root;
+        using var sw = new StringWriter();
+        serializer.Serialize(sw, annotations);
+        doc.LoadXml(sw.ToString());
+        appData.Elements.Add(doc.DocumentElement!);
     }
 
-    // Load ContactAnnotation rows for any ContactItems in the list, but only when
-    // the client actually subscribed to annotations (avoids the extra query otherwise).
-    private async Task LoadContactAnnotationsAsync(
+    // Load ContactAnnotation rows for any ContactItems in the list and stitch them on.
+    // Uses a second targeted query rather than EF TPH Include to avoid navigation ambiguity.
+    private async Task AttachContactAnnotationsAsync(
         List<Item> items, IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
     {
-        if (requestedAnnotations is not { Count: > 0 }) return;
+        if (requestedAnnotations is null or { Count: 0 }) return;
 
         var contactIds = items.OfType<ContactItem>().Select(c => c.Id).ToList();
         if (contactIds.Count == 0) return;
@@ -310,7 +301,15 @@ public class ItemSyncService
             .ToDictionaryAsync(a => a.ContactItemId, ct);
 
         foreach (var contact in items.OfType<ContactItem>())
-            contact.Annotation = annotations.GetValueOrDefault(contact.Id);
+            if (annotations.TryGetValue(contact.Id, out var ann))
+                contact.Annotation = ann;
+    }
+
+    // Restore the sticky annotation name set from its comma-separated cache string.
+    private static IReadOnlySet<string>? ParseCachedAnnotationNames(string? cached)
+    {
+        if (string.IsNullOrEmpty(cached)) return null;
+        return cached.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
     }
 
     private static void ApplyContactData(ContactItem c, ContactData data)
