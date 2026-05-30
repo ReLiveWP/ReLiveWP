@@ -2,6 +2,7 @@ import { useComputed, useSignal } from "@preact/signals";
 import { Device } from "../devices";
 
 import Placeholder from "~/static/devices/RM-801.png"
+import HD2 from "~/static/devices/HD2.png"
 import { useMemo } from "preact/hooks";
 
 import WP70 from "~/static/os/wp70.png"
@@ -69,6 +70,14 @@ export default function DeviceView({ device }: { device: Device }) {
         return ["Unknown", true, null];
     }, [device.os_version])
 
+    const deviceImage = useMemo(() => {
+        if (device.model.includes("HD2") || device.model == "PD29100") {
+            return HD2
+        }
+
+        return Placeholder;
+    }, [device.model])
+
     const backgroundColor = device.colour_theme === 1 ? '#000' : '#fff';
 
     return (
@@ -76,44 +85,42 @@ export default function DeviceView({ device }: { device: Device }) {
             <h2>{device.friendly_name}</h2>
             <div class="device-view">
                 <div class="image">
-                    <img src={Placeholder} />
+                    <img src={deviceImage} />
                 </div>
 
-                <div class="info">
-                    <dl>
-                        <dt>model</dt>
-                        <dd>{device.manufacturer} {device.model}</dd>
-                        <dt>operating system</dt>
-                        <dd>{image && <img class="os-icon" src={image} alt="Windows Phone logo"/>} Windows Phone {versionName} {isSad && <span>:(</span>} </dd>
-                        <dd><small class="os-version">Version {device.os_version}</small></dd>
-                        <dt>theme</dt>
-                        <dd>
-                            <span class="colour-icon" style={{ backgroundColor: device.accent_colour }} />
-                            &nbsp;
-                            <span class="colour-icon" style={{ backgroundColor }} />
-                        </dd>
-                        <dt>language</dt>
-                        <dd>{device.locale}</dd>
-                        <dt>timezone</dt>
-                        <dd>{device.timezone}</dd>
-                        {device.operator && <>
-                            <dt>carrier</dt>
-                            <dd>{device.operator}</dd>
-                        </>}
-                        {device.phone_number && (
-                            <>
-                                <dt>phone number</dt>
-                                <dd>{number} {canMask && <button onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
-                            </>
-                        )}
-                        {device.imei && (
-                            <>
-                                <dt>imei</dt>
-                                <dd>{imei} <button onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
-                            </>
-                        )}
-                    </dl>
-                </div>
+                <dl class="info">
+                    <dt>model</dt>
+                    <dd>{device.manufacturer} {device.model}</dd>
+                    <dt>operating system</dt>
+                    <dd>{image && <img class="os-icon" src={image} alt="Windows Phone logo" />} Windows Phone {versionName} {isSad && <span>:(</span>} </dd>
+                    <dd><small class="os-version">Version {device.os_version}</small></dd>
+                    <dt>theme</dt>
+                    <dd>
+                        <span class="colour-icon" style={{ backgroundColor: device.accent_colour }} />
+                        &nbsp;
+                        <span class="colour-icon" style={{ backgroundColor }} />
+                    </dd>
+                    <dt>language</dt>
+                    <dd>{device.locale}</dd>
+                    <dt>timezone</dt>
+                    <dd>{device.timezone}</dd>
+                    {device.operator && <>
+                        <dt>carrier</dt>
+                        <dd>{device.operator}</dd>
+                    </>}
+                    {device.phone_number && (
+                        <>
+                            <dt>phone number</dt>
+                            <dd>{number} {canMask && <button onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
+                        </>
+                    )}
+                    {device.imei && (
+                        <>
+                            <dt>imei</dt>
+                            <dd>{imei} <button onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
+                        </>
+                    )}
+                </dl>
             </div>
         </>
     )
