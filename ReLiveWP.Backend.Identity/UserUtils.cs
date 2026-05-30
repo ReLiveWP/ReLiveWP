@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Globalization;
+using System.Security.Cryptography;
 using ReLiveWP.Backend.Identity.Data;
 
 namespace ReLiveWP.Backend.Identity;
@@ -11,7 +12,7 @@ public class UserUtils
     {
         var userId = Guid.NewGuid();
         var chars = userId.ToString();
-        var cid = ((long)(ulong.Parse(chars[19..23] + chars[24..36]) & 0x7FFFFFFFFFFFFFFF))
+        var cid = ((long)(ulong.Parse(chars[19..23] + chars[24..36], NumberStyles.HexNumber) & 0x7FFFFFFFFFFFFFFF))
             .ToString("x");
         var puid = GeneratePuid(userType);
 

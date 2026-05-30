@@ -52,6 +52,8 @@ builder.Services.AddScoped<RootCACertificateProvider>();
 
 builder.Services.AddGrpc();
 
+builder.Services.AddHostedService<UserMigrationService>();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
