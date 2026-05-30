@@ -43,10 +43,9 @@ public class ProvisioningService(
                 Type = ToProtoFolderType(type),
             };
 
-            if (name == "Windows Live Contacts")
+            if (type == EasFolderType.Contacts)
             {
                 req.SourceId = "WL";
-                req.IsHidden = true;
             }
 
             var folder = await mailbox.CreateFolderAsync(req, cancellationToken: ct);
@@ -63,7 +62,6 @@ public class ProvisioningService(
         // Check if any folder exists for this user.
         await EnsureFoldersAsync(userId, ct);
 
-        
         var folders = mailbox.ListFolders(new ListFoldersRequest() { UserId = userId, IncludeHidden = true, IncludeDeleted = true });
 
         var contactsFolder = await folders.ResponseStream.ReadAllAsync().FirstOrDefaultAsync(a => a.Type == FolderType.ContactsDefault)
