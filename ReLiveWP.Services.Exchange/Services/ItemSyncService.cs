@@ -451,7 +451,6 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                 items.Add(new Annotation { Name = name, Value = value });
         }
 
-        Add("CID", ann.HasCid ? ann.Cid.ToString("x") : null);
         Add("OID", ann.HasObjectId ? ann.ObjectId : null);
         Add("WLID", ann.HasWlId ? ann.WlId : null);
         Add("IMMRI", ann.HasImMri ? ann.ImMri : null);
@@ -460,6 +459,7 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         Add("UserTileHash", ann.HasUserTileHash ? ann.UserTileHash : null);
         Add("TrustLevel", ann.HasTrustLevel ? ann.TrustLevel.ToString() : null);
         Add("FavoriteOrder", ann.HasFavoriteOrder ? ann.FavoriteOrder.ToString() : null);
+        Add("CID", ann.HasCid ? ann.Cid.ToString("x") : null);
 
         return items.Count > 0 ? new Annotations { Items = items } : null;
     }
