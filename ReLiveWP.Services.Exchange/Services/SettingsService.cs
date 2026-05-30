@@ -1,10 +1,11 @@
 using Grpc.Core;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
+using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
-public class SettingsService(MailboxStore.MailboxStoreClient mailbox)
+public class SettingsService(User.UserClient userClient, MailboxStore.MailboxStoreClient mailbox)
 {
     public async Task<SettingsResponse> HandleAsync(
         string userId, string deviceId, SettingsRequest request, CancellationToken ct = default)
@@ -15,7 +16,7 @@ public class SettingsService(MailboxStore.MailboxStoreClient mailbox)
             response.DeviceInformation = await HandleDeviceInformationAsync(userId, deviceId, set, ct);
 
         if (request.UserInformation?.Get is not null)
-            response.UserInformation = HandleUserInformation(userId);
+            response.UserInformation = await HandleUserInformation(userId);
 
         return response;
     }
@@ -39,10 +40,12 @@ public class SettingsService(MailboxStore.MailboxStoreClient mailbox)
         return new SettingsDeviceInformationResponse { Set = new SettingsStatusOnly { Status = 1 } };
     }
 
-    private static SettingsUserInformationResponse HandleUserInformation(string userId)
+    private async Task<SettingsUserInformationResponse> HandleUserInformation(string userId)
     {
-        var email = userId.Contains('@') ? userId : null;
-        var displayName = email is not null ? email[..email.IndexOf('@')] : userId;
+        var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = userId });
+
+        var email = userInfo.EmailAddress;
+        var displayName = userInfo.Username;
 
         var account = new UserAccount
         {
