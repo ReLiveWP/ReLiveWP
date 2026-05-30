@@ -13,5 +13,6 @@
     <None Include="$(MSBuildThisFileDirectory)/../protos/client_provisioning.proto" />
     <None Include="$(MSBuildThisFileDirectory)/../protos/device_registration.proto" />
     <None Include="$(MSBuildThisFileDirectory)/../protos/user.proto" />
+    <None Include="$(MSBuildThisFileDirectory)/../protos/mailbox_store.proto" />
   </ItemGroup>
 </Project>

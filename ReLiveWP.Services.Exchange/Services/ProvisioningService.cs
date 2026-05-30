@@ -1,128 +1,115 @@
-using Microsoft.EntityFrameworkCore;
-using ReLiveWP.Services.Exchange.Data;
-using ReLiveWP.Services.Exchange.Data.Entities;
-using ReLiveWP.Services.Exchange.Models;
+using Grpc.Core;
 using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Grpc.Mailbox;
+using EasFolderType = ReLiveWP.Services.Exchange.Models.FolderType;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
 public class ProvisioningService(
     User.UserClient userClient,
-    ExchangeDbContext db,
+    MailboxStore.MailboxStoreClient mailbox,
     ILogger<ProvisioningService> logger)
 {
-    private static readonly (string Name, FolderType Type)[] DefaultFolders =
+    private static readonly (string Name, EasFolderType Type)[] DefaultFolders =
     [
-        ("Inbox",         FolderType.InboxDefault),
-        ("Drafts",        FolderType.DraftsDefault),
-        ("Deleted Items", FolderType.DeletedItemsDefault),
-        ("Sent Items",    FolderType.SentItemsDefault),
-        ("Outbox",        FolderType.OutboxDefault),
-        ("Tasks",         FolderType.TasksDefault),
-        ("Calendar",      FolderType.CalendarDefault),
-        ("Contacts",      FolderType.ContactsDefault),
-        ("Notes",         FolderType.NotesDefault),
-        ("Journal",       FolderType.JournalDefault),
-        ("MeContact",     FolderType.MeContact),
+        ("Inbox",         EasFolderType.InboxDefault),
+        ("Drafts",        EasFolderType.DraftsDefault),
+        ("Deleted Items", EasFolderType.DeletedItemsDefault),
+        ("Sent Items",    EasFolderType.SentItemsDefault),
+        ("Outbox",        EasFolderType.OutboxDefault),
+        ("Tasks",         EasFolderType.TasksDefault),
+        ("Calendar",      EasFolderType.CalendarDefault),
+        ("Contacts",      EasFolderType.ContactsDefault),
+        ("Notes",         EasFolderType.NotesDefault),
+        ("Journal",       EasFolderType.JournalDefault),
+        ("MeContact",     EasFolderType.MeContact),
     ];
 
     public async Task EnsureProvisionedAsync(string userId, CancellationToken ct = default)
     {
-        if (await db.Folders.AnyAsync(f => f.UserId == userId, ct))
+        // Check if any folder exists for this user.
+        using var check = mailbox.ListFolders(new ListFoldersRequest { UserId = userId, IncludeHidden = true, IncludeDeleted = false });
+        if (await check.ResponseStream.MoveNext(ct))
             return;
 
         var userInfo = await userClient.GetUserInfoAsync(
             new GetUserInfoRequest { UserId = userId.ToUpperInvariant() },
             cancellationToken: ct);
 
-        var now = DateTime.UtcNow;
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        string? contactsFolderId = null;
 
-        string? meContactFolderId = null;
         foreach (var (name, type) in DefaultFolders)
         {
-            var serverId = Guid.NewGuid().ToString("N");
-            var folder = new Folder
+            var req = new CreateFolderRequest
             {
                 UserId = userId,
-                Id = serverId,
-                ParentServerId = "0",
                 DisplayName = name,
-                Type = type,
+                Type = ToProtoFolderType(type),
             };
 
-            if (type == FolderType.MeContact)
+            if (type == EasFolderType.MeContact)
             {
-                // "ABCH" identifies the Address Book Contact Hub — the Live People source.
-                // Hidden so it doesn't appear as a user-visible contacts folder.
-                folder.SourceId = "ABCH";
-                folder.IsHidden = true;
+                req.SourceId = "ABCH";
+                req.IsHidden = true;
             }
 
-            if (type == FolderType.ContactsDefault)
-            {
-                meContactFolderId = serverId;
-            }
+            var folder = await mailbox.CreateFolderAsync(req, cancellationToken: ct);
 
-            db.Folders.Add(folder);
-            db.FolderEvents.Add(new FolderEvent
-            {
-                UserId = userId,
-                EventType = ChangeEventType.Add,
-                ServerId = serverId,
-                ParentServerId = "0",
-                DisplayName = name,
-                FolderType = type,
-                OccurredAt = now,
-            });
+            if (type == EasFolderType.ContactsDefault)
+                contactsFolderId = folder.Id;
         }
 
-        // Create the "Me" contact in the MeContact folder.
-        // This mirrors Exchange's ConsumerMeContactSyncCollection: the MeContact
-        // folder holds exactly one IPM.Contact representing the signed-in user.
-        if (meContactFolderId is not null)
+        // Create Me contact in the Contacts folder.
+        if (contactsFolderId is not null)
         {
-            var contactId = Guid.NewGuid().ToString("N");
-
             var contact = new ContactItem
             {
-                UserId = userId,
-                CollectionId = meContactFolderId,
-                Id = contactId,
-                ServerId = contactId,
                 FileAs = userInfo.Username,
                 FirstName = userInfo.Username,
                 Email1Address = userInfo.EmailAddress,
             };
 
-            // Populate Live annotations from the user's own identity.
-            // Puid → CID: the user's own 64-bit Windows Live identifier.
-            // WLID    : the user's Live ID (email address).
-            // ObjectId: use userId as a stable opaque object identifier.
-            // Type    : "Regular" is the standard contact type.
-            contact.Annotation = new ContactAnnotation
+            var ann = new ContactAnnotation
             {
-                ContactItemId = contactId,
-                Cid = userInfo.Puid,
+                ContactItemId = string.Empty, // filled server-side
+                WlId = userInfo.EmailAddress,
                 ObjectId = userId,
-                WLId = userInfo.EmailAddress,
                 ImMri = "WL:" + userInfo.Puid,
                 ContactType = "Me",
             };
+            if (userInfo.Puid != 0) ann.Cid = userInfo.Puid;
 
-            db.Items.Add(contact);
-            db.ItemEvents.Add(new ItemEvent
+            await mailbox.CreateItemAsync(new CreateItemRequest
             {
                 UserId = userId,
-                CollectionId = meContactFolderId,
-                EventType = ChangeEventType.Add,
-                ServerId = contactId,
-                OccurredAt = now,
-            });
+                CollectionId = contactsFolderId,
+                Contact = contact,
+                Annotation = ann,
+            }, cancellationToken: ct);
         }
 
-        await db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
         logger.LogInformation("Provisioned user {User}", userId);
     }
+
+    private static FolderType ToProtoFolderType(EasFolderType t) => t switch
+    {
+        EasFolderType.InboxDefault => FolderType.InboxDefault,
+        EasFolderType.DraftsDefault => FolderType.DraftsDefault,
+        EasFolderType.DeletedItemsDefault => FolderType.DeletedItemsDefault,
+        EasFolderType.SentItemsDefault => FolderType.SentItemsDefault,
+        EasFolderType.OutboxDefault => FolderType.OutboxDefault,
+        EasFolderType.TasksDefault => FolderType.TasksDefault,
+        EasFolderType.CalendarDefault => FolderType.CalendarDefault,
+        EasFolderType.ContactsDefault => FolderType.ContactsDefault,
+        EasFolderType.NotesDefault => FolderType.NotesDefault,
+        EasFolderType.JournalDefault => FolderType.JournalDefault,
+        EasFolderType.MeContact => FolderType.MeContact,
+        EasFolderType.Mail => FolderType.Mail,
+        EasFolderType.Calendar => FolderType.Calendar,
+        EasFolderType.Contacts => FolderType.Contacts,
+        EasFolderType.Task => FolderType.Task,
+        EasFolderType.Journal => FolderType.Journal,
+        EasFolderType.Notes => FolderType.Notes,
+        _ => FolderType.Generic,
+    };
 }

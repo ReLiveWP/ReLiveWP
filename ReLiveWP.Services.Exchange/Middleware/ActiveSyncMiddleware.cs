@@ -11,23 +11,12 @@ namespace ReLiveWP.Services.Exchange.Middleware;
 /// <see cref="HttpContext.Items"/> under <see cref="ContextKey"/>.
 /// Must run before MVC so that <c>EasCommandAttribute</c> constraints can read it.
 /// </summary>
-public class ActiveSyncMiddleware
+public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddleware> logger, EasRequestLog requestLog)
 {
     /// <summary>Key used to store <see cref="ActiveSyncContext"/> in <see cref="HttpContext.Items"/>.</summary>
     public const string ContextKey = "EasContext";
 
     private const string EasPath = "/Microsoft-Server-ActiveSync";
-
-    private readonly RequestDelegate _next;
-    private readonly ILogger<ActiveSyncMiddleware> _logger;
-    private readonly EasRequestLog _requestLog;
-
-    public ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddleware> logger, EasRequestLog requestLog)
-    {
-        _next = next;
-        _logger = logger;
-        _requestLog = requestLog;
-    }
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -51,19 +40,13 @@ public class ActiveSyncMiddleware
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse EAS query string: {Query}",
+                    logger.LogWarning(ex, "Failed to parse EAS query string: {Query}",
                         context.Request.QueryString.Value);
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                     return;
                 }
 
-                // Authenticated identity is the authoritative user ID source.
-                // UseAuthentication() runs before this middleware so HttpContext.User
-                // is already populated when we get here.
-                easContext.User = context.User.Id();
-                easContext.Cid  = context.User.Puid();
-
-                _logger.LogDebug("EAS {Command} from {User}/{DeviceId} ({DeviceType}), key={PolicyKey}",
+                logger.LogDebug("EAS {Command} from {User}/{DeviceId} ({DeviceType}), key={PolicyKey}",
                     easContext.Command, easContext.User, easContext.DeviceId, easContext.DeviceType, easContext.PolicyKey);
 
                 await DecodeBodyAsync(context.Request, easContext);
@@ -71,12 +54,12 @@ public class ActiveSyncMiddleware
                 context.Items[ContextKey] = easContext;
             }
 
-            await _next(context);
+            await next(context);
         }
         finally
         {
             if (easContext != null)
-                await _requestLog.RecordAsync(easContext);
+                await requestLog.RecordAsync(easContext);
         }
     }
 
@@ -256,11 +239,11 @@ public class ActiveSyncMiddleware
             decoder.LoadBytes(bytes);
             ctx.XmlDocument = decoder.GetXmlDocument();
 
-            _logger.LogDebug("Decoded WBXML body: {Xml}", ctx.XmlDocument.OuterXml);
+            logger.LogDebug("Decoded WBXML body: {Xml}", ctx.XmlDocument.OuterXml);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to decode WBXML body for command {Command}", ctx.Command);
+            logger.LogWarning(ex, "Failed to decode WBXML body for command {Command}", ctx.Command);
         }
     }
 

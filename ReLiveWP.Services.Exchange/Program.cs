@@ -1,9 +1,8 @@
-using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Identity;
-using ReLiveWP.Services.Exchange.Data;
 using ReLiveWP.Services.Exchange.Middleware;
 using ReLiveWP.Services.Exchange.Services;
 using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Grpc.Mailbox;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -22,10 +21,11 @@ builder.Services.AddLiveIDAuthentication(opts =>
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 
+builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));
+
 builder.Services.AddControllers();
 builder.Services.AddSingleton<EasRequestLog>();
-builder.Services.AddDbContext<ExchangeDbContext>();
-builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<FolderSyncService>();
 builder.Services.AddScoped<ItemSyncService>();
 builder.Services.AddScoped<GetItemEstimateService>();
@@ -34,15 +34,9 @@ builder.Services.AddScoped<ProvisioningService>();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-    scope.ServiceProvider.GetRequiredService<ExchangeDbContext>().Database.Migrate();
-
 app.UseHttpsRedirection();
 app.UseAuthentication();
 
-// Must come before UseRouting() so EasCommandAttribute can read the parsed command
-// from HttpContext.Items during endpoint selection (auto-inserted UseRouting() runs
-// before user middleware, causing the constraint to see an empty Items dictionary).
 app.UseMiddleware<ActiveSyncMiddleware>();
 
 app.UseRouting();

@@ -1,5 +1,5 @@
 using System.Xml.Serialization;
-using ReLiveWP.Services.Exchange.Data.Entities;
+using ReLiveWP.Services.Exchange.Helpers;
 
 namespace ReLiveWP.Services.Exchange.Models;
 
@@ -202,8 +202,8 @@ public class ContactData
     [XmlElement("Birthday", Namespace = Constants.Contacts)]
     public string? BirthdayXml
     {
-        get => EasDate.FromDateTime(Birthday);
-        set => Birthday = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(Birthday);
+        set => Birthday = EasDateHelper.ToDateTime(value);
     }
 
     [XmlIgnore]
@@ -212,8 +212,8 @@ public class ContactData
     [XmlElement("Anniversary", Namespace = Constants.Contacts)]
     public string? AnniversaryXml
     {
-        get => EasDate.FromDateTime(Anniversary);
-        set => Anniversary = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(Anniversary);
+        set => Anniversary = EasDateHelper.ToDateTime(value);
     }
 
     // ── Picture ───────────────────────────────────────────────────────────────
@@ -257,156 +257,6 @@ public class ContactData
     [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
     public Annotations? Annotations { get; set; } = null;
 
-    // ── Conversions ───────────────────────────────────────────────────────────
-
-    public static ContactData CreateFrom(ContactItem c)
-    {
-        var contact = new ContactData()
-        {
-            FirstName = c.FirstName,
-            MiddleName = c.MiddleName,
-            LastName = c.LastName,
-            Title = c.Title,
-            Suffix = c.Suffix,
-            FileAs = c.FileAs,
-            Alias = c.Alias,
-            NickName = c.NickName,
-            YomiFirstName = c.YomiFirstName,
-            YomiLastName = c.YomiLastName,
-            YomiCompanyName = c.YomiCompanyName,
-            CompanyName = c.CompanyName,
-            Department = c.Department,
-            JobTitle = c.JobTitle,
-            OfficeLocation = c.OfficeLocation,
-            AccountName = c.AccountName,
-            ManagerName = c.ManagerName,
-            CustomerId = c.CustomerId,
-            GovernmentId = c.GovernmentId,
-            AssistantName = c.AssistantName,
-            Email1Address = c.Email1Address,
-            Email2Address = c.Email2Address,
-            Email3Address = c.Email3Address,
-            BusinessPhoneNumber = c.BusinessPhoneNumber,
-            Business2PhoneNumber = c.Business2PhoneNumber,
-            BusinessFaxNumber = c.BusinessFaxNumber,
-            HomePhoneNumber = c.HomePhoneNumber,
-            Home2PhoneNumber = c.Home2PhoneNumber,
-            HomeFaxNumber = c.HomeFaxNumber,
-            MobilePhoneNumber = c.MobilePhoneNumber,
-            CarPhoneNumber = c.CarPhoneNumber,
-            PagerNumber = c.PagerNumber,
-            RadioPhoneNumber = c.RadioPhoneNumber,
-            AssistantPhoneNumber = c.AssistantPhoneNumber,
-            CompanyMainPhone = c.CompanyMainPhone,
-            MMS = c.MMS,
-            IMAddress = c.IMAddress,
-            IMAddress2 = c.IMAddress2,
-            IMAddress3 = c.IMAddress3,
-            BusinessAddressStreet = c.BusinessAddressStreet,
-            BusinessAddressCity = c.BusinessAddressCity,
-            BusinessAddressState = c.BusinessAddressState,
-            BusinessAddressPostalCode = c.BusinessAddressPostalCode,
-            BusinessAddressCountry = c.BusinessAddressCountry,
-            HomeAddressStreet = c.HomeAddressStreet,
-            HomeAddressCity = c.HomeAddressCity,
-            HomeAddressState = c.HomeAddressState,
-            HomeAddressPostalCode = c.HomeAddressPostalCode,
-            HomeAddressCountry = c.HomeAddressCountry,
-            OtherAddressStreet = c.OtherAddressStreet,
-            OtherAddressCity = c.OtherAddressCity,
-            OtherAddressState = c.OtherAddressState,
-            OtherAddressPostalCode = c.OtherAddressPostalCode,
-            OtherAddressCountry = c.OtherAddressCountry,
-            Spouse = c.Spouse,
-            Birthday = c.Birthday,
-            Anniversary = c.Anniversary,
-            WebPage = c.WebPage,
-            Picture = c.Picture,
-            WeightedRank = c.WeightedRank,
-            Body = c.Notes is not null ? new AirSyncBody { Type = BodyType.PlainText, Data = c.Notes } : null,
-            Categories = c.Categories.Count > 0
-            ? new ContactCategories { Items = c.Categories.Select(x => x.Name).ToList() } : null,
-            Children = c.Children.Count > 0
-            ? new ContactChildren { Items = c.Children.Select(x => x.Name).ToList() } : null,
-            // Live annotations are emitted separately in ApplicationData by ItemSyncService,
-            // not via the ContactData DTO serialisation path.
-            Annotations = null
-        };
-
-        return contact;
-    }
-
-    public ContactItem ToEntity(string userId, string collectionId) => new()
-    {
-        UserId = userId,
-        CollectionId = collectionId,
-        FirstName = FirstName,
-        MiddleName = MiddleName,
-        LastName = LastName,
-        Title = Title,
-        Suffix = Suffix,
-        FileAs = FileAs,
-        Alias = Alias,
-        NickName = NickName,
-        YomiFirstName = YomiFirstName,
-        YomiLastName = YomiLastName,
-        YomiCompanyName = YomiCompanyName,
-        CompanyName = CompanyName,
-        Department = Department,
-        JobTitle = JobTitle,
-        OfficeLocation = OfficeLocation,
-        AccountName = AccountName,
-        ManagerName = ManagerName,
-        CustomerId = CustomerId,
-        GovernmentId = GovernmentId,
-        AssistantName = AssistantName,
-        Email1Address = Email1Address,
-        Email2Address = Email2Address,
-        Email3Address = Email3Address,
-        BusinessPhoneNumber = BusinessPhoneNumber,
-        Business2PhoneNumber = Business2PhoneNumber,
-        BusinessFaxNumber = BusinessFaxNumber,
-        HomePhoneNumber = HomePhoneNumber,
-        Home2PhoneNumber = Home2PhoneNumber,
-        HomeFaxNumber = HomeFaxNumber,
-        MobilePhoneNumber = MobilePhoneNumber,
-        CarPhoneNumber = CarPhoneNumber,
-        PagerNumber = PagerNumber,
-        RadioPhoneNumber = RadioPhoneNumber,
-        AssistantPhoneNumber = AssistantPhoneNumber,
-        CompanyMainPhone = CompanyMainPhone,
-        MMS = MMS,
-        IMAddress = IMAddress,
-        IMAddress2 = IMAddress2,
-        IMAddress3 = IMAddress3,
-        BusinessAddressStreet = BusinessAddressStreet,
-        BusinessAddressCity = BusinessAddressCity,
-        BusinessAddressState = BusinessAddressState,
-        BusinessAddressPostalCode = BusinessAddressPostalCode,
-        BusinessAddressCountry = BusinessAddressCountry,
-        HomeAddressStreet = HomeAddressStreet,
-        HomeAddressCity = HomeAddressCity,
-        HomeAddressState = HomeAddressState,
-        HomeAddressPostalCode = HomeAddressPostalCode,
-        HomeAddressCountry = HomeAddressCountry,
-        OtherAddressStreet = OtherAddressStreet,
-        OtherAddressCity = OtherAddressCity,
-        OtherAddressState = OtherAddressState,
-        OtherAddressPostalCode = OtherAddressPostalCode,
-        OtherAddressCountry = OtherAddressCountry,
-        Spouse = Spouse,
-        Birthday = Birthday,
-        Anniversary = Anniversary,
-        WebPage = WebPage,
-        Picture = Picture,
-        Notes = Body?.Data ?? BodyLegacy,
-        Categories = Categories?.Items
-            .Select(n => new ContactCategory { Id = Guid.NewGuid().ToString("N"), Name = n })
-            .ToList() ?? [],
-        Children = Children?.Items
-            .Select(n => new ContactChild { Id = Guid.NewGuid().ToString("N"), Name = n })
-            .ToList() ?? [],
-    };
 }
 
 // <contacts:Categories> container

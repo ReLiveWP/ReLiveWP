@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Xml.Serialization;
-using ReLiveWP.Services.Exchange.Data.Entities;
+using ReLiveWP.Services.Exchange.Helpers;
 
 namespace ReLiveWP.Services.Exchange.Models;
 
@@ -24,8 +24,8 @@ public class CalendarData
     [XmlElement("StartTime", Namespace = Constants.Calendar)]
     public string? StartTimeXml
     {
-        get => EasDate.FromDateTime(StartTime);
-        set => StartTime = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(StartTime);
+        set => StartTime = EasDateHelper.ToDateTime(value);
     }
 
     [XmlIgnore]
@@ -34,8 +34,8 @@ public class CalendarData
     [XmlElement("EndTime", Namespace = Constants.Calendar)]
     public string? EndTimeXml
     {
-        get => EasDate.FromDateTime(EndTime);
-        set => EndTime = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(EndTime);
+        set => EndTime = EasDateHelper.ToDateTime(value);
     }
 
     [XmlIgnore]
@@ -44,8 +44,8 @@ public class CalendarData
     [XmlElement("DtStamp", Namespace = Constants.Calendar)]
     public string? DtStampXml
     {
-        get => EasDate.FromDateTime(DtStamp);
-        set => DtStamp = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(DtStamp);
+        set => DtStamp = EasDateHelper.ToDateTime(value);
     }
 
     // ── Identity ──────────────────────────────────────────────────────────────
@@ -102,8 +102,8 @@ public class CalendarData
     [XmlElement("AppointmentReplyTime", Namespace = Constants.Calendar)]
     public string? AppointmentReplyTimeXml
     {
-        get => EasDate.FromDateTime(AppointmentReplyTime);
-        set => AppointmentReplyTime = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(AppointmentReplyTime);
+        set => AppointmentReplyTime = EasDateHelper.ToDateTime(value);
     }
 
     // xs:unsignedInt; 0=None 1=Organizer 2=Tentative 3=Accepted 4=Declined 5=NotResponded.
@@ -154,184 +154,7 @@ public class CalendarData
     [XmlElement("Exceptions", Namespace = Constants.Calendar)]
     public CalendarExceptions? Exceptions { get; set; }
 
-    // ── Conversions ───────────────────────────────────────────────────────────
-
-    public static CalendarData CreateFrom(CalendarItem cal) => new()
-    {
-        Timezone = cal.Timezone,
-        StartTime = cal.StartTime,
-        EndTime = cal.EndTime,
-        DtStamp = cal.DtStamp,
-        Uid = cal.Uid,
-        ClientUid = cal.ClientUid,
-        Subject = cal.Subject,
-        Location = cal.Location,
-        Reminder = cal.Reminder,
-        AllDayEvent = cal.AllDayEvent.ToByte(),
-        BusyStatus = cal.BusyStatus,
-        Sensitivity = cal.Sensitivity,
-        MeetingStatus = cal.MeetingStatus,
-        OrganizerName = cal.OrganizerName,
-        OrganizerEmail = cal.OrganizerEmail,
-        AppointmentReplyTime = cal.AppointmentReplyTime,
-        ResponseType = cal.ResponseType,
-        ResponseRequested = cal.ResponseRequested.ToInt(),
-        DisallowNewTimeProposal = cal.DisallowNewTimeProposal.ToInt(),
-        OnlineMeetingConfLink = cal.OnlineMeetingConfLink,
-        OnlineMeetingExternalLink = cal.OnlineMeetingExternalLink,
-        Body = cal.Notes is not null ? new AirSyncBody { Type = BodyType.PlainText, Data = cal.Notes } : null,
-        BodyLegacy = cal.BodyLegacy,
-        BodyTruncated = cal.BodyTruncated.ToInt(),
-        Attendees = cal.Attendees.Count > 0 ? new CalendarAttendees
-        {
-            Items = cal.Attendees.Select(a => new CalendarAttendeeData
-            {
-                Email = a.Email,
-                Name = a.Name,
-                AttendeeStatus = a.AttendeeStatus,
-                AttendeeType = a.AttendeeType,
-            }).ToList(),
-        } : null,
-        Categories = cal.Categories.Count > 0
-            ? new CalendarCategories { Items = cal.Categories.Select(c => c.Category).ToList() } : null,
-        Recurrence = cal.RecurrenceType.HasValue ? new CalendarRecurrence
-        {
-            Type = cal.RecurrenceType,
-            Occurrences = cal.RecurrenceOccurrences,
-            Interval = cal.RecurrenceInterval,
-            WeekOfMonth = cal.RecurrenceWeekOfMonth,
-            DayOfWeek = cal.RecurrenceDayOfWeek,
-            MonthOfYear = cal.RecurrenceMonthOfYear,
-            DayOfMonth = cal.RecurrenceDayOfMonth,
-            CalendarType = cal.RecurrenceCalendarType,
-            IsLeapMonth = cal.RecurrenceIsLeapMonth.ToByte(),
-            FirstDayOfWeek = cal.RecurrenceFirstDayOfWeek,
-            Until = EasDate.FromDateTime(cal.RecurrenceUntil),
-        } : null,
-        Exceptions = cal.Exceptions.Count > 0 ? new CalendarExceptions
-        {
-            Items = cal.Exceptions.Select(ex => new CalendarExceptionData
-            {
-                Deleted = ex.Deleted switch { true => (byte)1, _ => null },
-                ExceptionStartTime = ex.ExceptionStartTime,
-                InstanceId = ex.InstanceId,
-                Subject = ex.Subject,
-                StartTime = ex.StartTime,
-                EndTime = ex.EndTime,
-                Location = ex.Location,
-                Sensitivity = ex.Sensitivity,
-                BusyStatus = ex.BusyStatus,
-                AllDayEvent = ex.AllDayEvent.ToByte(),
-                Reminder = ex.Reminder,
-                DtStamp = ex.DtStamp,
-                MeetingStatus = ex.MeetingStatus,
-                AppointmentReplyTime = ex.AppointmentReplyTime,
-                ResponseType = ex.ResponseType,
-                OnlineMeetingConfLink = ex.OnlineMeetingConfLink,
-                OnlineMeetingExternalLink = ex.OnlineMeetingExternalLink,
-                Body = ex.Notes is not null ? new AirSyncBody { Type = BodyType.PlainText, Data = ex.Notes } : null,
-                BodyLegacy = ex.BodyLegacy,
-                Attendees = ex.Attendees.Count > 0 ? new CalendarAttendees
-                {
-                    Items = ex.Attendees.Select(a => new CalendarAttendeeData
-                    {
-                        Email = a.Email,
-                        Name = a.Name,
-                        AttendeeStatus = a.AttendeeStatus,
-                        AttendeeType = a.AttendeeType,
-                    }).ToList(),
-                } : null,
-                Categories = ex.Categories.Count > 0
-                    ? new CalendarCategories { Items = ex.Categories.Select(c => c.Category).ToList() } : null,
-            }).ToList(),
-        } : null,
-    };
-
-    public CalendarItem ToEntity(string userId, string collectionId) => new()
-    {
-        UserId = userId,
-        CollectionId = collectionId,
-        Timezone = Timezone,
-        StartTime = StartTime,
-        EndTime = EndTime,
-        DtStamp = DtStamp,
-        Uid = Uid,
-        ClientUid = ClientUid,
-        Subject = Subject,
-        Location = Location,
-        Reminder = Reminder,
-        AllDayEvent = AllDayEvent.ToBool(),
-        BusyStatus = BusyStatus,
-        Sensitivity = Sensitivity,
-        MeetingStatus = MeetingStatus,
-        OrganizerName = OrganizerName,
-        OrganizerEmail = OrganizerEmail,
-        AppointmentReplyTime = AppointmentReplyTime,
-        ResponseType = ResponseType,
-        ResponseRequested = ResponseRequested.ToBool(),
-        DisallowNewTimeProposal = DisallowNewTimeProposal.ToBool(),
-        OnlineMeetingConfLink = OnlineMeetingConfLink,
-        OnlineMeetingExternalLink = OnlineMeetingExternalLink,
-        Notes = Body?.Data ?? BodyLegacy,
-        BodyLegacy = BodyLegacy,
-        BodyTruncated = BodyTruncated.ToBool(),
-        RecurrenceType = Recurrence?.Type,
-        RecurrenceOccurrences = Recurrence?.Occurrences,
-        RecurrenceInterval = Recurrence?.Interval,
-        RecurrenceWeekOfMonth = Recurrence?.WeekOfMonth,
-        RecurrenceDayOfWeek = Recurrence?.DayOfWeek,
-        RecurrenceMonthOfYear = Recurrence?.MonthOfYear,
-        RecurrenceDayOfMonth = Recurrence?.DayOfMonth,
-        RecurrenceCalendarType = Recurrence?.CalendarType,
-        RecurrenceIsLeapMonth = Recurrence?.IsLeapMonth.ToBool(),
-        RecurrenceFirstDayOfWeek = Recurrence?.FirstDayOfWeek,
-        RecurrenceUntil = EasDate.ToDateTime(Recurrence?.Until),
-        Attendees = Attendees?.Items.Select(a => new CalendarAttendee
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            Email = a.Email,
-            Name = a.Name,
-            AttendeeStatus = a.AttendeeStatus,
-            AttendeeType = a.AttendeeType,
-        }).ToList() ?? [],
-        Categories = Categories?.Items
-            .Select(c => new CalendarCategory { Id = Guid.NewGuid().ToString("N"), Category = c })
-            .ToList() ?? [],
-        Exceptions = Exceptions?.Items.Select(ex => new CalendarException
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            Deleted = ex.Deleted switch { 1 => true, _ => null },
-            ExceptionStartTime = ex.ExceptionStartTime,
-            InstanceId = ex.InstanceId,
-            Subject = ex.Subject,
-            StartTime = ex.StartTime,
-            EndTime = ex.EndTime,
-            Location = ex.Location,
-            Sensitivity = ex.Sensitivity,
-            BusyStatus = ex.BusyStatus,
-            AllDayEvent = ex.AllDayEvent.ToBool(),
-            Reminder = ex.Reminder,
-            DtStamp = ex.DtStamp,
-            MeetingStatus = ex.MeetingStatus,
-            AppointmentReplyTime = ex.AppointmentReplyTime,
-            ResponseType = ex.ResponseType,
-            OnlineMeetingConfLink = ex.OnlineMeetingConfLink,
-            OnlineMeetingExternalLink = ex.OnlineMeetingExternalLink,
-            Notes = ex.Body?.Data ?? ex.BodyLegacy,
-            BodyLegacy = ex.BodyLegacy,
-            Attendees = ex.Attendees?.Items.Select(a => new CalendarExceptionAttendee
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                Email = a.Email,
-                Name = a.Name,
-                AttendeeStatus = a.AttendeeStatus,
-                AttendeeType = a.AttendeeType,
-            }).ToList() ?? [],
-            Categories = ex.Categories?.Items
-                .Select(c => new CalendarExceptionCategory { Id = Guid.NewGuid().ToString("N"), Category = c })
-                .ToList() ?? [],
-        }).ToList() ?? [],
-    };
+    // Conversions: see Models/ProtoExtensions.cs for ToProtoCalendar().
 }
 
 // ── <calendar:Attendees> container ────────────────────────────────────────────
@@ -448,8 +271,8 @@ public class CalendarExceptionData
     [XmlElement("StartTime", Namespace = Constants.Calendar)]
     public string? StartTimeXml
     {
-        get => EasDate.FromDateTime(StartTime);
-        set => StartTime = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(StartTime);
+        set => StartTime = EasDateHelper.ToDateTime(value);
     }
 
     [XmlIgnore]
@@ -458,8 +281,8 @@ public class CalendarExceptionData
     [XmlElement("EndTime", Namespace = Constants.Calendar)]
     public string? EndTimeXml
     {
-        get => EasDate.FromDateTime(EndTime);
-        set => EndTime = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(EndTime);
+        set => EndTime = EasDateHelper.ToDateTime(value);
     }
 
     // calendar:Location — v2.5–14.1.
@@ -488,8 +311,8 @@ public class CalendarExceptionData
     [XmlElement("DtStamp", Namespace = Constants.Calendar)]
     public string? DtStampXml
     {
-        get => EasDate.FromDateTime(DtStamp);
-        set => DtStamp = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(DtStamp);
+        set => DtStamp = EasDateHelper.ToDateTime(value);
     }
 
     [XmlElement("MeetingStatus", Namespace = Constants.Calendar)]
@@ -501,8 +324,8 @@ public class CalendarExceptionData
     [XmlElement("AppointmentReplyTime", Namespace = Constants.Calendar)]
     public string? AppointmentReplyTimeXml
     {
-        get => EasDate.FromDateTime(AppointmentReplyTime);
-        set => AppointmentReplyTime = EasDate.ToDateTime(value);
+        get => EasDateHelper.FromDateTime(AppointmentReplyTime);
+        set => AppointmentReplyTime = EasDateHelper.ToDateTime(value);
     }
 
     [XmlElement("ResponseType", Namespace = Constants.Calendar)]

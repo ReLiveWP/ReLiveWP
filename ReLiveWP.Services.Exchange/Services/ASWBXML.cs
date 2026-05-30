@@ -960,7 +960,7 @@ class ASWBXML
             byteList.AddRange(EncodeNode(node));
         }
 
-        return byteList.ToArray();
+        return [.. byteList];
     }
 
     private byte[] EncodeNode(XmlNode node)
@@ -1009,7 +1009,7 @@ class ASWBXML
                 break;
         }
 
-        return byteList.ToArray();
+        return [.. byteList];
     }
 
     private int GetCodePageByXmlns(string xmlns)
@@ -1105,7 +1105,7 @@ class ASWBXML
 
         byteList.Add(0x00);
 
-        return byteList.ToArray();
+        return [.. byteList];
     }
 
     private byte[] EncodeOpaque(string value)
@@ -1121,7 +1121,7 @@ class ASWBXML
             byteList.Add((byte)charArray[i]);
         }
 
-        return byteList.ToArray();
+        return [.. byteList];
     }
 
     private byte[] EncodeMultiByteInteger(int value)
@@ -1144,6 +1144,6 @@ class ASWBXML
             value >>= 7;
         }
 
-        return byteList.ToArray();
+        return [.. byteList];
     }
 }
