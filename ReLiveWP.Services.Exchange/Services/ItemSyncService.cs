@@ -451,7 +451,7 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                 items.Add(new Annotation { Name = name, Value = value });
         }
 
-        Add("CID", ann.HasCid ? ann.Cid.ToString() : null);
+        Add("CID", ann.HasCid ? ann.Cid.ToString("x") : null);
         Add("OID", ann.HasObjectId ? ann.ObjectId : null);
         Add("WLID", ann.HasWlId ? ann.WlId : null);
         Add("IMMRI", ann.HasImMri ? ann.ImMri : null);

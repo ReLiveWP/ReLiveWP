@@ -1,3 +1,4 @@
+using System.Globalization;
 using Grpc.Core;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.Mailbox;
@@ -22,19 +23,14 @@ public class ProvisioningService(
         ("Contacts",      EasFolderType.ContactsDefault),
         ("Notes",         EasFolderType.NotesDefault),
         ("Journal",       EasFolderType.JournalDefault),
-        ("MeContact",     EasFolderType.MeContact),
+        ("Windows Live Contacts",     EasFolderType.Contacts),
     ];
 
-    public async Task EnsureProvisionedAsync(string userId, CancellationToken ct = default)
+    private async Task EnsureFoldersAsync(string userId, CancellationToken ct)
     {
-        // Check if any folder exists for this user.
         using var check = mailbox.ListFolders(new ListFoldersRequest { UserId = userId, IncludeHidden = true, IncludeDeleted = false });
         if (await check.ResponseStream.MoveNext(ct))
             return;
-
-        var userInfo = await userClient.GetUserInfoAsync(
-            new GetUserInfoRequest { UserId = userId.ToUpperInvariant() },
-            cancellationToken: ct);
 
         string? contactsFolderId = null;
 
@@ -47,20 +43,40 @@ public class ProvisioningService(
                 Type = ToProtoFolderType(type),
             };
 
-            if (type == EasFolderType.MeContact)
+            if (name == "Windows Live Contacts")
             {
-                req.SourceId = "ABCH";
+                req.SourceId = "WL";
                 req.IsHidden = true;
             }
 
             var folder = await mailbox.CreateFolderAsync(req, cancellationToken: ct);
 
-            if (type == EasFolderType.ContactsDefault)
+            if (contactsFolderId == null && type == EasFolderType.Contacts)
+            {
                 contactsFolderId = folder.Id;
+            }
         }
+    }
+
+    public async Task EnsureProvisionedAsync(string userId, CancellationToken ct = default)
+    {
+        // Check if any folder exists for this user.
+        await EnsureFoldersAsync(userId, ct);
+
+        
+        var folders = mailbox.ListFolders(new ListFoldersRequest() { UserId = userId, IncludeHidden = true, IncludeDeleted = true });
+
+        var contactsFolder = await folders.ResponseStream.ReadAllAsync().FirstOrDefaultAsync(a => a.Type == FolderType.ContactsDefault)
+            ?? throw new InvalidOperationException("Provisioning failed!");
+
+        var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = userId });
+
+        var itemsList = mailbox.ListItems(new ListItemsRequest() { UserId = userId, CollectionId = contactsFolder.Id, IncludeDeleted = false });
+        var meContact = await itemsList.ResponseStream.ReadAllAsync()
+                .FirstOrDefaultAsync(a => a.Contact.Email1Address == userInfo.EmailAddress);
 
         // Create Me contact in the Contacts folder.
-        if (contactsFolderId is not null)
+        if (contactsFolder.Id is not null && meContact == null)
         {
             var contact = new ContactItem
             {
@@ -75,14 +91,17 @@ public class ProvisioningService(
                 WlId = userInfo.EmailAddress,
                 ObjectId = userId,
                 ImMri = "WL:" + userInfo.Puid,
+                UserTileUrl = "http://wamwoowam.co.uk/static/8835590ae4f581354e14177b48f9d95d.png",
                 ContactType = "Me",
             };
-            if (userInfo.Puid != 0) ann.Cid = userInfo.Puid;
+
+            if (userInfo.Puid != 0)
+                ann.Cid = long.Parse(userInfo.Cid, NumberStyles.HexNumber);
 
             await mailbox.CreateItemAsync(new CreateItemRequest
             {
                 UserId = userId,
-                CollectionId = contactsFolderId,
+                CollectionId = contactsFolder.Id,
                 Contact = contact,
                 Annotation = ann,
             }, cancellationToken: ct);

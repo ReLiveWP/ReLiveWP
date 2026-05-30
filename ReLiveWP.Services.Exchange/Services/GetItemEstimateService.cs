@@ -66,7 +66,9 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
         }
         catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
         {
-            return null;
+            // Folder doesn't exist (e.g. stale ID from a previous database).
+            // Return status=8 (object not found) so the device knows to stop asking.
+            return MakeError(collectionId, 8);
         }
 
         var itemClass = folder.Type switch
