@@ -24,8 +24,8 @@ public class UserUtils
     {
         return userType switch
         {
-            LiveUserType.User => (id & 0xffff000000000000) == 0,
-            LiveUserType.Device => (id & 0xFC00000000000000) != 0xFC00000000000000,
+            LiveUserType.User => (id & 0xffff000000000000) == 0x0009000000000000,
+            LiveUserType.Device => (id & 0xffff000000000000) != 0xFC00000000000000,
             _ => throw new InvalidOperationException("Invalid LiveUserType")
         };
     }
