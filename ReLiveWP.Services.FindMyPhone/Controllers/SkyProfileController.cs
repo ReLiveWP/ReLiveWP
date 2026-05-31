@@ -44,4 +44,33 @@ public class SkyProfileController(FindMyPhoneClient findMyPhone) : ControllerBas
             ResponseMessage = response.Message
         };
     }
+
+    [HttpPost]
+    [ActionName("UpdateDeviceInfo")]
+    [Consumes("application/xml", "text/xml")]
+    [Produces("application/xml")]
+    public async Task<UpdateDeviceInfoResponseModel> RegisterDeviceAsync([FromBody] UpdateDeviceInfoRequestModel model)
+    {
+        var userId = User.Id();
+        var deviceGuid = Request.Headers["X-WM-DeviceId"][0];
+
+        var dict = new Dictionary<string, string>();
+        foreach (var item in model.Properties)
+            dict[item.Name] = item.Value;
+
+        var request = new UpdateDeviceInfoRequest()
+        {
+            UserId = userId,
+            DeviceGuid = deviceGuid
+        };
+
+        request.DeviceProps.Add(dict);
+
+        var response = await findMyPhone.UpdateDeviceInfoAsync(request);
+        return new UpdateDeviceInfoResponseModel()
+        {
+            ResponseCode = response.Code,
+            ResponseMessage = response.Message
+        };
+    }
 }
