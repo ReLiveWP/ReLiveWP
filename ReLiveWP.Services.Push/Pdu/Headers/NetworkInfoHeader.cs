@@ -1,14 +1,9 @@
-﻿using System.IO;
-
-namespace ReLiveWP.Services.Push.WireFormat;
+﻿namespace ReLiveWP.Services.Push.Pdu.Headers;
 
 public class NetworkInfoHeader : PDUHeader
 {
-    public override PDUHeaderType HeaderType =>
-        PDUHeaderType.NetworkInfo;
-
+    public override PDUHeaderType HeaderType => PDUHeaderType.NetworkInfo;
     public ushort NetworkField { get; set; }
-
     public byte[] NetworkBlob { get; set; }
 
     public override int Length =>
@@ -25,12 +20,12 @@ public class NetworkInfoHeader : PDUHeader
         ushort length = reader.ReadUInt16();
         NetworkField = reader.ReadUInt16();
 
-        long consumed = reader.BaseStream.Position - start;
-        if (NetworkBlob == null)
-        {
-            // no optional block
-            return consumed == length + 3;
-        }
+        // the network-name block is optional and only present on some transports (it shows up over
+        // cellular carrying the apn, e.g. "data.mymeteor.ie", but not on wifi). presence is decided
+        // by the declared length, not by whether our field happens to be set - on a fresh parse it
+        // never is
+        if (length <= 2)
+            return (reader.BaseStream.Position - start) == length + 3;
 
         byte tag = reader.ReadByte();
         if (tag != 0x01)
@@ -44,21 +39,6 @@ public class NetworkInfoHeader : PDUHeader
 
     public override bool Write(BinaryWriter writer, PDUHeaderType nextType)
     {
-        writer.Write((byte)PDUHeaderType.NetworkInfo);
-        writer.Write((byte)nextType);
-
-        ushort length = (ushort)(Length - 3);
-
-        writer.Write(length);
-        writer.Write(NetworkField);
-
-        if (NetworkBlob != null && NetworkBlob.Length > 0)
-        {
-            writer.Write((byte)0x01);
-            writer.Write((ushort)NetworkBlob.Length);
-            writer.Write(NetworkBlob);
-        }
-
-        return true;
+        throw new NotImplementedException();
     }
 }

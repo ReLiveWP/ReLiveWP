@@ -1,8 +1,6 @@
-﻿using System;
-using System.IO;
-using System.Text;
+﻿using System.Text;
 
-namespace ReLiveWP.Services.Push.WireFormat;
+namespace ReLiveWP.Services.Push.Pdu.Headers;
 
 public class TimestampHeader : PDUHeader
 {
@@ -11,10 +9,7 @@ public class TimestampHeader : PDUHeader
 
     private const int TimestampSize = 0x19;
 
-    //public byte[] TimestampData { get; set; } = new byte[TimestampSize];
-
     public DateTimeOffset Timestamp { get; set; }
-
     public override int Length => 3 + 1 + 2 + TimestampSize;
 
     public override bool Read(BinaryReader reader, out PDUHeaderType nextType)

@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace ReLiveWP.Services.Push.WireFormat;
+namespace ReLiveWP.Services.Push.Pdu.Headers;
 
 public class SequenceHeader : PDUHeader
 {
@@ -9,8 +7,9 @@ public class SequenceHeader : PDUHeader
     public byte[] Payload { get; set; }
 
     public override int Length =>
-        3 +        // header
-        4;        // sequence
+        3 +                            // nextType + length prefix
+        4 +                            // sequence
+        (Payload?.Length ?? 0);
 
     public override PDUHeaderType HeaderType { get; }
         = PDUHeaderType.Sequence;
@@ -23,7 +22,7 @@ public class SequenceHeader : PDUHeader
 
         ushort length = reader.ReadUInt16();
 
-        if (length <= 3)
+        if (length < 4)
             return false;
 
         SequenceNumber = reader.ReadUInt32();
@@ -40,14 +39,13 @@ public class SequenceHeader : PDUHeader
 
     public override bool Write(BinaryWriter writer, PDUHeaderType nextType)
     {
-        long start = writer.BaseStream.Position;
-
-        writer.Write((byte)PDUHeaderType.Sequence);
         writer.Write((byte)nextType);
-
         writer.Write((ushort)(Length - 3));
 
         writer.Write(SequenceNumber);
+
+        if (Payload != null)
+            writer.Write(Payload);
 
         return true;
     }

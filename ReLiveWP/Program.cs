@@ -36,7 +36,8 @@ builder.AddProject("ReLiveWP.Services.Activity")
     .DependsOn(identity)
     .DependsOn(connectedServices);
 
-builder.AddProject("ReLiveWP.Services.Push");
+builder.AddProject("ReLiveWP.Services.Push")
+    .DependsOn(identity);
 
 builder.AddProject("ReLiveWP.Services.AddressBook")
     .DependsOn(identity);

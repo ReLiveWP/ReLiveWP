@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-
-namespace ReLiveWP.Services.Push.WireFormat;
+﻿namespace ReLiveWP.Services.Push.Pdu.Headers;
 
 public class SignatureHeader : PDUHeader
 {

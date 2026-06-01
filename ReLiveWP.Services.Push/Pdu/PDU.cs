@@ -1,50 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
+using ReLiveWP.Services.Push.Pdu.Headers;
 
-namespace ReLiveWP.Services.Push.WireFormat;
-
-public enum PDUHeaderType : byte
-{
-    End = 0,
-    SessionInfo = 0x1,
-    Authenticate = 0x3,
-    DeviceInfo = 0x4,
-    Sequence = 0x5,
-    SessionConfig = 0x6,
-    Binding = 0x12,
-    Timestamp = 0x14,
-    Signature = 0x15,
-    NetworkInfo = 0x16,
-    KeepAlive = 0x17,
-    TransportSessionConfig = 0x18,
-    DataHint3 = 0x19,
-    Error = 0xFE
-}
-
-public abstract class PDUHeader
-{
-    public abstract PDUHeaderType HeaderType { get; }
-    public abstract int Length { get; }
-    public abstract bool Read(BinaryReader reader, out PDUHeaderType nextType);
-    public abstract bool Write(BinaryWriter writer, PDUHeaderType nextType);
-}
+namespace ReLiveWP.Services.Push.Pdu;
 
 public class PDU
 {
-    public byte Unk1 { get; set; }
-    public int Unk2 { get; set; }
+    public PDUCommand Command { get; set; }
+    public uint SequenceNumber { get; set; }
+
     public PDUHeader[] Headers { get; set; }
     public byte[] Data { get; set; }
 
     private PDU() { }
-    public PDU(byte unk1, int unk2, PDUHeader[] headers, byte[] data)
+
+    public PDU(PDUCommand command, uint sequenceNumber, PDUHeader[] headers, byte[] data)
     {
-        Unk1 = unk1;
-        Unk2 = unk2;
+        Command = command;
+        SequenceNumber = sequenceNumber;
         Headers = headers;
         Data = data;
     }
@@ -54,27 +26,31 @@ public class PDU
         var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
 
-        writer.Write((byte)0x11);
-        writer.Write(Unk1);
+        writer.Write((byte)0x11);        // magic / version
+        writer.Write((byte)Command);     // command opcode
 
         var sizeOffset = stream.Position;
-        writer.Write(short.MinValue); // to be filled
+        writer.Write((ushort)0);         // body length, filled in below
 
-        writer.Write(Unk2);
+        writer.Write(SequenceNumber);
+
+        // the PDU header carries the FIRST header's type; every header then
+        // writes the NEXT header's type (0x00 terminates the list).
+        var firstType = Headers.Length > 0 ? Headers[0].HeaderType : PDUHeaderType.End;
+        writer.Write((byte)firstType);
 
         for (int i = 0; i < Headers.Length; i++)
         {
-            var next = Headers.ElementAtOrDefault(i + 1);
-            var nextType = next?.HeaderType ?? PDUHeaderType.End;
-
+            var nextType = (i + 1 < Headers.Length) ? Headers[i + 1].HeaderType : PDUHeaderType.End;
             Headers[i].Write(writer, nextType);
         }
 
-        writer.Write(Data);
+        if (Data != null)
+            writer.Write(Data);
 
-        var len = stream.Position;
+        var total = stream.Position;
         stream.Position = sizeOffset;
-        writer.Write((short)(len - 9));
+        writer.Write((ushort)(total - 9));
 
         return stream.ToArray();
     }
@@ -93,7 +69,7 @@ public class PDU
             return false;
         }
 
-        result.Unk1 = reader.ReadByte();
+        result.Command = (PDUCommand)reader.ReadByte();
         var len = reader.ReadInt16();
         if (len + 9 != reader.BaseStream.Length)
         {
@@ -101,7 +77,7 @@ public class PDU
             return false;
         }
 
-        result.Unk2 = reader.ReadInt32();
+        result.SequenceNumber = reader.ReadUInt32();
 
         var headerType = (PDUHeaderType)reader.ReadByte();
         while (headerType != PDUHeaderType.End)
@@ -118,14 +94,15 @@ public class PDU
                 PDUHeaderType.Signature => new SignatureHeader(),
                 PDUHeaderType.Sequence => new SequenceHeader(),
                 PDUHeaderType.KeepAlive => new OptimalKeepAliveHeader(),
+                PDUHeaderType.Binding => new BindingHeader(),
+                PDUHeaderType.Error => new ErrorHeader(),
 
-                _ => new UnknownPDUHeader() as PDUHeader
+                _ => new UnknownPDUHeader { ActualType = headerType } as PDUHeader
             };
 
             if (!header.Read(reader, out headerType))
                 return false;
 
-            Console.WriteLine(headerType);
             headers.Add(header);
         }
 

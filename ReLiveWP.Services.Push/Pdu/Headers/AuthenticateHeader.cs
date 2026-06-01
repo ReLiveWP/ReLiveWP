@@ -1,8 +1,6 @@
-﻿using System;
-using System.IO;
-using System.Security.Cryptography.X509Certificates;
+﻿using System.Security.Cryptography.X509Certificates;
 
-namespace ReLiveWP.Services.Push.WireFormat;
+namespace ReLiveWP.Services.Push.Pdu.Headers;
 
 public class AuthenticateHeader : PDUHeader
 {
@@ -11,7 +9,7 @@ public class AuthenticateHeader : PDUHeader
 
     public override int Length { get; }
 
-    public X509Certificate Certificate { get; private set; }
+    public X509Certificate2 Certificate { get; private set; }
     public byte[] Blob { get; private set; }
 
     public override bool Read(BinaryReader reader, out PDUHeaderType nextType)

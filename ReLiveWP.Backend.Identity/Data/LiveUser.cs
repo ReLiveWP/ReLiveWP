@@ -17,4 +17,5 @@ public class LiveUser : IdentityUser<Guid>
     public string Cid { get; set; } = default!;
     public long Puid { get; set; }
     public LiveUserType Type { get; set; }
+    public string? DeviceId { get; set; }
 }

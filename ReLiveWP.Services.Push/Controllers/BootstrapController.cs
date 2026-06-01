@@ -2,11 +2,22 @@
 
 namespace ReLiveWP.Services.Push.Controllers;
 
-[Route("/{controller}/{version}/{action=Index}")]
-public class BootstrapController : Controller
+[ApiController]
+[Route("/{controller}/{version}")]
+public class BootstrapController(IConfiguration configuration, IHttpClientFactory httpClientFactory) : Controller
 {
-    public IActionResult Index(string version)
+    [HttpGet]
+    public async Task<IActionResult> GetAsync(string version)
     {
-        return Content("Dip:tcps://10.0.0.7:6969/");
+        using var client = httpClientFactory.CreateClient();
+        var ip = await client.GetStringAsync("https://api.ipify.org/");
+        var port = int.Parse(configuration["Push:Port"]);
+
+        var uri = new UriBuilder();
+        uri.Scheme = "tcps";
+        uri.Host = ip;
+        uri.Port = port;
+
+        return Content("Dip:" + uri.Uri.ToString());
     }
 }

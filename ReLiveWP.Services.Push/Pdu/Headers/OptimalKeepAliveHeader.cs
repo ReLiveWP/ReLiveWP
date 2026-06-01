@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace ReLiveWP.Services.Push.WireFormat;
+namespace ReLiveWP.Services.Push.Pdu.Headers;
 
 public class OptimalKeepAliveHeader : PDUHeader
 {
@@ -24,15 +22,11 @@ public class OptimalKeepAliveHeader : PDUHeader
 
     public override bool Write(BinaryWriter writer, PDUHeaderType nextType)
     {
-        long start = writer.BaseStream.Position;
-
-        writer.Write((byte)PDUHeaderType.TransportSessionConfig);
         writer.Write((byte)nextType);
-
         writer.Write((ushort)(Length - 3));
+
         writer.Write(KeepAlive);
 
         return true;
     }
 }
-

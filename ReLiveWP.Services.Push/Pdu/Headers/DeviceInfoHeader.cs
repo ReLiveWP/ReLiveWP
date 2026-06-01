@@ -1,8 +1,6 @@
-﻿using System;
-using System.IO;
-using System.Text;
+﻿using System.Text;
 
-namespace ReLiveWP.Services.Push.WireFormat;
+namespace ReLiveWP.Services.Push.Pdu.Headers;
 
 public class DeviceInfoHeader : PDUHeader
 {
