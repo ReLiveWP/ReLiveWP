@@ -9,9 +9,13 @@ public class BootstrapController(IConfiguration configuration, IHttpClientFactor
     [HttpGet]
     public async Task<IActionResult> GetAsync(string version)
     {
-        using var client = httpClientFactory.CreateClient();
-        var ip = await client.GetStringAsync("https://api.ipify.org/");
+        var ip = configuration["Push:IP"];
         var port = int.Parse(configuration["Push:Port"]);
+        if (ip == null)
+        {
+            using var client = httpClientFactory.CreateClient();
+            ip = await client.GetStringAsync("https://api.ipify.org/");
+        }
 
         var uri = new UriBuilder();
         uri.Scheme = "tcps";
