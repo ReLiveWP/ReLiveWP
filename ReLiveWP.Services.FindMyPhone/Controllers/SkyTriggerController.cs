@@ -21,10 +21,14 @@ public class SkyTriggerController(FindMyPhoneClient findMyPhone) : ControllerBas
     [Produces("application/xml")]
     public async Task<RegisterChannelResponseModel> RegisterChannelAsync([FromBody] RegisterChannelRequestModel model)
     {
+        var userId = User.Id();
+        var deviceGuid = Request.Headers["X-WM-DeviceId"][0];
+
+        var resp = await findMyPhone.RegisterChannelAsync(new RegisterChannelRequest() { UserId = userId, DeviceGuid = deviceGuid, NotificationUri = model.NotificationUri });
         return new RegisterChannelResponseModel()
         {
-            ResponseCode = 0,
-            ResponseMessage = "OK"
+            ResponseCode = resp.Code,
+            ResponseMessage = resp.Message
         };
     }
 }

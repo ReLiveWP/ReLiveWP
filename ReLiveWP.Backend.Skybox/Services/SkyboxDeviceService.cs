@@ -105,12 +105,28 @@ public class SkyboxDeviceService(SkyDbContext dbContext) : FindMyPhone.FindMyPho
         return new RegisterDeviceResponse() { Code = 0, Enabled = true, Message = "OK" };
     }
 
+    public override async Task<RegisterChannelResponse> RegisterChannel(RegisterChannelRequest request, ServerCallContext context)
+    {
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+        if (!Uri.TryCreate(device.NotificationChannelUrl, UriKind.Absolute, out var uri) || uri.Host != "push.relivewp.net" || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            device.NotificationChannelUrl = null;
+        }
+        else
+        {
+            device.NotificationChannelUrl = request.NotificationUri;
+        }
+
+        await dbContext.SaveChangesAsync();
+        return new RegisterChannelResponse() { Code = 0, Enabled = true, Message = "OK" };
+    }
+
     public override async Task<UpdateDeviceInfoResponse> UpdateDeviceInfo(UpdateDeviceInfoRequest request, ServerCallContext context)
     {
-        var userId = new Guid(request.UserId);
-        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
-        if (device == null)
-            throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
         SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
 
@@ -152,4 +168,6 @@ public class SkyboxDeviceService(SkyDbContext dbContext) : FindMyPhone.FindMyPho
             await responseStream.WriteAsync(resp);
         }
     }
+
+
 }

@@ -6,6 +6,8 @@ namespace ReLiveWP.Services.FindMyPhone.Models;
 public class RegisterChannelRequestModel
 {
     [XmlElement]
+    public string NotificationUri { get; set; }
+    [XmlElement]
     public int SecretKeyId { get; set; }
     [XmlElement]
     public bool OOBE { get; set; }

@@ -55,4 +55,6 @@ public class SkyDevice
     public bool SimLocked { get; set; } = false;
     public long StorageRemaining { get; set; } = 0;
     public string? ScreenResolution { get; set; } = null!;
+
+    public string? NotificationChannelUrl { get; set; } = null!;
 }

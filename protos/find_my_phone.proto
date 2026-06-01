@@ -7,6 +7,7 @@ package find_my_phone;
 
 service FindMyPhone {
   rpc RegisterDevice (RegisterDeviceRequest) returns (RegisterDeviceResponse);
+  rpc RegisterChannel (RegisterChannelRequest) returns (RegisterChannelResponse);
   rpc UpdateDeviceInfo (UpdateDeviceInfoRequest) returns (UpdateDeviceInfoResponse);
   rpc GetDevicesForUser(GetDevicesForUserRequest) returns (stream UserDevice);
 }
@@ -18,6 +19,18 @@ message RegisterDeviceRequest {
 }
 
 message RegisterDeviceResponse {
+	int32 code = 1;
+	string message = 2;
+	bool enabled = 3;
+}
+
+message RegisterChannelRequest {
+	string userId = 1;
+	string deviceGuid = 2;
+	string notificationUri = 3;
+}
+
+message RegisterChannelResponse {
 	int32 code = 1;
 	string message = 2;
 	bool enabled = 3;
