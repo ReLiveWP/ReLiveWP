@@ -1,14 +1,5 @@
 namespace ReLiveWP.Services.Push.Data;
 
-public enum NotificationStatus
-{
-    Pending,
-    InFlight,
-    Delivered,
-    Expired,
-    Zombied,
-}
-
 public class QueuedNotification
 {
     public long Id { get; set; }

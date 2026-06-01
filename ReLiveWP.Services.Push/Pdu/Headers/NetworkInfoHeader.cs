@@ -21,9 +21,7 @@ public class NetworkInfoHeader : PDUHeader
         NetworkField = reader.ReadUInt16();
 
         // the network-name block is optional and only present on some transports (it shows up over
-        // cellular carrying the apn, e.g. "data.mymeteor.ie", but not on wifi). presence is decided
-        // by the declared length, not by whether our field happens to be set - on a fresh parse it
-        // never is
+        // cellular carrying the apn but not on wifi).
         if (length <= 2)
             return (reader.BaseStream.Position - start) == length + 3;
 

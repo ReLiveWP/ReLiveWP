@@ -8,22 +8,7 @@ using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Push.Data;
 using ReLiveWP.Services.Push.Pdu;
 using ReLiveWP.Services.Push.Pdu.Headers;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace ReLiveWP.Services.Push.Session;
-
-public enum PushSessionStateType
-{
-    Connecting,
-    Reconnecting,
-    Connected,
-    Errored
-}
-
-public class PushSessionContext
-{
-    public string DeviceId { get; set; }
-}
 
 public class PushSession
 {
