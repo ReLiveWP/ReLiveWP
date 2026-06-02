@@ -18,7 +18,6 @@ builder.Services.AddLiveIDAuthentication(o =>
 });
 builder.Services.AddControllers(o =>
 {
-    o.OutputFormatters.Clear();
     o.OutputFormatters.Insert(0, new Utf8XmlOutputFormatter());
     o.InputFormatters.Insert(0, new XmlSerializerInputFormatter(o));
 });

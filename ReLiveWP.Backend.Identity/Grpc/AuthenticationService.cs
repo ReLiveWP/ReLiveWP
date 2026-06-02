@@ -1,7 +1,10 @@
+using System.Globalization;
+using System.Security.Cryptography.X509Certificates;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
@@ -12,7 +15,9 @@ namespace ReLiveWP.Backend.Identity.Grpc;
 public class AuthenticationService(
     TokenManager tokenManager,
     LiveIdDeviceCertificateService deviceCertificateService,
-    UserManager<LiveUser> userManager) : Authentication.AuthenticationBase
+    UserManager<LiveUser> userManager,
+    LiveDbContext dbContext,
+    ILogger<AuthenticationService> logger) : Authentication.AuthenticationBase
 {
     private const uint S_OK = 0x0;
     private const uint PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD = 0x80048821;
@@ -115,7 +120,8 @@ public class AuthenticationService(
             Puid = puid,
             UserName = request.Username,
             Email = $"{puid}@devices.relivewp.net",
-            Type = LiveUserType.Device
+            Type = LiveUserType.Device,
+            DeviceId = request.DeviceId
         };
 
         var result = await userManager.CreateAsync(user, request.Password);
@@ -130,8 +136,8 @@ public class AuthenticationService(
             Id = user.Id.ToString(),
             Cid = cid,
             Puid = puid,
-        }; 
-        
+        };
+
         foreach (var tokenRequest in request.Requests)
         {
             // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
@@ -155,5 +161,44 @@ public class AuthenticationService(
     {
         var cert = deviceCertificateService.HandleCertRequest(request.Puid, request.CertificateRequest.ToByteArray());
         return Task.FromResult(new DeviceCertificateResponse() { Succeeded = true, Certificate = ByteString.CopyFrom(cert) });
+    }
+
+    public override async Task<ValidateDeviceCertificateResponse> ValidateDeviceCertificate(ValidateDeviceCertificateRequest request, ServerCallContext context)
+    {
+        var cert = X509CertificateLoader.LoadCertificate(request.Certificate.ToByteArray());
+        if (!deviceCertificateService.ValidateDeviceCertificate(cert))
+            return new ValidateDeviceCertificateResponse() { Succeeded = false };
+
+        var cn = cert.Subject
+                     .Split(',')
+                     .Select(part => part.Trim())
+                     .First(part => part.StartsWith("CN=", StringComparison.OrdinalIgnoreCase))
+                     .Substring(3);
+
+        if (!cn.EndsWith("devicedns.live.com"))
+            return new ValidateDeviceCertificateResponse() { Succeeded = false };
+
+        var puid = long.Parse(cn.Split('.')[0], NumberStyles.HexNumber);
+        if (!UserUtils.IsValidPuid(LiveUserType.Device, (ulong)puid))
+            logger.LogWarning("Certificate with an invalid PUID, likely an old user account. Client may need updating!");
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(f => f.Puid == puid);
+
+        if (user == null)
+        {
+            // the certificate validates fine, we just dont really know who this is, this is kinda a nasty fallback 
+            // but it's honestly fine so long as the Ids remain consistent.
+            return new ValidateDeviceCertificateResponse() { Succeeded = true, DeviceId = cn };
+        }
+
+        return new ValidateDeviceCertificateResponse()
+        {
+            Succeeded = true,
+            Cid = user.Cid,
+            Puid = user.Puid,
+            EmailAddress = user.Email,
+            Username = user.UserName,
+            DeviceId = cn
+        };
     }
 }

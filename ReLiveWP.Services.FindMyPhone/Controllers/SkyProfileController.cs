@@ -12,12 +12,12 @@ namespace ReLiveWP.Services.FindMyPhone.Controllers;
 [Authorize]
 [ApiController]
 [Route("Services/Device/SkyProfile/[action]")]
+[Consumes("application/xml", "text/xml")]
+[Produces("application/xml")]
 public class SkyProfileController(FindMyPhoneClient findMyPhone) : ControllerBase
 {
     [HttpPost]
     [ActionName("RegisterDevice")]
-    [Consumes("application/xml", "text/xml")]
-    [Produces("application/xml")]
     public async Task<RegisterDeviceResponseModel> RegisterDeviceAsync([FromBody] RegisterDeviceRequestModel model)
     {
         var userId = User.Id();
@@ -47,8 +47,6 @@ public class SkyProfileController(FindMyPhoneClient findMyPhone) : ControllerBas
 
     [HttpPost]
     [ActionName("UpdateDeviceInfo")]
-    [Consumes("application/xml", "text/xml")]
-    [Produces("application/xml")]
     public async Task<UpdateDeviceInfoResponseModel> RegisterDeviceAsync([FromBody] UpdateDeviceInfoRequestModel model)
     {
         var userId = User.Id();

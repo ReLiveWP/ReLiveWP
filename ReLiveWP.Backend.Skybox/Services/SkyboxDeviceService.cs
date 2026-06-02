@@ -1,13 +1,160 @@
 ﻿using System.Globalization;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using ReLiveWP.Backend.Skybox.Commands;
 using ReLiveWP.Backend.Skybox.Data;
 using ReLiveWP.Services.Grpc.FindMyPhone;
 
 namespace ReLiveWP.Backend.Skybox.Services;
 
-public class SkyboxDeviceService(SkyDbContext dbContext) : FindMyPhone.FindMyPhoneBase
+public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService deviceCommand) : FindMyPhone.FindMyPhoneBase
 {
+    public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
+    {
+        var userId = new Guid(request.UserId);
+        var existing = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
+        if (existing != null)
+        {
+            dbContext.Devices.Remove(existing);
+        }
+
+        var device = new SkyDevice()
+        {
+            OwnerId = userId,
+
+            // Correlates to UniqueId in DeviceRegistration
+            DeviceGuid = request.DeviceGuid
+        };
+
+        SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
+
+        dbContext.Devices.Add(device);
+        await dbContext.SaveChangesAsync();
+
+
+        return new RegisterDeviceResponse() { Code = 0, Enabled = true, Message = "OK" };
+    }
+
+    public override async Task<RegisterChannelResponse> RegisterChannel(RegisterChannelRequest request, ServerCallContext context)
+    {
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+        if (!Uri.TryCreate(device.NotificationChannelUrl, UriKind.Absolute, out var uri) || uri.Host != "push.relivewp.net" || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            device.NotificationChannelUrl = null;
+        }
+        else
+        {
+            device.NotificationChannelUrl = request.NotificationUri;
+        }
+
+        await dbContext.SaveChangesAsync();
+        return new RegisterChannelResponse() { Code = 0, Enabled = true, Message = "OK" };
+    }
+
+    public override async Task<UpdateDeviceInfoResponse> UpdateDeviceInfo(UpdateDeviceInfoRequest request, ServerCallContext context)
+    {
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+        SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
+
+        await dbContext.SaveChangesAsync();
+
+        return new UpdateDeviceInfoResponse() { Code = 0, Enabled = true, Message = "OK" };
+    }
+
+    public override async Task GetDevicesForUser(GetDevicesForUserRequest request, IServerStreamWriter<UserDevice> responseStream, ServerCallContext context)
+    {
+        var ownerId = Guid.Parse(request.UserId);
+        foreach (var device in dbContext.Devices.Where(d => d.OwnerId == ownerId))
+        {
+            var resp = new UserDevice()
+            {
+                Manufacturer = device.Make,
+                Model = device.Model,
+                OsVersion = device.OSVersion,
+                FriendlyName = device.FriendlyName,
+                Locale = device.LCID.ToString(),
+                UniqueId = device.DeviceGuid,
+                ColourTheme = device.ColorTheme,
+                AccentColour = "#" + (device.ColorAccent & 0x00FFFFFF).ToString("x6"),
+
+                Lcid = device.LCID,
+                Timezone = device.TZ,
+                //BatteryLevel = device.BatteryLevel,
+                //StorageRemaining = device.StorageRemaining,
+                //PinLocked = device.PinLocked,
+                //SimLocked = device.SimLocked
+            };
+
+            if (!string.IsNullOrEmpty(device.MobileOperator))
+                resp.Operator = device.MobileOperator;
+
+            if (!string.IsNullOrWhiteSpace(device.PhoneNumber))
+                resp.PhoneNumber = device.PhoneNumber;
+
+            await responseStream.WriteAsync(resp);
+        }
+    }
+
+    public override async Task<UserDeviceExtended> GetDeviceExtendedInfo(GetDeviceExtendedInfoRequest request, ServerCallContext context)
+    {
+        var ownerId = Guid.Parse(request.UserId);
+        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+
+        var resp = new UserDeviceExtended()
+        {
+            Manufacturer = device.Make,
+            Model = device.Model,
+            OsVersion = device.OSVersion,
+            FriendlyName = device.FriendlyName,
+            UniqueId = device.DeviceGuid,
+            ColourTheme = device.ColorTheme,
+            AccentColour = "#" + (device.ColorAccent & 0x00FFFFFF).ToString("x6"),
+
+            Lcid = device.LCID,
+            Timezone = device.TZ,
+            BatteryLevel = device.BatteryLevel,
+            StorageRemaining = device.StorageRemaining,
+            PinLocked = device.PinLocked,
+            SimLocked = device.SimLocked,
+            WorkingSet = device.MaxWorkingSet
+        };
+
+        if (!string.IsNullOrEmpty(device.MobileOperator))
+            resp.Operator = device.MobileOperator;
+
+        if (!string.IsNullOrWhiteSpace(device.PhoneNumber))
+            resp.PhoneNumber = device.PhoneNumber;
+
+        return resp;
+    }
+
+    public override async Task<Empty> SendDeviceCommand(DeviceCommandRequest request, ServerCallContext context)
+    {
+        var ownerId = Guid.Parse(request.UserId);
+        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+        if (string.IsNullOrWhiteSpace(device.NotificationChannelUrl))
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "Device notification channel not registered."));
+
+        switch (request.Command)
+        {
+            case DeviceCommandRequestType.CommandRing:
+                await deviceCommand.SendAsync(device.NotificationChannelUrl, DeviceCommand.Ring());
+                break;
+        }
+
+
+        return new Empty();
+    }
+
     private static class SkyProfileKeys
     {
         public const string Make = "SkyProfile.Make";
@@ -79,77 +226,4 @@ public class SkyboxDeviceService(SkyDbContext dbContext) : FindMyPhone.FindMyPho
         }
     }
 
-    public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
-    {
-        var userId = new Guid(request.UserId);
-        var existing = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
-        if (existing != null)
-        {
-            dbContext.Devices.Remove(existing);
-        }
-
-        var device = new SkyDevice()
-        {
-            OwnerId = userId,
-
-            // Correlates to UniqueId in DeviceRegistration
-            DeviceGuid = request.DeviceGuid
-        };
-
-        SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
-
-        dbContext.Devices.Add(device);
-        await dbContext.SaveChangesAsync();
-
-
-        return new RegisterDeviceResponse() { Code = 0, Enabled = true, Message = "OK" };
-    }
-
-    public override async Task<UpdateDeviceInfoResponse> UpdateDeviceInfo(UpdateDeviceInfoRequest request, ServerCallContext context)
-    {
-        var userId = new Guid(request.UserId);
-        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
-        if (device == null)
-            throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
-
-        SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
-
-        await dbContext.SaveChangesAsync();
-
-        return new UpdateDeviceInfoResponse() { Code = 0, Enabled = true, Message = "OK" };
-    }
-
-    public override async Task GetDevicesForUser(GetDevicesForUserRequest request, IServerStreamWriter<UserDevice> responseStream, ServerCallContext context)
-    {
-        var ownerId = Guid.Parse(request.UserId);
-        foreach (var device in dbContext.Devices.Where(d => d.OwnerId == ownerId))
-        {
-            var resp = new UserDevice()
-            {
-                Manufacturer = device.Make,
-                Model = device.Model,
-                OsVersion = device.OSVersion,
-                FriendlyName = device.FriendlyName,
-                Locale = device.LCID.ToString(),
-                UniqueId = device.DeviceGuid,
-                ColourTheme = device.ColorTheme,
-                AccentColour = "#" + (device.ColorAccent & 0x00FFFFFF).ToString("x6"),
-
-                Lcid = device.LCID,
-                Timezone = device.TZ,
-                BatteryLevel = device.BatteryLevel,
-                StorageRemaining = device.StorageRemaining,
-                PinLocked = device.PinLocked,
-                SimLocked = device.SimLocked
-            };
-
-            if (!string.IsNullOrEmpty(device.MobileOperator))
-                resp.Operator = device.MobileOperator;
-
-            if (!string.IsNullOrWhiteSpace(device.PhoneNumber))
-                resp.PhoneNumber = device.PhoneNumber;
-
-            await responseStream.WriteAsync(resp);
-        }
-    }
 }

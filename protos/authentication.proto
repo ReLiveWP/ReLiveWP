@@ -12,6 +12,7 @@ service Authentication {
   rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
   rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyTokenResponse);
   rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
+  rpc ValidateDeviceCertificate (ValidateDeviceCertificateRequest) returns (ValidateDeviceCertificateResponse);
 }
 
 message RegisterRequest {
@@ -99,4 +100,17 @@ message DeviceCertificateRequest {
 message DeviceCertificateResponse {
   bool succeeded = 1;
   bytes certificate = 2;
+}
+
+message ValidateDeviceCertificateRequest {
+	bytes certificate = 1;
+}
+
+message ValidateDeviceCertificateResponse {
+  bool succeeded = 1;
+  optional int64 puid = 2;
+  optional string cid = 3;
+  optional string username = 4;
+  optional string emailAddress = 5;
+  optional string deviceId = 6;
 }

@@ -68,6 +68,9 @@ namespace ReLiveWP.Backend.Skybox.Migrations
                     b.Property<string>("Model")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("NotificationChannelUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OSVersion")
                         .IsRequired()
                         .HasColumnType("TEXT");

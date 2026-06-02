@@ -21,7 +21,7 @@ public class LiveIdDeviceCertificateService(
     {
         X509Certificate2 deviceCert;
 
-        var rootCert = caProvider.GetOrGenerateRootCACert(true);
+        var rootCert = caProvider.GetCACert(true);
         if (rootCert == null)
             throw new Exception("No root certificate available.");
 
@@ -87,5 +87,32 @@ public class LiveIdDeviceCertificateService(
         logger.LogInformation("Generated new certificate for {SubjectDN}", certSubject);
 
         return deviceCert.Export(X509ContentType.Cert);
+    }
+
+    public bool ValidateDeviceCertificate(X509Certificate2 certificate)
+    {
+        var certChain = caProvider.GetCACertChain();
+
+        using var chain = new X509Chain(false);
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreInvalidBasicConstraints;
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        foreach (var cert in certChain)
+            chain.ChainPolicy.CustomTrustStore.Add(cert);
+
+        if (!chain.Build(certificate))
+        {
+            foreach (var item in chain.ChainStatus)
+            {
+                if (item.Status == 0)
+                    continue;
+
+                logger.LogWarning("Device certificate validation failed: {Status} {StatusInfo}", item.Status, item.StatusInformation);
+            }
+
+            return false;
+        }
+
+        return true;
     }
 }

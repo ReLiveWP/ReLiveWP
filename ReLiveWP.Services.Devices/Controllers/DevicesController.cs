@@ -12,7 +12,7 @@ using ReLiveWP.Services.Grpc.FindMyPhone;
 namespace ReLiveWP.Services.Devices.Controllers;
 
 [ApiController]
-[Route("[controller]/[action]")]
+[Route("[controller]/[action]/{id?}")]
 public class DevicesController(
     ILogger<DevicesController> logger,
     ICarrierLookupService carrierLookupService,
@@ -73,6 +73,7 @@ public class DevicesController(
             }
 
             yield return new ConnectedDeviceModel(
+                device.UniqueId,
                 device.FriendlyName,
                 device.Manufacturer,
                 device.Model,
@@ -85,5 +86,91 @@ public class DevicesController(
                 device.HasColourTheme ? device.ColourTheme : 1,
                 device.HasAccentColour ? device.AccentColour : null);
         }
+    }
+
+    [HttpGet]
+    [Authorize]
+    [ActionName("info")]
+    public async Task<ConnectedDeviceExtendedModel> GetDeviceExtendedInfoAsync(string id)
+    {
+        if (User == null)
+            throw new UnauthorizedAccessException();
+
+        var device = await skyboxClient.GetDeviceExtendedInfoAsync(new GetDeviceExtendedInfoRequest() { UserId = User.Id(), DeviceGuid = id });
+
+        var locale = new CultureInfo(device.HasLcid ? device.Lcid : 0x0409);
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(device.Timezone);
+        var carrierInfo = carrierLookupService.GetCarrierInfo(device.Operator);
+
+
+        Device? registeredDevice = null;
+        try
+        {
+            registeredDevice = await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = device.UniqueId });
+        }
+        catch (Exception ex)
+        {
+            logger.LogInformation(ex, "Missing device registration for {DeviceId}", device.UniqueId);
+        }
+
+        var phoneNumber = "None";
+        if (device.HasPhoneNumber && !string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            phoneNumber = device.PhoneNumber;
+
+            try
+            {
+                var phoneNumberUtil = PhoneNumberUtil.GetInstance();
+                var number = phoneNumberUtil.Parse(phoneNumber, carrierInfo?.CountryCode ?? "ZZ");
+                phoneNumber = phoneNumberUtil.Format(number, PhoneNumberFormat.INTERNATIONAL);
+            }
+            catch { }
+        }
+
+        var carrier = device.Operator;
+        if (carrierInfo?.Brand != null)
+        {
+            carrier = carrierInfo.Value.Brand;
+            if (carrierInfo?.CountryCode != null)
+                carrier += $" ({carrierInfo.Value.CountryCode})";
+        }
+        else if (carrierInfo?.Operator != null)
+        {
+            carrier = carrierInfo.Value.Operator;
+        }
+
+        return new ConnectedDeviceExtendedModel(
+            device.UniqueId,
+            device.Manufacturer,
+            device.Model,
+            carrier,
+            phoneNumber,
+            device.OsVersion,
+            device.FriendlyName,
+            device.HasColourTheme ? device.ColourTheme : 1,
+            device.HasAccentColour ? device.AccentColour : null,
+            locale.DisplayName,
+            timeZone.DisplayName,
+            device.HasBatteryLevel ? device.BatteryLevel : 0,
+            device.HasStorageRemaining ? device.StorageRemaining : null,
+            device.HasPinLocked ? device.PinLocked : false,
+            device.HasSimLocked ? device.SimLocked : false,
+            device.HasWorkingSet ? device.WorkingSet : 0,
+            device.LastSeen != null ? device.LastSeen.ToDateTimeOffset(): null,
+            registeredDevice?.Imei
+        );
+    }
+
+    [HttpPut]
+    [Authorize]
+    [ActionName("ping")]
+    public async Task<IActionResult> PingDeviceAsync(string id)
+    {
+        if (User == null)
+            return Unauthorized(); // should never happen
+
+        await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandRing });
+
+        return Accepted();
     }
 }
