@@ -1,0 +1,66 @@
+.device-info-page {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    .device-info {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        grid-column: 1;
+
+        dl {
+            dt {
+                font-size: 10.5pt;
+                font-weight: 500;
+                font-variant: small-caps;
+            }
+        }
+
+
+        .info {
+            grid-column: 2;
+
+            h2 {
+                margin-top: 0;
+            }
+        }
+
+        .image {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 1em;
+
+            img {
+                max-width: 200px;
+                max-height: 200px;
+            }
+        }
+
+        .colour-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 1px solid black;
+            vertical-align: text-bottom;
+        }
+
+        .os-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            vertical-align: text-bottom;
+        }
+
+        .os-version {
+            margin-left: 23px;
+        }
+    }
+
+    .device-actions {
+        grid-column: 2;
+
+        h3 {
+            margin-top: 0;
+        }
+    }
+}

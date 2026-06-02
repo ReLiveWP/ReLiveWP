@@ -7,8 +7,12 @@ import Link from "~/components/Link";
 import LinkedAccounts from "./linked-acounts";
 import SignOut from "./sign-out";
 import Devices from "./devices";
+import { useAccentColor, useTitle } from "~/util/effects";
 
 export default function Account() {
+    useTitle("my account");
+    useAccentColor('teal');
+
     return (
         <LocationProvider>
             <div class="my-account">

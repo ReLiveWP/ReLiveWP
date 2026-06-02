@@ -4,22 +4,8 @@ import { useSignal } from "@preact/signals";
 import { useCallback, useEffect } from "preact/hooks";
 import { ENDPOINT_GET_DEVICES } from "~/util/endpoints";
 import DeviceView from "./components/DeviceView";
+import { Devices } from "~/util/device-types";
 
-export type Device = {
-    friendly_name: string,
-    manufacturer: string,
-    model: string,
-    operator: string | undefined,
-    phone_number: string | undefined,
-    imei: string | undefined;
-    os_version: string,
-    locale: string
-    timezone: string
-    accent_colour: string
-    colour_theme: number
-};
-
-type Devices = Device[];
 
 export default function Devices() {
     const fetch = useAuthenticatedFetch()
