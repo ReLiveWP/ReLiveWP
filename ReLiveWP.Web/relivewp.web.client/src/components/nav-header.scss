@@ -39,19 +39,38 @@ header {
 .header-nav {
     clear: both;
 
-    .header-items {
+    @media screen and (max-width: 600px) {
+        margin-top: 8px;
+    }
 
+    .header-items {
         list-style: none;
         padding: 0;
 
         &.leading {
             float: left;
             margin-left: -8px;
+
+            @media screen and (max-width: 600px) {
+                display: contents;
+
+                &>li:first-child {
+                    padding-left: 0;
+                }
+            }
         }
 
         &.trailing {
             float: right;
             margin-right: -8px;
+
+            @media screen and (max-width: 600px) {
+                display: contents;
+
+                &>li:last-child {
+                    padding-right: 0;
+                }
+            }
         }
 
         li {

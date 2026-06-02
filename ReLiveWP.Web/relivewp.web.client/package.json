@@ -14,10 +14,13 @@
   "packageManager": "pnpm@10.13.1",
   "dependencies": {
     "@preact/signals": "^2.2.1",
+    "leaflet": "^1.9.4",
     "preact": "^10.27.0",
-    "preact-iso": "^2.9.2"
+    "preact-iso": "^2.9.2",
+    "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^24.3.0",
     "css-loader": "^7.1.2",
     "css-minimizer-webpack-plugin": "^7.0.2",

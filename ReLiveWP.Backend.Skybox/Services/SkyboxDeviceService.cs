@@ -61,6 +61,8 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
 
         SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
 
+        dbContext.Update(device);
+
         await dbContext.SaveChangesAsync();
 
         return new UpdateDeviceInfoResponse() { Code = 0, Enabled = true, Message = "OK" };
@@ -106,7 +108,6 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
         var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
-
         var resp = new UserDeviceExtended()
         {
             Manufacturer = device.Make,
@@ -131,6 +132,13 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
 
         if (!string.IsNullOrWhiteSpace(device.PhoneNumber))
             resp.PhoneNumber = device.PhoneNumber;
+
+        if (device.LastLocation != null)
+        {
+            resp.LastSeen = device.LastLocation.Reported.ToTimestamp();
+            resp.LastSeenLat = device.LastLocation.Latitude;
+            resp.LastSeenLong = device.LastLocation.Longitude;
+        }
 
         return resp;
     }
@@ -179,6 +187,8 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
         public const string StorageRemaining = "SkyProfile.StorageRemaining";
         public const string ScreenResolution = "SkyProfile.ScreenResolution";
 
+        public const string LastLocation = "SkyTrigger.LastLocation";
+
         public static void ApplyProperties(SkyDevice device, IDictionary<string, string> props)
         {
             if (props.TryGetValue(Make, out var make))
@@ -223,6 +233,21 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
                 device.StorageRemaining = long.Parse(storageRemaining);
             if (props.TryGetValue(ScreenResolution, out var screenResolution))
                 device.ScreenResolution = screenResolution;
+
+            if (props.TryGetValue(LastLocation, out var lastLocationString))
+            {
+                var lastLocation = new SkyDeviceLocation();
+                var paren = lastLocationString.IndexOf(')');
+                var timestamp = DateTimeOffset.Parse(lastLocationString[1..paren], null, DateTimeStyles.RoundtripKind);
+                var parts = lastLocationString[(paren + 2)..].Split(',');
+
+                lastLocation.Reported = timestamp;
+                lastLocation.Latitude = double.Parse(parts[0], CultureInfo.InvariantCulture);
+                lastLocation.Longitude = double.Parse(parts[1], CultureInfo.InvariantCulture);
+                lastLocation.Altitude = double.Parse(parts[2], CultureInfo.InvariantCulture);
+
+                device.LastLocation = lastLocation;
+            }
         }
     }
 

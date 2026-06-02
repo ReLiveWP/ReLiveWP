@@ -1,10 +1,3 @@
-import { useComputed, useSignal } from "@preact/signals";
-
-import { useCallback, useMemo } from "preact/hooks";
-
-
-import { useAuthenticatedFetch } from "~/state/app-state";
-import { ENDPOINT_PING_DEVICE } from "~/util/endpoints";
 import { Device } from "~/util/device-types";
 import useVersion from "~/util/version";
 import useDeviceImage from "~/util/device-image";
@@ -12,37 +5,10 @@ import Link from "~/components/Link";
 
 
 export default function DeviceView({ device }: { device: Device }) {
-    // const canMask = device.phone_number !== "None";
-    // const numberMasked = useSignal(canMask);
-    // const number = useComputed(() => {
-    //     if (numberMasked.value) {
-    //         return "*".repeat(device.phone_number?.length ?? 10);
-    //     }
-    //     else {
-    //         return device.phone_number;
-    //     }
-    // })
-
-    // const imeiMasked = useSignal(true);
-    // const imei = useComputed(() => {
-    //     if (imeiMasked.value) {
-    //         return "*".repeat(device.imei?.length ?? 10);
-    //     }
-    //     else {
-    //         return device.imei;
-    //     }
-    // })
-
     const [versionName, isSad, image] = useVersion(device.os_version);
     const deviceImage = useDeviceImage(device.manufacturer, device.model);
 
     const backgroundColor = device.colour_theme === 1 ? '#000' : '#fff';
-
-    // const pingDevice = useCallback(async () => {
-    //     fetch(ENDPOINT_PING_DEVICE + `/${device.id}`, {
-    //         method: 'PUT'
-    //     });
-    // }, [device.id]);
 
     return (
         <>
@@ -85,7 +51,7 @@ export default function DeviceView({ device }: { device: Device }) {
                         </>
                     )} */}
                     <dt>
-                        <Link href={`/my/device/${device.id}`}>view more in my device &gt;</Link>
+                        <Link href={`/my/device/${device.id}`} class="view-more text-accent">view more in my phone &gt;</Link>
                     </dt>
                 </dl>
             </div>

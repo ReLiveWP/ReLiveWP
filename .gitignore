@@ -360,3 +360,5 @@ MigrationBackup/
 /ReLiveWP.Backend.DeviceUpdate/wwwroot
 
 !packages/*
+
+*.Production.json

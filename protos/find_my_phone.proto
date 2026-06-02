@@ -98,6 +98,8 @@ message UserDeviceExtended {
 	optional bool sim_locked = 16;
 	optional int32 working_set = 17;
 	optional google.protobuf.Timestamp last_seen = 18;
+	optional double last_seen_lat = 19;
+	optional double last_seen_long = 20;
 }
 
 enum DeviceCommandRequestType {
