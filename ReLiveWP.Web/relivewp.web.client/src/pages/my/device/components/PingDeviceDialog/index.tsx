@@ -14,7 +14,7 @@ export default function PingDeviceDialog({ onClose, deviceId }: {
         try {
             const resp = await fetch(populateEndpoint(ENDPOINT_PING_DEVICE, { deviceId: deviceId }), { method: "PUT" });
             if (!resp.ok) {
-                throw new Error(`failed to ping device: ${resp.status} ${resp.statusText}`);
+                throw new Error(`failed to ring device: ${resp.status} ${resp.statusText}`);
             }
             onClose();
         }
@@ -25,13 +25,13 @@ export default function PingDeviceDialog({ onClose, deviceId }: {
 
     return (
         <Dialog onClose={onClose}>
-            <h1>ping this phone?</h1>
-            <p>this will cause your device to ring at full volume for 60 seconds, ping this phone now?</p>
+            <h1>ring this phone?</h1>
+            <p>this will cause your device to ring at full volume for 60 seconds, ring this phone now?</p>
 
             {error.value && <p class="error">{error.value}</p>}
 
             <div class="buttons">
-                <button onClick={() => pingDevice()}>ping</button>
+                <button onClick={() => pingDevice()}>ring</button>
                 <button onClick={() => onClose()}>cancel</button>
             </div>
         </Dialog>

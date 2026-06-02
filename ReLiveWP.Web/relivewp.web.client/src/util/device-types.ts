@@ -33,5 +33,7 @@ export type ExtendedDeviceInfo = {
     is_sim_locked: boolean | null;
     working_set: number | null;
     last_seen: string | null;
+    last_seen_latitude: number | null;
+    last_seen_longitude: number | null;
     imei: string | null;
 }

@@ -40,7 +40,6 @@ public class SkyProfileController(FindMyPhoneClient findMyPhone) : ControllerBas
         return new RegisterDeviceResponseModel()
         {
             ResponseCode = response.Code,
-            EnabledForMarket = response.Enabled,
             ResponseMessage = response.Message
         };
     }

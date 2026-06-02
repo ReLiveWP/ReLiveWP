@@ -17,9 +17,10 @@ else
 var identity = builder.AddProject("ReLiveWP.Backend.Identity");
 var connectedServices = builder.AddProject("ReLiveWP.Backend.ConnectedServices")
     .DependsOn(identity);
-var registration = builder.AddProject("ReLiveWP.Backend.DeviceRegistration");
-var deviceUpdate = builder.AddProject("ReLiveWP.Backend.DeviceUpdate");
 
+var registration = builder.AddProject("ReLiveWP.Backend.DeviceRegistration");
+
+var deviceUpdate = builder.AddProject("ReLiveWP.Backend.DeviceUpdate");
 
 var skybox = builder.AddProject("ReLiveWP.Backend.Skybox")
     .DependsOn(identity);
@@ -58,6 +59,7 @@ builder.AddProject("ReLiveWP.Services.Devices")
     .DependsOn(skybox)
     .DependsOn(identity);
 
+builder.AddProject("ReLiveWP.Services.Orion");
 
 builder.Build()
     .Run();

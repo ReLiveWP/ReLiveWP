@@ -230,3 +230,33 @@ input[type="submit"] {
   min-width: 72px;
   min-height: 21px;
 }
+
+.text-button {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 !important;
+  margin: 0 !important;
+  font: inherit;
+  font-size: 10.5pt;
+  font-weight: 500;
+  font-variant: small-caps;
+  color: var(--accent-colour);
+
+  min-width: 0 !important; 
+  min-height: 0 !important;
+
+  &:hover {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  &.icon::before {
+    content: '▶';
+    transform: scaleX(0.6666);
+    width: 12px;
+    font-size: 9pt;
+    margin-right: 2px;
+    display: inline-block;
+  }
+}

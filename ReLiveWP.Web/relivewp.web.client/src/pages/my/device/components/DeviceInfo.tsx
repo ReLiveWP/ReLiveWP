@@ -1,4 +1,4 @@
-import { useEffect } from "preact/hooks";
+import { useEffect, useMemo } from "preact/hooks";
 import "./device-info.scss";
 
 import { useComputed, useSignal } from "@preact/signals";
@@ -6,8 +6,16 @@ import useDeviceImage from "~/util/device-image";
 import { ExtendedDeviceInfo } from "~/util/device-types";
 import useVersion from "~/util/version";
 import PingDeviceDialog from "./PingDeviceDialog";
+import { lazy } from "preact-iso";
+import { Suspense } from "preact/compat";
+import { useDeviceInfo } from "../data/context";
 
-function DeviceInfoLeftPanel({ info }: { info: ExtendedDeviceInfo }) {
+import Attention from "~/static/attention.png";
+
+const DeviceMap = lazy(() => import("./DeviceMap"));
+
+function DeviceInfoLeftPanel() {
+    const info = useDeviceInfo();
     const canMask = info.phone_number !== "None";
     const numberMasked = useSignal(canMask);
     const number = useComputed(() => {
@@ -69,13 +77,13 @@ function DeviceInfoLeftPanel({ info }: { info: ExtendedDeviceInfo }) {
                     {info.phone_number && (
                         <>
                             <dt>phone number</dt>
-                            <dd>{number} {canMask && <button onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
+                            <dd>{number} {canMask && <button class="text-button" onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
                         </>
                     )}
                     {info.imei && (
                         <>
                             <dt>imei</dt>
-                            <dd>{imei} <button onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
+                            <dd>{imei} <button class="text-button" onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
                         </>
                     )}
                 </dl>
@@ -85,12 +93,44 @@ function DeviceInfoLeftPanel({ info }: { info: ExtendedDeviceInfo }) {
     )
 }
 
-function DeviceInfoRightPanel({ info }: { info: ExtendedDeviceInfo }) {
+function DeviceInfoRightPanel() {
     const showPingDialog = useSignal(false);
+    const info = useDeviceInfo();
+
+    const lastSeen = useMemo(() => {
+        if (!info.last_seen) return "unknown";
+        const date = new Date(info.last_seen);
+        return date.toLocaleString();
+    }, [info.last_seen]);
+
     return (
         <div class="device-actions">
-            <h3>lost your phone?</h3>
-            <p><button onClick={() => showPingDialog.value = true}>ping</button></p>
+            <div class="map-container">
+                {info.last_seen_latitude && info.last_seen_longitude ?
+                    (
+                        <Suspense fallback={<p>fetching device location...</p>}>
+                            <DeviceMap latitude={info.last_seen_latitude} longitude={info.last_seen_longitude} deviceName={info.friendly_name} />
+                        </Suspense>
+                    ) :
+                    (
+                        <div class="device-map-placeholder">
+                            <p><img src={Attention} /> no location data</p>
+                        </div>
+                    )
+                }
+            </div>
+
+            {lastSeen && <p><small><strong>last seen at {lastSeen}</strong></small></p>}
+
+            <div class="find">
+                <h3>lost your phone?</h3>
+                <p>that's okay, here's a few things you can try</p>
+                <ul>
+                    <li><button class="text-button icon" onClick={() => showPingDialog.value = true}>ring it</button></li>
+                    <li><button class="text-button icon">lock it</button></li>
+                    <li><button class="text-button icon">wipe it</button></li>
+                </ul>
+            </div>
 
             {
                 showPingDialog.value && <PingDeviceDialog deviceId={info.id} onClose={() => showPingDialog.value = false} />
@@ -99,11 +139,11 @@ function DeviceInfoRightPanel({ info }: { info: ExtendedDeviceInfo }) {
     )
 }
 
-export default function DeviceInfo({ info }: { info: ExtendedDeviceInfo }) {
+export default function DeviceInfo() {
     return (
         <div class="device-info-page">
-            <DeviceInfoLeftPanel info={info} />
-            <DeviceInfoRightPanel info={info} />
+            <DeviceInfoLeftPanel />
+            <DeviceInfoRightPanel />
         </div>
     )
 }

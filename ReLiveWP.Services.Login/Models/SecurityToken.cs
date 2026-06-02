@@ -1,5 +1,9 @@
-// {"credentials":{"ps:password":"asdf"},"identity":"wamwoowam@gmail.com","token_requests":[{"service_policy":"LEGACY","service_target":"http://Passport.NET/tb"}]}
 
 namespace ReLiveWP.Services.Login.Models;
 
-public record SecurityTokenModel(string ServiceTarget, string Token, string TokenType, DateTimeOffset Created, DateTimeOffset Expires);
+public record SecurityTokenModel(
+    string ServiceTarget, 
+    string Token,
+    string TokenType, 
+    DateTimeOffset Created,
+    DateTimeOffset Expires);

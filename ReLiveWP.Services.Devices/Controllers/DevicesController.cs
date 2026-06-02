@@ -153,10 +153,12 @@ public class DevicesController(
             timeZone.DisplayName,
             device.HasBatteryLevel ? device.BatteryLevel : 0,
             device.HasStorageRemaining ? device.StorageRemaining : null,
-            device.HasPinLocked ? device.PinLocked : false,
-            device.HasSimLocked ? device.SimLocked : false,
+            device.HasPinLocked && device.PinLocked,
+            device.HasSimLocked && device.SimLocked,
             device.HasWorkingSet ? device.WorkingSet : 0,
-            device.LastSeen != null ? device.LastSeen.ToDateTimeOffset(): null,
+            device.LastSeen?.ToDateTimeOffset(),
+            device.HasLastSeenLat ? device.LastSeenLat : null,
+            device.HasLastSeenLong ? device.LastSeenLong : null,
             registeredDevice?.Imei
         );
     }

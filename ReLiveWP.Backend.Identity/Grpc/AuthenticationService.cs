@@ -51,6 +51,55 @@ public class AuthenticationService(
         return new RegisterResponse() { Code = S_OK, Id = user.Id.ToString(), Cid = cid, Puid = puid };
     }
 
+    public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
+    {
+        if (await userManager.FindByNameAsync(request.Username) != null)
+            return new RegisterDeviceResponse() { Code = ERROR_ALREADY_EXISTS };
+
+        var (userId, cid, puid) = UserUtils.GenerateUserIds(LiveUserType.Device);
+
+        var user = new LiveUser()
+        {
+            Id = userId,
+            Cid = cid,
+            Puid = puid,
+            UserName = request.Username,
+            Email = $"{(ulong)puid:x2}@devices.relivewp.net",
+            Type = LiveUserType.Device,
+            DeviceId = request.DeviceId
+        };
+
+        var result = await userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, string.Join(", ", result.Errors.Select(s => s.Description))));
+
+        var response = new RegisterDeviceResponse()
+        {
+            Code = S_OK,
+            Id = user.Id.ToString(),
+            Cid = cid,
+            Puid = puid,
+        };
+
+        foreach (var tokenRequest in request.Requests)
+        {
+            // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
+            // we're just working with JWTs which are our stand in for a BinarySecurityToken (aka a blob)
+            var (token, created, expires) = await tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
+
+            response.Tokens.Add(new SecurityTokenResponse()
+            {
+                ServiceTarget = tokenRequest.ServiceTarget,
+                Created = Timestamp.FromDateTimeOffset(created),
+                Expires = Timestamp.FromDateTimeOffset(expires),
+                Token = token,
+                TokenType = "JWT",
+            });
+        }
+
+        return response;
+    }
+
     public override async Task<VerifyTokenResponse> VerifySecurityToken(VerifyTokenRequest request, ServerCallContext context)
     {
         var result = await tokenManager.ValidateJwtAsync(request.Token, [.. request.ServiceTargets]);
@@ -85,57 +134,6 @@ public class AuthenticationService(
             Puid = user.Puid,
             Username = user.UserName,
             EmailAddress = user.Email
-        };
-
-        foreach (var tokenRequest in request.Requests)
-        {
-            // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
-            // we're just working with JWTs which are our stand in for a BinarySecurityToken (aka a blob)
-            var (token, created, expires) = await tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
-
-            response.Tokens.Add(new SecurityTokenResponse()
-            {
-                ServiceTarget = tokenRequest.ServiceTarget,
-                Created = Timestamp.FromDateTimeOffset(created),
-                Expires = Timestamp.FromDateTimeOffset(expires),
-                Token = token,
-                TokenType = "JWT",
-            });
-        }
-
-        return response;
-    }
-
-    public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
-    {
-        if (await userManager.FindByNameAsync(request.Username) != null)
-            return new RegisterDeviceResponse() { Code = ERROR_ALREADY_EXISTS };
-
-        var (userId, cid, puid) = UserUtils.GenerateUserIds(LiveUserType.Device);
-
-        var user = new LiveUser()
-        {
-            Id = userId,
-            Cid = cid,
-            Puid = puid,
-            UserName = request.Username,
-            Email = $"{puid}@devices.relivewp.net",
-            Type = LiveUserType.Device,
-            DeviceId = request.DeviceId
-        };
-
-        var result = await userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-        {
-            throw new RpcException(new Status(StatusCode.FailedPrecondition, string.Join(", ", result.Errors.Select(s => s.Description))));
-        }
-
-        var response = new RegisterDeviceResponse()
-        {
-            Code = S_OK,
-            Id = user.Id.ToString(),
-            Cid = cid,
-            Puid = puid,
         };
 
         foreach (var tokenRequest in request.Requests)

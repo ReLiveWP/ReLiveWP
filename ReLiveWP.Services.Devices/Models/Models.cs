@@ -31,4 +31,6 @@ public record ConnectedDeviceExtendedModel(
     bool? IsSimLocked,
     int? WorkingSet,
     DateTimeOffset? LastSeen,
+    double? LastSeenLatitude,
+    double? LastSeenLongitude,
     string? IMEI);

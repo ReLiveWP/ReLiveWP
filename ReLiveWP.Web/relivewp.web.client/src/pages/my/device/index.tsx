@@ -1,7 +1,7 @@
-import { useSignal } from "@preact/signals";
+import { useSignal, useSignalEffect } from "@preact/signals";
 import "./index.scss"
 
-import { ErrorBoundary, LocationProvider, Route, Router } from "preact-iso";
+import { ErrorBoundary, LocationProvider, Route, Router, useLocation } from "preact-iso";
 import { useCallback, useEffect } from "preact/compat";
 import { useAuthenticatedFetch } from "~/state/app-state";
 
@@ -14,6 +14,8 @@ import DevicePage from "./pages/device";
 export default function Device({ id }: { id?: string }) {
     useTitle("my device");
     useAccentColor('green');
+
+    const location = useLocation();
 
     const fetch = useAuthenticatedFetch()
     const devices = useSignal<Devices>(null!)
@@ -37,11 +39,23 @@ export default function Device({ id }: { id?: string }) {
         doRefresh();
     }, []);
 
+    useEffect(() => {
+        if (id && id !== selectedDevice.value && devices.value.some(d => d.id === id)) {
+            selectedDevice.value = id;
+        }
+    }, [id])
+
+    useSignalEffect(() => {
+        var selected = selectedDevice.value;
+        if (selected && selected !== id)
+            location.route('/my/device/' + selected)
+    })
+
     return (
         <LocationProvider>
             <div class="devices">
                 {!devices.value ?
-                    <p>fetching your devices...</p> :
+                    (<p>fetching your devices...</p>) :
                     (
                         <>
                             <div class="header">

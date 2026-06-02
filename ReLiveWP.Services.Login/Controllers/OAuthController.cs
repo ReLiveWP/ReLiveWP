@@ -64,7 +64,13 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
 
     [AllowAnonymous]
     [ActionName("callback")]
-    public async Task<ActionResult> OAuthCallback(string service, string state, string issuer = "", string code = null, string error = null, string error_description = null)
+    public async Task<ActionResult> OAuthCallback(
+        string service,
+        string state,
+        string issuer = "",
+        string? code = null,
+        string? error = null,
+        string? error_description = null)
     {
         if (code == null)
         {

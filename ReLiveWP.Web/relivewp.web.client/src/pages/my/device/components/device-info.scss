@@ -1,11 +1,21 @@
 .device-info-page {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 2fr 1.33fr;
+
+    @media screen and (max-width: 600px) {
+        display: flex;
+        flex-direction: column;
+    }
+
 
     .device-info {
         display: grid;
         grid-template-columns: 200px 1fr;
         grid-column: 1;
+
+        @media screen and (max-width: 600px) {
+            grid-template-columns: 0px 1fr;
+        }
 
         dl {
             dt {
@@ -34,6 +44,10 @@
                 max-width: 200px;
                 max-height: 200px;
             }
+
+            @media screen and (max-width: 600px) {
+                display: none;
+            }
         }
 
         .colour-icon {
@@ -61,6 +75,54 @@
 
         h3 {
             margin-top: 0;
+        }
+    }
+
+    .find {
+
+        h3 {
+            font-size: 1.33em;
+            margin: 0;
+        }
+
+        p {
+            margin-top: 0.33rem;
+            margin-bottom: 0.5rem;
+        }
+
+        ul {
+            flex: 1;
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            margin-left: -6px;
+        }
+
+        li {
+            margin: 4px 6px;
+        }
+    }
+
+    .device-map-placeholder {
+        height: 300px;
+        width: 100%;
+        position: relative;
+        outline-style: none;
+        background-color: rgba(0, 0, 0, 0.05);
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        >p {
+            font-size: 14px;
+            color: #555;
+            font-variant: small-caps;
+
+            >img {
+                vertical-align: bottom;
+            }
         }
     }
 }
