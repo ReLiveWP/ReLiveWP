@@ -5,13 +5,6 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" />
-    <PackageReference Include="Grpc.Net.Client" />
-    <PackageReference Include="Grpc.Net.ClientFactory" />
-    <PackageReference Include="Grpc.Tools">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
@@ -20,13 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="../protos/authentication.proto" GrpcServices="Client">
-      <Link>Protos\authentication.proto</Link>
-    </Protobuf>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Grpc.Services\ReLiveWP.Grpc.Services.csproj" />
   </ItemGroup>
 
   <ItemGroup>

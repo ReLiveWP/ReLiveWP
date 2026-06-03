@@ -59,7 +59,10 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>
-    <ProjectReference Include="..\ReLiveWP.Services.Orion\ReLiveWP.Services.Orion.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Services.Orion\ReLiveWP.Services.Orion.csproj" >
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
     <ProjectReference Include="..\ReLiveWP.Services.Push\ReLiveWP.Services.Push.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
@@ -69,14 +72,6 @@
       <Private>false</Private>
     </ProjectReference>
     <ProjectReference Include="..\ReLiveWP.Web\ReLiveWP.Web.Server\ReLiveWP.Web.Server.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <Private>false</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\ReLiveWP.Zune.Catalog\ReLiveWP.Zune.Catalog.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <Private>false</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\ReLiveWP.Zune.Commerce\ReLiveWP.Zune.Commerce.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>

@@ -32,8 +32,6 @@ builder.Services.AddGrpcClient<FindMyPhone.FindMyPhoneClient>(
 builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
 
-
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: "*",
@@ -47,7 +45,10 @@ builder.Services.AddHostedService(sp => (CarrierLookupService)sp.GetRequiredServ
 
 var app = builder.Build();
 
-app.UseCors("*");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("*");
+}
 
 app.UseStaticFiles();
 

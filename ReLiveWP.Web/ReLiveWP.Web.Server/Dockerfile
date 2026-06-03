@@ -27,7 +27,7 @@ RUN corepack prepare pnpm@10.13.1 --activate \
     && cd ReLiveWP.Web/relivewp.web.client \
     && pnpm install --frozen-lockfile
 RUN dotnet publish "ReLiveWP.Web/ReLiveWP.Web.Server/ReLiveWP.Web.Server.csproj" \
-    -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+    -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false /p:EnableNETAnalyzers=False /p:AnalysisLevel=none /p:RunAnalyzers=false /p:UseRoslynAnalyzers=false
 
 # --- final image ---
 FROM base AS final

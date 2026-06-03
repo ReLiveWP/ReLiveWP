@@ -21,7 +21,7 @@ COPY . .
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages
 RUN --mount=type=cache,id=dotnet_tools,target=/root/.dotnet
 
-RUN dotnet publish "$PROJECT/$PROJECT.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "$PROJECT/$PROJECT.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:EnableNETAnalyzers=False /p:AnalysisLevel=none /p:RunAnalyzers=false /p:UseRoslynAnalyzers=false
 
 # --- final image ---
 FROM base AS final

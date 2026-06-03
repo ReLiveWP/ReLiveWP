@@ -1,24 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" />
-    <PackageReference Include="Grpc.Net.Client" />
-    <PackageReference Include="Grpc.Net.ClientFactory" />
-    <PackageReference Include="Grpc.Tools">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="../protos/find_my_phone.proto" GrpcServices="Client">
-      <Link>Protos\find_my_phone.proto</Link>
-    </Protobuf>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Grpc.Services\ReLiveWP.Grpc.Services.csproj" />
   </ItemGroup>
 
 </Project>
