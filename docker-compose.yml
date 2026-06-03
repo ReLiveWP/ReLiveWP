@@ -1,0 +1,274 @@
+---
+name: relivewp
+
+x-svc-env:
+  &v-env
+  ASPNETCORE_ENVIRONMENT: Container
+  HOME: /home/app
+
+services:
+  identity:
+    image: relive/identity
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 5000:5000
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.Identity.ini:/app/ReLiveWP.Backend.Identity.ini:ro
+      - ./deploy/data/identity:/app/data
+      - ./deploy/data/identity/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
+      - ./deploy/certs/identity_ca.pfx:/certs/identity_ca.pfx:ro
+      - ./deploy/certs/root_ca.pfx:/certs/root_ca.pfx:ro
+    secrets:
+      - source: jwt_secret
+        target: JWT__Secret
+      - source: identity_ca_password
+        target: CertificateGeneration__CACertPassword
+      - source: root_ca_password
+        target: CertificateGeneration__RootCACertPassword
+
+  connectedservices:
+    image: relive/connectedservices
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.ConnectedServices.ini:/app/ReLiveWP.Backend.ConnectedServices.ini:ro
+      - ./deploy/data/connectedservices:/app/data
+    secrets:
+      - source: jwt_secret
+        target: JWT__Secret
+
+  deviceregistration:
+    image: relive/deviceregistration
+    environment: *v-env
+    networks:
+      - relive
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.DeviceRegistration.ini:/app/ReLiveWP.Backend.DeviceRegistration.ini:ro
+      - ./deploy/data/deviceregistration:/app/data
+      - ./deploy/data/deviceregistration/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
+      - ./deploy/certs/provisioning_ca.pfx:/certs/provisioning_ca.pfx:ro
+    secrets:
+      - source: provisioning_ca_password
+        target: CertificateGeneration__RootCACertPassword
+
+  skybox:
+    image: relive/skybox
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.Skybox.ini:/app/ReLiveWP.Backend.Skybox.ini:ro
+      - ./deploy/data/skybox:/app/data
+
+  activation:
+    image: relive/activation
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - deviceregistration
+    ports:
+      - 10000:10000
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Activation.ini:/app/ReLiveWP.Services.Activation.ini:ro
+
+  login:
+    image: relive/login
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+      - connectedservices
+      - deviceregistration
+    ports:
+      - 10002:10002
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Login.ini:/app/ReLiveWP.Services.Login.ini:ro
+
+  zunecommerce:
+    image: relive/zunecommerce
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+    ports:
+      - 10003:10003
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Zune.Commerce.ini:/app/ReLiveWP.Zune.Commerce.ini:ro
+
+  web:
+    image: relive/web
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 10004:8080
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Web.Server.ini:/app/ReLiveWP.Web.Server.ini:ro
+
+  push:
+    image: relive/push
+    environment:
+      ASPNETCORE_ENVIRONMENT: Container
+      HOME: /home/app
+      OPENSSL_CONF: /app/openssl.cnf
+    networks:
+      - relive
+    depends_on:
+      - identity
+    ports:
+      - 10005:10005
+      - 33573:33573
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Push.ini:/app/ReLiveWP.Services.Push.ini:ro
+      - ./deploy/data/push:/app/data
+      - ./deploy/certs/push.pfx:/certs/push.pfx:ro
+      - ./docker/push-openssl.cnf:/app/openssl.cnf:ro
+    secrets:
+      - source: push_cert_password
+        target: Push__ServerCertPassword
+
+  zunecatalog:
+    image: relive/zunecatalog
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 10006:10006
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Zune.Catalog.ini:/app/ReLiveWP.Zune.Catalog.ini:ro
+
+  activity:
+    image: relive/activity
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+      - connectedservices
+    ports:
+      - 10007:10007
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Activity.ini:/app/ReLiveWP.Services.Activity.ini:ro
+
+  exchange:
+    image: relive/exchange
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+    ports:
+      - 10008:10008
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Exchange.ini:/app/ReLiveWP.Services.Exchange.ini:ro
+
+  addressbook:
+    image: relive/addressbook
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+    ports:
+      - 10010:10010
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.AddressBook.ini:/app/ReLiveWP.Services.AddressBook.ini:ro
+
+  devices:
+    image: relive/devices
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - skybox
+      - identity
+    ports:
+      - 10011:10011
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Devices.ini:/app/ReLiveWP.Services.Devices.ini:ro
+
+  findmyphone:
+    image: relive/findmyphone
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - skybox
+      - identity
+    ports:
+      - 10012:10012
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.FindMyPhone.ini:/app/ReLiveWP.Services.FindMyPhone.ini:ro
+
+  orion:
+    image: relive/orion
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 10013:10013
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Orion.ini:/app/ReLiveWP.Services.Orion.ini:ro
+    secrets:
+      - source: api_key_geolocation
+        target: Orion__InferenceApiKey
+
+networks:
+  relive:
+    driver: bridge
+
+secrets:
+  jwt_secret:
+    file: ./deploy/secrets/jwt_secret
+  identity_ca_password:
+    file: ./deploy/secrets/identity_ca_password
+  root_ca_password:
+    file: ./deploy/secrets/root_ca_password
+  provisioning_ca_password:
+    file: ./deploy/secrets/provisioning_ca_password
+  push_cert_password:
+    file: ./deploy/secrets/push_cert_password
+  api_key_geolocation:
+    file: ./deploy/api_keys/geolocation

@@ -362,3 +362,8 @@ MigrationBackup/
 !packages/*
 
 *.Production.json
+
+!deploy/
+deploy/*
+
+!deploy/example/

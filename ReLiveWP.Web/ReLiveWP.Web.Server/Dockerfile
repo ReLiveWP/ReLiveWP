@@ -1,38 +1,37 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+# Distinct image for the web frontend (has an SPA/client build step).
+# Build context is the repo root (DockerfileContext=..\.. in the csproj).
 
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/*
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
 
-
-# This stage is used to build the service project
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS with-node
-RUN apt-get update
-RUN apt-get install curl
-RUN curl -sL https://deb.nodesource.com/setup_20.x | bash
-RUN apt-get -y install nodejs
-
+# --- SDK + node/pnpm for the client build ---
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS with-node
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && curl -sL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && corepack enable \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM with-node AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["ReLiveWP.Web/ReLiveWP.Web.Server/ReLiveWP.Web.Server.csproj", "ReLiveWP.Web/ReLiveWP.Web.Server/"]
-COPY ["relivewp.web.client/relivewp.web.client.esproj", "relivewp.web.client/"]
-RUN dotnet restore "./ReLiveWP.Web/ReLiveWP.Web.Server/ReLiveWP.Web.Server.csproj"
 COPY . .
-WORKDIR "/src/ReLiveWP.Web/ReLiveWP.Web.Server"
-RUN dotnet build "./ReLiveWP.Web.Server.csproj" -c $BUILD_CONFIGURATION -o /app/build
+# install client deps up front; the JS SDK runs the build script during publish but does not install
+RUN corepack prepare pnpm@10.13.1 --activate \
+    && cd ReLiveWP.Web/relivewp.web.client \
+    && pnpm install --frozen-lockfile
+RUN dotnet publish "ReLiveWP.Web/ReLiveWP.Web.Server/ReLiveWP.Web.Server.csproj" \
+    -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# This stage is used to publish the service project to be copied to the final stage
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./ReLiveWP.Web.Server.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+# --- final image ---
 FROM base AS final
+ENV SERVICE_DLL=ReLiveWP.Web.Server.dll
 WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "ReLiveWP.Web.Server.dll"]
+COPY --from=build /app/publish .
+ENTRYPOINT ["/entrypoint.sh"]

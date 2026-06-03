@@ -26,12 +26,9 @@ public class RootCACertificateProvider(
                 logger.LogDebug("Found certificate {Cert}", foundCert.Thumbprint);
                 return includePrivateKey ? foundCert : X509CertificateLoader.LoadCertificate(foundCert.RawData);
             }
-            else
-            {
-                logger.LogWarning("No certificate found, this is bad!!!");
 
-                return null;
-            }
+            // not in the store (e.g. fresh container) - fall through to the cert-file fallback below
+            logger.LogDebug("No certificate in store, trying cert file");
         }
 
         var caCertFile = configuration["CertificateGeneration:RootCACertFile"];

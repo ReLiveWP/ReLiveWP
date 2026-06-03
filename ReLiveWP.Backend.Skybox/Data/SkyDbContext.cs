@@ -18,6 +18,7 @@ public class SkyDbContext : DbContext
     {
         base.OnConfiguring(optionsBuilder);
 
-        optionsBuilder.UseSqlite("Data Source=sky.db");
+        if (!optionsBuilder.IsConfigured)
+            optionsBuilder.UseSqlite("Data Source=sky.db");
     }
 }
