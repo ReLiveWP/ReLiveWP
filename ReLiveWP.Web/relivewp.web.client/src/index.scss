@@ -231,6 +231,10 @@ input[type="submit"] {
   min-height: 21px;
 }
 
+.text-monospace {
+  font-family: ui-monospace, Menlo, Consolas, Monaco, Adwaita Mono, Liberation Mono, Lucida Console, monospace;
+}
+
 .text-button {
   appearance: none;
   background: transparent;
@@ -243,7 +247,7 @@ input[type="submit"] {
   font-variant: small-caps;
   color: var(--accent-colour);
 
-  min-width: 0 !important; 
+  min-width: 0 !important;
   min-height: 0 !important;
 
   &:hover {

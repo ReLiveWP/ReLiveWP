@@ -6,7 +6,7 @@ import Link from "~/components/Link";
 
 export default function DeviceView({ device }: { device: Device }) {
     const [versionName, isSad, image] = useVersion(device.os_version);
-    const deviceImage = useDeviceImage(device.manufacturer, device.model);
+    const [deviceImage, _] = useDeviceImage(device.manufacturer, device.model);
 
     const backgroundColor = device.colour_theme === 1 ? '#000' : '#fff';
 
@@ -34,22 +34,6 @@ export default function DeviceView({ device }: { device: Device }) {
                     <dd>{device.locale}</dd>
                     <dt>timezone</dt>
                     <dd>{device.timezone}</dd>
-                    {/* {device.operator && <>
-                        <dt>carrier</dt>
-                        <dd>{device.operator}</dd>
-                    </>}
-                    {device.phone_number && (
-                        <>
-                            <dt>phone number</dt>
-                            <dd>{number} {canMask && <button onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
-                        </>
-                    )}
-                    {device.imei && (
-                        <>
-                            <dt>imei</dt>
-                            <dd>{imei} <button onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
-                        </>
-                    )} */}
                     <dt>
                         <Link href={`/my/device/${device.id}`} class="view-more text-accent">view more in my phone &gt;</Link>
                     </dt>

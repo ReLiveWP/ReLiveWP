@@ -8,6 +8,7 @@ import LinkedAccounts from "./linked-acounts";
 import SignOut from "./sign-out";
 import Devices from "./devices";
 import { useAccentColor, useTitle } from "~/util/effects";
+import Privacy from "./privacy";
 
 export default function Account() {
     useTitle("my account");
@@ -30,6 +31,9 @@ export default function Account() {
                                 <Link href="/my/account/devices" activeClass="active">computers and devices</Link>
                             </li>
                             <li>
+                                <Link href="/my/account/devices" activeClass="active">privacy and security</Link>
+                            </li>
+                            <li>
                                 <Link href="/my/account/sign-out" activeClass="active">sign out</Link>
                             </li>
                         </ul>
@@ -40,6 +44,7 @@ export default function Account() {
                                 <Route default component={AccountDetails} />
                                 <Route path="/links" component={LinkedAccounts} />
                                 <Route path="/devices" component={Devices} />
+                                <Route path="/privacy" component={Privacy} />
                                 <Route path="/sign-out" component={SignOut} />
                             </Router>
                         </ErrorBoundary>

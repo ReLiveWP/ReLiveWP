@@ -13,12 +13,12 @@ type DevicePickerProps = {
 }
 
 function DeviceOption({ device }: { device: Device }) {
-    const deviceImage = useDeviceImage(device.manufacturer, device.model);
+    const [_, deviceImageSmall] = useDeviceImage(device.manufacturer, device.model);
 
     return (
         <option value={device.id}>
             <div class="device-option">
-                <div class="device-image"><img src={deviceImage} /></div>
+                <div class="device-image"><img src={deviceImageSmall} /></div>
                 <span class="device-name">{device.friendly_name}</span>
                 <span class="device-color" style={{ backgroundColor: device.accent_colour }}></span>
             </div>

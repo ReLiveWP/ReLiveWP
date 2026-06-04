@@ -4,28 +4,35 @@ import "leaflet/dist/leaflet.css";
 import "./device-map.scss";
 
 import Placeholder from "~/static/devices/RM-801.png"
+import { useMemo } from "preact/hooks";
+import useDeviceImage from "~/util/device-image";
 
 type DeviceMapProps = {
     latitude: number;
     longitude: number;
     deviceName: string;
+    model: string;
+    manufacturer: string;
 }
 
-const DeviceIcon = L.icon({
-    iconUrl: Placeholder,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
+export default function DeviceMap({ latitude, longitude, deviceName, model, manufacturer }: DeviceMapProps) {
+    const [_, iconSmall] = useDeviceImage(manufacturer, model);
+    const icon = useMemo(() => {
+        return L.icon({
+            iconUrl: iconSmall,
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
+        })
+    }, [iconSmall])
 
-export default function DeviceMap({ latitude, longitude, deviceName }: DeviceMapProps) {
     return (
         <MapContainer center={[latitude, longitude]} zoom={14} scrollWheelZoom={false} style={{ height: "300px", width: "100%" }}>
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <Marker position={[latitude, longitude]} icon={DeviceIcon}>
+            <Marker position={[latitude, longitude]} icon={icon}>
                 <Popup>{deviceName}</Popup>
             </Marker>
         </MapContainer>

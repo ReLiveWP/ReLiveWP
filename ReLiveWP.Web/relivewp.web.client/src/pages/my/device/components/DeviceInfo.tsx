@@ -38,7 +38,7 @@ function DeviceInfoLeftPanel() {
     })
 
     const [versionName, isSad, image] = useVersion(info.os_version);
-    const deviceImage = useDeviceImage(info.manufacturer, info.model);
+    const [deviceImage, _] = useDeviceImage(info.manufacturer, info.model);
     const backgroundColor = info.colour_theme === 1 ? '#000' : '#fff';
 
     useEffect(() => {
@@ -77,13 +77,13 @@ function DeviceInfoLeftPanel() {
                     {info.phone_number && (
                         <>
                             <dt>phone number</dt>
-                            <dd>{number} {canMask && <button class="text-button" onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
+                            <dd><span class="text-monospace">{number}</span> {canMask && <button class="text-button" onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
                         </>
                     )}
                     {info.imei && (
                         <>
                             <dt>imei</dt>
-                            <dd>{imei} <button class="text-button" onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
+                            <dd><span class="text-monospace">{imei}</span> <button class="text-button" onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
                         </>
                     )}
                 </dl>
@@ -109,7 +109,11 @@ function DeviceInfoRightPanel() {
                 {info.last_seen_latitude && info.last_seen_longitude ?
                     (
                         <Suspense fallback={<p>fetching device location...</p>}>
-                            <DeviceMap latitude={info.last_seen_latitude} longitude={info.last_seen_longitude} deviceName={info.friendly_name} />
+                            <DeviceMap latitude={info.last_seen_latitude}
+                                longitude={info.last_seen_longitude}
+                                deviceName={info.friendly_name}
+                                model={info.model}
+                                manufacturer={info.manufacturer} />
                         </Suspense>
                     ) :
                     (
@@ -124,7 +128,7 @@ function DeviceInfoRightPanel() {
 
             <div class="find">
                 <h3>lost your phone?</h3>
-                <p>that's okay, here's a few things you can try</p>
+                <p>we're here to help, here's a few things you can try</p>
                 <ul>
                     <li><button class="text-button icon" onClick={() => showPingDialog.value = true}>ring it</button></li>
                     <li><button class="text-button icon">lock it</button></li>
