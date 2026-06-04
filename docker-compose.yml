@@ -5,13 +5,13 @@ x-svc-env:
   &v-env
   ASPNETCORE_ENVIRONMENT: Container
   HOME: /home/app
-  
+
 services:
   identity:
     image: relive/identity
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     ports:
       - 5000:5000
     volumes:
@@ -34,7 +34,7 @@ services:
     image: relive/connectedservices
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
     volumes:
@@ -50,7 +50,7 @@ services:
     image: relive/deviceregistration
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -66,7 +66,7 @@ services:
     image: relive/skybox
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
     volumes:
@@ -79,7 +79,7 @@ services:
     image: relive/activation
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - deviceregistration
     ports:
@@ -93,7 +93,7 @@ services:
     image: relive/login
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
       - connectedservices
@@ -109,7 +109,7 @@ services:
     image: relive/zunecommerce
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
     ports:
@@ -123,7 +123,7 @@ services:
     image: relive/web
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     ports:
       - 10004:8080
     volumes:
@@ -138,7 +138,7 @@ services:
       HOME: /home/app
       OPENSSL_CONF: /app/openssl.cnf
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
     ports:
@@ -159,7 +159,7 @@ services:
     image: relive/zunecatalog
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     ports:
       - 10006:10006
     volumes:
@@ -171,7 +171,7 @@ services:
     image: relive/activity
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
       - connectedservices
@@ -186,7 +186,7 @@ services:
     image: relive/exchange
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
     ports:
@@ -200,7 +200,7 @@ services:
     image: relive/addressbook
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - identity
     ports:
@@ -214,7 +214,7 @@ services:
     image: relive/devices
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - skybox
       - identity
@@ -229,7 +229,7 @@ services:
     image: relive/findmyphone
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     depends_on:
       - skybox
       - identity
@@ -244,7 +244,7 @@ services:
     image: relive/orion
     environment: *v-env
     networks:
-      - backend
+      - relivewp
     ports:
       - 10013:10013
     volumes:
@@ -256,7 +256,8 @@ services:
         target: Orion__InferenceApiKey
 
 networks:
-  backend:
+  relivewp:
+    name: relivewp
     driver: bridge
 
 secrets:

@@ -38,5 +38,11 @@ public static class ServiceDefaultsExtensions
 
     private static IniStreamConfigurationSource CreateIniSource() =>
         new() { Stream = typeof(ServiceDefaultsExtensions).Assembly
-            .GetManifestResourceStream("ReLiveWP.ServiceDefaults.services.ini")! };
+            .GetManifestResourceStream(
+#if RELEASE
+            "ReLiveWP.ServiceDefaults.services.Prod.ini" 
+#else
+            "ReLiveWP.ServiceDefaults.services.ini"
+#endif
+            )! };
 }
