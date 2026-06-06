@@ -7,15 +7,6 @@ import Link from "~/components/Link";
 export default function DeviceView({ device }: { device: Device }) {
     const [versionName, isSad, image] = useVersion(device.os_version);
     const [deviceImage, _] = useDeviceImage(device.manufacturer, device.model);
-
-    const deviceImage = useMemo(() => {
-        if (device.model.includes("HD2") || device.model == "PD29100") {
-            return HD2
-        }
-
-        return Placeholder;
-    }, [device.model])
-
     const backgroundColor = device.colour_theme === 1 ? '#000' : '#fff';
 
     return (
