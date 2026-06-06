@@ -360,3 +360,10 @@ MigrationBackup/
 /ReLiveWP.Backend.DeviceUpdate/wwwroot
 
 !packages/*
+
+*.Production.json
+
+!deploy/
+deploy/*
+
+!deploy/example/

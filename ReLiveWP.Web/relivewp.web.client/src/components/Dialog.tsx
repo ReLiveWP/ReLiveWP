@@ -1,3 +1,5 @@
+import "./dialog.scss";
+
 import { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 

@@ -27,5 +27,5 @@ public class RegisterDeviceResponseModel
     [XmlElement("ResponseMessage", Namespace = "http://schemas.microsoft.com/WindowsPhone/Data/2010/09")]
     public string ResponseMessage { get; set; } = "";
     [XmlElement("EnabledForMarket", Namespace = "http://schemas.microsoft.com/WindowsPhone/Data/2010/09")]
-    public bool EnabledForMarket { get; set; }
+    public int EnabledForMarket { get; set; } = 2;
 }

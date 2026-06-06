@@ -19,6 +19,7 @@ public class DevicesDbContext : DbContext
     {
         base.OnConfiguring(optionsBuilder);
 
-        optionsBuilder.UseSqlite("Data Source=devices.db");
+        if (!optionsBuilder.IsConfigured)
+            optionsBuilder.UseSqlite("Data Source=devices.db");
     }
 }

@@ -6,11 +6,56 @@ public class RootCACertificateProvider(
     ILogger<RootCACertificateProvider> logger,
     IConfiguration configuration)
 {
-    public X509Certificate2? GetOrGenerateRootCACert(bool includePrivateKey)
+    public X509Certificate2? GetCACert(bool includePrivateKey)
     {
-        var caDistinguishedName = configuration["CertificateGeneration:RootCA"]?
-            .Replace("ST=", "S=");
+        var certificate2 = LookupCertificate(configuration["CertificateGeneration:CA"], includePrivateKey);
+        if (certificate2 != null)
+        {
+            return certificate2;
+        }
 
+        var caCertFile = configuration["CertificateGeneration:CACertFile"];
+        var caCertFilePassword = configuration["CertificateGeneration:CACertPassword"];
+        if (!string.IsNullOrWhiteSpace(caCertFile))
+        {
+            var certificate = X509CertificateLoader.LoadPkcs12FromFile(caCertFile, caCertFilePassword);
+            return certificate;
+        }
+
+        return null;
+    }
+    public X509Certificate2? GetRootCACert(bool includePrivateKey)
+    {
+        var certificate2 = LookupCertificate(configuration["CertificateGeneration:RootCA"], includePrivateKey);
+        if (certificate2 != null)
+        {
+            return certificate2;
+        }
+
+        var caCertFile = configuration["CertificateGeneration:RootCACertFile"];
+        var caCertFilePassword = configuration["CertificateGeneration:RootCACertPassword"];
+        if (!string.IsNullOrWhiteSpace(caCertFile))
+        {
+            var certificate = X509CertificateLoader.LoadPkcs12FromFile(caCertFile, caCertFilePassword);
+            return certificate;
+        }
+
+        return null;
+    }
+
+    public X509Certificate2Collection GetCACertChain()
+    {
+        var ca = GetCACert(false) 
+            ?? throw new InvalidOperationException("No CA certificate!");
+        var root = GetRootCACert(false)
+             ?? throw new InvalidOperationException("No Root CA certificate!");
+
+        return [.. new X509Certificate2[] { ca, root }];
+    }
+
+    private X509Certificate2? LookupCertificate(string? dn, bool includePrivateKey)
+    {
+        var caDistinguishedName = dn?.Replace("ST=", "S=");
         if (!string.IsNullOrWhiteSpace(caDistinguishedName))
         {
             logger.LogDebug("Looking for certificate with CN \"{Name}\"", caDistinguishedName);
@@ -29,17 +74,8 @@ public class RootCACertificateProvider(
             else
             {
                 logger.LogWarning("No certificate found, this is bad!!!");
-
                 return null;
             }
-        }
-
-        var caCertFile = configuration["CertificateGeneration:RootCACertFile"];
-        var caCertFilePassword = configuration["CertificateGeneration:RootCACertPassword"];
-        if (!string.IsNullOrWhiteSpace(caCertFile))
-        {
-            var certificate = X509CertificateLoader.LoadPkcs12FromFile(caCertFile, caCertFilePassword);
-            return certificate;
         }
 
         return null;

@@ -68,6 +68,9 @@ namespace ReLiveWP.Backend.Skybox.Migrations
                     b.Property<string>("Model")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("NotificationChannelUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("OSVersion")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -103,6 +106,36 @@ namespace ReLiveWP.Backend.Skybox.Migrations
                     b.HasKey("DeviceGuid");
 
                     b.ToTable("Devices");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Skybox.Data.SkyDevice", b =>
+                {
+                    b.OwnsOne("ReLiveWP.Backend.Skybox.Data.SkyDeviceLocation", "LastLocation", b1 =>
+                        {
+                            b1.Property<string>("SkyDeviceDeviceGuid")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<double>("Altitude")
+                                .HasColumnType("REAL");
+
+                            b1.Property<double>("Latitude")
+                                .HasColumnType("REAL");
+
+                            b1.Property<double>("Longitude")
+                                .HasColumnType("REAL");
+
+                            b1.Property<DateTimeOffset>("Reported")
+                                .HasColumnType("TEXT");
+
+                            b1.HasKey("SkyDeviceDeviceGuid");
+
+                            b1.ToTable("Devices");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SkyDeviceDeviceGuid");
+                        });
+
+                    b.Navigation("LastLocation");
                 });
 #pragma warning restore 612, 618
         }

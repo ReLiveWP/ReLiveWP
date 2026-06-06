@@ -24,21 +24,18 @@ public class RootCACertificateProvider(
             {
                 var foundCert = collection[0];
                 logger.LogDebug("Found certificate {Cert}", foundCert.Thumbprint);
-                return includePrivateKey ? foundCert : new X509Certificate2(foundCert.RawData);
+                return includePrivateKey ? foundCert : X509CertificateLoader.LoadCertificate(foundCert.RawData);
             }
-            else
-            {
-                logger.LogWarning("No certificate found, this is bad!!!");
 
-                return null;
-            }
+            // not in the store (e.g. fresh container) - fall through to the cert-file fallback below
+            logger.LogDebug("No certificate in store, trying cert file");
         }
 
         var caCertFile = configuration["CertificateGeneration:RootCACertFile"];
         var caCertFilePassword = configuration["CertificateGeneration:RootCACertPassword"];
         if (!string.IsNullOrWhiteSpace(caCertFile))
         {
-            var certificate = new X509Certificate2(caCertFile, caCertFilePassword);
+            var certificate = X509CertificateLoader.LoadPkcs12FromFile(caCertFile, caCertFilePassword);
             return certificate;
         }
 

@@ -44,8 +44,6 @@ public class AuthenticationController(
         var auth = Request.Headers.Authorization.ToString();
         var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
         var connections = connectedServicesClient.GetConnections(new ConnectionsRequest(), new Metadata() { { "Authorization", authHeader } });
-        if (connections == null)
-            return NotFound(); // this is pretty bad, maybe 500 is better?
 
         var connectionModels = new Dictionary<string, List<ConnectionModel>>();
         await foreach (var connection in connections.ResponseStream.ReadAllAsync())
@@ -66,7 +64,7 @@ public class AuthenticationController(
     public async Task<IActionResult> RequestTokens([FromBody] CreateAccountModel request)
     {
         await authenticationClient.RegisterAsync(new RegisterRequest() { Username = request.Username, Password = request.Password, EmailAddress = request.EmailAddress });
-        return NoContent();
+        return Accepted();
     }
 
     [ActionName("request_tokens")]
@@ -76,26 +74,21 @@ public class AuthenticationController(
         try
         {
             // TODO oh boy howdy this needs to go away
-            SecurityTokensRequest grpcRequest;
+            var grpcRequest = new SecurityTokensRequest();
             if (request.Credentials.TryGetValue("ps:password", out var password))
             {
-                grpcRequest = new SecurityTokensRequest()
-                {
-                    Username = request.Identity,
-                    Password = password,
-                };
+                grpcRequest.Username = request.Identity;
+                grpcRequest.Password = password;
             }
+            // TODO: i feel like we might be able to remove this path at some stage
             else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values) && values.FirstOrDefault() != null)
             {
                 var value = values.FirstOrDefault()!;
                 if (value.StartsWith("Bearer "))
                     value = value[7..];
 
-                grpcRequest = new SecurityTokensRequest()
-                {
-                    Username = request.Identity,
-                    AuthToken = value
-                };
+                grpcRequest.Username = request.Identity;
+                grpcRequest.AuthToken = value;
             }
             else
             {
@@ -104,20 +97,19 @@ public class AuthenticationController(
 
             foreach (var tokenRequest in request.TokenRequests)
             {
-                var grpcTokenRequest = new SecurityTokenRequest()
+                grpcRequest.Requests.Add(new SecurityTokenRequest()
                 {
                     ServicePolicy = tokenRequest.ServicePolicy,
                     ServiceTarget = tokenRequest.ServiceTarget
-                };
-
-                grpcRequest.Requests.Add(grpcTokenRequest);
+                });
             }
 
-            var grpcResponse = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
-            Marshal.ThrowExceptionForHR((int)grpcResponse.Code); // TODO: fix all of this please god
+            var response = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
+            if (((int)response.Code) < 0)
+                return Unauthorized(new ErrorModel(response.Code));
 
             var securityTokens = new List<SecurityTokenModel>();
-            foreach (var token in grpcResponse.Tokens)
+            foreach (var token in response.Tokens)
             {
                 securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
                                                           token.Token,
@@ -126,7 +118,12 @@ public class AuthenticationController(
                                                           token.Expires.ToDateTimeOffset()));
             }
 
-            return Ok(new SecurityTokensResponseModel(grpcResponse.Puid, grpcResponse.Cid, grpcResponse.Username, grpcResponse.EmailAddress, [.. securityTokens]));
+            return Ok(new SecurityTokensResponseModel(
+                response.Puid,
+                response.Cid,
+                response.Username,
+                response.EmailAddress,
+                [.. securityTokens]));
         }
         catch (Exception ex)
         {
@@ -154,7 +151,7 @@ public class AuthenticationController(
         });
 
         var responseModel = new CreateDeviceAccountResponseModel(
-            new UserModel(response.Id, response.Cid, response.Puid, request.Username, $"{response.Puid}@devices.relivewp.net"),
+            new UserModel(response.Id, response.Cid, response.Puid, request.Username, $"{response.Puid:x2}@devices.relivewp.net"),
             [.. response.Tokens.Select(s =>
                 new SecurityTokenModel(s.ServiceTarget, s.Token, s.TokenType, s.Created.ToDateTimeOffset(), s.Expires.ToDateTimeOffset()))]);
 

@@ -63,6 +63,7 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>
+    <ProjectReference Include="..\ReLiveWP.Services.Orion\ReLiveWP.Services.Orion.csproj" />
     <ProjectReference Include="..\ReLiveWP.Services.Push\ReLiveWP.Services.Push.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>

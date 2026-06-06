@@ -20,6 +20,8 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <PropertyGroup>
