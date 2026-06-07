@@ -34,7 +34,9 @@ public class AddressBookService : IAddressBookService
                         RelationshipStateDate = now,
                         Annotations =
                         [
-                            new() { Name = "Live.Network.PSAState", Value = "Accept" }
+                            new() { Name = "Live.Network.PSAState", Value = "Accept" },
+                            // TODO: this parses with LOCALE_SYSTEM_DEFAULT on device, which feels like the footgun of all time
+                            new() { Name = "Live.Network.LastSync", Value = DateTime.Now.ToString() } 
                         ]
                     }
                 }
