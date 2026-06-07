@@ -88,6 +88,13 @@ services:
       args:
         PROJECT: ReLiveWP.Services.AddressBook
 
+  profile:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Profile
+
   devices:
     build:
       context: .

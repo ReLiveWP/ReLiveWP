@@ -210,6 +210,20 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.AddressBook.ini:/app/ReLiveWP.Services.AddressBook.ini:ro
 
+  profile:
+    image: relive/profile
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+    ports:
+      - 10014:10014
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Profile.ini:/app/ReLiveWP.Services.Profile.ini:ro
+
   devices:
     image: relive/devices
     environment: *v-env

@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Xml.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -119,7 +122,7 @@ public class ActivitiesController(
 
     [HttpGet]
     [Produces("application/atom+xml")]
-    [Route("/Activity({provider}:{id})", Name = "activity")]
+    [Route("/Activity({id})", Name = "activity")]
     public Task<ActionResult<LiveFeed>> Activity(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
@@ -132,28 +135,100 @@ public class ActivitiesController(
 
     [HttpGet]
     [Produces("application/atom+xml")]
-    [Route("/Activity({provider}:{id})/Replies", Name = "activity_replies")]
-    public Task<ActionResult<LiveFeed>> ActivityReplies(
+    [Route("/Activity({id})/Replies", Name = "activity_replies")]
+    public async Task<ActionResult<LiveCommentsFeed>> ActivityReplies(
+        [FromRoute] string id,
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
-        return Task.FromResult<ActionResult<LiveFeed>>(NoContent());
+        Response.Headers.Append("X-QueriedServices", "WL");
+
+        var providerId = id[..id.IndexOf(':')];
+        var stringId = id[(id.IndexOf(':') + 1)..];
+
+        var activityInfo = new { id };
+        var feed = new LiveCommentsFeed()
+        {
+            Title = "Replies",
+            Id = this.Url.Link("activity_replies", activityInfo),
+            Updated = DateTime.UtcNow,
+            Links =
+            [
+                new Link(this.Url.Link("activity_replies", activityInfo)),
+            ]
+        };
+
+        var activityProviderInstance = await activityProvider.GetActivityProviderAsync();
+        if (activityProviderInstance == null)
+            return feed;
+
+        await foreach (var item in activityProviderInstance.GetRepliesAsync(providerId, stringId, Math.Min(count, 49)))
+        {
+            feed.Entries.Add(new LiveComment()
+            {
+                CommentId = $"{item.ProviderId}:{item.Id}",
+                Title = null,
+                Content = item.Content,
+                Updated = item.Published.UtcDateTime,
+                Author = new LiveCommentAuthor()
+                {
+                    Name = item.Author.DisplayName,
+                    Cid = SynthesiseCid(item.Author.Id).ToString(CultureInfo.InvariantCulture),
+                }
+            });
+        }
+
+        return feed;
+    }
+
+    [HttpPost]
+    [Consumes("text/plain")]
+    [Produces("application/atom+xml")]
+    [Route("/Activity({id})/Replies", Name = "activity_replies")]
+    public async Task<ActionResult> ActivityReplies(
+       [FromRoute] string id)
+    {
+        using var reader = new StreamReader(Request.Body);
+        var text = await reader.ReadToEndAsync();
+        if (text == null)
+            return BadRequest();
+
+        Response.Headers.Append("X-QueriedServices", "WL");
+
+        var providerId = id[..id.IndexOf(':')];
+        var stringId = id[(id.IndexOf(':') + 1)..];
+
+        var activityProviderInstance = await activityProvider.GetActivityProviderAsync();
+        if (activityProviderInstance == null)
+            return NoContent();
+
+        await activityProviderInstance.CreateReplyAsync(providerId, stringId, text);
+
+        return NoContent();
+    }
+
+    private static long SynthesiseCid(string identity)
+    {
+        var hash = SHA1.HashData(Encoding.UTF8.GetBytes(identity));
+        return BitConverter.ToInt64(hash, 0) & long.MaxValue;
     }
 
     // TODO: move this to an adapter class
-    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, string? requestedPuid = null)
+    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, string? requestedCid = null)
     {
-        if (requestedPuid != null && userInfo.Puid.ToString() != requestedPuid)
-            logger.LogError("Requested PUID and User PUID do not match!! {RequestedPuid} != {UserPuid}", requestedPuid, userInfo.Puid);
+        var userId = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var requestedId = requestedCid != null ? long.Parse(requestedCid, CultureInfo.InvariantCulture) : (long?)null;
+        if (requestedId != null && userId != requestedId)
+            logger.LogError("Requested PUID and User PUID do not match!! {RequestedPuid} != {UserPuid}", requestedCid, userInfo.Cid);
 
         return new LiveAuthor()
         {
-            Id = $"{(requestedPuid ?? userInfo.Puid.ToString())}",
+            Id = $"{(requestedId ?? userId)}",
             Name = userInfo.Username,
-            Url = this.Url.Link("activities_route_for_user", new { id = userInfo.Puid, provider = "WL" }),
+            Url = this.Url.Link("activities_route_for_user", new { id = (requestedId ?? userId).ToString(), provider = "WL" }),
             Links = []
         };
     }
@@ -173,7 +248,7 @@ public class ActivitiesController(
             ]
         };
 
-        var activityInfo = new { provider = entryModel.ProviderId, id = entryModel.Id };
+        var activityInfo = new { id = $"{entryModel.ProviderId}:{entryModel.Id}" };
         var id = this.Url.Link("activity", activityInfo)!;
 
         var postEntry = new LiveEntry()
