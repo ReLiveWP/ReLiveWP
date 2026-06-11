@@ -37,18 +37,17 @@ builder.Services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
 builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
 
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: "*",
-                      policy => policy.WithOrigins("*")
-                          .WithHeaders("*")
-                          .WithMethods("*"));
-});
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy(name: "*",
+//                      policy => policy.WithOrigins("*")
+//                          .WithHeaders("*")
+//                          .WithMethods("*"));
+//});
 
 var app = builder.Build();
 
-app.UseCors("*");
+//app.UseCors("*");
 
 app.UseStaticFiles();
 

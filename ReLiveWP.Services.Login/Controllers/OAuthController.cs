@@ -70,7 +70,8 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
         string issuer = "",
         string? code = null,
         string? error = null,
-        string? error_description = null)
+        string? error_description = null,
+        string? scope = null)
     {
         if (code == null)
         {
@@ -83,8 +84,11 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
             Service = service,
             State = state,
             Issuer = issuer,
-            Code = code
+            Code = code,
         };
+
+        if (!string.IsNullOrWhiteSpace(scope))
+            request.Scopes.AddRange(scope.Split(' '));
 
         await oAuthClient.FinaliseAccountLinkingForServiceAsync(request);
 

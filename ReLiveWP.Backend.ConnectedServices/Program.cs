@@ -1,10 +1,6 @@
-using System.Text;
 using System.Text.Json;
-using Duende.IdentityModel.Jwk;
 using Duende.IdentityModel.OidcClient.DPoP;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.ConnectedServices;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Grpc;
@@ -14,6 +10,7 @@ using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Identity;
 
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
+using GoogleService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -44,20 +41,41 @@ builder.Services.AddSingleton<ServiceTokenLocks>();
 builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
 builder.Services.AddScoped<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
+builder.Services.AddScoped<GoogleOAuthProvider>();
 
 builder.Services.AddScoped<IConnectedServiceProxy, AtProtoServiceProxy>();
 
 builder.Services.AddConnectedServices()
     .AddConnectedService(s => new()
     {
-        ServiceId = "atproto",
+        ServiceId = AtProto.SERVICE_NAME,
         DisplayName = "AtProto",
         ClientId = builder.Configuration["ConnectedServices:AtProto:ClientId"]!,
         RedirectUri = builder.Configuration["ConnectedServices:AtProto:RedirectUrl"]!,
         Scopes = "atproto transition:generic",
         ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialCheckIn | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<AtProtoOAuthProvider>())
+    })
+    .AddConnectedService(s => new()
+    {
+        ServiceId = GoogleService.SERVICE_NAME,
+        DisplayName = "Google",
+        ClientId = builder.Configuration["ConnectedServices:Google:ClientId"]!,
+        ClientSecret = builder.Configuration["ConnectedServices:Google:ClientSecret"]!,
+        RedirectUri = builder.Configuration["ConnectedServices:Google:RedirectUrl"]!,
+        Scopes = "openid " +
+            "https://www.googleapis.com/auth/userinfo.profile " +
+            "https://www.googleapis.com/auth/userinfo.email " +
+            "https://www.googleapis.com/auth/contacts " +
+            "https://www.googleapis.com/auth/calendar " +
+            "https://www.googleapis.com/auth/calendar.events " +
+            "https://www.googleapis.com/auth/drive " +
+            "https://www.googleapis.com/auth/gmail.modify",
+        ServiceCapabilities = ServiceCaps.Email | ServiceCaps.Contacts | ServiceCaps.Calendar | ServiceCaps.PhotoSync | ServiceCaps.FileStorage,
+        OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<GoogleOAuthProvider>())
     });
+
+
 
 builder.Services.AddGrpc();
 builder.Services.AddHostedService<TokenRefreshService>();

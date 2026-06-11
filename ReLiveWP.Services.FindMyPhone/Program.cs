@@ -13,7 +13,7 @@ builder.Services.AddLiveIDAuthentication(o =>
     o.LiveIDConfiguration = (c) =>
     {
         c.HeaderNameOverride = "X-WM-Services-Token";
-        c.ValidServiceTargets = ["http://Passport.NET/tb", "relivewp.net", "services.relivewp.net"];
+        c.ValidServiceTargets = ["http://Passport.NET/tb", "relivewp.net", "services.relivewp.net", "services.int.relivewp.net"];
     };
 });
 builder.Services.AddControllers(o =>
