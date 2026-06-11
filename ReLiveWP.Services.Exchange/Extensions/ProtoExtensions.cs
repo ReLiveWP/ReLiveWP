@@ -180,4 +180,54 @@ public static class ProtoExtensions
 
         return p;
     }
+
+    public static EmailItem ToProtoEmail(this EmailData ed)
+    {
+        var p = new EmailItem();
+        if (ed.To is not null) p.To = ed.To;
+        if (ed.Cc is not null) p.Cc = ed.Cc;
+        if (ed.From is not null) p.From = ed.From;
+        if (ed.ReplyTo is not null) p.ReplyTo = ed.ReplyTo;
+        if (ed.Sender is not null) p.Sender = ed.Sender;
+        if (ed.DisplayTo is not null) p.DisplayTo = ed.DisplayTo;
+        if (ed.Subject is not null) p.Subject = ed.Subject;
+        if (ed.DateReceived.HasValue) p.DateReceived = Ts(ed.DateReceived);
+        if (ed.ThreadTopic is not null) p.ThreadTopic = ed.ThreadTopic;
+        if (ed.Importance.HasValue) p.Importance = ed.Importance.Value;
+        if (ed.Read.HasValue) p.Read = ed.Read != 0;
+        if (ed.MessageClass is not null) p.MessageClass = ed.MessageClass;
+        if (ed.InternetCPID is not null) p.InternetCpid = ed.InternetCPID;
+        if (ed.ContentClass is not null) p.ContentClass = ed.ContentClass;
+        if (ed.LastVerbExecuted.HasValue) p.LastVerbExecuted = ed.LastVerbExecuted.Value;
+        if (ed.LastVerbExecutionTime.HasValue) p.LastVerbExecutionTime = Ts(ed.LastVerbExecutionTime);
+
+        if (ed.Body?.Data is not null)
+        {
+            p.Body = ed.Body.Data;
+            p.BodyType = (int)ed.Body.Type;
+        }
+        if (ed.NativeBodyType.HasValue) p.NativeBodyType = ed.NativeBodyType.Value;
+
+        if (ed.Flag is { } f)
+            p.Flag = f.ToProtoFlag();
+
+        return p;
+    }
+
+    public static ReLiveWP.Services.Grpc.Mailbox.EmailFlag ToProtoFlag(this Models.EmailFlag f)
+    {
+        var p = new ReLiveWP.Services.Grpc.Mailbox.EmailFlag();
+        if (f.Status.HasValue) p.Status = f.Status.Value;
+        if (f.FlagType is not null) p.FlagType = f.FlagType;
+        if (f.Subject is not null) p.Subject = f.Subject;
+        if (f.DateCompleted.HasValue) p.DateCompleted = Ts(f.DateCompleted);
+        if (f.CompleteTime.HasValue) p.CompleteTime = Ts(f.CompleteTime);
+        if (f.StartDate.HasValue) p.StartDate = Ts(f.StartDate);
+        if (f.DueDate.HasValue) p.DueDate = Ts(f.DueDate);
+        if (f.UtcStartDate.HasValue) p.UtcStartDate = Ts(f.UtcStartDate);
+        if (f.UtcDueDate.HasValue) p.UtcDueDate = Ts(f.UtcDueDate);
+        if (f.ReminderSet.HasValue) p.ReminderSet = f.ReminderSet != 0;
+        if (f.ReminderTime.HasValue) p.ReminderTime = Ts(f.ReminderTime);
+        return p;
+    }
 }

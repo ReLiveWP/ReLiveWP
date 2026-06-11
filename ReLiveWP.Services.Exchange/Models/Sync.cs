@@ -100,8 +100,6 @@ public class SyncCollection
     [XmlElement("CollectionId", Namespace = Constants.AirSync)]
     public string CollectionId { get; set; } = string.Empty;
 
-    // ── Request-only fields (suppressed in responses) ─────────────────────────
-
     // Request: move deleted items to Deleted Items folder instead of hard-deleting; 0|1
     [XmlElement("DeletesAsMoves", Namespace = Constants.AirSync)]
     public int? DeletesAsMoves { get; set; }
@@ -128,8 +126,6 @@ public class SyncCollection
 
     [XmlElement("Options", Namespace = Constants.AirSync)]
     public SyncOptions? Options { get; set; }
-
-    // ── Response fields ───────────────────────────────────────────────────────
 
     // Status must precede Commands/Responses per MS-ASCMD §2.2.3.29.2
     [XmlElement("Status", Namespace = Constants.AirSync)]

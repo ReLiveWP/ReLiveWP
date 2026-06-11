@@ -22,6 +22,9 @@ service MailboxStore {
   rpc GetItems        (GetItemsRequest)        returns (stream Item);
   rpc ListItems       (ListItemsRequest)       returns (stream Item);
   rpc CountLiveItems  (CountLiveItemsRequest)  returns (CountResult);
+  // Stub ingestion: deliver an inbound email into a user's folder (default Inbox).
+  // Stands in for a real SMTP/IMAP transport.
+  rpc DeliverEmail    (DeliverEmailRequest)    returns (Item);
 
   // ── Change log ────────────────────────────────────────────────────────────
   rpc GetFolderEvents    (GetFolderEventsRequest) returns (stream FolderEvent);
@@ -397,7 +400,58 @@ message CalendarExceptionCategory {
 // ── TaskItem / EmailItem ──────────────────────────────────────────────────────
 message TaskItem {}
 
-message EmailItem {}
+// Follow-up flag on a mail item (MS-ASEMAIL §2.2.2.34). Carried as an optional
+// sub-message; absent message => no flag, present => flag (possibly empty).
+message EmailFlag {
+  optional string subject                          = 1;  // tasks:Subject
+  optional int32  status                           = 2;  // 0 clear, 1 active, 2 complete
+  optional string flag_type                        = 3;
+  optional google.protobuf.Timestamp date_completed   = 4;
+  optional google.protobuf.Timestamp complete_time    = 5;
+  optional google.protobuf.Timestamp start_date       = 6;
+  optional google.protobuf.Timestamp due_date         = 7;
+  optional google.protobuf.Timestamp utc_start_date   = 8;
+  optional google.protobuf.Timestamp utc_due_date     = 9;
+  optional bool   reminder_set                     = 10;
+  optional google.protobuf.Timestamp reminder_time    = 11;
+}
+
+message EmailItem {
+  // Addressing (email ns)
+  optional string to         = 1;
+  optional string cc         = 2;
+  optional string bcc        = 3;
+  optional string from       = 4;
+  optional string reply_to   = 5;
+  optional string display_to = 6;
+  optional string sender     = 7;   // email2 ns
+
+  // Headers
+  optional string subject       = 8;
+  optional google.protobuf.Timestamp date_received = 9;
+  optional string thread_topic  = 10;
+  optional int32  importance    = 11;  // 0 low, 1 normal, 2 high
+  optional bool   read          = 12;
+  optional string message_class = 13;
+  optional string internet_cpid = 14;
+  optional string content_class = 15;
+
+  // Conversation (email2 ns) — opaque BLOBs
+  optional bytes  conversation_id    = 16;
+  optional bytes  conversation_index = 17;
+
+  // Reply/forward verb tracking (email2 ns)
+  optional int32  last_verb_executed = 18;  // 0 none, 1 reply, 2 reply-all, 3 forward
+  optional google.protobuf.Timestamp last_verb_execution_time = 19;
+
+  // Body
+  optional string body             = 20;  // full body data (plain/html)
+  optional int32  body_type        = 21;  // stored body Type: 1 plain, 2 html
+  optional int32  native_body_type = 22;
+  optional string mime_raw         = 23;  // raw RFC822 MIME (for ItemOperations Fetch / sent items)
+
+  optional EmailFlag flag = 30;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Item CRUD requests
@@ -430,6 +484,14 @@ message UpdateItemRequest {
 message DeleteItemRequest {
   string user_id   = 1;
   string server_id = 2;
+}
+
+// Stub email ingestion. If collection_id is empty, the server resolves the
+// user's default Inbox folder.
+message DeliverEmailRequest {
+  string user_id            = 1;
+  optional string collection_id = 2;
+  EmailItem email           = 3;
 }
 
 message GetItemRequest {

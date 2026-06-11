@@ -43,16 +43,12 @@ builder.AddProject("ReLiveWP.Services.Push")
     .DependsOn(identity);
 
 builder.AddProject("ReLiveWP.Services.AddressBook")
-    .DependsOn(identity);
+    .DependsOn(identity)
+    .DependsOn(mailbox);
 
 builder.AddProject("ReLiveWP.Services.Exchange")
     .DependsOn(identity)
     .DependsOn(mailbox);
-
-builder.AddProject("ReLiveWP.Zune.Catalog");
-
-builder.AddProject("ReLiveWP.Zune.Commerce")
-    .DependsOn(identity);
 
 builder.AddProject("ReLiveWP.Services.FindMyPhone")
     .DependsOn(skybox)
@@ -63,6 +59,10 @@ builder.AddProject("ReLiveWP.Services.Devices")
     .DependsOn(identity);
 
 builder.AddProject("ReLiveWP.Services.Orion");
+
+builder.AddProject("ReLiveWP.Services.Profile")
+    .DependsOn(identity)
+    .DependsOn(mailbox);
 
 builder.Build()
     .Run();

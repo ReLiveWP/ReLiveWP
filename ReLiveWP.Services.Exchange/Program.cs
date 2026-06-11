@@ -25,12 +25,15 @@ builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));
 
 builder.Services.AddControllers();
+
 builder.Services.AddSingleton<EasRequestLog>();
+
 builder.Services.AddScoped<FolderSyncService>();
 builder.Services.AddScoped<ItemSyncService>();
 builder.Services.AddScoped<GetItemEstimateService>();
 builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<ProvisioningService>();
+builder.Services.AddScoped<OutboundMailService>();
 
 var app = builder.Build();
 

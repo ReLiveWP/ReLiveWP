@@ -27,6 +27,7 @@ public class ProfileService(
         // offer an auth mechanism of its own
         var verify = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
         verify.ServiceTargets.Add("directory.services.live.com");
+        verify.ServiceTargets.Add("directory.services.live-int.com");
         verify.ServiceTargets.Add("contacts.relivewp.net");
 
         VerifyTokenResponse reply;

@@ -11,12 +11,8 @@ namespace ReLiveWP.Services.Exchange.Attributes;
 /// implicitly constrained to one command.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
-public sealed class EasCommandAttribute : Attribute, IActionConstraint
+public sealed class EasCommandAttribute(EasCommand command) : Attribute, IActionConstraint
 {
-    private readonly EasCommand _command;
-
-    public EasCommandAttribute(EasCommand command) => _command = command;
-
     /// <summary>
     /// Evaluated before unconstrained actions; all EAS command controllers run
     /// at the same order so only one will match per request.
@@ -29,6 +25,6 @@ public sealed class EasCommandAttribute : Attribute, IActionConstraint
         if (items[ActiveSyncMiddleware.ContextKey] is not ActiveSyncContext easContext)
             return false;
 
-        return easContext.Command == _command;
+        return easContext.Command == command;
     }
 }

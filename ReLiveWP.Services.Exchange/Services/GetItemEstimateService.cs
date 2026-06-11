@@ -2,14 +2,15 @@ using Grpc.Core;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
 using ProtoFolderType = ReLiveWP.Services.Grpc.Mailbox.FolderType;
-using EasFolderType = ReLiveWP.Services.Exchange.Models.FolderType;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
 public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
 {
-    public async Task<GetItemEstimateResponse> EstimateAsync(
-        string userId, string deviceId, GetItemEstimateRequest request, CancellationToken ct = default)
+    public async Task<GetItemEstimateResponse> EstimateAsync(string userId,
+                                                             string deviceId,
+                                                             GetItemEstimateRequest request,
+                                                             CancellationToken ct = default)
     {
         var response = new GetItemEstimateResponse();
 
@@ -22,8 +23,10 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
         return response;
     }
 
-    private async Task<GieResponse?> EstimateCollectionAsync(
-        string userId, string deviceId, GieRequestCollection req, CancellationToken ct)
+    private async Task<GieResponse?> EstimateCollectionAsync(string userId,
+                                                             string deviceId,
+                                                             GieRequestCollection req,
+                                                             CancellationToken ct)
     {
         var collectionId = req.CollectionId;
 
@@ -91,12 +94,14 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
         };
     }
 
-    private async Task<List<ItemEvent>> ReadAllItemEventsAsync(
-        string userId, string collectionId, long afterWatermark, CancellationToken ct)
+    private async Task<List<ItemEvent>> ReadAllItemEventsAsync(string userId,
+                                                               string collectionId,
+                                                               long afterWatermark,
+                                                               CancellationToken ct)
     {
         var result = new List<ItemEvent>();
         using var call = mailbox.GetItemEvents(new GetItemEventsRequest
-        { UserId = userId, CollectionId = collectionId, AfterWatermark = afterWatermark });
+        { UserId = userId, CollectionId = collectionId, AfterWatermark = afterWatermark }, cancellationToken: ct);
         await foreach (var e in call.ResponseStream.ReadAllAsync(ct))
             result.Add(e);
         return result;

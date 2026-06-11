@@ -32,22 +32,20 @@ builder.Services.AddGrpcClient<FindMyPhone.FindMyPhoneClient>(
 builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
 
-
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: "*",
-                      policy => policy.WithOrigins("*")
-                          .WithHeaders("*")
-                          .WithMethods("*"));
-});
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy(name: "*",
+//                      policy => policy.WithOrigins("*")
+//                          .WithHeaders("*")
+//                          .WithMethods("*"));
+//});
 
 builder.Services.AddSingleton<ICarrierLookupService, CarrierLookupService>();
 builder.Services.AddHostedService(sp => (CarrierLookupService)sp.GetRequiredService<ICarrierLookupService>());
 
 var app = builder.Build();
 
-app.UseCors("*");
+//app.UseCors("*");
 
 app.UseStaticFiles();
 

@@ -25,15 +25,16 @@ public class SettingsService(User.UserClient userClient, MailboxStore.MailboxSto
         string userId, string deviceId, DeviceInformationSet set, CancellationToken ct)
     {
         var req = new UpsertDeviceInfoRequest { UserId = userId, DeviceId = deviceId };
-        if (set.Model is not null)          req.Model           = set.Model;
-        if (set.IMEI is not null)           req.Imei            = set.IMEI;
-        if (set.FriendlyName is not null)   req.FriendlyName    = set.FriendlyName;
-        if (set.OS is not null)             req.Os              = set.OS;
-        if (set.OSLanguage is not null)     req.OsLanguage      = set.OSLanguage;
-        if (set.PhoneNumber is not null)    req.PhoneNumber     = set.PhoneNumber;
-        if (set.UserAgent is not null)      req.UserAgent       = set.UserAgent;
+
+        if (set.Model is not null) req.Model = set.Model;
+        if (set.IMEI is not null) req.Imei = set.IMEI;
+        if (set.FriendlyName is not null) req.FriendlyName = set.FriendlyName;
+        if (set.OS is not null) req.Os = set.OS;
+        if (set.OSLanguage is not null) req.OsLanguage = set.OSLanguage;
+        if (set.PhoneNumber is not null) req.PhoneNumber = set.PhoneNumber;
+        if (set.UserAgent is not null) req.UserAgent = set.UserAgent;
         if (set.EnableOutboundSMS.HasValue) req.EnableOutboundSms = set.EnableOutboundSMS.Value;
-        if (set.MobileOperator is not null) req.MobileOperator  = set.MobileOperator;
+        if (set.MobileOperator is not null) req.MobileOperator = set.MobileOperator;
 
         await mailbox.UpsertDeviceInfoAsync(req, cancellationToken: ct);
 
@@ -49,12 +50,12 @@ public class SettingsService(User.UserClient userClient, MailboxStore.MailboxSto
 
         var account = new UserAccount
         {
-            AccountName     = email ?? userId,
+            AccountName = email ?? userId,
             UserDisplayName = displayName,
-            SendDisabled    = 0,
-            EmailAddresses  = email is not null ? new UserEmailAddresses
+            SendDisabled = 0,
+            EmailAddresses = email is not null ? new UserEmailAddresses
             {
-                SMTPAddresses      = [email],
+                SMTPAddresses = [email],
                 PrimarySmtpAddress = email,
             } : null,
         };
@@ -62,7 +63,7 @@ public class SettingsService(User.UserClient userClient, MailboxStore.MailboxSto
         return new SettingsUserInformationResponse
         {
             Status = 1,
-            Get    = new UserInformationResponseGet { Accounts = new UserAccounts { Items = [account] } },
+            Get = new UserInformationResponseGet { Accounts = new UserAccounts { Items = [account] } },
         };
     }
 }

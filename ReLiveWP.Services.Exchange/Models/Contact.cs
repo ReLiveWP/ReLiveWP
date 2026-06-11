@@ -16,7 +16,6 @@ public static partial class Constants
 [XmlRoot("ApplicationData", Namespace = Constants.AirSync)]
 public class ContactData
 {
-    // ── Name ──────────────────────────────────────────────────────────────────
     [XmlElement("FirstName", Namespace = Constants.Contacts)]
     public string? FirstName { get; set; }
 
@@ -41,7 +40,6 @@ public class ContactData
     [XmlElement("NickName", Namespace = Constants.Contacts2)]
     public string? NickName { get; set; }
 
-    // ── Yomi ──────────────────────────────────────────────────────────────────
     [XmlElement("YomiFirstName", Namespace = Constants.Contacts)]
     public string? YomiFirstName { get; set; }
 
@@ -51,7 +49,6 @@ public class ContactData
     [XmlElement("YomiCompanyName", Namespace = Constants.Contacts)]
     public string? YomiCompanyName { get; set; }
 
-    // ── Organisation ──────────────────────────────────────────────────────────
     [XmlElement("CompanyName", Namespace = Constants.Contacts)]
     public string? CompanyName { get; set; }
 
@@ -79,7 +76,6 @@ public class ContactData
     [XmlElement("AssistantName", Namespace = Constants.Contacts)]
     public string? AssistantName { get; set; }
 
-    // ── Email ─────────────────────────────────────────────────────────────────
     [XmlElement("Email1Address", Namespace = Constants.Contacts)]
     public string? Email1Address { get; set; }
 
@@ -89,7 +85,6 @@ public class ContactData
     [XmlElement("Email3Address", Namespace = Constants.Contacts)]
     public string? Email3Address { get; set; }
 
-    // ── Phone numbers ─────────────────────────────────────────────────────────
     [XmlElement("BusinessPhoneNumber", Namespace = Constants.Contacts)]
     public string? BusinessPhoneNumber { get; set; }
 
@@ -129,7 +124,6 @@ public class ContactData
     [XmlElement("MMS", Namespace = Constants.Contacts2)]
     public string? MMS { get; set; }
 
-    // ── Instant messaging ─────────────────────────────────────────────────────
     [XmlElement("IMAddress", Namespace = Constants.Contacts2)]
     public string? IMAddress { get; set; }
 
@@ -139,7 +133,6 @@ public class ContactData
     [XmlElement("IMAddress3", Namespace = Constants.Contacts2)]
     public string? IMAddress3 { get; set; }
 
-    // ── Business address ──────────────────────────────────────────────────────
     [XmlElement("BusinessAddressStreet", Namespace = Constants.Contacts)]
     public string? BusinessAddressStreet { get; set; }
 
@@ -155,7 +148,6 @@ public class ContactData
     [XmlElement("BusinessAddressCountry", Namespace = Constants.Contacts)]
     public string? BusinessAddressCountry { get; set; }
 
-    // ── Home address ──────────────────────────────────────────────────────────
     [XmlElement("HomeAddressStreet", Namespace = Constants.Contacts)]
     public string? HomeAddressStreet { get; set; }
 
@@ -171,7 +163,6 @@ public class ContactData
     [XmlElement("HomeAddressCountry", Namespace = Constants.Contacts)]
     public string? HomeAddressCountry { get; set; }
 
-    // ── Other address ─────────────────────────────────────────────────────────
     [XmlElement("OtherAddressStreet", Namespace = Constants.Contacts)]
     public string? OtherAddressStreet { get; set; }
 
@@ -187,7 +178,6 @@ public class ContactData
     [XmlElement("OtherAddressCountry", Namespace = Constants.Contacts)]
     public string? OtherAddressCountry { get; set; }
 
-    // ── Personal details ──────────────────────────────────────────────────────
     [XmlElement("Spouse", Namespace = Constants.Contacts)]
     public string? Spouse { get; set; }
 
@@ -216,24 +206,20 @@ public class ContactData
         set => Anniversary = EasDateHelper.ToDateTime(value);
     }
 
-    // ── Picture ───────────────────────────────────────────────────────────────
     // xs:string on the wire (base64-encoded). XmlSerializer handles byte[] ↔ base64.
     [XmlElement("Picture", Namespace = Constants.Contacts)]
     public byte[]? Picture { get; set; }
 
-    // ── Recipient information cache ───────────────────────────────────────────
     // Read-only; only present in RIC responses.
     [XmlElement("WeightedRank", Namespace = Constants.Contacts)]
     public int? WeightedRank { get; set; }
 
-    // ── Multi-valued collections ──────────────────────────────────────────────
     [XmlElement("Categories", Namespace = Constants.Contacts)]
     public ContactCategories? Categories { get; set; }
 
     [XmlElement("Children", Namespace = Constants.Contacts)]
     public ContactChildren? Children { get; set; }
 
-    // ── Notes (protocol 12.0+) ────────────────────────────────────────────────
     // airsyncbase:Body is the canonical notes element for all versions >= 12.0.
     [XmlElement("Body", Namespace = Constants.AirSyncBase)]
     public AirSyncBody? Body { get; set; }
@@ -243,7 +229,6 @@ public class ContactData
     [XmlElement("NativeBodyType", Namespace = Constants.AirSyncBase)]
     public byte? NativeBodyType { get; set; }
 
-    // ── Notes (protocol 2.5 only) ─────────────────────────────────────────────
     // contacts:Body / BodySize / BodyTruncated are only used with protocol 2.5.
     [XmlElement("Body", Namespace = Constants.Contacts)]
     public string? BodyLegacy { get; set; }

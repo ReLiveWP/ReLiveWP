@@ -20,39 +20,42 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
 
     public async Task InvokeAsync(HttpContext context)
     {
-        ActiveSyncContext easContext = null;
+        ActiveSyncContext? easContext = null;
         try
         {
-            if (context.Request.Path.StartsWithSegments(EasPath, StringComparison.OrdinalIgnoreCase)
-                && context.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
+            if (!context.Request.Path.StartsWithSegments(EasPath, StringComparison.OrdinalIgnoreCase)
+                || !context.Request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
             {
-                // Buffer the body so controllers can read it after we consume it here.
-                context.Request.EnableBuffering();
-
-                easContext = new ActiveSyncContext
-                {
-                    ProtocolVersion = context.Request.Headers["MS-ASProtocolVersion"].FirstOrDefault(),
-                };
-
-                try
-                {
-                    ParseQueryString(context.Request, easContext);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to parse EAS query string: {Query}",
-                        context.Request.QueryString.Value);
-                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    return;
-                }
-
-                logger.LogDebug("EAS {Command} from {User}/{DeviceId} ({DeviceType}), key={PolicyKey}",
-                    easContext.Command, easContext.User, easContext.DeviceId, easContext.DeviceType, easContext.PolicyKey);
-
-                await DecodeBodyAsync(context.Request, easContext);
-
-                context.Items[ContextKey] = easContext;
+                await next(context);
+                return;
             }
+
+            // Buffer the body so controllers can read it after we consume it here.
+            context.Request.EnableBuffering();
+
+            easContext = new ActiveSyncContext
+            {
+                ProtocolVersion = context.Request.Headers["MS-ASProtocolVersion"].FirstOrDefault(),
+            };
+
+            try
+            {
+                ParseQueryString(context.Request, easContext);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to parse EAS query string: {Query}",
+                    context.Request.QueryString.Value);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                return;
+            }
+
+            logger.LogDebug("EAS {Command} from {User}/{DeviceId} ({DeviceType}), key={PolicyKey}",
+                easContext.Command, easContext.User, easContext.DeviceId, easContext.DeviceType, easContext.PolicyKey);
+
+            await DecodeBodyAsync(context.Request, easContext);
+
+            context.Items[ContextKey] = easContext;
 
             await next(context);
         }
@@ -62,8 +65,6 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
                 await requestLog.RecordAsync(easContext);
         }
     }
-
-    // ── Query string parsing ─────────────────────────────────────────────────────
 
     private static void ParseQueryString(HttpRequest request, ActiveSyncContext ctx)
     {
@@ -213,8 +214,6 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         }
     }
 
-    // ── Body decoding ────────────────────────────────────────────────────────────
-
     private async Task DecodeBodyAsync(HttpRequest request, ActiveSyncContext ctx)
     {
         var contentType = request.ContentType ?? string.Empty;
@@ -246,8 +245,6 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
             logger.LogWarning(ex, "Failed to decode WBXML body for command {Command}", ctx.Command);
         }
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────────
 
     private static EasCommand ParseCommandName(string name) => name.ToLowerInvariant() switch
     {

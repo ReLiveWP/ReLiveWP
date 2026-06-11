@@ -1,6 +1,6 @@
 using Google.Protobuf.WellKnownTypes;
 using ReLiveWP.Backend.Mailbox.Data.Entities;
-using Proto = ReLiveWP.Services.Grpc.Mailbox;
+using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Backend.Mailbox.Grpc;
 
@@ -14,77 +14,22 @@ namespace ReLiveWP.Backend.Mailbox.Grpc;
 // not HasX.
 public static class MailboxMapper
 {
-    // ── Timestamps ────────────────────────────────────────────────────────────
-
     public static Timestamp? ToProtoTs(DateTime? dt) =>
         dt.HasValue ? Timestamp.FromDateTime(DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc)) : null;
 
     public static DateTime? FromProtoTs(Timestamp? ts) => ts?.ToDateTime();
 
-    // ── FolderType ────────────────────────────────────────────────────────────
+    // these enums must be kept in sync with the proto file
+    public static FolderType ToProto(DbFolderType t)
+        => (FolderType)t;
+    public static DbFolderType FromProto(FolderType t)
+        => (DbFolderType)t;
+    public static ChangeEventType ToProto(DbChangeEventType t)
+        => (ChangeEventType)t;
 
-    public static Proto.FolderType ToProto(DbFolderType t) => t switch
+    public static Folder ToProto(DbFolder f)
     {
-        DbFolderType.Generic => Proto.FolderType.Generic,
-        DbFolderType.InboxDefault => Proto.FolderType.InboxDefault,
-        DbFolderType.DraftsDefault => Proto.FolderType.DraftsDefault,
-        DbFolderType.DeletedItemsDefault => Proto.FolderType.DeletedItemsDefault,
-        DbFolderType.SentItemsDefault => Proto.FolderType.SentItemsDefault,
-        DbFolderType.OutboxDefault => Proto.FolderType.OutboxDefault,
-        DbFolderType.TasksDefault => Proto.FolderType.TasksDefault,
-        DbFolderType.CalendarDefault => Proto.FolderType.CalendarDefault,
-        DbFolderType.ContactsDefault => Proto.FolderType.ContactsDefault,
-        DbFolderType.NotesDefault => Proto.FolderType.NotesDefault,
-        DbFolderType.JournalDefault => Proto.FolderType.JournalDefault,
-        DbFolderType.Mail => Proto.FolderType.Mail,
-        DbFolderType.Calendar => Proto.FolderType.Calendar,
-        DbFolderType.Contacts => Proto.FolderType.Contacts,
-        DbFolderType.Task => Proto.FolderType.Task,
-        DbFolderType.Journal => Proto.FolderType.Journal,
-        DbFolderType.Notes => Proto.FolderType.Notes,
-        DbFolderType.RecipientInformationCache => Proto.FolderType.RecipientInformationCache,
-        DbFolderType.MeContact => Proto.FolderType.MeContact,
-        _ => Proto.FolderType.Unknown,
-    };
-
-    public static DbFolderType FromProto(Proto.FolderType t) => t switch
-    {
-        Proto.FolderType.Generic => DbFolderType.Generic,
-        Proto.FolderType.InboxDefault => DbFolderType.InboxDefault,
-        Proto.FolderType.DraftsDefault => DbFolderType.DraftsDefault,
-        Proto.FolderType.DeletedItemsDefault => DbFolderType.DeletedItemsDefault,
-        Proto.FolderType.SentItemsDefault => DbFolderType.SentItemsDefault,
-        Proto.FolderType.OutboxDefault => DbFolderType.OutboxDefault,
-        Proto.FolderType.TasksDefault => DbFolderType.TasksDefault,
-        Proto.FolderType.CalendarDefault => DbFolderType.CalendarDefault,
-        Proto.FolderType.ContactsDefault => DbFolderType.ContactsDefault,
-        Proto.FolderType.NotesDefault => DbFolderType.NotesDefault,
-        Proto.FolderType.JournalDefault => DbFolderType.JournalDefault,
-        Proto.FolderType.Mail => DbFolderType.Mail,
-        Proto.FolderType.Calendar => DbFolderType.Calendar,
-        Proto.FolderType.Contacts => DbFolderType.Contacts,
-        Proto.FolderType.Task => DbFolderType.Task,
-        Proto.FolderType.Journal => DbFolderType.Journal,
-        Proto.FolderType.Notes => DbFolderType.Notes,
-        Proto.FolderType.RecipientInformationCache => DbFolderType.RecipientInformationCache,
-        Proto.FolderType.MeContact => DbFolderType.MeContact,
-        _ => DbFolderType.Unknown,
-    };
-
-    // ── ChangeEventType ───────────────────────────────────────────────────────
-
-    public static Proto.ChangeEventType ToProto(DbChangeEventType t) => t switch
-    {
-        DbChangeEventType.Update => Proto.ChangeEventType.Update,
-        DbChangeEventType.Delete => Proto.ChangeEventType.Delete,
-        _ => Proto.ChangeEventType.Add,
-    };
-
-    // ── Folder ────────────────────────────────────────────────────────────────
-
-    public static Proto.Folder ToProto(DbFolder f)
-    {
-        var p = new Proto.Folder
+        var p = new Folder
         {
             Id = f.Id,
             UserId = f.UserId,
@@ -95,12 +40,13 @@ public static class MailboxMapper
             DeletedAt = ToProtoTs(f.DeletedAt),
             IsHidden = f.IsHidden,
         };
+
         if (f.SourceId is not null) p.SourceId = f.SourceId;
         if (f.AccountName is not null) p.AccountName = f.AccountName;
         return p;
     }
 
-    public static DbFolder ToEntity(Proto.CreateFolderRequest r, string serverId) => new()
+    public static DbFolder ToEntity(CreateFolderRequest r, string serverId) => new()
     {
         Id = serverId,
         UserId = r.UserId,
@@ -113,11 +59,9 @@ public static class MailboxMapper
         CreatedAt = DateTime.UtcNow,
     };
 
-    // ── FolderEvent ───────────────────────────────────────────────────────────
-
-    public static Proto.FolderEvent ToProto(DbFolderEvent e)
+    public static FolderEvent ToProto(DbFolderEvent e)
     {
-        var p = new Proto.FolderEvent
+        var p = new FolderEvent
         {
             Id = e.Id,
             UserId = e.UserId,
@@ -125,15 +69,14 @@ public static class MailboxMapper
             ServerId = e.ServerId,
             OccurredAt = Timestamp.FromDateTime(DateTime.SpecifyKind(e.OccurredAt, DateTimeKind.Utc)),
         };
+
         if (e.ParentServerId is not null) p.ParentServerId = e.ParentServerId;
         if (e.DisplayName is not null) p.DisplayName = e.DisplayName;
         if (e.FolderType.HasValue) p.FolderType = ToProto(e.FolderType.Value);
         return p;
     }
 
-    // ── ItemEvent ─────────────────────────────────────────────────────────────
-
-    public static Proto.ItemEvent ToProto(DbItemEvent e) => new()
+    public static ItemEvent ToProto(DbItemEvent e) => new()
     {
         Id = e.Id,
         UserId = e.UserId,
@@ -143,11 +86,9 @@ public static class MailboxMapper
         OccurredAt = Timestamp.FromDateTime(DateTime.SpecifyKind(e.OccurredAt, DateTimeKind.Utc)),
     };
 
-    // ── SyncState ─────────────────────────────────────────────────────────────
-
-    public static Proto.SyncState ToProto(DbSyncState s)
+    public static SyncState ToProto(DbSyncState s)
     {
-        var p = new Proto.SyncState
+        var p = new SyncState
         {
             UserId = s.UserId,
             DeviceId = s.DeviceId,
@@ -156,20 +97,20 @@ public static class MailboxMapper
             Watermark = s.Watermark,
             LastSeenAt = Timestamp.FromDateTime(DateTime.SpecifyKind(s.LastSeenAt, DateTimeKind.Utc)),
         };
+
         if (s.CachedAnnotationNames is not null) p.CachedAnnotationNames = s.CachedAnnotationNames;
         return p;
     }
 
-    // ── DeviceInfo ────────────────────────────────────────────────────────────
-
-    public static Proto.DeviceInfo ToProto(DbDeviceInfo d)
+    public static DeviceInfo ToProto(DbDeviceInfo d)
     {
-        var p = new Proto.DeviceInfo
+        var p = new DeviceInfo
         {
             UserId = d.UserId,
             DeviceId = d.DeviceId,
             UpdatedAt = Timestamp.FromDateTime(DateTime.SpecifyKind(d.UpdatedAt, DateTimeKind.Utc)),
         };
+
         if (d.Model is not null) p.Model = d.Model;
         if (d.IMEI is not null) p.Imei = d.IMEI;
         if (d.FriendlyName is not null) p.FriendlyName = d.FriendlyName;
@@ -182,11 +123,9 @@ public static class MailboxMapper
         return p;
     }
 
-    // ── Item (envelope) ───────────────────────────────────────────────────────
-
-    public static Proto.Item ToProto(DbItem item)
+    public static Item ToProto(DbItem item)
     {
-        var p = new Proto.Item
+        var p = new Item
         {
             Id = item.Id,
             UserId = item.UserId,
@@ -200,19 +139,17 @@ public static class MailboxMapper
         {
             case DbContactItem c: p.Contact = ToProto(c); break;
             case DbCalendarItem cal: p.Calendar = ToProto(cal); break;
-            case DbTask: p.Task = new Proto.TaskItem(); break;
-            case DbEmail: p.Email = new Proto.EmailItem(); break;
+            case DbTask: p.Task = new TaskItem(); break;
+            case DbEmail e: p.Email = ToProto(e); break;
             default: throw new InvalidOperationException($"Unknown item type {item.GetType().Name}");
         }
 
         return p;
     }
 
-    // ── ContactItem ───────────────────────────────────────────────────────────
-
-    public static Proto.ContactItem ToProto(DbContactItem c)
+    public static ContactItem ToProto(DbContactItem c)
     {
-        var p = new Proto.ContactItem();
+        var p = new ContactItem();
 
         if (c.FirstName is not null) p.FirstName = c.FirstName;
         if (c.MiddleName is not null) p.MiddleName = c.MiddleName;
@@ -276,10 +213,8 @@ public static class MailboxMapper
         if (c.Picture is { Length: > 0 }) p.Picture = Google.Protobuf.ByteString.CopyFrom(c.Picture);
         if (c.WeightedRank.HasValue) p.WeightedRank = c.WeightedRank.Value;
 
-        p.Categories.AddRange(c.Categories.Select(x => new Proto.ContactCategory
-        { Id = x.Id, ContactItemId = x.ContactItemId, Name = x.Name }));
-        p.Children.AddRange(c.Children.Select(x => new Proto.ContactChild
-        { Id = x.Id, ContactItemId = x.ContactItemId, Name = x.Name }));
+        p.Categories.AddRange(c.Categories.Select(x => new ContactCategory { Id = x.Id, ContactItemId = x.ContactItemId, Name = x.Name }));
+        p.Children.AddRange(c.Children.Select(x => new ContactChild { Id = x.Id, ContactItemId = x.ContactItemId, Name = x.Name }));
 
         if (c.Annotation is { } ann)
             p.Annotation = ToProto(ann);
@@ -287,12 +222,12 @@ public static class MailboxMapper
         return p;
     }
 
-    public static DbContactItem ToEntity(string userId, string collectionId, Proto.ContactItem p,
-        Proto.ContactAnnotation? annotation = null) =>
+    public static DbContactItem ToEntity(string userId, string collectionId, ContactItem p,
+        ContactAnnotation? annotation = null) =>
         ApplyToEntity(new DbContactItem { UserId = userId, CollectionId = collectionId }, p, annotation);
 
-    public static DbContactItem ApplyToEntity(DbContactItem c, Proto.ContactItem p,
-        Proto.ContactAnnotation? annotation = null)
+    public static DbContactItem ApplyToEntity(DbContactItem c, ContactItem p,
+        ContactAnnotation? annotation = null)
     {
         c.FirstName = p.HasFirstName ? p.FirstName : null;
         c.MiddleName = p.HasMiddleName ? p.MiddleName : null;
@@ -358,11 +293,10 @@ public static class MailboxMapper
         return c;
     }
 
-    // ── ContactAnnotation ─────────────────────────────────────────────────────
-
-    public static Proto.ContactAnnotation ToProto(DbContactAnnotation a)
+    public static ContactAnnotation ToProto(DbContactAnnotation a)
     {
-        var p = new Proto.ContactAnnotation { ContactItemId = a.ContactItemId };
+        var p = new ContactAnnotation { ContactItemId = a.ContactItemId };
+
         if (a.Cid.HasValue) p.Cid = a.Cid.Value;
         if (a.ObjectId is not null) p.ObjectId = a.ObjectId;
         if (a.WLId is not null) p.WlId = a.WLId;
@@ -375,7 +309,7 @@ public static class MailboxMapper
         return p;
     }
 
-    public static DbContactAnnotation ToEntity(Proto.ContactAnnotation p, string contactItemId) => new()
+    public static DbContactAnnotation ToEntity(ContactAnnotation p, string contactItemId) => new()
     {
         ContactItemId = contactItemId,
         Cid = p.HasCid ? p.Cid : null,
@@ -389,11 +323,9 @@ public static class MailboxMapper
         FavoriteOrder = p.HasFavoriteOrder ? p.FavoriteOrder : null,
     };
 
-    // ── CalendarItem ──────────────────────────────────────────────────────────
-
-    public static Proto.CalendarItem ToProto(DbCalendarItem cal)
+    public static CalendarItem ToProto(DbCalendarItem cal)
     {
-        var p = new Proto.CalendarItem
+        var p = new CalendarItem
         {
             StartTime = ToProtoTs(cal.StartTime),
             EndTime = ToProtoTs(cal.EndTime),
@@ -435,25 +367,30 @@ public static class MailboxMapper
         if (cal.RecurrenceFirstDayOfWeek.HasValue) p.RecurrenceFirstDayOfWeek = cal.RecurrenceFirstDayOfWeek.Value;
 
         p.Attendees.AddRange(cal.Attendees.Select(ToProto));
-        p.Categories.AddRange(cal.Categories.Select(c => new Proto.CalendarCategory
-        { Id = c.Id, CalendarItemId = c.CalendarItemId, Category = c.Category }));
+        p.Categories.AddRange(cal.Categories.Select(c => new CalendarCategory { Id = c.Id, CalendarItemId = c.CalendarItemId, Category = c.Category }));
         p.Exceptions.AddRange(cal.Exceptions.Select(ToProto));
 
         return p;
     }
 
-    private static Proto.CalendarAttendee ToProto(DbCalendarAttendee a)
+    private static CalendarAttendee ToProto(DbCalendarAttendee a)
     {
-        var p = new Proto.CalendarAttendee
-        { Id = a.Id, CalendarItemId = a.CalendarItemId, Email = a.Email, Name = a.Name };
+        var p = new CalendarAttendee
+        {
+            Id = a.Id,
+            CalendarItemId = a.CalendarItemId,
+            Email = a.Email,
+            Name = a.Name
+        };
+
         if (a.AttendeeStatus.HasValue) p.AttendeeStatus = a.AttendeeStatus.Value;
         if (a.AttendeeType.HasValue) p.AttendeeType = a.AttendeeType.Value;
         return p;
     }
 
-    private static Proto.CalendarException ToProto(DbCalendarException ex)
+    private static CalendarException ToProto(DbCalendarException ex)
     {
-        var p = new Proto.CalendarException
+        var p = new CalendarException
         {
             Id = ex.Id,
             CalendarItemId = ex.CalendarItemId,
@@ -462,6 +399,7 @@ public static class MailboxMapper
             DtStamp = ToProtoTs(ex.DtStamp),
             AppointmentReplyTime = ToProtoTs(ex.AppointmentReplyTime),
         };
+
         if (ex.Deleted.HasValue) p.Deleted = ex.Deleted.Value;
         if (ex.ExceptionStartTime is not null) p.ExceptionStartTime = ex.ExceptionStartTime;
         if (ex.InstanceId is not null) p.InstanceId = ex.InstanceId;
@@ -480,22 +418,28 @@ public static class MailboxMapper
 
         p.Attendees.AddRange(ex.Attendees.Select(a =>
         {
-            var ap = new Proto.CalendarExceptionAttendee
-            { Id = a.Id, CalendarExceptionId = a.CalendarExceptionId, Email = a.Email, Name = a.Name };
+            var ap = new CalendarExceptionAttendee 
+            { 
+                Id = a.Id, 
+                CalendarExceptionId = a.CalendarExceptionId, 
+                Email = a.Email, 
+                Name = a.Name 
+            };
+
             if (a.AttendeeStatus.HasValue) ap.AttendeeStatus = a.AttendeeStatus.Value;
             if (a.AttendeeType.HasValue) ap.AttendeeType = a.AttendeeType.Value;
             return ap;
         }));
-        p.Categories.AddRange(ex.Categories.Select(c => new Proto.CalendarExceptionCategory
-        { Id = c.Id, CalendarExceptionId = c.CalendarExceptionId, Category = c.Category }));
+
+        p.Categories.AddRange(ex.Categories.Select(c => new CalendarExceptionCategory { Id = c.Id, CalendarExceptionId = c.CalendarExceptionId, Category = c.Category }));
 
         return p;
     }
 
-    public static DbCalendarItem ToEntity(string userId, string collectionId, Proto.CalendarItem p) =>
+    public static DbCalendarItem ToEntity(string userId, string collectionId, CalendarItem p) =>
         ApplyToEntity(new DbCalendarItem { UserId = userId, CollectionId = collectionId }, p);
 
-    public static DbCalendarItem ApplyToEntity(DbCalendarItem cal, Proto.CalendarItem p)
+    public static DbCalendarItem ApplyToEntity(DbCalendarItem cal, CalendarItem p)
     {
         cal.Timezone = p.HasTimezone ? p.Timezone : null;
         cal.StartTime = p.StartTime != null ? FromProtoTs(p.StartTime) : null;
@@ -534,5 +478,117 @@ public static class MailboxMapper
         cal.RecurrenceIsLeapMonth = p.HasRecurrenceIsLeapMonth ? p.RecurrenceIsLeapMonth : null;
         cal.RecurrenceFirstDayOfWeek = p.HasRecurrenceFirstDayOfWeek ? (byte)p.RecurrenceFirstDayOfWeek : null;
         return cal;
+    }
+
+    public static EmailItem ToProto(DbEmail e)
+    {
+        var p = new EmailItem
+        {
+            DateReceived = ToProtoTs(e.DateReceived),
+            LastVerbExecutionTime = ToProtoTs(e.LastVerbExecutionTime),
+        };
+
+        if (e.To is not null) p.To = e.To;
+        if (e.Cc is not null) p.Cc = e.Cc;
+        if (e.Bcc is not null) p.Bcc = e.Bcc;
+        if (e.From is not null) p.From = e.From;
+        if (e.ReplyTo is not null) p.ReplyTo = e.ReplyTo;
+        if (e.DisplayTo is not null) p.DisplayTo = e.DisplayTo;
+        if (e.Sender is not null) p.Sender = e.Sender;
+        if (e.Subject is not null) p.Subject = e.Subject;
+        if (e.ThreadTopic is not null) p.ThreadTopic = e.ThreadTopic;
+        if (e.Importance.HasValue) p.Importance = e.Importance.Value;
+        if (e.Read.HasValue) p.Read = e.Read.Value;
+        if (e.MessageClass is not null) p.MessageClass = e.MessageClass;
+        if (e.InternetCPID is not null) p.InternetCpid = e.InternetCPID;
+        if (e.ContentClass is not null) p.ContentClass = e.ContentClass;
+        if (e.ConversationId is { Length: > 0 }) p.ConversationId = Google.Protobuf.ByteString.CopyFrom(e.ConversationId);
+        if (e.ConversationIndex is { Length: > 0 }) p.ConversationIndex = Google.Protobuf.ByteString.CopyFrom(e.ConversationIndex);
+        if (e.LastVerbExecuted.HasValue) p.LastVerbExecuted = e.LastVerbExecuted.Value;
+        if (e.Body is not null) p.Body = e.Body;
+        if (e.BodyType.HasValue) p.BodyType = e.BodyType.Value;
+        if (e.NativeBodyType.HasValue) p.NativeBodyType = e.NativeBodyType.Value;
+        if (e.MimeRaw is not null) p.MimeRaw = e.MimeRaw;
+
+        if (e.FlagStatus.HasValue || e.FlagType is not null || e.FlagSubject is not null)
+            p.Flag = ToFlagProto(e);
+
+        return p;
+    }
+
+    private static EmailFlag ToFlagProto(DbEmail e)
+    {
+        var f = new EmailFlag
+        {
+            DateCompleted = ToProtoTs(e.FlagDateCompleted),
+            CompleteTime = ToProtoTs(e.FlagCompleteTime),
+            StartDate = ToProtoTs(e.FlagStartDate),
+            DueDate = ToProtoTs(e.FlagDueDate),
+            UtcStartDate = ToProtoTs(e.FlagUtcStartDate),
+            UtcDueDate = ToProtoTs(e.FlagUtcDueDate),
+            ReminderTime = ToProtoTs(e.FlagReminderTime),
+        };
+
+        if (e.FlagStatus.HasValue) f.Status = e.FlagStatus.Value;
+        if (e.FlagType is not null) f.FlagType = e.FlagType;
+        if (e.FlagSubject is not null) f.Subject = e.FlagSubject;
+        if (e.FlagReminderSet.HasValue) f.ReminderSet = e.FlagReminderSet.Value;
+        return f;
+    }
+
+    public static DbEmail ToEntity(string userId, string collectionId, EmailItem p) =>
+        ApplyToEntity(new DbEmail { UserId = userId, CollectionId = collectionId }, p);
+
+    public static DbEmail ApplyToEntity(DbEmail e, EmailItem p)
+    {
+        e.To = p.HasTo ? p.To : null;
+        e.Cc = p.HasCc ? p.Cc : null;
+        e.Bcc = p.HasBcc ? p.Bcc : null;
+        e.From = p.HasFrom ? p.From : null;
+        e.ReplyTo = p.HasReplyTo ? p.ReplyTo : null;
+        e.DisplayTo = p.HasDisplayTo ? p.DisplayTo : null;
+        e.Sender = p.HasSender ? p.Sender : null;
+        e.Subject = p.HasSubject ? p.Subject : null;
+        e.DateReceived = p.DateReceived != null ? FromProtoTs(p.DateReceived) : null;
+        e.ThreadTopic = p.HasThreadTopic ? p.ThreadTopic : null;
+        e.Importance = p.HasImportance ? (byte)p.Importance : null;
+        e.Read = p.HasRead ? p.Read : null;
+        e.MessageClass = p.HasMessageClass ? p.MessageClass : null;
+        e.InternetCPID = p.HasInternetCpid ? p.InternetCpid : null;
+        e.ContentClass = p.HasContentClass ? p.ContentClass : null;
+        e.ConversationId = p.HasConversationId ? p.ConversationId.ToByteArray() : null;
+        e.ConversationIndex = p.HasConversationIndex ? p.ConversationIndex.ToByteArray() : null;
+        e.LastVerbExecuted = p.HasLastVerbExecuted ? p.LastVerbExecuted : null;
+        e.LastVerbExecutionTime = p.LastVerbExecutionTime != null ? FromProtoTs(p.LastVerbExecutionTime) : null;
+        e.Body = p.HasBody ? p.Body : null;
+        e.BodyType = p.HasBodyType ? (byte)p.BodyType : null;
+        e.NativeBodyType = p.HasNativeBodyType ? (byte)p.NativeBodyType : null;
+        e.MimeRaw = p.HasMimeRaw ? p.MimeRaw : null;
+
+        if (p.Flag is { } f)
+        {
+            e.FlagStatus = f.HasStatus ? (byte)f.Status : null;
+            e.FlagType = f.HasFlagType ? f.FlagType : null;
+            e.FlagSubject = f.HasSubject ? f.Subject : null;
+            e.FlagDateCompleted = f.DateCompleted != null ? FromProtoTs(f.DateCompleted) : null;
+            e.FlagCompleteTime = f.CompleteTime != null ? FromProtoTs(f.CompleteTime) : null;
+            e.FlagStartDate = f.StartDate != null ? FromProtoTs(f.StartDate) : null;
+            e.FlagDueDate = f.DueDate != null ? FromProtoTs(f.DueDate) : null;
+            e.FlagUtcStartDate = f.UtcStartDate != null ? FromProtoTs(f.UtcStartDate) : null;
+            e.FlagUtcDueDate = f.UtcDueDate != null ? FromProtoTs(f.UtcDueDate) : null;
+            e.FlagReminderSet = f.HasReminderSet ? f.ReminderSet : null;
+            e.FlagReminderTime = f.ReminderTime != null ? FromProtoTs(f.ReminderTime) : null;
+        }
+        else
+        {
+            e.FlagStatus = null;
+            e.FlagType = null;
+            e.FlagSubject = null;
+            e.FlagDateCompleted = e.FlagCompleteTime = e.FlagStartDate = e.FlagDueDate = null;
+            e.FlagUtcStartDate = e.FlagUtcDueDate = e.FlagReminderTime = null;
+            e.FlagReminderSet = null;
+        }
+
+        return e;
     }
 }

@@ -27,9 +27,11 @@ public class MailboxDbContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);
-        optionsBuilder
-            .UseSqlite("Data Source=mailbox.db")
-            .AddInterceptors(new ChangeLogInterceptor());
+
+        if (!optionsBuilder.IsConfigured)
+            optionsBuilder
+                .UseSqlite("Data Source=mailbox.db")
+                .AddInterceptors(new ChangeLogInterceptor());
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -69,6 +71,15 @@ public class MailboxDbContext : DbContext
                 .HasValue<DbCalendarItem>("Calendar")
                 .HasValue<DbTask>("Task")
                 .HasValue<DbEmail>("Email");
+        });
+
+        // Subject and NativeBodyType would otherwise collide with DbCalendarItem's columns on
+        // the shared TPH table. Give Email distinct column names so the existing calendar
+        // columns are left untouched (otherwise EF reassigns the unprefixed column to Email).
+        modelBuilder.Entity<DbEmail>(e =>
+        {
+            e.Property(m => m.Subject).HasColumnName("Email_Subject");
+            e.Property(m => m.NativeBodyType).HasColumnName("Email_NativeBodyType");
         });
 
         modelBuilder.Entity<DbContactAnnotation>(e =>

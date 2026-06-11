@@ -9,9 +9,7 @@ namespace ReLiveWP.Backend.Mailbox.Services;
 
 public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStoreBase
 {
-    // ── Folders ───────────────────────────────────────────────────────────────
-    public override async Task<Folder> CreateFolder(
-        CreateFolderRequest request, ServerCallContext context)
+    public override async Task<Folder> CreateFolder(CreateFolderRequest request, ServerCallContext context)
     {
         var serverId = Guid.NewGuid().ToString("N");
         var entity = MailboxMapper.ToEntity(request, serverId);
@@ -20,8 +18,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return MailboxMapper.ToProto(entity);
     }
 
-    public override async Task<MutationResult> UpdateFolder(
-        UpdateFolderRequest request, ServerCallContext context)
+    public override async Task<MutationResult> UpdateFolder(UpdateFolderRequest request, ServerCallContext context)
     {
         var folder = await db.Folders.SingleOrDefaultAsync(
             f => f.UserId == request.UserId && f.Id == request.ServerId,
@@ -41,8 +38,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return new MutationResult { Found = true };
     }
 
-    public override async Task<MutationResult> DeleteFolder(
-        DeleteFolderRequest request, ServerCallContext context)
+    public override async Task<MutationResult> DeleteFolder(DeleteFolderRequest request, ServerCallContext context)
     {
         var folder = await db.Folders.SingleOrDefaultAsync(
             f => f.UserId == request.UserId && f.Id == request.ServerId,
@@ -56,8 +52,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return new MutationResult { Found = true };
     }
 
-    public override async Task<Folder> GetFolder(
-        GetFolderRequest request, ServerCallContext context)
+    public override async Task<Folder> GetFolder(GetFolderRequest request, ServerCallContext context)
     {
         var folder = await db.Folders.SingleOrDefaultAsync(
             f => f.UserId == request.UserId && f.Id == request.ServerId,
@@ -67,10 +62,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return MailboxMapper.ToProto(folder);
     }
 
-    public override async Task ListFolders(
-        ListFoldersRequest request,
-        IServerStreamWriter<Folder> stream,
-        ServerCallContext context)
+    public override async Task ListFolders(ListFoldersRequest request, IServerStreamWriter<Folder> stream, ServerCallContext context)
     {
         var query = db.Folders.Where(f => f.UserId == request.UserId);
         if (!request.IncludeDeleted) query = query.Where(f => f.DeletedAt == null);
@@ -80,8 +72,6 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
             await stream.WriteAsync(MailboxMapper.ToProto(f));
     }
 
-    // ── Items ─────────────────────────────────────────────────────────────────
-
     public override async Task<Item> CreateItem(CreateItemRequest request, ServerCallContext context)
     {
         var id = Guid.NewGuid().ToString("N");
@@ -90,7 +80,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
             CreateItemRequest.BodyOneofCase.Contact => MailboxMapper.ToEntity(request.UserId, request.CollectionId, request.Contact),
             CreateItemRequest.BodyOneofCase.Calendar => MailboxMapper.ToEntity(request.UserId, request.CollectionId, request.Calendar),
             CreateItemRequest.BodyOneofCase.Task => new DbTask { UserId = request.UserId, CollectionId = request.CollectionId },
-            CreateItemRequest.BodyOneofCase.Email => new DbEmail { UserId = request.UserId, CollectionId = request.CollectionId },
+            CreateItemRequest.BodyOneofCase.Email => MailboxMapper.ToEntity(request.UserId, request.CollectionId, request.Email),
             _ => throw new RpcException(new Status(StatusCode.InvalidArgument, "Item body is required")),
         };
         entity.Id = id;
@@ -108,6 +98,29 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
 
         await db.SaveChangesAsync(context.CancellationToken);
         return MailboxMapper.ToProto(entity);
+    }
+
+    public override async Task<Item> DeliverEmail(DeliverEmailRequest request, ServerCallContext context)
+    {
+        var collectionId = request.HasCollectionId && !string.IsNullOrEmpty(request.CollectionId)
+            ? request.CollectionId
+            : (await db.Folders
+                .Where(f => f.UserId == request.UserId && f.DeletedAt == null && f.Type == DbFolderType.InboxDefault)
+                .Select(f => f.Id)
+                .FirstOrDefaultAsync(context.CancellationToken))
+              ?? throw new RpcException(new Status(StatusCode.FailedPrecondition, "No Inbox folder; provision first"));
+
+        var id = Guid.NewGuid().ToString("N");
+        var entity = MailboxMapper.ToEntity(request.UserId, collectionId, request.Email);
+        entity.Id = id;
+        entity.ServerId = id;
+        entity.CreatedAt = DateTime.UtcNow;
+        if (entity.DateReceived is null)
+            entity.DateReceived = DateTime.UtcNow;
+
+        db.Items.Add(entity);
+        await db.SaveChangesAsync(context.CancellationToken);
+        return MailboxMapper.ToProto((DbItem)entity);
     }
 
     public override async Task<MutationResult> UpdateItem(UpdateItemRequest request, ServerCallContext context)
@@ -128,6 +141,10 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
             case UpdateItemRequest.BodyOneofCase.Calendar when entity is DbCalendarItem cal:
                 MailboxMapper.ApplyToEntity(cal, request.Calendar);
                 await SyncCalendarChildrenAsync(cal, request.Calendar, context.CancellationToken);
+                break;
+
+            case UpdateItemRequest.BodyOneofCase.Email when entity is DbEmail mail:
+                MailboxMapper.ApplyToEntity(mail, request.Email);
                 break;
         }
 
@@ -182,16 +199,13 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
             await stream.WriteAsync(MailboxMapper.ToProto(item));
     }
 
-    public override async Task<CountResult> CountLiveItems(
-        CountLiveItemsRequest request, ServerCallContext context)
+    public override async Task<CountResult> CountLiveItems(CountLiveItemsRequest request, ServerCallContext context)
     {
         var count = await db.Items.CountAsync(
             i => i.UserId == request.UserId && i.CollectionId == request.CollectionId && i.DeletedAt == null,
             context.CancellationToken);
         return new CountResult { Count = count };
     }
-
-    // ── Change log ────────────────────────────────────────────────────────────
 
     public override async Task GetFolderEvents(
         GetFolderEventsRequest request, IServerStreamWriter<FolderEvent> stream, ServerCallContext context)
@@ -221,8 +235,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         }
     }
 
-    public override async Task<Watermark> GetFolderEventTip(
-        FolderEventTipRequest request, ServerCallContext context)
+    public override async Task<Watermark> GetFolderEventTip(FolderEventTipRequest request, ServerCallContext context)
     {
         var tip = await db.FolderEvents
             .Where(e => e.UserId == request.UserId)
@@ -230,8 +243,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return new Watermark { Value = tip };
     }
 
-    public override async Task<Watermark> GetItemEventTip(
-        ItemEventTipRequest request, ServerCallContext context)
+    public override async Task<Watermark> GetItemEventTip(ItemEventTipRequest request, ServerCallContext context)
     {
         var tip = await db.ItemEvents
             .Where(e => e.UserId == request.UserId && e.CollectionId == request.CollectionId)
@@ -239,10 +251,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return new Watermark { Value = tip };
     }
 
-    // ── Sync state ────────────────────────────────────────────────────────────
-
-    public override async Task<SyncState> GetSyncState(
-        GetSyncStateRequest request, ServerCallContext context)
+    public override async Task<SyncState> GetSyncState(GetSyncStateRequest request, ServerCallContext context)
     {
         var state = await db.SyncStates.SingleOrDefaultAsync(
             s => s.UserId == request.UserId && s.DeviceId == request.DeviceId
@@ -253,8 +262,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return MailboxMapper.ToProto(state);
     }
 
-    public override async Task<SyncState> UpsertSyncState(
-        UpsertSyncStateRequest request, ServerCallContext context)
+    public override async Task<SyncState> UpsertSyncState(UpsertSyncStateRequest request, ServerCallContext context)
     {
         var state = await db.SyncStates.SingleOrDefaultAsync(
             s => s.UserId == request.UserId && s.DeviceId == request.DeviceId
@@ -281,10 +289,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return MailboxMapper.ToProto(state);
     }
 
-    // ── Device info ───────────────────────────────────────────────────────────
-
-    public override async Task<DeviceInfo> UpsertDeviceInfo(
-        UpsertDeviceInfoRequest request, ServerCallContext context)
+    public override async Task<DeviceInfo> UpsertDeviceInfo(UpsertDeviceInfoRequest request, ServerCallContext context)
     {
         var info = await db.DeviceInfos.SingleOrDefaultAsync(
             d => d.UserId == request.UserId && d.DeviceId == request.DeviceId,
@@ -311,8 +316,7 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
         return MailboxMapper.ToProto(info);
     }
 
-    public override async Task<DeviceInfo> GetDeviceInfo(
-        GetDeviceInfoRequest request, ServerCallContext context)
+    public override async Task<DeviceInfo> GetDeviceInfo(GetDeviceInfoRequest request, ServerCallContext context)
     {
         var info = await db.DeviceInfos.SingleOrDefaultAsync(
             d => d.UserId == request.UserId && d.DeviceId == request.DeviceId,
@@ -321,8 +325,6 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
 
         return MailboxMapper.ToProto(info);
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task<DbItem?> LoadItemWithChildren(string userId, string serverId, CancellationToken ct)
     {
@@ -436,16 +438,16 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
                 ExceptionStartTime = ex.HasExceptionStartTime ? ex.ExceptionStartTime : null,
                 InstanceId = ex.HasInstanceId ? ex.InstanceId : null,
                 Subject = ex.HasSubject ? ex.Subject : null,
-                StartTime = ex.StartTime != null ? ex.StartTime.ToDateTime() : null,
-                EndTime = ex.EndTime != null ? ex.EndTime.ToDateTime() : null,
+                StartTime = ex.StartTime?.ToDateTime(),
+                EndTime = ex.EndTime?.ToDateTime(),
                 Location = ex.HasLocation ? ex.Location : null,
                 Sensitivity = ex.HasSensitivity ? (byte)ex.Sensitivity : null,
                 BusyStatus = ex.HasBusyStatus ? (byte)ex.BusyStatus : null,
                 AllDayEvent = ex.HasAllDayEvent ? ex.AllDayEvent : null,
                 Reminder = ex.HasReminder ? ex.Reminder : null,
-                DtStamp = ex.DtStamp != null ? ex.DtStamp.ToDateTime() : null,
+                DtStamp = ex.DtStamp?.ToDateTime(),
                 MeetingStatus = ex.HasMeetingStatus ? (byte)ex.MeetingStatus : null,
-                AppointmentReplyTime = ex.AppointmentReplyTime != null ? ex.AppointmentReplyTime.ToDateTime() : null,
+                AppointmentReplyTime = ex.AppointmentReplyTime?.ToDateTime(),
                 ResponseType = ex.HasResponseType ? ex.ResponseType : null,
                 OnlineMeetingConfLink = ex.HasOnlineMeetingConfLink ? ex.OnlineMeetingConfLink : null,
                 OnlineMeetingExternalLink = ex.HasOnlineMeetingExternalLink ? ex.OnlineMeetingExternalLink : null,
@@ -460,8 +462,12 @@ public class MailboxStoreService(MailboxDbContext db) : MailboxStore.MailboxStor
                     AttendeeStatus = a.HasAttendeeStatus ? (byte)a.AttendeeStatus : null,
                     AttendeeType = a.HasAttendeeType ? (byte)a.AttendeeType : null,
                 })],
-                Categories = [.. ex.Categories.Select(c => new DbCalendarExceptionCategory
-                { Id = Guid.NewGuid().ToString("N"), CalendarExceptionId = exId, Category = c.Category })],
+                Categories = [.. ex.Categories.Select(c => new DbCalendarExceptionCategory 
+                {
+                    Id = Guid.NewGuid().ToString("N"), 
+                    CalendarExceptionId = exId, 
+                    Category = c.Category 
+                })],
             };
         })];
     }

@@ -48,7 +48,6 @@ public class CalendarData
         set => DtStamp = EasDateHelper.ToDateTime(value);
     }
 
-    // ── Identity ──────────────────────────────────────────────────────────────
     [XmlElement("UID", Namespace = Constants.Calendar)]
     public string? Uid { get; set; }
 
@@ -56,7 +55,6 @@ public class CalendarData
     [XmlElement("ClientUid", Namespace = Constants.Calendar)]
     public string? ClientUid { get; set; }
 
-    // ── Meeting info ──────────────────────────────────────────────────────────
     [XmlElement("Subject", Namespace = Constants.Calendar)]
     public string? Subject { get; set; }
 
@@ -94,7 +92,6 @@ public class CalendarData
     [XmlElement("OrganizerEmail", Namespace = Constants.Calendar)]
     public string? OrganizerEmail { get; set; }
 
-    // ── Meeting response ──────────────────────────────────────────────────────
     // AppointmentReplyTime: response only; MUST NOT be in requests.
     [XmlIgnore]
     public DateTime? AppointmentReplyTime { get; set; }
@@ -118,7 +115,6 @@ public class CalendarData
     [XmlElement("DisallowNewTimeProposal", Namespace = Constants.Calendar)]
     public int? DisallowNewTimeProposal { get; set; }
 
-    // ── Online meeting ────────────────────────────────────────────────────────
     // Response only; MUST NOT be in requests.
     [XmlElement("OnlineMeetingConfLink", Namespace = Constants.Calendar)]
     public string? OnlineMeetingConfLink { get; set; }
@@ -126,14 +122,12 @@ public class CalendarData
     [XmlElement("OnlineMeetingExternalLink", Namespace = Constants.Calendar)]
     public string? OnlineMeetingExternalLink { get; set; }
 
-    // ── Body (protocol 12.0+) ─────────────────────────────────────────────────
     [XmlElement("Body", Namespace = Constants.AirSyncBase)]
     public AirSyncBody? Body { get; set; }
 
     [XmlElement("NativeBodyType", Namespace = Constants.AirSyncBase)]
     public byte? NativeBodyType { get; set; }
 
-    // ── Body (protocol 2.5 only) ──────────────────────────────────────────────
     [XmlElement("Body", Namespace = Constants.Calendar)]
     public string? BodyLegacy { get; set; }
 
@@ -141,7 +135,6 @@ public class CalendarData
     [XmlElement("BodyTruncated", Namespace = Constants.Calendar)]
     public int? BodyTruncated { get; set; }
 
-    // ── Collections ───────────────────────────────────────────────────────────
     [XmlElement("Attendees", Namespace = Constants.Calendar)]
     public CalendarAttendees? Attendees { get; set; }
 
@@ -157,7 +150,6 @@ public class CalendarData
     // Conversions: see Models/ProtoExtensions.cs for ToProtoCalendar().
 }
 
-// ── <calendar:Attendees> container ────────────────────────────────────────────
 public class CalendarAttendees
 {
     [XmlElement("Attendee", Namespace = Constants.Calendar)]
@@ -181,14 +173,12 @@ public class CalendarAttendeeData
     public byte? AttendeeType { get; set; }
 }
 
-// ── <calendar:Categories> container ──────────────────────────────────────────
 public class CalendarCategories
 {
     [XmlElement("Category", Namespace = Constants.Calendar)]
     public List<string> Items { get; set; } = [];
 }
 
-// ── <calendar:Recurrence> ─────────────────────────────────────────────────────
 public class CalendarRecurrence
 {
     // xs:unsignedByte; 0=Daily 1=Weekly 2=Monthly 3=MonthlyNth 5=Yearly 6=YearlyNth.
@@ -236,14 +226,12 @@ public class CalendarRecurrence
     public byte? FirstDayOfWeek { get; set; }
 }
 
-// ── <calendar:Exceptions> container ──────────────────────────────────────────
 public class CalendarExceptions
 {
     [XmlElement("Exception", Namespace = Constants.Calendar)]
     public List<CalendarExceptionData> Items { get; set; } = [];
 }
 
-// ── <calendar:Exception> ─────────────────────────────────────────────────────
 // An exception replaces or deletes a single occurrence in a recurring series.
 // ExceptionStartTime identifies the replaced occurrence in v2.5–14.1;
 // airsyncbase:InstanceId is used instead in v16.0+.
@@ -261,7 +249,6 @@ public class CalendarExceptionData
     [XmlElement("InstanceId", Namespace = Constants.AirSyncBase)]
     public string? InstanceId { get; set; }
 
-    // ── Overriding fields (all optional; inherit from master if absent) ────────
     [XmlElement("Subject", Namespace = Constants.Calendar)]
     public string? Subject { get; set; }
 
