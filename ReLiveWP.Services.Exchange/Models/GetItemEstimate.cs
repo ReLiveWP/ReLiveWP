@@ -7,7 +7,6 @@ public static partial class Constants
     public const string GetItemEstimate = "GetItemEstimate";
 }
 
-// ── Request ───────────────────────────────────────────────────────────────────
 // The root and most child elements use the GetItemEstimate namespace; SyncKey,
 // Class, Options, ConversationMode are in the AirSync namespace (per spec §2.2.1.9).
 
@@ -45,7 +44,6 @@ public class GieRequestCollection
     public SyncOptions? Options { get; set; }
 }
 
-// ── Response ──────────────────────────────────────────────────────────────────
 // All response elements are in the GetItemEstimate namespace.
 // One <Response> per requested collection; Status inside Response is per-collection.
 

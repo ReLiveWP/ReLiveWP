@@ -39,6 +39,14 @@ class ASWBXML
     private int currentCodePage = 0;
     private int defaultCodePage = -1;
 
+    // Elements whose text content is base64 on the XML side but must be emitted as an opaque
+    // binary BLOB in WBXML (MS-ASWBXML). Keeps binary out of the intermediate XML string.
+    private static readonly HashSet<(string Namespace, string LocalName)> opaqueElements =
+    [
+        ("Email2", "ConversationId"),
+        ("Email2", "ConversationIndex"),
+    ];
+
     public ASWBXML()
     {
         // Load up code pages
@@ -888,8 +896,19 @@ class ASWBXML
                     break;
                 case GlobalTokens.OPAQUE:
                     int CDATALength = bytes.DequeueMultibyteInt();
-                    XmlCDataSection newOpaqueNode = xmlDoc.CreateCDataSection(bytes.DequeueString(CDATALength));
-                    currentNode.AppendChild(newOpaqueNode);
+                    string opaque = bytes.DequeueString(CDATALength);
+                    if (opaqueElements.Contains((currentNode.NamespaceURI, currentNode.LocalName)))
+                    {
+                        // Mirror the encoder: surface binary opaque elements as base64 text so the
+                        // XML stays valid (these bytes can include NUL etc.).
+                        var raw = new byte[opaque.Length];
+                        for (int i = 0; i < opaque.Length; i++) raw[i] = (byte)opaque[i];
+                        currentNode.AppendChild(xmlDoc.CreateTextNode(Convert.ToBase64String(raw)));
+                    }
+                    else
+                    {
+                        currentNode.AppendChild(xmlDoc.CreateCDataSection(opaque));
+                    }
                     break;
                 case GlobalTokens.STR_I:
                     XmlNode newTextNode = xmlDoc.CreateTextNode(bytes.DequeueString());
@@ -925,7 +944,6 @@ class ASWBXML
                     byte token = (byte)(currentByte & 0x3F);
 
                     if (hasAttributes)
-                        // Maybe use Trace.Assert here?
                         throw new InvalidDataException(string.Format("Token 0x{0:X} has attributes.", token));
 
                     string strTag = codePages[currentCodePage].GetTag(token)
@@ -980,6 +998,9 @@ class ASWBXML
 
                 byte token = codePages[currentCodePage].GetToken(node.LocalName);
 
+                bool isOpaque = node.HasChildNodes
+                    && opaqueElements.Contains((node.NamespaceURI, node.LocalName));
+
                 if (node.HasChildNodes)
                 {
                     token |= 0x40;
@@ -989,9 +1010,18 @@ class ASWBXML
 
                 if (node.HasChildNodes)
                 {
-                    foreach (XmlNode child in node.ChildNodes)
+                    if (isOpaque)
                     {
-                        byteList.AddRange(EncodeNode(child));
+                        // Text content is base64; emit the decoded bytes as an opaque BLOB.
+                        byteList.Add((byte)GlobalTokens.OPAQUE);
+                        byteList.AddRange(EncodeOpaque(Convert.FromBase64String(node.InnerText)));
+                    }
+                    else
+                    {
+                        foreach (XmlNode child in node.ChildNodes)
+                        {
+                            byteList.AddRange(EncodeNode(child));
+                        }
                     }
 
                     byteList.Add((byte)GlobalTokens.END);
@@ -1121,6 +1151,14 @@ class ASWBXML
             byteList.Add((byte)charArray[i]);
         }
 
+        return [.. byteList];
+    }
+
+    private byte[] EncodeOpaque(byte[] value)
+    {
+        List<byte> byteList = new List<byte>();
+        byteList.AddRange(EncodeMultiByteInteger(value.Length));
+        byteList.AddRange(value);
         return [.. byteList];
     }
 

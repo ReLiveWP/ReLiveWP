@@ -140,6 +140,144 @@ internal static class ApplicationDataExtensions
         return DtoToApplicationData(cd);
     }
 
+    public static ApplicationData ToApplicationData(this EmailItem e, BodyPreference? bodyPref = null)
+    {
+        var ed = new EmailData();
+        ed.To = e.HasTo ? e.To : null;
+        ed.Cc = e.HasCc ? e.Cc : null;
+        ed.From = e.HasFrom ? e.From : null;
+        ed.ReplyTo = e.HasReplyTo ? e.ReplyTo : null;
+        ed.Sender = e.HasSender ? e.Sender : null;
+        ed.DisplayTo = e.HasDisplayTo ? e.DisplayTo : null;
+        ed.Subject = e.HasSubject ? e.Subject : null;
+        ed.DateReceived = e.DateReceived != null ? e.DateReceived.ToDateTime() : null;
+        ed.ThreadTopic = e.HasThreadTopic ? e.ThreadTopic : null;
+        ed.Importance = e.HasImportance ? (byte)e.Importance : null;
+        ed.Read = e.HasRead ? (e.Read ? (byte)1 : (byte)0) : null;
+        ed.MessageClass = e.HasMessageClass ? e.MessageClass : "IPM.Note";
+        ed.InternetCPID = e.HasInternetCpid ? e.InternetCpid : null;
+        ed.ContentClass = e.HasContentClass ? e.ContentClass : null;
+        ed.LastVerbExecuted = e.HasLastVerbExecuted ? e.LastVerbExecuted : null;
+        ed.LastVerbExecutionTime = e.LastVerbExecutionTime != null ? e.LastVerbExecutionTime.ToDateTime() : null;
+
+        // ConversationId/Index are required in server responses (MS-ASEMAIL §2.2.2.20/2.2.2.21).
+        // Use the stored value when present, otherwise derive a stable id from the thread so
+        // messages in the same thread group together.
+        ed.ConversationId = e.HasConversationId ? e.ConversationId.ToByteArray() : DeriveConversationId(e);
+        ed.ConversationIndex = e.HasConversationIndex
+            ? e.ConversationIndex.ToByteArray()
+            : BuildConversationIndex(ed.ConversationId, e.DateReceived?.ToDateTime() ?? DateTime.UtcNow);
+
+        if (e.HasNativeBodyType)
+            ed.NativeBodyType = (byte)e.NativeBodyType;
+
+        ed.Body = BuildBody(e, bodyPref);
+
+        if (e.Flag is { } f)
+            ed.Flag = ToFlagDto(f);
+
+        return DtoToApplicationData(ed);
+    }
+
+    // Applies the client's BodyPreference: selects the requested body type, truncates the data
+    // to TruncationSize, and reports EstimatedDataSize / Truncated per MS-ASAIRS §2.2.2.9.
+    private static AirSyncBody? BuildBody(EmailItem e, BodyPreference? pref)
+    {
+        if (!e.HasBody) return null;
+
+        var data = e.Body;
+        var type = e.HasBodyType ? (BodyType)e.BodyType : BodyType.PlainText;
+        var body = new AirSyncBody { Type = type, EstimatedDataSize = data.Length };
+
+        int? truncationSize = pref?.TruncationSize;
+        if (truncationSize is { } size && data.Length > size)
+        {
+            if (pref?.AllOrNone is 1)
+            {
+                // Caller wants the whole body or nothing; return metadata only.
+                body.Data = null;
+                body.Truncated = 1;
+                return body;
+            }
+            body.Data = data[..size];
+            body.Truncated = 1;
+        }
+        else
+        {
+            body.Data = data;
+        }
+
+        if (pref?.Preview is { } previewLen and > 0)
+            body.Preview = data.Length <= previewLen ? data : data[..previewLen];
+
+        return body;
+    }
+
+    // 16-byte conversation id. Derived from the normalised thread topic so replies/forwards
+    // (which share a topic) collapse into one conversation; falls back to the subject.
+    private static byte[] DeriveConversationId(EmailItem e)
+    {
+        var key = NormaliseTopic(e.HasThreadTopic ? e.ThreadTopic : e.HasSubject ? e.Subject : null);
+        if (key is null)
+            return Guid.NewGuid().ToByteArray();
+        return System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(key));
+    }
+
+    // Minimal 22-byte ConversationIndex header (MS-OXOMSG §2.2.1.3): reserved 0x01, a 5-byte
+    // current FILETIME, then the 16-byte conversation id. Reply chains would append 5-byte
+    // child blocks; that is left for later.
+    private static byte[] BuildConversationIndex(byte[] conversationId, DateTime time)
+    {
+        var buf = new byte[22];
+        buf[0] = 0x01;
+        long fileTime = DateTime.SpecifyKind(time, DateTimeKind.Utc).ToFileTimeUtc();
+        // High 5 bytes of the 64-bit FILETIME, big-endian.
+        for (int i = 0; i < 5; i++)
+            buf[1 + i] = (byte)(fileTime >> (8 * (7 - i)));
+        Array.Copy(conversationId, 0, buf, 6, 16);
+        return buf;
+    }
+
+    private static string? NormaliseTopic(string? topic)
+    {
+        if (string.IsNullOrWhiteSpace(topic)) return null;
+        var s = topic.Trim();
+        // Strip leading RE:/FW:/FWD: prefixes (repeatedly), case-insensitively.
+        bool stripped;
+        do
+        {
+            stripped = false;
+            foreach (var p in (ReadOnlySpan<string>)["re:", "fw:", "fwd:"])
+            {
+                if (s.StartsWith(p, StringComparison.OrdinalIgnoreCase))
+                {
+                    s = s[p.Length..].TrimStart();
+                    stripped = true;
+                }
+            }
+        } while (stripped);
+        return s.Length == 0 ? null : s.ToLowerInvariant();
+    }
+
+    private static Models.EmailFlag ToFlagDto(ReLiveWP.Services.Grpc.Mailbox.EmailFlag f)
+    {
+        var dto = new Models.EmailFlag
+        {
+            Status = f.HasStatus ? (byte)f.Status : null,
+            FlagType = f.HasFlagType ? f.FlagType : null,
+            Subject = f.HasSubject ? f.Subject : null,
+            DateCompleted = f.DateCompleted != null ? f.DateCompleted.ToDateTime() : null,
+            CompleteTime = f.CompleteTime != null ? f.CompleteTime.ToDateTime() : null,
+            StartDate = f.StartDate != null ? f.StartDate.ToDateTime() : null,
+            DueDate = f.DueDate != null ? f.DueDate.ToDateTime() : null,
+            UtcStartDate = f.UtcStartDate != null ? f.UtcStartDate.ToDateTime() : null,
+            UtcDueDate = f.UtcDueDate != null ? f.UtcDueDate.ToDateTime() : null,
+            ReminderSet = f.HasReminderSet ? (f.ReminderSet ? (byte)1 : (byte)0) : null,
+            ReminderTime = f.ReminderTime != null ? f.ReminderTime.ToDateTime() : null,
+        };
+        return dto;
+    }
+
     private static ApplicationData DtoToApplicationData<T>(T dto) where T : class
     {
         var serializer = new XmlSerializer(typeof(T));

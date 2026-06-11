@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Grpc.Core;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
@@ -15,18 +16,20 @@ public class FolderSyncService(
 
     private const string HierarchyCollectionId = "0"; // SyncState.FolderHierarchyCollectionId
 
-    public async Task<FolderSync> SyncAsync(string userId, string deviceId, string? clientSyncKey,
-        IReadOnlySet<string>? requestedAnnotations = null, CancellationToken ct = default)
+    public async Task<FolderSync> SyncAsync(string userId,
+                                            string deviceId,
+                                            string? clientSyncKey,
+                                            IReadOnlySet<string>? requestedAnnotations = null,
+                                            CancellationToken ct = default)
     {
         clientSyncKey ??= "0";
 
         SyncState? state;
         try
         {
-            var s = await mailbox.GetSyncStateAsync(
+            state = await mailbox.GetSyncStateAsync(
                 new GetSyncStateRequest { UserId = userId, DeviceId = deviceId, CollectionId = HierarchyCollectionId },
                 cancellationToken: ct);
-            state = s;
         }
         catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
         {
@@ -42,6 +45,7 @@ public class FolderSyncService(
                 userId, deviceId, clientSyncKey, state?.SyncKey ?? "<none>");
 
             if (state is not null)
+            {
                 await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
                 {
                     UserId = userId,
@@ -50,6 +54,7 @@ public class FolderSyncService(
                     SyncKey = "0",
                     Watermark = 0,
                 }, cancellationToken: ct);
+            }
 
             return await InitialSyncAsync(userId, deviceId, state, requestedAnnotations, ct);
         }
@@ -61,14 +66,21 @@ public class FolderSyncService(
         requested is not null &&
         (requested.Contains("SID") || requested.Contains("AN") || requested.Contains("DomainId"));
 
-    private async Task<FolderSync> InitialSyncAsync(string userId, string deviceId,
-        SyncState? state, IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
+    private async Task<FolderSync> InitialSyncAsync(string userId,
+                                                    string deviceId,
+                                                    SyncState? state,
+                                                    IReadOnlySet<string>? requestedAnnotations,
+                                                    CancellationToken ct)
     {
         var tip = (await mailbox.GetFolderEventTipAsync(
             new FolderEventTipRequest { UserId = userId }, cancellationToken: ct)).Value;
 
         bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
-        var folders = await ReadAllFoldersAsync(userId, includeHidden: abchRequested, ct);
+
+        var changes = new Changes();
+        await foreach (var f in ReadFoldersAsync(userId, includeHidden: abchRequested, ct))
+            changes.Add.Add(ToFolderChange(f, requestedAnnotations));
+        changes.Count = changes.Add.Count;
 
         await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
         {
@@ -79,16 +91,17 @@ public class FolderSyncService(
             Watermark = tip,
         }, cancellationToken: ct);
 
-        var changes = new Changes { Add = [.. folders.Select(f => ToFolderChange(f, requestedAnnotations))] };
-        changes.Count = changes.Add.Count;
-
         return new FolderSync { Status = StatusSuccess, SyncKey = "1", Changes = changes };
     }
 
-    private async Task<FolderSync> IncrementalSyncAsync(string userId, SyncState state,
-        IReadOnlySet<string>? requestedAnnotations, CancellationToken ct)
+    private async Task<FolderSync> IncrementalSyncAsync(string userId,
+                                                        SyncState state,
+                                                        IReadOnlySet<string>? requestedAnnotations,
+                                                        CancellationToken ct)
     {
-        var events = await ReadAllFolderEventsAsync(userId, state.Watermark, ct);
+        var events = new List<SyncEvent>();
+        await foreach (var e in ReadFolderEventsAsync(userId, state.Watermark, ct))
+            events.Add(new SyncEvent(e.Id, e.ServerId, e.EventType));
 
         if (events.Count == 0)
         {
@@ -103,12 +116,14 @@ public class FolderSyncService(
             return new FolderSync { Status = StatusSuccess, SyncKey = state.SyncKey, Changes = new Changes() };
         }
 
-        var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.Id, e.ServerId, e.EventType)).ToList());
+        var delta = SyncEngine.Collapse(events);
 
         bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
-        var ids = delta.Added.Concat(delta.Updated).ToList();
-        var folders = (await ReadFoldersByIdsAsync(userId, ids, abchRequested, ct))
-            .ToDictionary(f => f.Id);
+        var wanted = delta.Added.Concat(delta.Updated).ToHashSet();
+        var folders = new Dictionary<string, Folder>();
+        await foreach (var f in ReadFoldersAsync(userId, abchRequested, ct))
+            if (wanted.Contains(f.Id))
+                folders[f.Id] = f;
 
         var changes = new Changes
         {
@@ -131,37 +146,23 @@ public class FolderSyncService(
         return new FolderSync { Status = StatusSuccess, SyncKey = newKey, Changes = changes };
     }
 
-    // ── gRPC stream helpers ───────────────────────────────────────────────────
-
-    private async Task<List<Folder>> ReadAllFoldersAsync(string userId, bool includeHidden, CancellationToken ct)
+    private async IAsyncEnumerable<Folder> ReadFoldersAsync(string userId, bool includeHidden,
+        [EnumeratorCancellation] CancellationToken ct)
     {
-        var result = new List<Folder>();
         using var call = mailbox.ListFolders(new ListFoldersRequest
-        { UserId = userId, IncludeHidden = includeHidden, IncludeDeleted = false });
+        { UserId = userId, IncludeHidden = includeHidden, IncludeDeleted = false }, cancellationToken: ct);
         await foreach (var f in call.ResponseStream.ReadAllAsync(ct))
-            result.Add(f);
-        return result;
+            yield return f;
     }
 
-    private async Task<List<Folder>> ReadFoldersByIdsAsync(string userId, List<string> ids,
-        bool includeHidden, CancellationToken ct)
+    private async IAsyncEnumerable<FolderEvent> ReadFolderEventsAsync(string userId, long afterWatermark,
+        [EnumeratorCancellation] CancellationToken ct)
     {
-        var all = await ReadAllFoldersAsync(userId, includeHidden, ct);
-        var idSet = ids.ToHashSet();
-        return [.. all.Where(f => idSet.Contains(f.Id))];
-    }
-
-    private async Task<List<FolderEvent>> ReadAllFolderEventsAsync(string userId, long afterWatermark, CancellationToken ct)
-    {
-        var result = new List<FolderEvent>();
         using var call = mailbox.GetFolderEvents(new GetFolderEventsRequest
-        { UserId = userId, AfterWatermark = afterWatermark });
+        { UserId = userId, AfterWatermark = afterWatermark }, cancellationToken: ct);
         await foreach (var e in call.ResponseStream.ReadAllAsync(ct))
-            result.Add(e);
-        return result;
+            yield return e;
     }
-
-    // ── EAS XML mapping ───────────────────────────────────────────────────────
 
     private static FolderChange ToFolderChange(Folder f, IReadOnlySet<string>? requested) => new()
     {
@@ -172,7 +173,8 @@ public class FolderSyncService(
         Annotations = BuildFolderAnnotations(f, requested),
     };
 
-    private static EasFolderType ToEasFolderType(ProtoFolderType t) => (EasFolderType)(int)t;
+    private static EasFolderType ToEasFolderType(ProtoFolderType t) 
+        => (EasFolderType)t;
 
     private static Annotations? BuildFolderAnnotations(Folder f, IReadOnlySet<string>? requested)
     {

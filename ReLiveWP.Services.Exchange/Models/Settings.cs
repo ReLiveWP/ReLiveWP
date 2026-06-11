@@ -7,8 +7,6 @@ public static partial class Constants
     public const string Settings = "Settings";
 }
 
-// ── Request ───────────────────────────────────────────────────────────────────
-
 [XmlRoot("Settings", Namespace = Constants.Settings)]
 public class SettingsRequest
 {
@@ -65,8 +63,6 @@ public class SettingsUserInformationRequest
 }
 
 public class UserInformationRequestGet { }
-
-// ── Response ──────────────────────────────────────────────────────────────────
 
 [XmlRoot("Settings", Namespace = Constants.Settings)]
 public class SettingsResponse

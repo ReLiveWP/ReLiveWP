@@ -30,7 +30,7 @@ public class ProfileValue : IXmlSerializable
     public ProfileValue(DateTime dt)
     {
         XsdType = "dateTime";
-        Value = dt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+        Value = XmlConvert.ToString(dt, XmlDateTimeSerializationMode.Utc);
     }
 
     public XmlSchema? GetSchema() => null;

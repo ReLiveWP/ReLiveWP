@@ -6,7 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
 builder.Services.AddGrpc();
-builder.Services.AddDbContext<MailboxDbContext>();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<MailboxDbContext>(options =>
+    options.UseSqlite(connectionString)
+           .AddInterceptors(new ChangeLogInterceptor()));
 
 var app = builder.Build();
 

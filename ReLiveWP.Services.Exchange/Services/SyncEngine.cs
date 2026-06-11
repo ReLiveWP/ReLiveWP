@@ -6,7 +6,7 @@ public record SyncDelta(List<string> Added, List<string> Updated, List<string> D
 
 // Minimal event projection passed to Collapse — decoupled from both the EF entity
 // and the specific proto message type (FolderEvent vs ItemEvent share the same fields).
-public record SyncEvent(long Id, string ServerId, ChangeEventType EventType);
+public record struct SyncEvent(long Id, string ServerId, ChangeEventType EventType);
 
 public static class SyncEngine
 {
