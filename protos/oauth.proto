@@ -42,6 +42,7 @@ message FinaliseAccountLinkingRequest {
 	string state = 2;
 	optional string issuer = 3;
 	string code = 4;
+	repeated string scopes = 5;
 }
 
 message FinaliseAccountLinkingResponse {

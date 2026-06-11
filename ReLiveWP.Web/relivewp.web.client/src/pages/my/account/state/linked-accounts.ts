@@ -24,7 +24,7 @@ export const AccountTypes = {
         icon: MisskeyIcon,
         allowsMany: true,
     },
-    "google_drive": {
+    "google": {
         name: "google drive",
         icon: GoogleDriveIcon,
         allowsMany: false
@@ -45,7 +45,7 @@ export type AccountType = keyof typeof AccountTypes;
 
 export const AccountTypeGroups: { [key: string]: AccountType[] } = {
     "Social": ["atproto", "mastodon", "misskey"],
-    "Storage": ["onedrive", "google_drive", "dropbox"]
+    "Storage": ["onedrive", "google", "dropbox"]
 }
 
 export type AccountInfo = {

@@ -76,7 +76,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             .CreateAuthorizeUrl(
                 clientId: description.ClientId,
                 responseType: "code",
-                scope: "atproto transition:generic",
+                scope: description.Scopes,
                 redirectUri: description.RedirectUri,
                 state: state,
                 codeChallenge: codeChallenge,
@@ -141,7 +141,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.RefreshToken = tokenResult.RefreshToken!;
         service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
-        service.EnabledCapabilities = LiveConnectedServiceCapabilities.None;
+        service.EnabledCapabilities = description.ServiceCapabilities;
         service.DPoPKeyId = keyId;
         service.AuthorizationEndpoint = doc.AuthorizeEndpoint;
         service.TokenEndpoint = doc.TokenEndpoint!;

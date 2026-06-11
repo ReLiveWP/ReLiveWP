@@ -63,7 +63,8 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             if (existing.UserId != pendingOauth.UserId)
                 throw new RpcException(new Status(StatusCode.PermissionDenied, "Connection does not belong to this user."));
 
-            await handler.FinalizeAccountLinkAsync(existing, pendingOauth, request.Code);
+            // technically this should mutate what is in `existing` but it's nice to be explicit about it
+            existing = await handler.FinalizeAccountLinkAsync(existing, pendingOauth, request.Code, [.. request.Scopes]);
             dbContext.ConnectedServices.Update(existing);
         }
         else
@@ -80,7 +81,8 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
                 EnabledCapabilities = serviceDescription.ServiceCapabilities,
             };
 
-            service = await handler.FinalizeAccountLinkAsync(service, pendingOauth, request.Code);
+            // ditto for `service`
+            service = await handler.FinalizeAccountLinkAsync(service, pendingOauth, request.Code, [.. request.Scopes]);
             await dbContext.ConnectedServices.AddAsync(service);
         }
 
@@ -106,7 +108,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         if (!connectedServices.TryGetValue(existing.Service, out var serviceDescription))
             throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
 
-        // Use the stored handle (strip leading @) so handle→PDS resolution runs the same as initial link.
+        // use the stored handle (strip leading @) so handle->PDS resolution runs the same as initial link.
         var identifier = existing.ServiceProfile.Username?.TrimStart('@')
             ?? existing.ServiceProfile.UserId;
 
@@ -135,6 +137,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
                 Capabilities = (ulong)connection.ServiceCapabilities
             });
         }
+
         return Task.FromResult(response);
     }
 
@@ -168,12 +171,10 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
     {
         var userId = GetUserId(context);
         var connId = Guid.Parse(request.ConnectionId);
-        var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId);
-        if (connection == null)
-        {
-            throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
-        }
-
+        
+        var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
+        
         dbContext.ConnectedServices.Remove(connection);
         await dbContext.SaveChangesAsync();
 
@@ -210,6 +211,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
     {
         var sub = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid user."));
+
         return Guid.Parse(sub);
     }
 }

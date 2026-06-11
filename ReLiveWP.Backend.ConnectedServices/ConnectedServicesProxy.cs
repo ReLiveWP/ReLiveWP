@@ -19,11 +19,11 @@ public static class ConnectedServicesProxy
 
 
     private static Task XRpcProxyHandler(HttpContext context,
-                                           ConnectedServicesDbContext dbContext,
-                                           IEnumerable<IConnectedServiceProxy> proxies,
-                                           ILogger<ConnectedServicesProxyLog> logger,
-                                           ServiceTokenLocks tokenLocks,
-                                           string path)
+                                         ConnectedServicesDbContext dbContext,
+                                         IEnumerable<IConnectedServiceProxy> proxies,
+                                         ILogger<ConnectedServicesProxyLog> logger,
+                                         ServiceTokenLocks tokenLocks,
+                                         string path)
         => ProxyHandler(context, dbContext, proxies, logger, tokenLocks, AtProto.SERVICE_NAME, path);
 
     private static async Task ProxyHandler(HttpContext context,
