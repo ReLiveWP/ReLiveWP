@@ -1,5 +1,6 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -17,10 +18,7 @@ public class TokenManager(
 {
     private const string JwtIssuer = "https://relivewp.net/";
 
-    private readonly SymmetricSecurityKey signingKey
-         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
-
-    public async Task<SecurityToken> CreateJwtSecurityToken(LiveUser user, string serviceTarget)
+    public SecurityToken CreateJwtSecurityToken(LiveUser user, string serviceTarget)
     {
         var authClaims = new List<Claim>()
         {
@@ -50,7 +48,7 @@ public class TokenManager(
         var token = new JwtSecurityToken(
             expires: expires.UtcDateTime,
             claims: authClaims,
-            signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256)
+            signingCredentials: GetSigningCredentials()
         );
 
         return token;
@@ -105,11 +103,10 @@ public class TokenManager(
 
     public async Task<TokenValidationResult> ValidateJwtAsync(string token, string[] audiences)
     {
-        var key = Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!);
         var validationParameters = new TokenValidationParameters()
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
+            IssuerSigningKey = GetVerifyingCredentials(configuration),
 
             ValidateIssuer = true,
             ValidIssuer = JwtIssuer,
@@ -127,5 +124,45 @@ public class TokenManager(
             logger.LogWarning(response.Exception, "Invalid token request?");
 
         return response;
+    }
+
+    private SigningCredentials GetSigningCredentials()
+    {
+        var type = configuration["JWT:SignatureAlgorithm"] ?? "SHA256-HMAC";
+        if (type == "ES256")
+        {
+            var provider = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            var privateKey = Convert.FromBase64String(configuration["JWT:PrivateKey"]!);
+            provider.ImportECPrivateKey(privateKey, out _);
+
+            var signingKey = new ECDsaSecurityKey(provider);
+            var signingAlgorithm = SecurityAlgorithms.EcdsaSha256;
+            return new SigningCredentials(signingKey, signingAlgorithm);
+        }
+        else
+        {
+            var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
+            var signingAlgorithm = SecurityAlgorithms.HmacSha256;
+            return new SigningCredentials(signingKey, signingAlgorithm);
+        }
+    }
+
+    public static SecurityKey GetVerifyingCredentials(IConfiguration configuration)
+    {
+        var type = configuration["JWT:SignatureAlgorithm"] ?? "SHA256-HMAC";
+        if (type == "ES256")
+        {
+            var provider = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            var publicKey = Convert.FromBase64String(configuration["JWT:PublicKey"]!);
+            provider.ImportSubjectPublicKeyInfo(publicKey, out _);
+
+            var signingKey = new ECDsaSecurityKey(provider);
+            return signingKey;
+        }
+        else
+        {
+            var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
+            return signingKey;
+        }
     }
 }

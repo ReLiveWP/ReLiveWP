@@ -85,7 +85,7 @@ public class AuthenticationService(
         {
             // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
             // we're just working with JWTs which are our stand in for a BinarySecurityToken (aka a blob)
-            var (token, created, expires) = await tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
+            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
 
             response.Tokens.Add(new SecurityTokenResponse()
             {
@@ -140,7 +140,7 @@ public class AuthenticationService(
         {
             // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
             // we're just working with JWTs which are our stand in for a BinarySecurityToken (aka a blob)
-            var (token, created, expires) = await tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
+            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
 
             response.Tokens.Add(new SecurityTokenResponse()
             {
