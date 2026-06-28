@@ -41,13 +41,6 @@ services:
       args:
         PROJECT: ReLiveWP.Services.Login
 
-  zunecommerce:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        PROJECT: ReLiveWP.Zune.Commerce
-
   web:
     build:
       context: .
@@ -59,13 +52,6 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Push
-
-  zunecatalog:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        PROJECT: ReLiveWP.Zune.Catalog
 
   activity:
     build:

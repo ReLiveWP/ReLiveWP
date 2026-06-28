@@ -32,10 +32,10 @@ public class ServiceHeader
 public class Annotation
 {
     [XmlElement("Name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     [XmlElement("Value")]
-    public string Value { get; set; }
+    public string Value { get; set; } = null!;
 }
 
 
@@ -51,19 +51,19 @@ public class NetworkInfo
     // can be 7, 8, 22	
 
     [XmlElement("SourceId")]
-    public string SourceId { get; set; }
+    public string SourceId { get; set; } = null!;
 
     [XmlElement("DomainId")]
     public int DomainId { get; set; }
 
     [XmlElement("DomainTag")]
-    public string DomainTag { get; set; }
+    public string DomainTag { get; set; } = null!;
 
     [XmlElement("UserTileUrl")]
-    public string UserTileUrl { get; set; }
+    public string UserTileUrl { get; set; } = null!;
 
     [XmlElement("DisplayName")]
-    public string DisplayName { get; set; }
+    public string DisplayName { get; set; } = null!;
 }
 
 [MessageContract]

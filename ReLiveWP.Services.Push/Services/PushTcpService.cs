@@ -40,7 +40,6 @@ public class PushTcpService(
                 var transport = ActivatorUtilities.CreateInstance<PushSession>(scope.ServiceProvider, client, sslStream);
                 var session = ActivatorUtilities.CreateInstance<NspSession>(scope.ServiceProvider, transport);
                 _ = session.RunAsync();
-
             }
             catch (Exception ex)
             {
