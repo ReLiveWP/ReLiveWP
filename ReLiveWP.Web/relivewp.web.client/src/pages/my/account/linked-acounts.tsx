@@ -3,8 +3,8 @@ import "./linked-accounts.scss"
 import { Signal, useSignal } from "@preact/signals";
 import { useCallback, useEffect } from "preact/hooks";
 
-import { AccountTypeGroups, Connections, LinkedAccountsContext } from "./state/linked-accounts";
-import { ENDPOINT_GET_LINKED_ACCOUNTS } from "~/util/endpoints";
+import { AccountTypeGroups, AvailableConnectedService, Connections, LinkedAccountsContext } from "./state/linked-accounts";
+import { ENDPOINT_AVAILABLE_LINKS, ENDPOINT_GET_LINKED_ACCOUNTS } from "~/util/endpoints";
 import { useAppState, useAuthenticatedFetch } from "~/state/app-state";
 import AccountTypeGroup from "./components/AccountTypeGroup";
 import { Dialogs } from "./components/Dialogs";
@@ -12,6 +12,7 @@ import { Dialogs } from "./components/Dialogs";
 export default function LinkedAccounts() {
     const fetch = useAuthenticatedFetch()
     const linkedAccounts = useSignal<Connections>(null! as Connections)
+    const availableLinks = useSignal<AvailableConnectedService[]>([])
 
     const doRefresh = useCallback(async () => {
         const response = await fetch(ENDPOINT_GET_LINKED_ACCOUNTS, {
@@ -25,6 +26,14 @@ export default function LinkedAccounts() {
 
     useEffect(() => {
         doRefresh();
+
+        fetch(ENDPOINT_AVAILABLE_LINKS, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        }).then(async (res) => {
+            if (!res.ok) return;
+            availableLinks.value = await res.json();
+        });
     }, []);
 
     if (!linkedAccounts.value) {
@@ -32,7 +41,7 @@ export default function LinkedAccounts() {
     }
 
     return (
-        <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts!, doRefresh }}>
+        <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts!, availableLinks, doRefresh }}>
             <Dialogs>
                 <div class="linked-accounts">
                     {Object.entries(AccountTypeGroups)

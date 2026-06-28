@@ -1,7 +1,9 @@
 using System.Text.Json;
+using Grpc.Net.ClientFactory;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.DeviceRegistration;
+using ReLiveWP.Services.Login;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -26,28 +28,23 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+
 builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!))
+    .AddInterceptor<AuthForwardingInterceptor>(InterceptorScope.Client);
+
 builder.Services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:ClientProvisioning"]!));
 builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
 
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy(name: "*",
-//                      policy => policy.WithOrigins("*")
-//                          .WithHeaders("*")
-//                          .WithMethods("*"));
-//});
-
 var app = builder.Build();
-
-//app.UseCors("*");
 
 app.UseStaticFiles();
 

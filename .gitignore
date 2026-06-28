@@ -367,3 +367,5 @@ MigrationBackup/
 deploy/*
 
 !deploy/example/
+
+.DS_Store

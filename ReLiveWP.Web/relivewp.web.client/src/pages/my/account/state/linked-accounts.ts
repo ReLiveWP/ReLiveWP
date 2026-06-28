@@ -59,8 +59,15 @@ export type Connections = {
     connections: Partial<{ [key in AccountType]: AccountInfo[] | undefined }>
 }
 
+export type AvailableConnectedService = {
+    service: string;
+    displayName: string;
+    capabilities: number;
+}
+
 export type LinkedAccountsContext = {
     linkedAccounts: Signal<Connections>
+    availableLinks: Signal<AvailableConnectedService[]>
     doRefresh: () => void
 }
 

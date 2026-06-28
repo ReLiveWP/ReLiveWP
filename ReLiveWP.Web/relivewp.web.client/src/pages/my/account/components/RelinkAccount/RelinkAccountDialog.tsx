@@ -56,6 +56,7 @@ export default function RelinkAccountDialog({ id, onClose }: {
     const redirectUrl = useSignal("");
     const stage = useSignal<Stage>('loading');
     const error = useSignal<string | null>(null);
+    const connectionId = useSignal("");
 
     useEffect(() => {
         const channel = new BroadcastChannel(OAUTH_CHANNEL);
@@ -77,7 +78,7 @@ export default function RelinkAccountDialog({ id, onClose }: {
     };
 
     return (
-        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, id, service: "", onClose }}>
+        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, connectionId, id, service: "", onClose }}>
             <Dialog class="link-account-dialog" onClose={onClose}>
                 {renderStage()}
             </Dialog>

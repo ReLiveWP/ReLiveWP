@@ -9,6 +9,7 @@ export type LinkAccountContextValue = {
     redirectUrl: Signal<string>;
     stage: Signal<Stage>;
     error: Signal<string | null>;
+    connectionId: Signal<string>;
     service: string;
     id?: string;
     onClose: () => void;

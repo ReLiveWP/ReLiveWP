@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -11,7 +12,6 @@ using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Login.Models;
 
 namespace ReLiveWP.Services.Login.Controllers;
-
 
 [ApiController]
 [Route("auth/[action]/{id?}")]
@@ -32,7 +32,7 @@ public class AuthenticationController(
 
         var user = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
         if (user == null)
-            return NotFound(); // this is pretty bad, maybe 500 is better?
+            return NotFound();
 
         return new UserModel(User.Id()!, user.Cid, user.Puid, user.Username, user.EmailAddress);
     }
@@ -41,30 +41,31 @@ public class AuthenticationController(
     [Route("/auth/user/@me/linked-accounts")]
     public async Task<ActionResult<ConnectionModels>> GetLinkedAccounts()
     {
-        var auth = Request.Headers.Authorization.ToString();
-        var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
-        var connections = connectedServicesClient.GetConnections(new ConnectionsRequest(), new Metadata() { { "Authorization", authHeader } });
+        var connections = connectedServicesClient.GetConnections(new ConnectionsRequest());
 
         var connectionModels = new Dictionary<string, List<ConnectionModel>>();
         await foreach (var connection in connections.ResponseStream.ReadAllAsync())
         {
             if (!connectionModels.TryGetValue(connection.Service, out var connectionList))
-            {
                 connectionModels[connection.Service] = connectionList = [];
-            }
 
             connectionList.Add(new ConnectionModel(connection.Id, connection.ServiceUrl, connection.UserName, (connection.Flags & 0x80000000UL) != 0));
         }
 
         return new ConnectionModels(connectionModels);
     }
-
-
+    
     [ActionName("register")]
-    public async Task<IActionResult> RequestTokens([FromBody] CreateAccountModel request)
+    public async Task<IActionResult> CreateAccountAsync([FromBody] CreateAccountModel request)
     {
-        await authenticationClient.RegisterAsync(new RegisterRequest() { Username = request.Username, Password = request.Password, EmailAddress = request.EmailAddress });
-        return Accepted();
+        await authenticationClient.RegisterAsync(new RegisterRequest()
+        {
+            Username = request.Username,
+            Password = request.Password,
+            EmailAddress = request.EmailAddress
+        });
+
+        return Created();
     }
 
     [ActionName("request_tokens")]
@@ -80,10 +81,10 @@ public class AuthenticationController(
                 grpcRequest.Username = request.Identity;
                 grpcRequest.Password = password;
             }
-            // TODO: i feel like we might be able to remove this path at some stage
-            else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values) && values.FirstOrDefault() != null)
+            // TODO: i feel like we should remove this path at some stage
+            else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values))
             {
-                var value = values.FirstOrDefault()!;
+                var value = values.ToString();
                 if (value.StartsWith("Bearer "))
                     value = value[7..];
 
@@ -164,6 +165,7 @@ public class AuthenticationController(
     [HttpPost(Name = "provision_device")]
     public async Task<ActionResult<ProvisionDeviceResponseModel>> ProvisionDevice([FromBody] ProvisionDeviceRequestModel request)
     {
+        // TODO: oh boy
         var puid = User.Claims.FirstOrDefault(c => c.Type == "puid")?.Value;
         var deviceCert = await authenticationClient.GetDeviceCertificateAsync(new DeviceCertificateRequest()
         {

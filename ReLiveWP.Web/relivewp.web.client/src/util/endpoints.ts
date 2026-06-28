@@ -6,7 +6,9 @@ let ENDPOINT_REQUEST_TOKENS: string,
     ENDPOINT_DELETE_CONNECTION: string,
     ENDPOINT_GET_DEVICES: string,
     ENDPOINT_GET_EXTENDED_DEVICE_INFO: string,
-    ENDPOINT_PING_DEVICE: string
+    ENDPOINT_PING_DEVICE: string,
+    ENDPOINT_AVAILABLE_LINKS: string,
+    ENDPOINT_UPDATE_LINK: string;
 
 if (process.env.NODE_ENV === "production") {
     ENDPOINT_REQUEST_TOKENS = "https://login.relivewp.net/auth/request_tokens";
@@ -18,6 +20,8 @@ if (process.env.NODE_ENV === "production") {
     ENDPOINT_GET_DEVICES = "https://devices.relivewp.net/devices/@me";
     ENDPOINT_GET_EXTENDED_DEVICE_INFO = "https://devices.relivewp.net/devices/info/:deviceId";
     ENDPOINT_PING_DEVICE = "https://devices.relivewp.net/devices/ping/:deviceId";
+    ENDPOINT_AVAILABLE_LINKS = "https://login.relivewp.net/oauth/available-links";
+    ENDPOINT_UPDATE_LINK = "https://login.relivewp.net/oauth/link";
 }
 else {
     ENDPOINT_REQUEST_TOKENS = "https://login.int.relivewp.net/auth/request_tokens";
@@ -29,6 +33,8 @@ else {
     ENDPOINT_GET_DEVICES = "https://devices.int.relivewp.net/devices/@me";
     ENDPOINT_GET_EXTENDED_DEVICE_INFO = "https://devices.int.relivewp.net/devices/info/:deviceId";
     ENDPOINT_PING_DEVICE = "https://devices.int.relivewp.net/devices/ping/:deviceId";
+    ENDPOINT_AVAILABLE_LINKS = "https://login.int.relivewp.net/oauth/available-links";
+    ENDPOINT_UPDATE_LINK = "https://login.int.relivewp.net/oauth/link";
 }
 
 function populateEndpoint(endpoint: string, params: Record<string, string>) {
@@ -39,4 +45,4 @@ function populateEndpoint(endpoint: string, params: Record<string, string>) {
     return endpoint;
 }
 
-export { populateEndpoint, ENDPOINT_GET_DEVICES, ENDPOINT_GET_EXTENDED_DEVICE_INFO, ENDPOINT_REQUEST_TOKENS, ENDPOINT_GET_USER, ENDPOINT_GET_LINKED_ACCOUNTS, ENDPOINT_BEGIN_ACCOUNT_LINKING, ENDPOINT_RELINK_ACCOUNT, ENDPOINT_DELETE_CONNECTION, ENDPOINT_PING_DEVICE };
+export { populateEndpoint, ENDPOINT_GET_DEVICES, ENDPOINT_GET_EXTENDED_DEVICE_INFO, ENDPOINT_REQUEST_TOKENS, ENDPOINT_GET_USER, ENDPOINT_GET_LINKED_ACCOUNTS, ENDPOINT_BEGIN_ACCOUNT_LINKING, ENDPOINT_RELINK_ACCOUNT, ENDPOINT_DELETE_CONNECTION, ENDPOINT_PING_DEVICE, ENDPOINT_AVAILABLE_LINKS, ENDPOINT_UPDATE_LINK };

@@ -11,7 +11,7 @@ using Grpc.Core;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Services;
 using Status = Grpc.Core.Status;
-using static Duende.IdentityModel.OidcConstants;
+using static ReLiveWP.Backend.ConnectedServices.OAuthProviders.AtProto;
 
 namespace ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 
@@ -29,10 +29,10 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
                                   ILogger<ATProtocol> atProtoLogger,
                                   IJWKProvider jwkProvider) : IOAuthProvider
 {
+    private readonly ConnectedServiceDescription description = connectedServices[SERVICE_NAME];
+
     public async Task<LivePendingOAuth> BeginAccountLinkAsync(Guid userId, string handle)
     {
-        var description = connectedServices[AtProto.SERVICE_NAME];
-
         while (handle.StartsWith('@'))
             handle = handle[1..];
 
@@ -81,7 +81,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
                 state: state,
                 codeChallenge: codeChallenge,
                 codeChallengeMethod: "S256",
-                extra: new Parameters() { { AuthorizeRequest.LoginHint, handle, ParameterReplaceBehavior.Single } }
+                extra: new Parameters() { { OidcConstants.AuthorizeRequest.LoginHint, handle, ParameterReplaceBehavior.Single } }
             );
 
         var pending = new LivePendingOAuth()
@@ -104,7 +104,6 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
 
     public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService service, LivePendingOAuth state, string code)
     {
-        var description = connectedServices[AtProto.SERVICE_NAME];
         var (keyId, key) = await jwkProvider.PickKeyAsync();
 
         logger.LogInformation("Beginning stage 2 account linking for {UserId}", state.UserId);
@@ -141,7 +140,8 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.RefreshToken = tokenResult.RefreshToken!;
         service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
-        service.EnabledCapabilities = description.ServiceCapabilities;
+        service.EnabledCapabilities = 0;
+        service.AvailableCapabilities = description.ServiceCapabilities;
         service.DPoPKeyId = keyId;
         service.AuthorizationEndpoint = doc.AuthorizeEndpoint;
         service.TokenEndpoint = doc.TokenEndpoint!;
@@ -158,7 +158,6 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         try
         {
             var key = await jwkProvider.GetJWKAsync(service.DPoPKeyId!);
-            var description = connectedServices[AtProto.SERVICE_NAME];
 
             using var protocol = new ATProtocolBuilder()
                .WithInstanceUrl(new Uri(service.ServiceUrl!))

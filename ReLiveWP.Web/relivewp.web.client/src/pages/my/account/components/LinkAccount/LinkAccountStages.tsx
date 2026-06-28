@@ -1,10 +1,12 @@
-import { useEffect } from "preact/hooks";
+import { useCallback, useEffect } from "preact/hooks";
+import { useSignal } from "@preact/signals";
 
-import { ENDPOINT_BEGIN_ACCOUNT_LINKING } from "~/util/endpoints";
-import { useAppState, useAuthenticatedFetch } from "~/state/app-state";
+import { ENDPOINT_BEGIN_ACCOUNT_LINKING, ENDPOINT_UPDATE_LINK } from "~/util/endpoints";
+import { useAuthenticatedFetch } from "~/state/app-state";
 import { getServiceConfig, requiresHandle } from "./service-config";
 import { useLinkAccount } from "./link-account-context";
 import { useLinkedAccounts } from "../../state/linked-accounts";
+import { ServiceCaps, ServiceCapNames } from "~/util/service-caps";
 
 export function HandleStage() {
     const { handle, error, service, stage, onClose } = useLinkAccount();
@@ -94,6 +96,71 @@ export function RedirectStage() {
     );
 }
 
+export function ConfigureStage() {
+    const fetch = useAuthenticatedFetch();
+    const { service, connectionId, stage, error } = useLinkAccount();
+    const { availableLinks } = useLinkedAccounts();
+
+    const serviceInfo = availableLinks.value.find(l => l.service === service);
+    const availableCaps = serviceInfo
+        ? Object.entries(ServiceCapNames)
+            .map(([cap]) => Number(cap) as ServiceCaps)
+            .filter(cap => cap !== ServiceCaps.none && (serviceInfo.capabilities & cap) !== 0)
+        : [];
+
+    const enabledCaps = useSignal(serviceInfo?.capabilities ?? 0);
+
+    const toggleCap = useCallback((cap: ServiceCaps) => {
+        enabledCaps.value = enabledCaps.value ^ cap;
+    }, []);
+
+    const onSubmit = useCallback(async (e: SubmitEvent) => {
+        e.preventDefault();
+        stage.value = 'applying';
+
+        const url = `${ENDPOINT_UPDATE_LINK}?connectionId=${encodeURIComponent(connectionId.value)}`;
+        const res = await fetch(url, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabledCapabilities: enabledCaps.value }),
+        });
+
+        if (!res.ok) {
+            error.value = "Something went wrong saving your preferences.";
+            stage.value = 'error';
+        } else {
+            stage.value = 'done';
+        }
+    }, []);
+
+    return (
+        <form onSubmit={onSubmit}>
+            <h1>almost there!</h1>
+            <p>What do you want to use this account for?</p>
+            {availableCaps.map(cap => (
+                <label key={cap}>
+                    <input
+                        type="checkbox"
+                        checked={(enabledCaps.value & cap) !== 0}
+                        onChange={() => toggleCap(cap)}
+                    />
+                    {ServiceCapNames[cap as keyof typeof ServiceCapNames]}
+                </label>
+            ))}
+            <input type="submit" class="submit" value="finish" />
+        </form>
+    )
+}
+
+export function ApplyStage() {
+    return (
+        <>
+            <h1>working...</h1>
+            <p>We're finishing up, hang tight...</p>
+        </>
+    );
+}
+
 export function DoneStage() {
     const { onClose } = useLinkAccount();
     const { doRefresh } = useLinkedAccounts();
@@ -119,7 +186,7 @@ export function ErrorStage() {
 
     return (
         <>
-            <h1>sorry! we couldn't do that</h1>
+            <h1>sorry! something went wrong.</h1>
             <p class="error">{error}</p>
             <button onClick={onClose}>close</button>
         </>

@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect } from "preact/hooks";
 import { Dialog } from "~/components/Dialog";
 import { type Stage, requiresHandle } from "./service-config";
 import { LinkAccountContext } from "./link-account-context";
-import { HandleStage, LoadingStage, RedirectStage, DoneStage, ErrorStage } from "./LinkAccountStages";
+import { HandleStage, LoadingStage, RedirectStage, DoneStage, ErrorStage, ConfigureStage, ApplyStage } from "./LinkAccountStages";
 
 export const OAUTH_CHANNEL = "a0eb0210-bc9a-4bc5-be15-44ff49b71027";
 
@@ -18,6 +18,7 @@ export default function LinkAccountDialog({ onClose, service }: {
     const redirectUrl = useSignal("");
     const stage = useSignal<Stage>(requiresHandle(service) ? 'handle' : 'loading');
     const error = useSignal<string | null>(null);
+    const connectionId = useSignal("");
 
     useLayoutEffect(() => {
         stage.value = requiresHandle(service) ? 'handle' : 'loading';
@@ -25,7 +26,10 @@ export default function LinkAccountDialog({ onClose, service }: {
 
     useEffect(() => {
         const channel = new BroadcastChannel(OAUTH_CHANNEL);
-        const onMessage = () => { stage.value = 'done'; };
+        const onMessage = (e: MessageEvent<{ connectionId: string }>) => {
+            connectionId.value = e.data.connectionId;
+            stage.value = 'configure';
+        };
         channel.addEventListener("message", onMessage);
         return () => {
             channel.removeEventListener("message", onMessage);
@@ -38,13 +42,15 @@ export default function LinkAccountDialog({ onClose, service }: {
             case 'handle': return <HandleStage />;
             case 'loading': return <LoadingStage />;
             case 'redirect': return <RedirectStage />;
+            case "configure": return <ConfigureStage />;
+            case "applying": return <ApplyStage/>
             case 'done': return <DoneStage />;
             case 'error': return <ErrorStage />;
         }
     };
 
     return (
-        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, service, onClose }}>
+        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, connectionId, service, onClose }}>
             <Dialog class="link-account-dialog" onClose={onClose}>
                 {renderStage()}
             </Dialog>

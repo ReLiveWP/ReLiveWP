@@ -63,19 +63,24 @@ builder.Services.AddConnectedServices()
         ClientId = builder.Configuration["ConnectedServices:Google:ClientId"]!,
         ClientSecret = builder.Configuration["ConnectedServices:Google:ClientSecret"]!,
         RedirectUri = builder.Configuration["ConnectedServices:Google:RedirectUrl"]!,
-        Scopes = "openid " +
-            "https://www.googleapis.com/auth/userinfo.profile " +
-            "https://www.googleapis.com/auth/userinfo.email " +
-            "https://www.googleapis.com/auth/contacts " +
-            "https://www.googleapis.com/auth/calendar " +
-            "https://www.googleapis.com/auth/calendar.events " +
-            "https://www.googleapis.com/auth/drive " +
-            "https://www.googleapis.com/auth/gmail.modify",
-        ServiceCapabilities = ServiceCaps.Email | ServiceCaps.Contacts | ServiceCaps.Calendar | ServiceCaps.PhotoSync | ServiceCaps.FileStorage,
+        Scopes = string.Concat("openid ",
+            "https://www.googleapis.com/auth/userinfo.profile ",
+            "https://www.googleapis.com/auth/userinfo.email ",
+            // "https://www.googleapis.com/auth/contacts ",
+            // "https://www.googleapis.com/auth/calendar ",
+            // "https://www.googleapis.com/auth/calendar.events ",
+            // "https://www.googleapis.com/auth/drive ",
+            // "https://www.googleapis.com/auth/gmail.modify ",
+            "https://www.googleapis.com/auth/photoslibrary.appendonly ",
+            "https://www.googleapis.com/auth/photoslibrary.edit.appcreateddata "),
+        ServiceCapabilities = 
+            // ServiceCaps.Email | 
+            // ServiceCaps.Contacts | 
+            // ServiceCaps.Calendar | 
+            // ServiceCaps.FileStorage |
+            ServiceCaps.PhotoSync,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<GoogleOAuthProvider>())
     });
-
-
 
 builder.Services.AddGrpc();
 builder.Services.AddHostedService<TokenRefreshService>();
@@ -106,6 +111,15 @@ static void ApplyMigrations(WebApplication app)
         var jwk = JsonWebKeys.CreateECDsa("ES256");
         jwk.KeyId = keyId;
         dbContext.DPoPKeys.Add(new LiveDPoPKey() { Id = keyId, Key = JsonSerializer.Serialize(jwk) });
-        dbContext.SaveChanges();
     }
+
+    foreach (var service in dbContext.ConnectedServices)
+    {
+        // migrating available capabilities from enabled capabilities for now, this is fine
+        // because users cant yet modify caps
+        if (service.AvailableCapabilities == 0)
+            service.AvailableCapabilities = service.EnabledCapabilities;
+    }
+
+    dbContext.SaveChanges();
 }

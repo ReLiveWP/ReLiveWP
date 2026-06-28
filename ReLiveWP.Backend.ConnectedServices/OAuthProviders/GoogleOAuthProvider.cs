@@ -17,10 +17,10 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
                                  IHttpClientFactory httpClientFactory,
                                  ILogger<GoogleOAuthProvider> logger) : IOAuthProvider
 {
+    private readonly ConnectedServiceDescription description = connectedServices[SERVICE_NAME];
+
     public async Task<LivePendingOAuth> BeginAccountLinkAsync(Guid userId, string identifier)
     {
-        var description = connectedServices[SERVICE_NAME];
-
         var state = CryptoRandom.CreateUniqueId();
         var codeVerifier = CryptoRandom.CreateUniqueId(32);
         var codeChallenge = Base64UrlEncoder.Encode(SHA256.HashData(Encoding.UTF8.GetBytes(codeVerifier))); // remove base64 padding
@@ -50,8 +50,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
                 codeChallengeMethod: "S256",
                 extra: new Parameters() { { "access_type", "offline" }, { "prompt", "consent" } }
             );
-
-
+            
         var pending = new LivePendingOAuth()
         {
             UserId = userId,
@@ -76,8 +75,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
 
     public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService service, LivePendingOAuth state, string code, string[] scopes)
     {
-        var description = connectedServices[SERVICE_NAME];
-        var caps = GetEnabledCapabilities(scopes);
+        var caps = GetCapabilitiesFromScopes(scopes);
 
         using var client = httpClientFactory.CreateClient();
         var tokenResult = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
@@ -102,7 +100,8 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         service.RefreshToken = tokenResult.RefreshToken!;
         service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
-        service.EnabledCapabilities = caps;
+        service.EnabledCapabilities = 0;
+        service.AvailableCapabilities = caps;
         service.AuthorizationEndpoint = state.AuthorizationEndpoint;
         service.TokenEndpoint = state.TokenEndpoint!;
 
@@ -117,7 +116,6 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
     {
         try
         {
-            var description = connectedServices[SERVICE_NAME];
             using var client = httpClientFactory.CreateClient();
             var result = await client.RequestRefreshTokenAsync(new RefreshTokenRequest()
             {
@@ -162,7 +160,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         service.ServiceProfile.EmailAddress = response.Email;
     }
 
-    private static LiveConnectedServiceCapabilities GetEnabledCapabilities(string[] scopes)
+    private static LiveConnectedServiceCapabilities GetCapabilitiesFromScopes(string[] scopes)
     {
         LiveConnectedServiceCapabilities caps = 0;
         foreach (var _scope in scopes)
@@ -173,7 +171,9 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
             if (scope.StartsWith("https://www.googleapis.com/auth/calendar"))
                 caps |= LiveConnectedServiceCapabilities.Calendar;
             if (scope.StartsWith("https://www.googleapis.com/auth/drive"))
-                caps |= LiveConnectedServiceCapabilities.FileStorage | LiveConnectedServiceCapabilities.PhotoSync;
+                caps |= LiveConnectedServiceCapabilities.FileStorage;
+            if (scope.StartsWith("https://www.googleapis.com/auth/photoslibrary"))
+                caps |= LiveConnectedServiceCapabilities.PhotoSync;
             if (scope.StartsWith("https://www.googleapis.com/auth/gmail"))
                 caps |= LiveConnectedServiceCapabilities.Email;
         }

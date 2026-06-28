@@ -49,3 +49,13 @@ public record ConnectedDeviceModel(
     string? PhoneNumber, 
     string OSVersion,
     string Locale);
+
+public record AvailableConnectedService(
+    string Service,
+    string DisplayName,
+    uint Capabilities
+);
+
+public record UpdateConnectedServiceModel(
+    uint EnabledCapabilities
+);
