@@ -12,6 +12,8 @@ export type LinkAccountContextValue = {
     connectionId: Signal<string>;
     service: string;
     id?: string;
+    initialCaps?: number;
+    currentEnabledCaps?: number;
     onClose: () => void;
 };
 

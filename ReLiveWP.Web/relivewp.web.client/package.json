@@ -6,7 +6,8 @@
   "scripts": {
     "start": "webpack serve --config ./webpack.config.js --mode development --port 8081",
     "dev": "webpack serve --config ./webpack.config.js --mode development --port 8081",
-    "build": "webpack --config ./webpack.config.js --mode production"
+    "build": "webpack --config ./webpack.config.js --mode production",
+    "build:local": "webpack --config ./webpack.config.js --mode development"
   },
   "keywords": [],
   "author": "",

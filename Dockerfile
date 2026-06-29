@@ -18,10 +18,9 @@ WORKDIR /src
 
 COPY . .
 
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages
-RUN --mount=type=cache,id=dotnet_tools,target=/root/.dotnet
-
-RUN dotnet publish "$PROJECT/$PROJECT.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    --mount=type=cache,id=dotnet_tools,target=/root/.dotnet \
+    dotnet publish "$PROJECT/$PROJECT.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # --- final image ---
 FROM base AS final

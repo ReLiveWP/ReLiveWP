@@ -35,7 +35,7 @@ export const enum ServiceCaps
           xbox
 }
 
-export const ServiceCapNames = {
+export const ServiceCapNames : Partial<Record<ServiceCaps, string>> = {
     [ServiceCaps.email]: "Mail",
     [ServiceCaps.contacts]: "People",
     [ServiceCaps.calendar]: "Calendar",

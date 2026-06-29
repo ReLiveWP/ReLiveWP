@@ -26,10 +26,11 @@ public record ProvisionDeviceRequestModel(string Csr);
 public record ProvisionDeviceResponseModel(string DeviceCert);
 
 public record ConnectionModel(
-    string Id, 
-    string Url, 
-    string Name, 
-    bool NeedsRelink);
+    string Id,
+    string Url,
+    string Name,
+    bool NeedsRelink,
+    uint EnabledCapabilities);
 
 public record ConnectionModels(Dictionary<string, List<ConnectionModel>> Connections);
 

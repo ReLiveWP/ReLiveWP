@@ -24,17 +24,17 @@ if (process.env.NODE_ENV === "production") {
     ENDPOINT_UPDATE_LINK = "https://login.relivewp.net/oauth/link";
 }
 else {
-    ENDPOINT_REQUEST_TOKENS = "https://login.int.relivewp.net/auth/request_tokens";
-    ENDPOINT_GET_USER = "https://login.int.relivewp.net/auth/user/@me";
-    ENDPOINT_GET_LINKED_ACCOUNTS = "https://login.int.relivewp.net/auth/user/@me/linked-accounts";
-    ENDPOINT_BEGIN_ACCOUNT_LINKING = "https://login.int.relivewp.net/oauth/begin-account-link";
-    ENDPOINT_RELINK_ACCOUNT = "https://login.int.relivewp.net/oauth/begin-relink";
-    ENDPOINT_DELETE_CONNECTION = "https://login.int.relivewp.net/oauth/link";
-    ENDPOINT_GET_DEVICES = "https://devices.int.relivewp.net/devices/@me";
-    ENDPOINT_GET_EXTENDED_DEVICE_INFO = "https://devices.int.relivewp.net/devices/info/:deviceId";
-    ENDPOINT_PING_DEVICE = "https://devices.int.relivewp.net/devices/ping/:deviceId";
-    ENDPOINT_AVAILABLE_LINKS = "https://login.int.relivewp.net/oauth/available-links";
-    ENDPOINT_UPDATE_LINK = "https://login.int.relivewp.net/oauth/link";
+    ENDPOINT_REQUEST_TOKENS = "http://login.int.relivewp.net/auth/request_tokens";
+    ENDPOINT_GET_USER = "http://login.int.relivewp.net/auth/user/@me";
+    ENDPOINT_GET_LINKED_ACCOUNTS = "http://login.int.relivewp.net/auth/user/@me/linked-accounts";
+    ENDPOINT_BEGIN_ACCOUNT_LINKING = "http://login.int.relivewp.net/oauth/begin-account-link";
+    ENDPOINT_RELINK_ACCOUNT = "http://login.int.relivewp.net/oauth/begin-relink";
+    ENDPOINT_DELETE_CONNECTION = "http://login.int.relivewp.net/oauth/link";
+    ENDPOINT_GET_DEVICES = "http://devices.int.relivewp.net/devices/@me";
+    ENDPOINT_GET_EXTENDED_DEVICE_INFO = "http://devices.int.relivewp.net/devices/info/:deviceId";
+    ENDPOINT_PING_DEVICE = "http://devices.int.relivewp.net/devices/ping/:deviceId";
+    ENDPOINT_AVAILABLE_LINKS = "http://login.int.relivewp.net/oauth/available-links";
+    ENDPOINT_UPDATE_LINK = "http://login.int.relivewp.net/oauth/link";
 }
 
 function populateEndpoint(endpoint: string, params: Record<string, string>) {

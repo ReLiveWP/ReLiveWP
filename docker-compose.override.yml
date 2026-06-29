@@ -1,3 +1,6 @@
+---
+name: relivewp
+
 services:
   identity:
     build:
@@ -44,7 +47,9 @@ services:
   web:
     build:
       context: .
-      dockerfile: ReLiveWP.Web/ReLiveWP.Web.Server/Dockerfile
+      dockerfile: ReLiveWP.Web/Dockerfile
+      args:
+        CLIENT_BUILD_SCRIPT: build:local
 
   push:
     build:
@@ -94,3 +99,28 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Orion
+
+  dnsmasq:
+    image: alpine:latest
+    command: >
+      sh -c "apk add --no-cache dnsmasq &&
+             dnsmasq --no-daemon --conf-file=/etc/dnsmasq.conf"
+    networks:
+      - relive
+    ports:
+      - "127.0.0.1:5354:5354/udp"
+    volumes:
+      - ./deploy/dnsmasq.conf:/etc/dnsmasq.conf:ro
+
+  nginx:
+    image: nginx:alpine
+    networks:
+      - relive
+    ports:
+      - "127.0.0.1:80:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - login
+      - devices
+      - web

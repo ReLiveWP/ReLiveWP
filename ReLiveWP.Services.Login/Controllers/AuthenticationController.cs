@@ -49,7 +49,7 @@ public class AuthenticationController(
             if (!connectionModels.TryGetValue(connection.Service, out var connectionList))
                 connectionModels[connection.Service] = connectionList = [];
 
-            connectionList.Add(new ConnectionModel(connection.Id, connection.ServiceUrl, connection.UserName, (connection.Flags & 0x80000000UL) != 0));
+            connectionList.Add(new ConnectionModel(connection.Id, connection.ServiceUrl, connection.UserName, (connection.Flags & 0x80000000UL) != 0, connection.Capabilities));
         }
 
         return new ConnectionModels(connectionModels);

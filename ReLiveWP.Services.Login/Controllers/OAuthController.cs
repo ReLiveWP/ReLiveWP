@@ -47,7 +47,7 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
 
     [HttpPatch]
     [Authorize]
-    [Route("link")]
+    [ActionName("link")]
     public async Task<IActionResult> UpdateLink(string connectionId, [FromBody] UpdateConnectedServiceModel model)
     {
         await connectedServicesClient.UpdateCapabilitiesAsync(new UpdateCapabilitiesRequest()
