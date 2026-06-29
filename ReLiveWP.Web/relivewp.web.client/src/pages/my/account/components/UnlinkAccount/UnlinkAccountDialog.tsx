@@ -4,7 +4,7 @@ import "../link-account-dialog.scss";
 
 import { Dialog } from "~/components/Dialog";
 import { useComputed, useSignal } from "@preact/signals";
-import { useAppState, useAuthenticatedFetch } from "~/state/app-state";
+import { useAuthenticatedFetch } from "~/state/app-state";
 
 import { ENDPOINT_DELETE_CONNECTION } from "~/util/endpoints";
 

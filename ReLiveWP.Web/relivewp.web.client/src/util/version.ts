@@ -23,7 +23,8 @@ const versionGreaterThan = (
 
 export default function useVersion(os_version: string) {
     return useMemo(() => {
-        let version = os_version.split('.', 4).map(v => parseInt(v)) as Version;
+        let [major = 0, minor = 0, build = 0, revision = 0] = os_version.split('.').map(v => parseInt(v, 10) || 0);
+        let version: Version = [major, minor, build, revision];
         if (versionGreaterThan(version, VERSION_MIN_7_8)) {
             return ["7.8", true, WP78]
         }

@@ -45,28 +45,33 @@ export function LoadingStage() {
 
     useEffect(() => {
         const run = async () => {
-            const response = await fetch(ENDPOINT_BEGIN_ACCOUNT_LINKING, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ service, identifier: handle.value }),
-            });
+            try {
+                const response = await fetch(ENDPOINT_BEGIN_ACCOUNT_LINKING, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ service, identifier: handle.value }),
+                });
 
-            if (!response.ok) {
-                if (requiresHandle(service)) {
-                    error.value = "We couldn't find that handle, try again.";
-                    stage.value = 'handle';
+                if (!response.ok) {
+                    if (requiresHandle(service)) {
+                        error.value = "We couldn't find that handle, try again.";
+                        stage.value = 'handle';
+                    } else {
+                        error.value = "Something went wrong, try linking again later.";
+                        stage.value = 'error';
+                    }
                 } else {
-                    error.value = "Something went wrong, try linking again later.";
-                    stage.value = 'error';
+                    const { redirect_uri } = await response.json();
+                    redirectUrl.value = redirect_uri;
+                    stage.value = 'redirect';
+                    window.open(redirect_uri, "_blank");
                 }
-            } else {
-                const { redirect_uri } = await response.json();
-                redirectUrl.value = redirect_uri;
-                stage.value = 'redirect';
-                window.open(redirect_uri, "_blank");
+            } catch {
+                error.value = "Something went wrong, try linking again later.";
+                stage.value = 'error';
             }
         };
 
@@ -103,7 +108,7 @@ export function ConfigureStage() {
 
     const isReconfigure = currentEnabledCaps !== undefined;
 
-    const serviceInfo = availableLinks.value.find(l => l.service === service);
+    const serviceInfo = (availableLinks.value ?? []).find(l => l.service === service);
     const availableCaps = serviceInfo
         ? Object.entries(ServiceCapNames)
             .map(([cap]) => Number(cap) as ServiceCaps)

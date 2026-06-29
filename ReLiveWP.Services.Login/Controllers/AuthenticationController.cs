@@ -22,7 +22,7 @@ public class AuthenticationController(
 {
     [Authorize]
     [ActionName("user")]
-    public async Task<ActionResult<UserModel>> GetUser(string id)
+    public async Task<ActionResult<UserModel>> GetUser(string id, CancellationToken cancellationToken)
     {
         if (id != "@me")
             return Forbid();
@@ -30,7 +30,7 @@ public class AuthenticationController(
         if (User == null)
             return Unauthorized();
 
-        var user = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
+        var user = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() }, cancellationToken: cancellationToken);
         if (user == null)
             return NotFound();
 
@@ -39,12 +39,12 @@ public class AuthenticationController(
 
     [Authorize]
     [Route("/auth/user/@me/linked-accounts")]
-    public async Task<ActionResult<ConnectionModels>> GetLinkedAccounts()
+    public async Task<ActionResult<ConnectionModels>> GetLinkedAccounts(CancellationToken cancellationToken)
     {
-        var connections = connectedServicesClient.GetConnections(new ConnectionsRequest());
+        var connections = connectedServicesClient.GetConnections(new ConnectionsRequest(), cancellationToken: cancellationToken);
 
         var connectionModels = new Dictionary<string, List<ConnectionModel>>();
-        await foreach (var connection in connections.ResponseStream.ReadAllAsync())
+        await foreach (var connection in connections.ResponseStream.ReadAllAsync(cancellationToken))
         {
             if (!connectionModels.TryGetValue(connection.Service, out var connectionList))
                 connectionModels[connection.Service] = connectionList = [];
@@ -70,66 +70,59 @@ public class AuthenticationController(
 
     [ActionName("request_tokens")]
     [HttpPost(Name = "request_tokens")]
-    public async Task<ActionResult<SecurityTokensResponseModel>> RequestTokens([FromBody] SecurityTokensRequestModel request)
+    public async Task<ActionResult<SecurityTokensResponseModel>> RequestTokens([FromBody] SecurityTokensRequestModel request, CancellationToken cancellationToken)
     {
-        try
+        // TODO oh boy howdy this needs to go away
+        var grpcRequest = new SecurityTokensRequest();
+        if (request.Credentials.TryGetValue("ps:password", out var password))
         {
-            // TODO oh boy howdy this needs to go away
-            var grpcRequest = new SecurityTokensRequest();
-            if (request.Credentials.TryGetValue("ps:password", out var password))
-            {
-                grpcRequest.Username = request.Identity;
-                grpcRequest.Password = password;
-            }
-            // TODO: i feel like we should remove this path at some stage
-            else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values))
-            {
-                var value = values.ToString();
-                if (value.StartsWith("Bearer "))
-                    value = value[7..];
-
-                grpcRequest.Username = request.Identity;
-                grpcRequest.AuthToken = value;
-            }
-            else
-            {
-                return Unauthorized();
-            }
-
-            foreach (var tokenRequest in request.TokenRequests)
-            {
-                grpcRequest.Requests.Add(new SecurityTokenRequest()
-                {
-                    ServicePolicy = tokenRequest.ServicePolicy,
-                    ServiceTarget = tokenRequest.ServiceTarget
-                });
-            }
-
-            var response = await authenticationClient.GetSecurityTokensAsync(grpcRequest);
-            if (((int)response.Code) < 0)
-                return Unauthorized(new ErrorModel(response.Code));
-
-            var securityTokens = new List<SecurityTokenModel>();
-            foreach (var token in response.Tokens)
-            {
-                securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
-                                                          token.Token,
-                                                          token.TokenType,
-                                                          token.Created.ToDateTimeOffset(),
-                                                          token.Expires.ToDateTimeOffset()));
-            }
-
-            return Ok(new SecurityTokensResponseModel(
-                response.Puid,
-                response.Cid,
-                response.Username,
-                response.EmailAddress,
-                [.. securityTokens]));
+            grpcRequest.Username = request.Identity;
+            grpcRequest.Password = password;
         }
-        catch (Exception ex)
+        // TODO: i feel like we might be able to remove this path at some stage
+        else if (HttpContext.Request.Headers.TryGetValue("Authorization", out var values) && values.FirstOrDefault() != null)
         {
-            return Unauthorized(new ErrorModel((uint)ex.HResult));
+            var value = values.FirstOrDefault()!;
+            if (value.StartsWith("Bearer "))
+                value = value[7..];
+
+            grpcRequest.Username = request.Identity;
+            grpcRequest.AuthToken = value;
         }
+        else
+        {
+            return Unauthorized();
+        }
+
+        foreach (var tokenRequest in request.TokenRequests)
+        {
+            grpcRequest.Requests.Add(new SecurityTokenRequest()
+            {
+                ServicePolicy = tokenRequest.ServicePolicy,
+                ServiceTarget = tokenRequest.ServiceTarget
+            });
+        }
+
+        var response = await authenticationClient.GetSecurityTokensAsync(grpcRequest, cancellationToken: cancellationToken);
+        if (((int)response.Code) < 0)
+            return Unauthorized(new ErrorModel(response.Code));
+
+        var securityTokens = new List<SecurityTokenModel>();
+        foreach (var token in response.Tokens)
+        {
+            securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
+                                                      token.Token,
+                                                      token.TokenType,
+                                                      token.Created.ToDateTimeOffset(),
+                                                      token.Expires.ToDateTimeOffset()));
+        }
+
+        return Ok(new SecurityTokensResponseModel(
+            response.Puid,
+            response.Cid,
+            response.Username,
+            response.EmailAddress,
+            [.. securityTokens]));
     }
 
     [ActionName("register_device")]

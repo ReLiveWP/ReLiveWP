@@ -31,7 +31,7 @@ export default function Account() {
                                 <Link href="/my/account/devices" activeClass="active">computers and devices</Link>
                             </li>
                             <li>
-                                <Link href="/my/account/devices" activeClass="active">privacy and security</Link>
+                                <Link href="/my/account/privacy" activeClass="active">privacy and security</Link>
                             </li>
                             <li>
                                 <Link href="/my/account/sign-out" activeClass="active">sign out</Link>

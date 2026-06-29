@@ -8,7 +8,8 @@ import { type Stage, requiresHandle } from "./service-config";
 import { LinkAccountContext } from "./link-account-context";
 import { HandleStage, LoadingStage, RedirectStage, DoneStage, ErrorStage, ConfigureStage, ApplyStage } from "./LinkAccountStages";
 
-export const OAUTH_CHANNEL = "a0eb0210-bc9a-4bc5-be15-44ff49b71027";
+export { OAUTH_CHANNEL } from "~/util/oauth";
+import { OAUTH_CHANNEL } from "~/util/oauth";
 
 export default function LinkAccountDialog({ onClose, service, initialCaps, existingConnectionId, currentEnabledCaps }: {
     onClose: () => void;

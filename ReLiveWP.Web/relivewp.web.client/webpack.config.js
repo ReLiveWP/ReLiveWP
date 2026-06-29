@@ -1,8 +1,9 @@
 const path = require('path');
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const FaviconsWebpackPlugin = require('favicons-webpack-plugin')
 const { env } = require('process');
+
+const mode = env.NODE_ENV || "production";
 
 module.exports = [
     {
@@ -10,7 +11,7 @@ module.exports = [
             "index": "./src/index.tsx",
         },
         target: "web",
-        mode: env.NODE_ENV || "development",
+        mode,
         devtool: 'source-map',
         module: {
             rules: [
@@ -66,8 +67,8 @@ module.exports = [
         },
         plugins: [
             new MiniCssExtractPlugin({
-                filename: env.NODE_ENV === 'production' ? "[name].[chunkhash].css" : "[name].bundle.css",
-                chunkFilename: env.NODE_ENV === 'production' ? "[id].bundle.[chunkhash].css" : "[id].bundle.css"
+                filename: mode === 'production' ? "[name].[chunkhash].css" : "[name].bundle.css",
+                chunkFilename: mode === 'production' ? "[id].bundle.[chunkhash].css" : "[id].bundle.css"
             }),
             new HtmlWebpackPlugin({
                 inject: true,
@@ -76,16 +77,10 @@ module.exports = [
                 filename: "index.html",
                 publicPath: "/"
             }),
-            // new FaviconsWebpackPlugin({
-            //     logo: './static/wam-circular.png',
-            //     favicons: {
-            //         icons: { android: false, appleIcon: false, appleStartup: false, windows: false, yandex: false, }
-            //     }
-            // })
         ],
         output: {
-            filename: env.NODE_ENV === 'production' ? '[name].[chunkhash].js' : '[name].bundle.js',
-            chunkFilename: env.NODE_ENV === 'production' ? '[id].bundle.[chunkhash].js' : '[id].bundle.js',
+            filename: mode === 'production' ? '[name].[chunkhash].js' : '[name].bundle.js',
+            chunkFilename: mode === 'production' ? '[id].bundle.[chunkhash].js' : '[id].bundle.js',
             path: path.resolve(__dirname, 'dist'),
         },
         devServer: {

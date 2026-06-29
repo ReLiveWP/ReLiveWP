@@ -1,13 +1,13 @@
 import { useSignal, useSignalEffect } from "@preact/signals";
 import "./index.scss"
 
-import { ErrorBoundary, LocationProvider, Route, Router, useLocation } from "preact-iso";
-import { useCallback, useEffect } from "preact/compat";
-import { useAuthenticatedFetch } from "~/state/app-state";
+import { LocationProvider, useLocation } from "preact-iso";
+import { useEffect } from "preact/compat";
 
 import { useAccentColor, useTitle } from "~/util/effects";
 import { ENDPOINT_GET_DEVICES } from "~/util/endpoints";
 import { Devices } from "~/util/device-types";
+import { useFetchSignal } from "~/util/use-fetch";
 import DevicePicker from "./components/DevicePicker";
 import DevicePage from "./pages/device";
 
@@ -17,30 +17,16 @@ export default function Device({ id }: { id?: string }) {
 
     const location = useLocation();
 
-    const fetch = useAuthenticatedFetch()
-    const devices = useSignal<Devices>(null!)
     const selectedDevice = useSignal<string | null>(id || null)
 
-    const doRefresh = useCallback(async () => {
-        const response = await fetch(ENDPOINT_GET_DEVICES, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) return;
-        devices.value = await response.json();
-
-        if (selectedDevice.value === null || !devices.value.some(d => d.id === selectedDevice.value)) {
-            selectedDevice.value = devices.value[0]?.id ?? null;
+    const { data: devices } = useFetchSignal<Devices>(ENDPOINT_GET_DEVICES, (list) => {
+        if (selectedDevice.value === null || !list.some(d => d.id === selectedDevice.value)) {
+            selectedDevice.value = list[0]?.id ?? null;
         }
-    }, [])
+    });
 
     useEffect(() => {
-        doRefresh();
-    }, []);
-
-    useEffect(() => {
-        if (id && id !== selectedDevice.value && devices.value.some(d => d.id === id)) {
+        if (id && id !== selectedDevice.value && devices.value?.some(d => d.id === id)) {
             selectedDevice.value = id;
         }
     }, [id])
