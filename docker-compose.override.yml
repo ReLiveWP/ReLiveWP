@@ -1,6 +1,11 @@
 ---
 name: relivewp
 
+x-dev-env:
+  &dev-env
+  ASPNETCORE_ENVIRONMENT: Development
+  NODE_ENV: development
+
 services:
   identity:
     build:
@@ -8,6 +13,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.Identity
+    environment: *dev-env
 
   connectedservices:
     build:
@@ -15,6 +21,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.ConnectedServices
+    environment: *dev-env
 
   deviceregistration:
     build:
@@ -22,6 +29,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.DeviceRegistration
+    environment: *dev-env
 
   skybox:
     build:
@@ -29,6 +37,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.Skybox
+    environment: *dev-env
 
   activation:
     build:
@@ -36,6 +45,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Activation
+    environment: *dev-env
 
   login:
     build:
@@ -43,6 +53,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Login
+    environment: *dev-env
 
   web:
     build:
@@ -50,6 +61,7 @@ services:
       dockerfile: ReLiveWP.Web/Dockerfile
       args:
         CLIENT_BUILD_SCRIPT: build:local
+    environment: *dev-env
 
   push:
     build:
@@ -57,6 +69,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Push
+    environment: *dev-env
 
   activity:
     build:
@@ -64,6 +77,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Activity
+    environment: *dev-env
 
   exchange:
     build:
@@ -71,6 +85,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Exchange
+    environment: *dev-env
 
   addressbook:
     build:
@@ -78,6 +93,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.AddressBook
+    environment: *dev-env
 
   devices:
     build:
@@ -85,6 +101,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Devices
+    environment: *dev-env
 
   findmyphone:
     build:
@@ -92,6 +109,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.FindMyPhone
+    environment: *dev-env
 
   orion:
     build:
@@ -99,6 +117,7 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Orion
+    environment: *dev-env
 
   dnsmasq:
     image: alpine:latest

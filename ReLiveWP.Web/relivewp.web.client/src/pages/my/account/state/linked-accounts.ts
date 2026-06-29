@@ -46,8 +46,8 @@ export const AccountTypes = {
             }
         }
     },
-    "onedrive": {
-        name: "onedrive",
+    "microsoft": {
+        name: "microsoft",
         icon: OneDriveIcon,
         allowsMany: false
     },

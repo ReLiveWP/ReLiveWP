@@ -1,21 +1,20 @@
-﻿using System.Security.Cryptography;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Duende.IdentityModel;
 using Duende.IdentityModel.Client;
-using Google.Apis.Oauth2.v2;
-using Google.Apis.Services;
 using Grpc.Core;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.ConnectedServices.Data;
-using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
-using static ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
+using static ReLiveWP.Backend.ConnectedServices.OAuthProviders.Microsoft;
 
 namespace ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 
-public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
-                                 IHttpClientFactory httpClientFactory,
-                                 ILogger<GoogleOAuthProvider> logger) : IOAuthProvider
+public class MicrosoftOAuthProvider(IConnectedServicesContainer connectedServices,
+                                    IHttpClientFactory httpClientFactory,
+                                    ILogger<MicrosoftOAuthProvider> logger) : IOAuthProvider
 {
     private readonly ConnectedServiceDescription description = connectedServices[SERVICE_NAME];
 
@@ -23,7 +22,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
     {
         var state = CryptoRandom.CreateUniqueId();
         var codeVerifier = CryptoRandom.CreateUniqueId(32);
-        var codeChallenge = Base64UrlEncoder.Encode(SHA256.HashData(Encoding.UTF8.GetBytes(codeVerifier))); // remove base64 padding
+        var codeChallenge = Base64UrlEncoder.Encode(SHA256.HashData(Encoding.UTF8.GetBytes(codeVerifier)));
 
         var discoveryRequest = new DiscoveryDocumentRequest()
         {
@@ -37,7 +36,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         using var httpClient = httpClientFactory.CreateClient();
         var discovery = await httpClient.GetDiscoveryDocumentAsync(discoveryRequest);
         if (discovery.IsError)
-            throw new RpcException(new Status(StatusCode.NotFound, "Failed to fetch discovery doc!"));
+            throw new RpcException(new Status(StatusCode.NotFound, "Failed to fetch Microsoft discovery doc!"));
 
         var request = new RequestUrl(discovery.AuthorizeEndpoint!)
             .CreateAuthorizeUrl(
@@ -47,10 +46,9 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
                 redirectUri: description.RedirectUri,
                 state: state,
                 codeChallenge: codeChallenge,
-                codeChallengeMethod: "S256",
-                extra: new Parameters() { { "access_type", "offline" }, { "prompt", "consent" } }
+                codeChallengeMethod: "S256"
             );
-            
+
         var pending = new LivePendingOAuth()
         {
             UserId = userId,
@@ -69,7 +67,6 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
 
     public Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService service, LivePendingOAuth state, string code)
     {
-        // google requires scopes
         throw new NotImplementedException();
     }
 
@@ -92,8 +89,6 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         if (tokenResult.IsError)
             throw new RpcException(new Status(StatusCode.Internal, $"{tokenResult.Error} ({tokenResult.ErrorDescription})"));
 
-        var subValue = tokenResult.Json!.Value!.TryGetValue("sub")!.ToString();
-
         service.Service = SERVICE_NAME;
         service.ServiceUrl = state.Endpoint!;
         service.AccessToken = tokenResult.AccessToken!;
@@ -104,8 +99,6 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         service.AvailableCapabilities = caps;
         service.AuthorizationEndpoint = state.AuthorizationEndpoint;
         service.TokenEndpoint = state.TokenEndpoint!;
-
-        service.ServiceProfile.UserId = subValue;
 
         await FetchUserInfoForService(service);
 
@@ -137,28 +130,27 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to refresh Google token.");
+            logger.LogError(ex, "Failed to refresh Microsoft token.");
             return false;
         }
     }
 
     private async Task FetchUserInfoForService(LiveConnectedService service)
     {
-        var oauthService = new Oauth2Service(new BaseClientService.Initializer()
-        {
-            ApplicationName = "ReLiveWP Connected Services"
-        });
+        using var client = httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer " + service.AccessToken);
 
-        oauthService.HttpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + service.AccessToken);
+        var response = await client.GetAsync("https://graph.microsoft.com/v1.0/me");
+        response.EnsureSuccessStatusCode();
 
-        var response = await oauthService.Userinfo.Get()
-            .ExecuteAsync();
+        using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var root = doc.RootElement;
 
-        service.ServiceProfile.UserId = response.Id;
-        service.ServiceProfile.Username = response.Name;
-        service.ServiceProfile.DisplayName = response.Name;
-        service.ServiceProfile.AvatarUrl = response.Picture;
-        service.ServiceProfile.EmailAddress = response.Email;
+        service.ServiceProfile.UserId = root.TryGetProperty("id", out var id) ? id.GetString() ?? "" : "";
+        service.ServiceProfile.DisplayName = root.TryGetProperty("displayName", out var dn) ? dn.GetString() : null;
+        service.ServiceProfile.Username = root.TryGetProperty("displayName", out var un) ? un.GetString() : null;
+        service.ServiceProfile.EmailAddress = root.TryGetProperty("mail", out var mail) ? mail.GetString()
+            : root.TryGetProperty("userPrincipalName", out var upn) ? upn.GetString() : null;
     }
 
     private static LiveConnectedServiceCapabilities GetCapabilitiesFromScopes(string[] scopes)
@@ -167,16 +159,8 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         foreach (var _scope in scopes)
         {
             var scope = _scope.Trim();
-            if (scope.StartsWith("https://www.googleapis.com/auth/contacts"))
-                caps |= LiveConnectedServiceCapabilities.Contacts;
-            if (scope.StartsWith("https://www.googleapis.com/auth/calendar"))
-                caps |= LiveConnectedServiceCapabilities.Calendar;
-            if (scope.StartsWith("https://www.googleapis.com/auth/drive"))
-                caps |= LiveConnectedServiceCapabilities.FileStorage;
-            if (scope.StartsWith("https://www.googleapis.com/auth/photoslibrary"))
-                caps |= LiveConnectedServiceCapabilities.PhotoSync;
-            if (scope.StartsWith("https://www.googleapis.com/auth/gmail"))
-                caps |= LiveConnectedServiceCapabilities.Email;
+            if (scope.StartsWith("https://graph.microsoft.com/Files."))
+                caps |= LiveConnectedServiceCapabilities.FileStorage | LiveConnectedServiceCapabilities.PhotoSync;
         }
 
         return caps;
