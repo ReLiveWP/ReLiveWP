@@ -1,47 +1,23 @@
 import "./linked-accounts.scss"
 
-import { Signal, useSignal } from "@preact/signals";
-import { useCallback, useEffect } from "preact/hooks";
+import { Signal } from "@preact/signals";
 
 import { AccountTypeGroups, AvailableConnectedService, Connections, LinkedAccountsContext } from "./state/linked-accounts";
 import { ENDPOINT_AVAILABLE_LINKS, ENDPOINT_GET_LINKED_ACCOUNTS } from "~/util/endpoints";
-import { useAppState, useAuthenticatedFetch } from "~/state/app-state";
 import AccountTypeGroup from "./components/AccountTypeGroup";
 import { Dialogs } from "./components/Dialogs";
+import { useFetchSignal } from "~/util/use-fetch";
 
 export default function LinkedAccounts() {
-    const fetch = useAuthenticatedFetch()
-    const linkedAccounts = useSignal<Connections>(null! as Connections)
-    const availableLinks = useSignal<AvailableConnectedService[]>([])
-
-    const doRefresh = useCallback(async () => {
-        const response = await fetch(ENDPOINT_GET_LINKED_ACCOUNTS, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) return;
-        linkedAccounts.value = await response.json();
-    }, [])
-
-    useEffect(() => {
-        doRefresh();
-
-        fetch(ENDPOINT_AVAILABLE_LINKS, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        }).then(async (res) => {
-            if (!res.ok) return;
-            availableLinks.value = await res.json();
-        });
-    }, []);
+    const { data: linkedAccounts, refresh: doRefresh } = useFetchSignal<Connections>(ENDPOINT_GET_LINKED_ACCOUNTS);
+    const { data: availableLinks } = useFetchSignal<AvailableConnectedService[]>(ENDPOINT_AVAILABLE_LINKS);
 
     if (!linkedAccounts.value) {
         return <span>Fetching your accounts...</span>;
     }
 
     return (
-        <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts!, availableLinks, doRefresh }}>
+        <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts as Signal<Connections>, availableLinks: availableLinks as Signal<AvailableConnectedService[]>, doRefresh }}>
             <Dialogs>
                 <div class="linked-accounts">
                     {Object.entries(AccountTypeGroups)

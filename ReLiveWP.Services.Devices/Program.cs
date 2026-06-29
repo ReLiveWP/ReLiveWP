@@ -34,20 +34,10 @@ builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
 
 
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: "*",
-                      policy => policy.WithOrigins("*")
-                          .WithHeaders("*")
-                          .WithMethods("*"));
-});
-
 builder.Services.AddSingleton<ICarrierLookupService, CarrierLookupService>();
 builder.Services.AddHostedService(sp => (CarrierLookupService)sp.GetRequiredService<ICarrierLookupService>());
 
 var app = builder.Build();
-
-app.UseCors("*");
 
 app.UseStaticFiles();
 

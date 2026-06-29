@@ -9,6 +9,7 @@ export type AccentColor = 'red' | 'purple' | 'teal' | 'pink' | 'green' | 'yellow
 
 type AppState = {
     token: Signal<string | null>,
+    persistent: Signal<boolean>,
     user: Signal<User>,
     isAuthenticated: Signal<boolean>,
     accentStack: Signal<AccentColor[]>
@@ -41,15 +42,17 @@ function createAppState() {
 }
 
 function createAppStateSignals(): AppState {
-    const tokenValue = localStorage.getItem("token");
+    const tokenValue = localStorage.getItem("token") ?? sessionStorage.getItem("token");
 
-    const token = new Signal(tokenValue === null ? undefined : tokenValue);
+    const token = new Signal<string | null>(tokenValue);
+    const persistent = new Signal(sessionStorage.getItem("token") === null);
     const user = new Signal();
     const accentStack = new Signal<AccentColor[]>(['red']);
     const accent = computed(() => accentStack.value[accentStack.value.length - 1]);
 
     return {
         token,
+        persistent,
         user,
         isAuthenticated: computed(() => !!token.value),
         accent,
@@ -83,14 +86,20 @@ function createAppStateSignals(): AppState {
     };
 }
 
-function configureAppStateEffects({ token, user, authenticatedFetch }: AppState) {
+function configureAppStateEffects({ token, persistent, user, authenticatedFetch }: AppState) {
     effect(() => {
         const value = token.value;
         if (!value) {
             localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
+        }
+        else if (persistent.value) {
+            localStorage.setItem("token", value);
+            sessionStorage.removeItem("token");
         }
         else {
-            localStorage.setItem("token", value);
+            sessionStorage.setItem("token", value);
+            localStorage.removeItem("token");
         }
 
         if (!value) return;
@@ -107,6 +116,7 @@ function configureAppStateEffects({ token, user, authenticatedFetch }: AppState)
 
                 if (!response.ok) {
                     token.value = null;
+                    return;
                 }
 
                 user.value = await response.json() as User;

@@ -25,9 +25,9 @@ export default function Login() {
         isDisabled.value = true;
         try {
             const payload = {
-                identity: username,
+                identity: username.value,
                 credentials: {
-                    "ps:password": password
+                    "ps:password": password.value
                 },
                 token_requests: [{
                     service_policy: "MBI",
@@ -52,7 +52,7 @@ export default function Login() {
             }
 
             const { security_tokens } = await response.json();
-            console.log(security_tokens);
+            appState.persistent.value = rememberMe.value;
             appState.token.value = security_tokens[0].token;
 
             location.route("/");
@@ -92,12 +92,12 @@ export default function Login() {
                         type="checkbox"
                         class="checkbox"
                         checked={rememberMe}
-                        onChange={(e) => rememberMe.value = !!e.currentTarget.value}
+                        onChange={(e) => rememberMe.value = e.currentTarget.checked}
                         disabled={isDisabled}></input>
                     <span class="remember-me-text">Remember me</span>
                 </label>
 
-                {error && <p class="error">{error}</p>}
+                {error.value && <p class="error">{error.value}</p>}
 
                 <input type="submit" class="submit" value="Sign in" disabled={isDisabled} />
             </form>

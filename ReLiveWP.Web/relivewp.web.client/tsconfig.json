@@ -8,11 +8,13 @@
       "DOM",
       "DOM.Iterable"
     ],
+    "types": ["node"],
     "moduleResolution": "bundler",
     "sourceMap": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "strict": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "paths": {

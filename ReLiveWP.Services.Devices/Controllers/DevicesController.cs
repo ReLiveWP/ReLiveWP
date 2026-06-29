@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,54 +23,25 @@ public class DevicesController(
     [HttpGet]
     [Authorize]
     [ActionName("@me")]
-    public async IAsyncEnumerable<ConnectedDeviceModel> GetDevicesAsync()
+    public async IAsyncEnumerable<ConnectedDeviceModel> GetDevicesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         if (User == null)
             throw new UnauthorizedAccessException();
 
-        var devices = skyboxClient.GetDevicesForUser(new GetDevicesForUserRequest() { UserId = User.Id() });
+        var devices = skyboxClient.GetDevicesForUser(new GetDevicesForUserRequest() { UserId = User.Id() }, cancellationToken: cancellationToken);
 
-        await foreach (var device in devices.ResponseStream.ReadAllAsync())
+        await foreach (var device in devices.ResponseStream.ReadAllAsync(cancellationToken))
         {
-            var locale = new CultureInfo(device.HasLcid ? device.Lcid : 0x0409);
-            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(device.Timezone);
             var carrierInfo = carrierLookupService.GetCarrierInfo(device.Operator);
-
 
             Device? registeredDevice = null;
             try
             {
-                registeredDevice = await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = device.UniqueId });
+                registeredDevice = await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = device.UniqueId }, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {
                 logger.LogInformation(ex, "Missing device registration for {DeviceId}", device.UniqueId);
-            }
-
-            var phoneNumber = "None";
-            if (device.HasPhoneNumber && !string.IsNullOrWhiteSpace(phoneNumber))
-            {
-                phoneNumber = device.PhoneNumber;
-
-                try
-                {
-                    var phoneNumberUtil = PhoneNumberUtil.GetInstance();
-                    var number = phoneNumberUtil.Parse(phoneNumber, carrierInfo?.CountryCode ?? "ZZ");
-                    phoneNumber = phoneNumberUtil.Format(number, PhoneNumberFormat.INTERNATIONAL);
-                }
-                catch { }
-            }
-
-            var carrier = device.Operator;
-            if (carrierInfo?.Brand != null)
-            {
-                carrier = carrierInfo.Value.Brand;
-                if (carrierInfo?.CountryCode != null)
-                    carrier += $" ({carrierInfo.Value.CountryCode})";
-            }
-            else if (carrierInfo?.Operator != null)
-            {
-                carrier = carrierInfo.Value.Operator;
             }
 
             yield return new ConnectedDeviceModel(
@@ -77,12 +49,12 @@ public class DevicesController(
                 device.FriendlyName,
                 device.Manufacturer,
                 device.Model,
-                carrier,
-                phoneNumber,
+                ResolveCarrier(device.Operator, carrierInfo),
+                ResolvePhoneNumber(device.HasPhoneNumber, device.PhoneNumber, carrierInfo),
                 registeredDevice?.Imei,
                 device.OsVersion,
-                locale.DisplayName,
-                timeZone.DisplayName,
+                SafeLocaleDisplay(device.HasLcid, device.Lcid),
+                SafeTimeZoneDisplay(device.Timezone),
                 device.HasColourTheme ? device.ColourTheme : 1,
                 device.HasAccentColour ? device.AccentColour : null);
         }
@@ -91,66 +63,37 @@ public class DevicesController(
     [HttpGet]
     [Authorize]
     [ActionName("info")]
-    public async Task<ConnectedDeviceExtendedModel> GetDeviceExtendedInfoAsync(string id)
+    public async Task<ConnectedDeviceExtendedModel> GetDeviceExtendedInfoAsync(string id, CancellationToken cancellationToken)
     {
         if (User == null)
             throw new UnauthorizedAccessException();
 
-        var device = await skyboxClient.GetDeviceExtendedInfoAsync(new GetDeviceExtendedInfoRequest() { UserId = User.Id(), DeviceGuid = id });
+        var device = await skyboxClient.GetDeviceExtendedInfoAsync(new GetDeviceExtendedInfoRequest() { UserId = User.Id(), DeviceGuid = id }, cancellationToken: cancellationToken);
 
-        var locale = new CultureInfo(device.HasLcid ? device.Lcid : 0x0409);
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(device.Timezone);
         var carrierInfo = carrierLookupService.GetCarrierInfo(device.Operator);
-
 
         Device? registeredDevice = null;
         try
         {
-            registeredDevice = await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = device.UniqueId });
+            registeredDevice = await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = device.UniqueId }, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             logger.LogInformation(ex, "Missing device registration for {DeviceId}", device.UniqueId);
         }
 
-        var phoneNumber = "None";
-        if (device.HasPhoneNumber && !string.IsNullOrWhiteSpace(phoneNumber))
-        {
-            phoneNumber = device.PhoneNumber;
-
-            try
-            {
-                var phoneNumberUtil = PhoneNumberUtil.GetInstance();
-                var number = phoneNumberUtil.Parse(phoneNumber, carrierInfo?.CountryCode ?? "ZZ");
-                phoneNumber = phoneNumberUtil.Format(number, PhoneNumberFormat.INTERNATIONAL);
-            }
-            catch { }
-        }
-
-        var carrier = device.Operator;
-        if (carrierInfo?.Brand != null)
-        {
-            carrier = carrierInfo.Value.Brand;
-            if (carrierInfo?.CountryCode != null)
-                carrier += $" ({carrierInfo.Value.CountryCode})";
-        }
-        else if (carrierInfo?.Operator != null)
-        {
-            carrier = carrierInfo.Value.Operator;
-        }
-
         return new ConnectedDeviceExtendedModel(
             device.UniqueId,
             device.Manufacturer,
             device.Model,
-            carrier,
-            phoneNumber,
+            ResolveCarrier(device.Operator, carrierInfo),
+            ResolvePhoneNumber(device.HasPhoneNumber, device.PhoneNumber, carrierInfo),
             device.OsVersion,
             device.FriendlyName,
             device.HasColourTheme ? device.ColourTheme : 1,
             device.HasAccentColour ? device.AccentColour : null,
-            locale.DisplayName,
-            timeZone.DisplayName,
+            SafeLocaleDisplay(device.HasLcid, device.Lcid),
+            SafeTimeZoneDisplay(device.Timezone),
             device.HasBatteryLevel ? device.BatteryLevel : 0,
             device.HasStorageRemaining ? device.StorageRemaining : null,
             device.HasPinLocked && device.PinLocked,
@@ -166,13 +109,70 @@ public class DevicesController(
     [HttpPut]
     [Authorize]
     [ActionName("ping")]
-    public async Task<IActionResult> PingDeviceAsync(string id)
+    public async Task<IActionResult> PingDeviceAsync(string id, CancellationToken cancellationToken)
     {
         if (User == null)
             return Unauthorized(); // should never happen
 
-        await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandRing });
+        await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandRing }, cancellationToken: cancellationToken);
 
         return Accepted();
+    }
+
+    private static string SafeLocaleDisplay(bool hasLcid, int lcid)
+    {
+        try
+        {
+            return new CultureInfo(hasLcid ? lcid : 0x0409).DisplayName;
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.GetCultureInfo(0x0409).DisplayName;
+        }
+    }
+
+    private static string SafeTimeZoneDisplay(string timezone)
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(timezone).DisplayName;
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return timezone;
+        }
+    }
+
+    private static string ResolvePhoneNumber(bool hasPhoneNumber, string phoneNumber, CarrierInfo? carrierInfo)
+    {
+        if (!hasPhoneNumber || string.IsNullOrWhiteSpace(phoneNumber))
+            return "None";
+
+        try
+        {
+            var phoneNumberUtil = PhoneNumberUtil.GetInstance();
+            var number = phoneNumberUtil.Parse(phoneNumber, carrierInfo?.CountryCode ?? "ZZ");
+            return phoneNumberUtil.Format(number, PhoneNumberFormat.INTERNATIONAL);
+        }
+        catch
+        {
+            return phoneNumber;
+        }
+    }
+
+    private static string ResolveCarrier(string @operator, CarrierInfo? carrierInfo)
+    {
+        if (carrierInfo?.Brand != null)
+        {
+            var carrier = carrierInfo.Value.Brand;
+            if (carrierInfo.Value.CountryCode != null)
+                carrier += $" ({carrierInfo.Value.CountryCode})";
+            return carrier;
+        }
+
+        if (carrierInfo?.Operator != null)
+            return carrierInfo.Value.Operator;
+
+        return @operator;
     }
 }

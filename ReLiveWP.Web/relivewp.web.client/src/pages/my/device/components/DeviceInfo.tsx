@@ -1,10 +1,10 @@
-import { useEffect, useMemo } from "preact/hooks";
+import { useMemo } from "preact/hooks";
 import "./device-info.scss";
 
-import { useComputed, useSignal } from "@preact/signals";
+import { useSignal } from "@preact/signals";
 import useDeviceImage from "~/util/device-image";
-import { ExtendedDeviceInfo } from "~/util/device-types";
-import useVersion from "~/util/version";
+import { useMaskedValue } from "~/util/use-masked-value";
+import DeviceSpecRows from "~/components/DeviceSpecRows";
 import PingDeviceDialog from "./PingDeviceDialog";
 import { lazy } from "preact-iso";
 import { Suspense } from "preact/compat";
@@ -17,34 +17,10 @@ const DeviceMap = lazy(() => import("./DeviceMap"));
 function DeviceInfoLeftPanel() {
     const info = useDeviceInfo();
     const canMask = info.phone_number !== "None";
-    const numberMasked = useSignal(canMask);
-    const number = useComputed(() => {
-        if (numberMasked.value) {
-            return "*".repeat(info.phone_number?.length ?? 10);
-        }
-        else {
-            return info.phone_number;
-        }
-    })
+    const { display: number, masked: numberMasked, toggle: toggleNumber } = useMaskedValue(info.phone_number, canMask);
+    const { display: imei, masked: imeiMasked, toggle: toggleImei } = useMaskedValue(info.imei, true);
 
-    const imeiMasked = useSignal(true);
-    const imei = useComputed(() => {
-        if (imeiMasked.value) {
-            return "*".repeat(info.imei?.length ?? 10);
-        }
-        else {
-            return info.imei;
-        }
-    })
-
-    const [versionName, isSad, image] = useVersion(info.os_version);
     const [deviceImage, _] = useDeviceImage(info.manufacturer, info.model);
-    const backgroundColor = info.colour_theme === 1 ? '#000' : '#fff';
-
-    useEffect(() => {
-        numberMasked.value = canMask;
-        imeiMasked.value = true;
-    }, [info.phone_number, info.imei]);
 
     return (
         <>
@@ -55,21 +31,14 @@ function DeviceInfoLeftPanel() {
 
                 <dl class="info">
                     <h2>{info.friendly_name}</h2>
-                    <dt>model</dt>
-                    <dd>{info.manufacturer} {info.model}</dd>
-                    <dt>operating system</dt>
-                    <dd>{image && <img class="os-icon" src={image} alt="Windows Phone logo" />} Windows Phone {versionName} {isSad && <span>:(</span>} </dd>
-                    <dd><small class="os-version">Version {info.os_version}</small></dd>
-                    <dt>theme</dt>
-                    <dd>
-                        <span class="colour-icon" style={{ backgroundColor: info.accent_colour }} />
-                        &nbsp;
-                        <span class="colour-icon" style={{ backgroundColor }} />
-                    </dd>
-                    <dt>language</dt>
-                    <dd>{info.locale}</dd>
-                    <dt>timezone</dt>
-                    <dd>{info.timezone}</dd>
+                    <DeviceSpecRows
+                        manufacturer={info.manufacturer}
+                        model={info.model}
+                        osVersion={info.os_version}
+                        colourTheme={info.colour_theme}
+                        accentColour={info.accent_colour}
+                        locale={info.locale}
+                        timezone={info.timezone} />
                     {info.operator && <>
                         <dt>carrier</dt>
                         <dd>{info.operator}</dd>
@@ -77,13 +46,13 @@ function DeviceInfoLeftPanel() {
                     {info.phone_number && (
                         <>
                             <dt>phone number</dt>
-                            <dd><span class="text-monospace">{number}</span> {canMask && <button class="text-button" onClick={() => numberMasked.value = !numberMasked.value}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
+                            <dd><span class="text-monospace">{number}</span> {canMask && <button class="text-button" onClick={toggleNumber}>{numberMasked.value ? "show" : "hide"}</button>}</dd>
                         </>
                     )}
                     {info.imei && (
                         <>
                             <dt>imei</dt>
-                            <dd><span class="text-monospace">{imei}</span> <button class="text-button" onClick={() => imeiMasked.value = !imeiMasked.value}>{imeiMasked.value ? "show" : "hide"}</button></dd>
+                            <dd><span class="text-monospace">{imei}</span> <button class="text-button" onClick={toggleImei}>{imeiMasked.value ? "show" : "hide"}</button></dd>
                         </>
                     )}
                 </dl>
