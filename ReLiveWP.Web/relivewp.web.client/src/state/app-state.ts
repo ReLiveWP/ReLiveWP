@@ -73,14 +73,20 @@ function createAppStateSignals(): AppState {
             if (!value)
                 return undefined;
 
-            return (url, opts) => {
+            return async (url, opts) => {
                 const options = { ...opts };
                 options.headers = {
                     ...options.headers,
                     'Authorization': `Bearer ${value}`
                 };
 
-                return fetch(url, options);
+                try {
+                    return await fetch(url, options);
+                }
+                catch {
+                    // CORS and network failures surface as thrown errors with no response
+                    return new Response(null, { status: 503, statusText: 'Service Unavailable' });
+                }
             }
         })
     };
