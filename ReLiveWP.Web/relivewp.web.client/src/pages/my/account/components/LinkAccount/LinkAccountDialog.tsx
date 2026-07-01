@@ -11,19 +11,27 @@ import { HandleStage, LoadingStage, RedirectStage, DoneStage, ErrorStage, Config
 export { OAUTH_CHANNEL } from "~/util/oauth";
 import { OAUTH_CHANNEL } from "~/util/oauth";
 
-export default function LinkAccountDialog({ onClose, service }: {
+export default function LinkAccountDialog({ onClose, service, initialCaps, existingConnectionId, currentEnabledCaps }: {
     onClose: () => void;
     service: string;
+    initialCaps?: number;
+    existingConnectionId?: string;
+    currentEnabledCaps?: number;
 }) {
     const handle = useSignal("");
     const redirectUrl = useSignal("");
-    const stage = useSignal<Stage>(requiresHandle(service) ? 'handle' : 'loading');
+    const stage = useSignal<Stage>(existingConnectionId ? 'configure' : requiresHandle(service) ? 'handle' : 'loading');
     const error = useSignal<string | null>(null);
-    const connectionId = useSignal("");
+    const connectionId = useSignal(existingConnectionId ?? "");
 
     useLayoutEffect(() => {
-        stage.value = requiresHandle(service) ? 'handle' : 'loading';
-    }, [service]);
+        if (existingConnectionId) {
+            connectionId.value = existingConnectionId;
+            stage.value = 'configure';
+        } else {
+            stage.value = requiresHandle(service) ? 'handle' : 'loading';
+        }
+    }, [service, existingConnectionId]);
 
     useEffect(() => {
         const channel = new BroadcastChannel(OAUTH_CHANNEL);
@@ -51,7 +59,7 @@ export default function LinkAccountDialog({ onClose, service }: {
     };
 
     return (
-        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, connectionId, service, onClose }}>
+        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, connectionId, service, initialCaps, currentEnabledCaps, onClose }}>
             <Dialog class="link-account-dialog" onClose={onClose}>
                 {renderStage()}
             </Dialog>

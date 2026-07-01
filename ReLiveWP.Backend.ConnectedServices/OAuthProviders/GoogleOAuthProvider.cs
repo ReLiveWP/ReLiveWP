@@ -130,6 +130,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
 
             service.AccessToken = result.AccessToken!;
             service.RefreshToken = result.RefreshToken ?? service.RefreshToken;
+            service.ExpiresAt = DateTimeOffset.Now + TimeSpan.FromSeconds(result.ExpiresIn);
 
             await FetchUserInfoForService(service);
 
@@ -154,6 +155,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         var response = await oauthService.Userinfo.Get()
             .ExecuteAsync();
 
+        service.ServiceProfile.UserId = response.Id;
         service.ServiceProfile.Username = response.Name;
         service.ServiceProfile.DisplayName = response.Name;
         service.ServiceProfile.AvatarUrl = response.Picture;

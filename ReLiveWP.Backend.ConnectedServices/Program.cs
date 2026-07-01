@@ -11,6 +11,7 @@ using ReLiveWP.Identity;
 
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
 using GoogleService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
+using MicrosoftService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Microsoft;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -31,7 +32,11 @@ builder.Services.AddLiveIDAuthentication(o =>
         "http://Passport.NET/tb",
         "relivewp.net",
         "spaces.int.relivewp.net",
-        "spaces.relivewp.net"
+        "spaces.relivewp.net",
+        "skydrive.int.relivewp.com", // oops! 
+        "skydrive.relivewp.com", // oops!
+        "skydrive.int.relivewp.net",
+        "skydrive.relivewp.net",
     ];
 });
 
@@ -42,8 +47,10 @@ builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
 builder.Services.AddScoped<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
 builder.Services.AddScoped<GoogleOAuthProvider>();
+builder.Services.AddScoped<MicrosoftOAuthProvider>();
 
 builder.Services.AddScoped<IConnectedServiceProxy, AtProtoServiceProxy>();
+builder.Services.AddScoped<IConnectedServiceProxy, GoogleServiceProxy>();
 
 builder.Services.AddConnectedServices()
     .AddConnectedService(s => new()
@@ -80,6 +87,17 @@ builder.Services.AddConnectedServices()
             // ServiceCaps.FileStorage |
             ServiceCaps.PhotoSync,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<GoogleOAuthProvider>())
+    })
+    .AddConnectedService(s => new()
+    {
+        ServiceId = MicrosoftService.SERVICE_NAME,
+        DisplayName = "Microsoft",
+        ClientId = builder.Configuration["ConnectedServices:Microsoft:ClientId"]!,
+        ClientSecret = builder.Configuration["ConnectedServices:Microsoft:ClientSecret"]!,
+        RedirectUri = builder.Configuration["ConnectedServices:Microsoft:RedirectUrl"]!,
+        Scopes = "openid profile email offline_access  https://graph.microsoft.com/User.Read https://graph.microsoft.com/Files.ReadWrite.AppFolder",
+        ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
+        OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MicrosoftOAuthProvider>())
     });
 
 builder.Services.AddGrpc();

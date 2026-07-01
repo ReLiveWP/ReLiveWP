@@ -17,6 +17,7 @@ namespace ReLiveWP.Services.Devices.Controllers;
 public class DevicesController(
     ILogger<DevicesController> logger,
     ICarrierLookupService carrierLookupService,
+    IWebHostEnvironment environment,
     FindMyPhone.FindMyPhoneClient skyboxClient,
     DeviceRegistration.DeviceRegistrationClient deviceRegistrationClient) : ControllerBase
 {
@@ -104,6 +105,21 @@ public class DevicesController(
             device.HasLastSeenLong ? device.LastSeenLong : null,
             registeredDevice?.Imei
         );
+    }
+
+    [HttpGet("~/[controller]/image/{size}/{device}")]
+    [AllowAnonymous]
+    public IActionResult GetDeviceImage(string size, string device)
+    {
+        var imageName = DeviceImageResolver.Resolve(device);
+        var suffix = string.Equals(size, "small", StringComparison.OrdinalIgnoreCase) ? "-small" : "";
+        var path = Path.Combine(environment.WebRootPath, "devices", $"{imageName}{suffix}.png");
+
+        if (!System.IO.File.Exists(path))
+            return NotFound();
+
+        Response.Headers.CacheControl = "public, max-age=2592000, immutable";
+        return PhysicalFile(path, "image/png");
     }
 
     [HttpPut]

@@ -153,16 +153,22 @@ public class TokenManager(
         if (type == "ES256")
         {
             var provider = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            var publicKey = Convert.FromBase64String(configuration["JWT:PublicKey"]!);
-            provider.ImportSubjectPublicKeyInfo(publicKey, out _);
+            var publicKeyB64 = configuration["JWT:PublicKey"];
+            if (publicKeyB64 != null)
+            {
+                provider.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyB64), out _);
+            }
+            else
+            {
+                // derive public key from the private key when no explicit public key is configured
+                provider.ImportECPrivateKey(Convert.FromBase64String(configuration["JWT:PrivateKey"]!), out _);
+            }
 
-            var signingKey = new ECDsaSecurityKey(provider);
-            return signingKey;
+            return new ECDsaSecurityKey(provider);
         }
         else
         {
-            var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
-            return signingKey;
+            return new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
         }
     }
 }

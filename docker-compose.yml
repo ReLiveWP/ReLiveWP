@@ -21,8 +21,8 @@ services:
       - ./deploy/certs/identity_ca.pfx:/certs/identity_ca.pfx:ro
       - ./deploy/certs/root_ca.pfx:/certs/root_ca.pfx:ro
     secrets:
-      - source: jwt_secret
-        target: JWT__Secret
+      - source: jwt_private_key
+        target: JWT__PrivateKey
       - source: identity_ca_password
         target: CertificateGeneration__CACertPassword
       - source: root_ca_password
@@ -40,9 +40,6 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.ConnectedServices.ini:/app/ReLiveWP.Backend.ConnectedServices.ini:ro
       - ./deploy/data/connectedservices:/app/data
-    secrets:
-      - source: jwt_secret
-        target: JWT__Secret
 
   deviceregistration:
     image: relive/deviceregistration
@@ -72,6 +69,20 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.Skybox.ini:/app/ReLiveWP.Backend.Skybox.ini:ro
       - ./deploy/data/skybox:/app/data
+
+  skydrive:
+    image: relive/skydrive
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      - identity
+      - connectedservices
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.SkyDrive.ini:/app/ReLiveWP.Backend.SkyDrive.ini:ro
+      - ./deploy/data/skydrive:/app/data
 
   activation:
     image: relive/activation
@@ -147,6 +158,7 @@ services:
     depends_on:
       - identity
       - connectedservices
+      - skydrive
     ports:
       - 10007:10007
     volumes:
@@ -232,8 +244,8 @@ networks:
     driver: bridge
 
 secrets:
-  jwt_secret:
-    file: ./deploy/secrets/jwt_secret
+  jwt_private_key:
+    file: ./deploy/secrets/jwt_private_key
   identity_ca_password:
     file: ./deploy/secrets/identity_ca_password
   root_ca_password:

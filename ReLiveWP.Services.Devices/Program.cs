@@ -32,8 +32,6 @@ builder.Services.AddGrpcClient<FindMyPhone.FindMyPhoneClient>(
 builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
 
-
-
 builder.Services.AddSingleton<ICarrierLookupService, CarrierLookupService>();
 builder.Services.AddHostedService(sp => (CarrierLookupService)sp.GetRequiredService<ICarrierLookupService>());
 

@@ -103,8 +103,10 @@ export function RedirectStage() {
 
 export function ConfigureStage() {
     const fetch = useAuthenticatedFetch();
-    const { service, connectionId, stage, error } = useLinkAccount();
-    const { availableLinks } = useLinkedAccounts();
+    const { service, connectionId, stage, error, initialCaps, currentEnabledCaps, onClose } = useLinkAccount();
+    const { availableLinks, doRefresh } = useLinkedAccounts();
+
+    const isReconfigure = currentEnabledCaps !== undefined;
 
     const serviceInfo = (availableLinks.value ?? []).find(l => l.service === service);
     const availableCaps = serviceInfo
@@ -113,7 +115,12 @@ export function ConfigureStage() {
             .filter(cap => cap !== ServiceCaps.none && (serviceInfo.capabilities & cap) !== 0)
         : [];
 
-    const enabledCaps = useSignal(serviceInfo?.capabilities ?? 0);
+    const availableCapsSet = serviceInfo?.capabilities ?? 0;
+    const enabledCaps = useSignal(
+        isReconfigure ? currentEnabledCaps & availableCapsSet :
+        initialCaps !== undefined ? initialCaps & availableCapsSet :
+        availableCapsSet
+    );
 
     const toggleCap = useCallback((cap: ServiceCaps) => {
         enabledCaps.value = enabledCaps.value ^ cap;
@@ -127,12 +134,15 @@ export function ConfigureStage() {
         const res = await fetch(url, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabledCapabilities: enabledCaps.value }),
+            body: JSON.stringify({ enabled_capabilities: enabledCaps.value }),
         });
 
         if (!res.ok) {
             error.value = "Something went wrong saving your preferences.";
             stage.value = 'error';
+        } else if (isReconfigure) {
+            doRefresh();
+            onClose();
         } else {
             stage.value = 'done';
         }
@@ -143,8 +153,9 @@ export function ConfigureStage() {
             <h1>almost there!</h1>
             <p>What do you want to use this account for?</p>
             {availableCaps.map(cap => (
-                <label key={cap}>
+                <label key={cap} for={ServiceCapNames[cap]} class="checkbox block">
                     <input
+                        id={ServiceCapNames[cap]}
                         type="checkbox"
                         checked={(enabledCaps.value & cap) !== 0}
                         onChange={() => toggleCap(cap)}

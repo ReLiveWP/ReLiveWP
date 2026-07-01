@@ -68,10 +68,6 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>
     </ProjectReference>
-    <ProjectReference Include="..\ReLiveWP.Web\ReLiveWP.Web.Server\ReLiveWP.Web.Server.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <Private>false</Private>
-    </ProjectReference>
     <ProjectReference Include="..\ReLiveWP.Zune.Catalog\ReLiveWP.Zune.Catalog.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <Private>false</Private>

@@ -1,7 +1,5 @@
 using System.Security.Claims;
 using System.Text.Json;
-using FishyFlip.Lexicon.App.Bsky.Embed;
-using FishyFlip.Lexicon.App.Bsky.Labeler;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
@@ -196,11 +194,18 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         var userId = GetUserId(context);
         var connId = Guid.Parse(request.ConnectionId);
 
-        var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId)
+        var connection = await dbContext.ConnectedServices.AsTracking().FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
 
-        connection.EnabledCapabilities = (LiveConnectedServiceCapabilities)request.Capabilities 
-            & connection.AvailableCapabilities 
+        // Heal rows created before the AvailableCapabilities column existed (migration default was 0)
+        if (connection.AvailableCapabilities == LiveConnectedServiceCapabilities.None &&
+            connectedServices.TryGetValue(connection.Service, out var serviceDescription))
+        {
+            connection.AvailableCapabilities = serviceDescription.ServiceCapabilities;
+        }
+
+        connection.EnabledCapabilities = (LiveConnectedServiceCapabilities)request.Capabilities
+            & connection.AvailableCapabilities
             & LiveConnectedServiceCapabilities.All;
 
         // TODO: some capabilities can only support one enabled service, so we need to verfiy that
@@ -211,7 +216,10 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             LiveConnectedServiceCapabilities.Zune
         ];
 
-        await foreach (var otherConnection in dbContext.ConnectedServices.Where(c => c.UserId == userId && c.Id != connId).AsAsyncEnumerable())
+        await foreach (var otherConnection in dbContext.ConnectedServices
+            .AsTracking()
+            .Where(c => c.UserId == userId && c.Id != connId)
+            .AsAsyncEnumerable())
         {
             foreach (var cap in singleCaps)
             {

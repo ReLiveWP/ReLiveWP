@@ -25,6 +25,10 @@ var deviceUpdate = builder.AddProject("ReLiveWP.Backend.DeviceUpdate");
 var skybox = builder.AddProject("ReLiveWP.Backend.Skybox")
     .DependsOn(identity);
 
+var skydrive = builder.AddProject("ReLiveWP.Backend.SkyDrive")
+    .DependsOn(identity)
+    .DependsOn(connectedServices);
+
 builder.AddProject("ReLiveWP.Services.Activation")
     .DependsOn(registration);
 
@@ -35,7 +39,8 @@ builder.AddProject("ReLiveWP.Services.Login")
 
 builder.AddProject("ReLiveWP.Services.Activity")
     .DependsOn(identity)
-    .DependsOn(connectedServices);
+    .DependsOn(connectedServices)
+    .DependsOn(skydrive);
 
 builder.AddProject("ReLiveWP.Services.Push")
     .DependsOn(identity);

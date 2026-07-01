@@ -29,6 +29,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<AuthForwardingInterceptor>();
 
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
