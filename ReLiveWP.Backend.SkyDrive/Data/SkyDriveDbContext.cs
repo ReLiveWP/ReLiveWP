@@ -20,7 +20,7 @@ public class SkyDriveDbContext : DbContext
         base.OnConfiguring(optionsBuilder);
 
         if (!optionsBuilder.IsConfigured)
-            optionsBuilder.UseSqlite("Data Source=skydrive.db");
+            optionsBuilder.UseNpgsql("Host=localhost;Database=relive_skydrive;Username=relive;Password=relive");
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

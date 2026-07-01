@@ -1,0 +1,8 @@
+-- Data-only copy of the legacy SQLite users.db into the EF-created relive_identity schema.
+-- EF owns the DDL (run the service once first); pgloader only moves rows and resets sequences.
+LOAD DATABASE
+     FROM     sqlite:///data/users.db
+     INTO     postgresql://relive:relive@postgres/relive_identity
+ WITH data only, truncate, reset sequences, quote identifiers
+  SET work_mem to '32MB'
+EXCLUDING TABLE NAMES LIKE '__EFMigrations%';

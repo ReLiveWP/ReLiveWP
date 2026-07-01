@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<LiveDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<LiveDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;

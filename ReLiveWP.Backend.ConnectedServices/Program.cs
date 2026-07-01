@@ -22,7 +22,7 @@ builder.Services.AddHttpClient("AtProtoClient", c =>
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ConnectedServicesDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<ConnectedServicesDbContext>(options => options.UseNpgsql(connectionString));
 
 builder.Services.AddLiveIDAuthentication(o =>
 {

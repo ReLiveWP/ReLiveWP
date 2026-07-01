@@ -14,7 +14,7 @@ public class PushDatabase : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
-            optionsBuilder.UseSqlite("Data Source=push.db");
+            optionsBuilder.UseNpgsql("Host=localhost;Database=relive_push;Username=relive;Password=relive");
     }
 
     protected override void OnModelCreating(ModelBuilder builder)

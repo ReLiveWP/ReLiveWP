@@ -12,7 +12,7 @@ builder.Services.AddSingleton<ICertificateService, WP7CertificateService>();
 builder.Services.AddSingleton<RootCACertificateProvider>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<DevicesDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<DevicesDbContext>(options => options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 

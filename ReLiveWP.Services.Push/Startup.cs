@@ -24,7 +24,7 @@ public class Startup
         services.AddHostedService<PushTcpService>();
 
         services.AddDbContextFactory<PushDatabase>(
-            o => o.UseSqlite(Configuration.GetConnectionString("Push") ?? "Data Source=push.db"));
+            o => o.UseNpgsql(Configuration.GetConnectionString("Push") ?? "Host=localhost;Database=relive_push;Username=relive;Password=relive"));
 
         services.AddScoped<ChannelStore>();
         services.AddScoped<NotificationQueue>();
