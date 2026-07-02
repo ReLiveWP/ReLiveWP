@@ -1,7 +1,0 @@
--- Data-only copy of the legacy SQLite connectedservices.db into the EF-created relive_connectedservices schema.
-LOAD DATABASE
-     FROM     sqlite:///data/connectedservices.db
-     INTO     postgresql://relive:relive@postgres/relive_connectedservices
- WITH data only, truncate, reset sequences, quote identifiers
-  SET work_mem to '32MB'
-EXCLUDING TABLE NAMES LIKE '__EFMigrations%';

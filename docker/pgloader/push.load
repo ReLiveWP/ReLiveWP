@@ -1,9 +1,0 @@
--- Push is special: only Channels holds durable data. Sessions and Notifications are transient
--- (they regenerate on device reconnect) and are headed for Redis in a later phase, so we skip them.
--- Copying only Channels also sidesteps the bigint unix-millis columns on the transient tables.
-LOAD DATABASE
-     FROM     sqlite:///data/push.db
-     INTO     postgresql://relive:relive@postgres/relive_push
- WITH data only, truncate, reset sequences, quote identifiers
-  SET work_mem to '32MB'
-INCLUDING ONLY TABLE NAMES LIKE 'Channels';

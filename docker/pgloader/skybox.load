@@ -1,8 +1,0 @@
--- Data-only copy of the legacy SQLite sky.db into the EF-created relive_skybox schema.
--- Owned-type columns (LastLocation_*) map 1:1 by name since both schemas come from the same model.
-LOAD DATABASE
-     FROM     sqlite:///data/sky.db
-     INTO     postgresql://relive:relive@postgres/relive_skybox
- WITH data only, truncate, reset sequences, quote identifiers
-  SET work_mem to '32MB'
-EXCLUDING TABLE NAMES LIKE '__EFMigrations%';

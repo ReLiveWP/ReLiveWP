@@ -1,7 +1,0 @@
--- Data-only copy of the legacy SQLite skydrive.db into the EF-created relive_skydrive schema.
-LOAD DATABASE
-     FROM     sqlite:///data/skydrive.db
-     INTO     postgresql://relive:relive@postgres/relive_skydrive
- WITH data only, truncate, reset sequences, quote identifiers
-  SET work_mem to '32MB'
-EXCLUDING TABLE NAMES LIKE '__EFMigrations%';
