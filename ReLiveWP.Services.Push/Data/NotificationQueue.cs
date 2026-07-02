@@ -1,10 +1,18 @@
-using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace ReLiveWP.Services.Push.Data;
 
-public class NotificationQueue(IDbContextFactory<PushDatabase> dbFactory)
+public class NotificationQueue(IConnectionMultiplexer redis)
 {
-    public async Task<long> EnqueueAsync(
+    private const string Group = "push";
+    private const string Consumer = "push";
+    private const int MaxLen = 1000; // bound a device's backlog; oldest entries roll off
+
+    private static string Key(string deviceId) => $"push:queue:{deviceId}";
+
+    private readonly IDatabase db = redis.GetDatabase();
+
+    public async Task EnqueueAsync(
         string deviceId,
         long channelId,
         byte[] payload,
@@ -12,100 +20,111 @@ public class NotificationQueue(IDbContextFactory<PushDatabase> dbFactory)
         DateTimeOffset? expiresAt = null,
         CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var key = Key(deviceId);
+        await EnsureGroupAsync(key);
 
-        var item = new QueuedNotification
+        var fields = new List<NameValueEntry>
         {
-            DeviceId = deviceId,
-            ChannelId = channelId,
-            Payload = payload,
-            NotificationClass = notificationClass,
-            Status = NotificationStatus.Pending,
-            CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            ExpiresAt = expiresAt?.ToUnixTimeMilliseconds(),
+            new("d", deviceId),
+            new("c", channelId),
+            new("n", notificationClass),
+            new("p", payload),
         };
+        if (expiresAt != null)
+            fields.Add(new("e", expiresAt.Value.ToUnixTimeMilliseconds()));
 
-        db.Notifications.Add(item);
-        await db.SaveChangesAsync(ct);
-        return item.Id;
+        await db.StreamAddAsync(key, [.. fields], maxLength: MaxLen, useApproximateMaxLength: true);
     }
 
-    public async Task<IReadOnlyList<QueuedNotification>> ClaimForDeviceAsync(
-        string deviceId,
-        TimeSpan leaseDuration,
-        CancellationToken ct = default)
+    public async Task<IReadOnlyList<QueuedNotification>> ClaimForDeviceAsync(string deviceId, CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var key = Key(deviceId);
+        await EnsureGroupAsync(key);
 
-        // so this is a bit funky, basically we need to make sure the database knows that we own
-        // these notifications so they don't get touched by anybody else (in the event we have 2 things
-        // tryina pull notifications at once)
-
-        // in the ideal case, this isn't super important because we'll just delete these notifications
-        // when they get pushed to a device anyway, but we can't always trust that's what'll happen
+        await db.StreamReadGroupAsync(key, Group, Consumer, StreamPosition.NewMessages, count: MaxLen);
+        var entries = await db.StreamReadGroupAsync(key, Group, Consumer, StreamPosition.Beginning, count: MaxLen);
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var leaseOwner = Guid.NewGuid().ToString("N");
-        var leaseUntil = now + (long)leaseDuration.TotalMilliseconds;
-
-        await db.Notifications
-            .Where(n => n.DeviceId == deviceId
-                     && n.Status == NotificationStatus.Pending
-                     && (n.ExpiresAt == null || n.ExpiresAt > now))
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(n => n.Status, NotificationStatus.InFlight)
-                .SetProperty(n => n.LeaseOwner, leaseOwner)
-                .SetProperty(n => n.LeaseExpiresAt, leaseUntil), ct);
-
-        // read back only the rows we just claimed (by owner), in order
-        return await db.Notifications
-            .Where(n => n.LeaseOwner == leaseOwner && n.Status == NotificationStatus.InFlight)
-            .OrderBy(n => n.CreatedAt)
-            .ToListAsync(ct);
+        var result = new List<QueuedNotification>();
+        foreach (var entry in entries)
+        {
+            var item = Parse(deviceId, entry);
+            if (item.ExpiresAt != null && item.ExpiresAt < now)
+            {
+                await db.StreamAcknowledgeAsync(key, Group, entry.Id);
+                await db.StreamDeleteAsync(key, [entry.Id]);
+                continue;
+            }
+            result.Add(item);
+        }
+        return result;
     }
 
-    public async Task CompleteAsync(long id, CancellationToken ct = default)
+    public async Task CompleteAsync(QueuedNotification item, CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        await db.Notifications.Where(n => n.Id == id).ExecuteDeleteAsync(ct);
+        var key = Key(item.DeviceId);
+        await db.StreamAcknowledgeAsync(key, Group, item.StreamId);
+        await db.StreamDeleteAsync(key, [(RedisValue)item.StreamId]);
     }
 
-    public async Task FailAsync(long id, string error, CancellationToken ct = default)
+    public Task FailAsync(QueuedNotification item, string error, CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        await db.Notifications
-            .Where(n => n.Id == id)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(n => n.Status, NotificationStatus.Pending)
-                .SetProperty(n => n.LeaseOwner, (string)null)
-                .SetProperty(n => n.LeaseExpiresAt, (long?)null)
-                .SetProperty(n => n.AttemptCount, n => n.AttemptCount + 1)
-                .SetProperty(n => n.LastError, error), ct);
-    }
-
-    public async Task<int> ReclaimExpiredAsync(CancellationToken ct = default)
-    {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-        return await db.Notifications
-            .Where(n => n.Status == NotificationStatus.InFlight
-                     && n.LeaseExpiresAt != null && n.LeaseExpiresAt < now)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(n => n.Status, NotificationStatus.Pending)
-                .SetProperty(n => n.LeaseOwner, (string)null)
-                .SetProperty(n => n.LeaseExpiresAt, (long?)null)
-                .SetProperty(n => n.AttemptCount, n => n.AttemptCount + 1), ct);
+        return Task.CompletedTask;
     }
 
     public async Task<int> ExpireAsync(CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var server = redis.GetServer(redis.GetEndPoints()[0]);
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var removed = 0;
 
-        return await db.Notifications
-            .Where(n => n.ExpiresAt != null && n.ExpiresAt < now
-                     && n.Status != NotificationStatus.InFlight)
-            .ExecuteDeleteAsync(ct);
+        await foreach (var key in server.KeysAsync(pattern: "push:queue:*").WithCancellation(ct))
+        {
+            foreach (var entry in await db.StreamRangeAsync(key))
+            {
+                var e = Field(entry, "e");
+                if (e.HasValue && (long)e < now)
+                {
+                    await db.StreamAcknowledgeAsync(key, Group, entry.Id);
+                    await db.StreamDeleteAsync(key, [entry.Id]);
+                    removed++;
+                }
+            }
+        }
+        return removed;
+    }
+
+    private async Task EnsureGroupAsync(RedisKey key)
+    {
+        try
+        {
+            await db.StreamCreateConsumerGroupAsync(key, Group, StreamPosition.NewMessages, createStream: true);
+        }
+        catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
+        {
+            // group already exists
+        }
+    }
+
+    private static QueuedNotification Parse(string deviceId, StreamEntry entry)
+    {
+        var expires = Field(entry, "e");
+        return new QueuedNotification
+        {
+            StreamId = entry.Id,
+            DeviceId = deviceId,
+            ChannelId = (long)Field(entry, "c"),
+            NotificationClass = (uint)(long)Field(entry, "n"),
+            Payload = (byte[])Field(entry, "p"),
+            ExpiresAt = expires.HasValue ? (long)expires : null,
+        };
+    }
+
+    private static RedisValue Field(StreamEntry entry, string name)
+    {
+        foreach (var pair in entry.Values)
+            if (pair.Name == name)
+                return pair.Value;
+        return RedisValue.Null;
     }
 }

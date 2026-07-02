@@ -1,14 +1,15 @@
-using System.Collections.Concurrent;
+using RedLockNet;
+using RedLockNet.SERedis;
 
 namespace ReLiveWP.Backend.ConnectedServices.Services;
 
-// In-process semaphores for token refresh serialization.
-// Safe for single-instance deployments. For multi-instance: replace with distributed locks (e.g. Redlock)
-// and rely on the ConcurrencyCheck on LiveConnectedService.RowVersion as the backstop.
-public class ServiceTokenLocks
-{
-    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
 
-    public SemaphoreSlim GetOrCreateLock(Guid connectionId) =>
-        _locks.GetOrAdd(connectionId, _ => new SemaphoreSlim(1, 1));
+public class ServiceTokenLocks(RedLockFactory lockFactory)
+{
+    private static readonly TimeSpan Expiry = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan Wait = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan Retry = TimeSpan.FromMilliseconds(200);
+
+    public Task<IRedLock> AcquireAsync(Guid connectionId, CancellationToken ct = default) =>
+        lockFactory.CreateLockAsync($"cs:token-refresh:{connectionId}", Expiry, Wait, Retry, ct);
 }

@@ -11,8 +11,12 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<DeviceCommandService>();
 
+builder.Services.AddRedis(builder.Configuration);
+builder.Services.AddSingleton<CommandRegistry>();
+builder.Services.AddSingleton<CommandStatusHub>();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<SkyDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<SkyDbContext>(options => options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 

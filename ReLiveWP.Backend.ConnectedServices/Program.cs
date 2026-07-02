@@ -8,6 +8,9 @@ using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 using ReLiveWP.Backend.ConnectedServices.Proxy;
 using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Identity;
+using RedLockNet.SERedis;
+using RedLockNet.SERedis.Configuration;
+using StackExchange.Redis;
 
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
 using GoogleService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
@@ -22,7 +25,7 @@ builder.Services.AddHttpClient("AtProtoClient", c =>
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ConnectedServicesDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<ConnectedServicesDbContext>(options => options.UseNpgsql(connectionString));
 
 builder.Services.AddLiveIDAuthentication(o =>
 {
@@ -42,7 +45,11 @@ builder.Services.AddLiveIDAuthentication(o =>
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddRedis(builder.Configuration);
+builder.Services.AddSingleton(sp =>
+    RedLockFactory.Create([new RedLockMultiplexer(sp.GetRequiredService<IConnectionMultiplexer>())]));
 builder.Services.AddSingleton<ServiceTokenLocks>();
+builder.Services.AddSingleton<PendingOAuthStore>();
 builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
 builder.Services.AddScoped<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();

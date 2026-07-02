@@ -11,6 +11,8 @@ public class PDU
     public PDUHeader[] Headers { get; set; }
     public byte[] Data { get; set; }
 
+    public string Tag { get; set; }
+
     private PDU() { }
 
     public PDU(PDUCommand command, uint sequenceNumber, PDUHeader[] headers, byte[] data)

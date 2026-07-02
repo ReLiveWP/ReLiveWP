@@ -1,40 +1,33 @@
-using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace ReLiveWP.Services.Push.Data;
 
-public class SessionStore(IDbContextFactory<PushDatabase> dbFactory)
+public class SessionStore(IConnectionMultiplexer redis)
 {
+    private static readonly TimeSpan Ttl = TimeSpan.FromDays(7);
+
+    private static string SessionKey(string token) => $"push:session:{token}";
+    private static string DeviceKey(string deviceId) => $"push:device-session:{deviceId}";
+
+    private readonly IDatabase db = redis.GetDatabase();
+
     public async Task CreateAsync(string token, string deviceId, CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        // one live session per device, evict whatever token we last issued to it
+        var previous = await db.StringGetAsync(DeviceKey(deviceId));
+        if (!previous.IsNull)
+            await db.KeyDeleteAsync(SessionKey(previous));
 
-        // one live session per device; a fresh Connect supersedes whatever came before
-        await db.Sessions.Where(s => s.DeviceId == deviceId).ExecuteDeleteAsync(ct);
-
-        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        db.Sessions.Add(new DeviceSession
-        {
-            Token = token,
-            DeviceId = deviceId,
-            CreatedAt = nowMs,
-            LastSeenAt = nowMs,
-        });
-        await db.SaveChangesAsync(ct);
+        await db.StringSetAsync(SessionKey(token), deviceId, Ttl);
+        await db.StringSetAsync(DeviceKey(deviceId), token, Ttl);
     }
 
     public async Task<DeviceSession> FindAsync(string token, CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-        return await db.Sessions.FirstOrDefaultAsync(s => s.Token == token, ct);
+        var value = await db.StringGetAsync(SessionKey(token));
+        return value.IsNull ? null : new DeviceSession { Token = token, DeviceId = value };
     }
 
-    public async Task TouchAsync(string token, CancellationToken ct = default)
-    {
-        // TODO: last seen is kinda cute, we could consider poking this up the chain so we can show it in the UI
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
-
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        await db.Sessions.Where(s => s.Token == token)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.LastSeenAt, now), ct);
-    }
+    public Task TouchAsync(string token, CancellationToken ct = default) =>
+        db.KeyExpireAsync(SessionKey(token), Ttl);
 }

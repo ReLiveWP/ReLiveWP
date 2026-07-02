@@ -130,9 +130,83 @@ public class DevicesController(
         if (User == null)
             return Unauthorized(); // should never happen
 
-        await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandRing }, cancellationToken: cancellationToken);
+        var response = await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandRing }, cancellationToken: cancellationToken);
 
-        return Accepted();
+        return Accepted(new { requestId = response.RequestId });
+    }
+
+
+    [HttpPut]
+    [Authorize]
+    [ActionName("locate")]
+    public async Task<IActionResult> LocateDeviceAsync(string id, CancellationToken cancellationToken)
+    {
+        if (User == null)
+            return Unauthorized(); // should never happen
+
+        var response = await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandLocate }, cancellationToken: cancellationToken);
+
+        return Accepted(new { requestId = response.RequestId });
+    }
+
+    [HttpGet]
+    [Authorize]
+    [ActionName("events")]
+    public IResult EventsStream(string id, CancellationToken cancellationToken)
+    {
+        if (User == null)
+            return Results.Unauthorized();
+
+        var call = skyboxClient.StreamCommandStatus(
+            new StreamCommandStatusRequest() { UserId = User.Id(), DeviceGuid = id },
+            cancellationToken: cancellationToken);
+
+        return TypedResults.ServerSentEvents(MapStatusAsync(call, cancellationToken), eventType: "status");
+    }
+
+    private static async IAsyncEnumerable<CommandStatusModel> MapStatusAsync(
+        AsyncServerStreamingCall<CommandStatusUpdate> call,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        using (call)
+        {
+            // equivalent to, except catches RpcException for cancellation
+            // await foreach (var update in call.ResponseStream.ReadAllAsync(cancellationToken))
+            await using var enumerator = call.ResponseStream.ReadAllAsync(cancellationToken)
+                .GetAsyncEnumerator(cancellationToken);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                CommandStatusUpdate? update = null;
+                try
+                {
+                    if (!await enumerator.MoveNextAsync())
+                        yield break;
+
+                    update = enumerator.Current;
+                }
+                catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.Cancelled)
+                {
+                    yield break;
+                }
+
+                yield return new CommandStatusModel(
+                    update.RequestId,
+                    update.Action switch
+                    {
+                        DeviceCommandRequestType.CommandRing => "ring",
+                        DeviceCommandRequestType.CommandLocate => "locate",
+                        _ => "unknown"
+                    },
+                    update.Result,
+                    update.Final,
+                    string.IsNullOrEmpty(update.Data) ? null : update.Data,
+                    update.Reported?.ToDateTimeOffset(),
+                    update.HasLat ? update.Lat : null,
+                    update.HasLong ? update.Long : null,
+                    update.HasAccuracy ? update.Accuracy : null);
+
+            }
+        }
     }
 
     private static string SafeLocaleDisplay(bool hasLcid, int lcid)

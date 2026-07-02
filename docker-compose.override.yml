@@ -1,191 +1,107 @@
 ---
 name: relivewp
 
-x-dev-env:
-  &dev-env
-  ASPNETCORE_ENVIRONMENT: Development
-  NODE_ENV: development
-
-# Allow Visual Studio's vsdbg to ptrace/attach to the dotnet process. The
-# default Docker seccomp profile blocks ptrace, so debugging fails without this.
-x-debug:
-  &debug
-  cap_add:
-    - SYS_PTRACE
-  security_opt:
-    - seccomp:unconfined
-
 services:
   identity:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.Identity
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   connectedservices:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.ConnectedServices
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   deviceregistration:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.DeviceRegistration
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   skybox:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.Skybox
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   skydrive:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Backend.SkyDrive
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   activation:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Activation
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   login:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Login
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   web:
     build:
       context: .
       dockerfile: ReLiveWP.Web/Dockerfile
-      args:
-        CLIENT_BUILD_SCRIPT: build:local
-    environment: *dev-env
 
   push:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Push
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   activity:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Activity
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   exchange:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Exchange
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   addressbook:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.AddressBook
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   devices:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Devices
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   findmyphone:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.FindMyPhone
-        CONFIGURATION: Debug
-    environment: *dev-env
 
   orion:
-    <<: *debug
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Orion
-        CONFIGURATION: Debug
-    environment: *dev-env
-
-  dnsmasq:
-    image: alpine:latest
-    command: >
-      sh -c "apk add --no-cache dnsmasq &&
-             dnsmasq --no-daemon --conf-file=/etc/dnsmasq.conf"
-    networks:
-      - relive
-    ports:
-      - "127.0.0.1:5354:5354/udp"
-    volumes:
-      - ./deploy/dnsmasq.conf:/etc/dnsmasq.conf:ro
-
-  nginx:
-    image: nginx:alpine
-    networks:
-      - relive
-    ports:
-      - "127.0.0.1:80:80"
-    volumes:
-      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - login
-      - devices
-      - web
-      - activity
+        

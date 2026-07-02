@@ -16,7 +16,7 @@ builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
 builder.Services.AddScoped<IPhotoSyncProxyClient, GooglePhotosProxyClient>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<SkyDriveDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<SkyDriveDbContext>(options => options.UseNpgsql(connectionString));
 
 var app = builder.Build();
 

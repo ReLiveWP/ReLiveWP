@@ -10,11 +10,11 @@ public class NspSession(
     ChannelStore channels,
     NotificationQueue queue,
     PushPresence presence,
+    PresenceDirectory directory,
+    PushInstance instance,
     IConfiguration configuration,
     ILogger<NspSession> logger)
 {
-    private static readonly TimeSpan DrainLease = TimeSpan.FromSeconds(30);
-
     public async Task RunAsync(CancellationToken ct = default)
     {
         var transportLoop = transport.RunLoop(ct);
@@ -34,13 +34,18 @@ public class NspSession(
         {
             var deviceId = transport.Context.DeviceId;
             if (deviceId != null)
+            {
                 presence.Remove(deviceId, this);
+                await directory.RemoveAsync(deviceId, instance.Id);
+            }
 
             await transportLoop;
         }
     }
+    
+    private const int WindowSize = 16;
 
-    public bool TrySend(uint channelId, NspNotificationClass cls, byte[] payload)
+    public bool TrySend(uint channelId, NspNotificationClass cls, byte[] payload, string tag = null)
     {
         var package = new NspNotification
         {
@@ -49,7 +54,7 @@ public class NspSession(
             Payload = payload,
         }.ToPackage();
 
-        return transport.TrySendData(package.Serialize());
+        return transport.TrySendData(package.Serialize(), tag);
     }
 
     private async Task FlushOnConnectAsync(CancellationToken ct)
@@ -65,6 +70,7 @@ public class NspSession(
 
         var deviceId = transport.Context.DeviceId;
         presence.Add(deviceId, this);
+        await directory.SetAsync(deviceId, instance.Id);
 
         try
         {
@@ -78,20 +84,33 @@ public class NspSession(
 
     private async Task DrainAsync(string deviceId, CancellationToken ct)
     {
-        var pending = await queue.ClaimForDeviceAsync(deviceId, DrainLease, ct);
+        var pending = new Queue<QueuedNotification>(await queue.ClaimForDeviceAsync(deviceId, ct));
+        if (pending.Count == 0)
+            return;
 
-        foreach (var item in pending)
+        var inflight = new Dictionary<string, QueuedNotification>();
+
+        bool Fill()
         {
-            if (TrySend((uint)item.ChannelId, (NspNotificationClass)item.NotificationClass, item.Payload))
+            while (inflight.Count < WindowSize && pending.TryDequeue(out var item))
             {
-                await queue.CompleteAsync(item.Id, ct);
+                if (!TrySend((uint)item.ChannelId, (NspNotificationClass)item.NotificationClass, item.Payload, item.StreamId))
+                    return false; // socket gone
+                inflight[item.StreamId] = item;
             }
-            else
-            {
-                // connection went away mid-drain; the lease lapsing returns the rest to pending
-                await queue.FailAsync(item.Id, "send failed", ct);
+            return true;
+        }
+
+        if (!Fill())
+            return;
+
+        await foreach (var tag in transport.Acknowledged.ReadAllAsync(ct))
+        {
+            if (inflight.Remove(tag, out var item))
+                await queue.CompleteAsync(item, ct);
+
+            if (!Fill() || (inflight.Count == 0 && pending.Count == 0))
                 break;
-            }
         }
     }
 
@@ -137,8 +156,6 @@ public class NspSession(
 
             case NspCommand.Configure:
                 {
-                    // sent right after registration (and whenever the app's notification bindings
-                    // change); the device won't deliver until we confirm it by echoing the config
                     var request = NspConfigureRequest.FromPackage(package);
 
                     logger.LogInformation("Configured channel {Channel} for {DeviceId}",

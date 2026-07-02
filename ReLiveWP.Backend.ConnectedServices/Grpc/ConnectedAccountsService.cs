@@ -7,12 +7,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Backend.ConnectedServices.Grpc;
 
 public class ConnectedAccountsService(IServiceProvider serviceProvider,
                                       IConnectedServicesContainer connectedServices,
+                                      PendingOAuthStore pendingOAuths,
                                       ConnectedServicesDbContext dbContext) : ReLiveWP.Services.Grpc.ConnectedServices.ConnectedServicesBase
 {
     #region Account Linking
@@ -31,8 +33,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         {
             var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
             var data = await handler.BeginAccountLinkAsync(userId, request.Identifer);
-            await dbContext.PendingOAuths.AddAsync(data);
-            await dbContext.SaveChangesAsync();
+            await pendingOAuths.SetAsync(data);
 
             return new BeginAccountLinkingResponse() { RedirectUri = data.RedirectUri };
         }
@@ -44,14 +45,12 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
     public override async Task<FinaliseAccountLinkingResponse> FinaliseAccountLinkingForService(FinaliseAccountLinkingRequest request, ServerCallContext context)
     {
-        var pendingOauth = await dbContext.PendingOAuths.FirstOrDefaultAsync(s => s.State == request.State);
+        var pendingOauth = await pendingOAuths.GetAsync(request.State);
         if (pendingOauth == null || pendingOauth.ExpiresAt <= DateTimeOffset.Now)
             throw new RpcException(new Status(StatusCode.Unauthenticated, "This ticket has expired."));
 
         if (!connectedServices.TryGetValue(pendingOauth.Service, out var serviceDescription))
             throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
-
-        dbContext.PendingOAuths.Remove(pendingOauth);
 
         using var scope = serviceProvider.CreateScope();
 
@@ -95,6 +94,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         }
 
         await dbContext.SaveChangesAsync();
+        await pendingOAuths.RemoveAsync(pendingOauth.State); // consume the one-shot ticket on success
 
         return new FinaliseAccountLinkingResponse() { ConnectionId = serviceId.Value.ToString() };
     }
@@ -125,8 +125,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         var data = await handler.BeginAccountLinkAsync(userId, identifier);
         data.ExistingConnectionId = connectionId;
 
-        await dbContext.PendingOAuths.AddAsync(data);
-        await dbContext.SaveChangesAsync();
+        await pendingOAuths.SetAsync(data);
 
         return new BeginAccountLinkingResponse() { RedirectUri = data.RedirectUri };
     }

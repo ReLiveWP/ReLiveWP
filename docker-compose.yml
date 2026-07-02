@@ -7,16 +7,66 @@ x-svc-env:
   HOME: /home/app
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: relive
+      POSTGRES_DB: relive
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    networks:
+      - relive
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-create-databases.sql:ro
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relive"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - relive
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:alpine
+    networks:
+      - relive
+    ports:
+      - "8086:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - login
+      - devices
+      - web
+      - activity
+      - findmyphone
+      - push
+
   identity:
     image: relive/identity
     environment: *v-env
     networks:
       - relive
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.Identity.ini:/app/ReLiveWP.Backend.Identity.ini:ro
-      - ./deploy/data/identity:/app/data
       - ./deploy/data/identity/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
       - ./deploy/certs/identity_ca.pfx:/certs/identity_ca.pfx:ro
       - ./deploy/certs/root_ca.pfx:/certs/root_ca.pfx:ro
@@ -27,6 +77,8 @@ services:
         target: CertificateGeneration__CACertPassword
       - source: root_ca_password
         target: CertificateGeneration__RootCACertPassword
+      - source: identity_db_connection
+        target: ConnectionStrings__DefaultConnection
 
   connectedservices:
     image: relive/connectedservices
@@ -34,28 +86,39 @@ services:
     networks:
       - relive
     depends_on:
-      - identity
+      identity:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.ConnectedServices.ini:/app/ReLiveWP.Backend.ConnectedServices.ini:ro
-      - ./deploy/data/connectedservices:/app/data
+    secrets:
+      - source: connectedservices_db_connection
+        target: ConnectionStrings__DefaultConnection
 
   deviceregistration:
     image: relive/deviceregistration
     environment: *v-env
     networks:
       - relive
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.DeviceRegistration.ini:/app/ReLiveWP.Backend.DeviceRegistration.ini:ro
-      - ./deploy/data/deviceregistration:/app/data
       - ./deploy/data/deviceregistration/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
       - ./deploy/certs/provisioning_ca.pfx:/certs/provisioning_ca.pfx:ro
     secrets:
       - source: provisioning_ca_password
         target: CertificateGeneration__RootCACertPassword
+      - source: deviceregistration_db_connection
+        target: ConnectionStrings__DefaultConnection
 
   skybox:
     image: relive/skybox
@@ -63,12 +126,19 @@ services:
     networks:
       - relive
     depends_on:
-      - identity
+      identity:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.Skybox.ini:/app/ReLiveWP.Backend.Skybox.ini:ro
-      - ./deploy/data/skybox:/app/data
+    secrets:
+      - source: skybox_db_connection
+        target: ConnectionStrings__DefaultConnection
 
   skydrive:
     image: relive/skydrive
@@ -76,13 +146,19 @@ services:
     networks:
       - relive
     depends_on:
-      - identity
-      - connectedservices
+      identity:
+        condition: service_started
+      connectedservices:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.SkyDrive.ini:/app/ReLiveWP.Backend.SkyDrive.ini:ro
-      - ./deploy/data/skydrive:/app/data
+    secrets:
+      - source: skydrive_db_connection
+        target: ConnectionStrings__DefaultConnection
 
   activation:
     image: relive/activation
@@ -135,20 +211,26 @@ services:
     networks:
       - relive
     depends_on:
-      - identity
+      identity:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - 10005:10005
-      - 33573:33573
+      - 0.0.0.0:33573:33573
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Push.ini:/app/ReLiveWP.Services.Push.ini:ro
-      - ./deploy/data/push:/app/data
       - ./deploy/certs/push.pfx:/certs/push.pfx:ro
       - ./docker/push-openssl.cnf:/app/openssl.cnf:ro
     secrets:
       - source: push_cert_password
         target: Push__ServerCertPassword
+      - source: push_db_connection
+        target: ConnectionStrings__Push
 
   activity:
     image: relive/activity
@@ -243,6 +325,10 @@ networks:
   relive:
     driver: bridge
 
+volumes:
+  postgres_data:
+  redis_data:
+
 secrets:
   jwt_private_key:
     file: ./deploy/secrets/jwt_private_key
@@ -256,3 +342,17 @@ secrets:
     file: ./deploy/secrets/push_cert_password
   api_key_geolocation:
     file: ./deploy/api_keys/geolocation
+  postgres_password:
+    file: ./deploy/secrets/postgres_password
+  identity_db_connection:
+    file: ./deploy/secrets/identity_db_connection
+  connectedservices_db_connection:
+    file: ./deploy/secrets/connectedservices_db_connection
+  deviceregistration_db_connection:
+    file: ./deploy/secrets/deviceregistration_db_connection
+  skybox_db_connection:
+    file: ./deploy/secrets/skybox_db_connection
+  skydrive_db_connection:
+    file: ./deploy/secrets/skydrive_db_connection
+  push_db_connection:
+    file: ./deploy/secrets/push_db_connection

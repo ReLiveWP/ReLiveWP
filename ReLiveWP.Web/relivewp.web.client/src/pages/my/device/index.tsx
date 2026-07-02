@@ -2,14 +2,14 @@ import { useSignal, useSignalEffect } from "@preact/signals";
 import "./index.scss"
 
 import { LocationProvider, useLocation } from "preact-iso";
-import { useEffect } from "preact/compat";
+import { useEffect } from "preact/hooks";
 
 import { useAccentColor, useTitle } from "~/util/effects";
 import { ENDPOINT_GET_DEVICES } from "~/util/endpoints";
 import { Devices } from "~/util/device-types";
 import { useFetchSignal } from "~/util/use-fetch";
 import DevicePicker from "./components/DevicePicker";
-import DevicePage from "./pages/device";
+import DevicePage from "./device-page";
 
 export default function Device({ id }: { id?: string }) {
     useTitle("my device");
