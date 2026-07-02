@@ -58,16 +58,16 @@ public static class ConnectedServicesProxy
                 return;
             }
 
-            var serviceLock = tokenLocks.GetOrCreateLock(service.Id);
-            if (!await serviceLock.WaitAsync(5000, context.RequestAborted))
-            {
-                logger.LogError("Failed to acquire lock on {ServiceId}!", service.Id);
-                context.Response.StatusCode = StatusCodes.Status408RequestTimeout;
-                return;
-            }
-
+            var serviceLock = await tokenLocks.AcquireAsync(service.Id, context.RequestAborted);
             try
             {
+                if (!serviceLock.IsAcquired)
+                {
+                    logger.LogError("Failed to acquire lock on {ServiceId}!", service.Id);
+                    context.Response.StatusCode = StatusCodes.Status408RequestTimeout;
+                    return;
+                }
+
                 service = await LoadServiceAsync(dbContext, userId, connectionId, serviceId);
                 if (service == null)
                 {
@@ -112,7 +112,7 @@ public static class ConnectedServicesProxy
             }
             finally
             {
-                serviceLock.Release();
+                await serviceLock.DisposeAsync();
             }
 
 

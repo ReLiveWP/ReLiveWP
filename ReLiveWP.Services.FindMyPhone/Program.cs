@@ -2,6 +2,7 @@ using System.Text;
 using System.Xml;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using ReLiveWP.Identity;
+using ReLiveWP.Services.FindMyPhone;
 using ReLiveWP.Services.Grpc.FindMyPhone;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,8 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
+app.UseMiddleware<DeviceStatusMiddleware>();
+
 app.MapControllers();
 
 app.Run();
@@ -46,7 +49,7 @@ public class Utf8XmlOutputFormatter : XmlSerializerOutputFormatter
     public override XmlWriter CreateXmlWriter(OutputFormatterWriteContext context, TextWriter writer, XmlWriterSettings settings)
     {
         settings.Encoding = Encoding.UTF8;
-        settings.OmitXmlDeclaration = true; // or true if you don't care
+        settings.OmitXmlDeclaration = true;
         return base.CreateXmlWriter(writer, settings);
     }
 }

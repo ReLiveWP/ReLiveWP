@@ -17,7 +17,7 @@ namespace ReLiveWP.Backend.Skybox.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.16")
+                .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -57,6 +57,9 @@ namespace ReLiveWP.Backend.Skybox.Migrations
 
                     b.Property<int>("LCID")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("LastSeen")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("MPNSEnabled")
                         .HasColumnType("boolean");

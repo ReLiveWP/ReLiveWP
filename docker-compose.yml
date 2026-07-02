@@ -26,6 +26,35 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    networks:
+      - relive
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:alpine
+    networks:
+      - relive
+    ports:
+      - "8086:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - login
+      - devices
+      - web
+      - activity
+      - findmyphone
+      - push
+
   identity:
     image: relive/identity
     environment: *v-env
@@ -60,6 +89,8 @@ services:
       identity:
         condition: service_started
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
@@ -98,6 +129,8 @@ services:
       identity:
         condition: service_started
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
@@ -182,9 +215,11 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - 10005:10005
-      - 33573:33573
+      - 0.0.0.0:33573:33573
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -292,6 +327,7 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
 
 secrets:
   jwt_private_key:

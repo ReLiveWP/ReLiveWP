@@ -76,6 +76,17 @@
         h3 {
             margin-top: 0;
         }
+
+        .last-seen-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     }
 
     .find {

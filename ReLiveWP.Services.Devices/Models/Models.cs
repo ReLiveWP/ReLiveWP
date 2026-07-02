@@ -34,3 +34,14 @@ public record ConnectedDeviceExtendedModel(
     double? LastSeenLatitude,
     double? LastSeenLongitude,
     string? IMEI);
+
+public record CommandStatusModel(
+    uint RequestId,
+    string Action,
+    uint Result,
+    bool Final,
+    string? Data,
+    DateTimeOffset? Reported,
+    double? Latitude,
+    double? Longitude,
+    double? Accuracy);

@@ -95,43 +95,6 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
                     b.ToTable("DPoPKeys");
                 });
 
-            modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LivePendingOAuth", b =>
-                {
-                    b.Property<string>("State")
-                        .HasColumnType("text");
-
-                    b.Property<string>("AuthorizationEndpoint")
-                        .HasColumnType("text");
-
-                    b.Property<string>("CodeVerifier")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Endpoint")
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("ExistingConnectionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Service")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TokenEndpoint")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("State");
-
-                    b.HasIndex("State");
-
-                    b.ToTable("PendingOAuths");
-                });
-
             modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedService", b =>
                 {
                     b.HasOne("ReLiveWP.Backend.ConnectedServices.Data.LiveDPoPKey", "DPoPKey")

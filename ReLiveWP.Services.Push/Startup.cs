@@ -15,7 +15,6 @@ public class Startup
 
     public IConfiguration Configuration { get; }
 
-    // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddControllersWithViews();
@@ -30,8 +29,15 @@ public class Startup
         services.AddScoped<NotificationQueue>();
         services.AddScoped<SessionStore>();
 
-        // presence is shared across every connection scope and the trigger's request scope
+        services.AddRedis(Configuration);
+
         services.AddSingleton<PushPresence>();
+
+        services.AddSingleton<PushInstance>();
+        services.AddSingleton<PresenceDirectory>();
+        services.AddSingleton<PushRouter>();
+        services.AddHostedService<PushRouteSubscriber>();
+        services.AddHostedService<PresenceHeartbeatService>();
 
         services.AddHostedService<NotificationCleanupService>();
 
@@ -39,7 +45,6 @@ public class Startup
             o => o.Address = new Uri(Configuration["Endpoints:Identity"]!));
     }
 
-    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
         using (var scope = app.ApplicationServices.CreateScope())
@@ -52,8 +57,6 @@ public class Startup
         {
             app.UseDeveloperExceptionPage();
         }
-
-        // app.UseHttpsRedirection();
 
         app.UseRouting();
 

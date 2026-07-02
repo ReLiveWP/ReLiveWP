@@ -21,27 +21,6 @@ namespace ReLiveWP.Services.Push.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("ReLiveWP.Services.Push.Data.DeviceSession", b =>
-                {
-                    b.Property<string>("Token")
-                        .HasColumnType("text");
-
-                    b.Property<long>("CreatedAt")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("DeviceId")
-                        .HasColumnType("text");
-
-                    b.Property<long>("LastSeenAt")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Token");
-
-                    b.HasIndex("DeviceId");
-
-                    b.ToTable("Sessions");
-                });
-
             modelBuilder.Entity("ReLiveWP.Services.Push.Data.PushChannel", b =>
                 {
                     b.Property<long>("ChannelId")
@@ -79,58 +58,6 @@ namespace ReLiveWP.Services.Push.Migrations
                         .IsUnique();
 
                     b.ToTable("Channels");
-                });
-
-            modelBuilder.Entity("ReLiveWP.Services.Push.Data.QueuedNotification", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("ChannelId")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("CreatedAt")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("DeviceId")
-                        .HasColumnType("text");
-
-                    b.Property<long?>("ExpiresAt")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("LastError")
-                        .HasColumnType("text");
-
-                    b.Property<long?>("LeaseExpiresAt")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("LeaseOwner")
-                        .HasColumnType("text");
-
-                    b.Property<long>("NotificationClass")
-                        .HasColumnType("bigint");
-
-                    b.Property<byte[]>("Payload")
-                        .HasColumnType("bytea");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("DeviceId", "Status");
-
-                    b.HasIndex("Status", "LeaseExpiresAt");
-
-                    b.ToTable("Notifications");
                 });
 #pragma warning restore 612, 618
         }
