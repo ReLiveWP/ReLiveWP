@@ -26,27 +26,6 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 .AddEntityFrameworkStores<LiveDbContext>()
 .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false;
-    options.TokenValidationParameters = new TokenValidationParameters()
-    {
-        ValidateIssuer = true,
-        ValidIssuers = ["https://relivewp.net/"],
-        ValidateAudience = true,
-        ValidAudiences = ["http://Passport.NET/tb", "relivewp.net", "spaces.int.relivewp.net", "spaces.relivewp.net"],
-        IssuerSigningKey = TokenManager.GetVerifyingCredentials(builder.Configuration)
-    };
-});
-
-builder.Services.AddAuthorization();
-
 builder.Services.AddScoped<TokenManager>();
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();
 builder.Services.AddScoped<RootCACertificateProvider>();
@@ -62,10 +41,9 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<LiveDbContext>().Database.Migrate();
 }
 
-app.UseAuthentication();
-app.UseAuthorization();
-
 app.MapGrpcService<AuthenticationService>();
 app.MapGrpcService<UserService>();
+
+app.MapDefaultEndpoints();
 
 app.Run();

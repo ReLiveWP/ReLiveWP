@@ -5,6 +5,7 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Web;
 using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -64,29 +65,40 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
 
         var authHeader = value.ToString();
+
         string token;
-
-        if (Options.AcceptBasicAuth && authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        if (authHeader.StartsWith("Bearer", StringComparison.OrdinalIgnoreCase))
         {
-            // EAS Basic auth: Authorization: Basic base64(username:access_token)
-            // The password field carries the access token; username is ignored for verification.
-            var encoded = authHeader["Basic ".Length..].Trim();
-            string decoded;
-            try { decoded = Encoding.UTF8.GetString(Convert.FromBase64String(encoded)); }
-            catch { return AuthenticateResult.Fail("Malformed Basic auth header"); }
-
-            var colon = decoded.IndexOf(':');
-            if (colon < 0)
-                return AuthenticateResult.Fail("Malformed Basic auth header: missing colon");
-
-            token = decoded[(colon + 1)..];
-        }
-        else if (authHeader.StartsWith("Bearer", StringComparison.OrdinalIgnoreCase))
+            // standard JWT bearer
             token = authHeader["Bearer".Length..].Trim();
+        }
         else if (authHeader.StartsWith("WLID1.0", StringComparison.OrdinalIgnoreCase))
+        {
+            // WLID1.0
             token = authHeader["WLID1.0".Length..].Trim();
+        }
         else
-            token = authHeader;
+        {
+            // bad header, ignore
+            token = authHeader.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(token))
+            return AuthenticateResult.Fail("Missing token");
+
+        if (token.StartsWith("t="))
+        {
+            try
+            {
+                var query = HttpUtility.ParseQueryString(token);
+                token = query["t"]!.Trim();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to parse query string formatted WLID token!");
+                return AuthenticateResult.Fail(ex);
+            }
+        }
 
         var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
         foreach (var validService in Options.ValidServiceTargets)

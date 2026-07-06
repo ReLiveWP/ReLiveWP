@@ -25,6 +25,8 @@ await ApplyMigrations(app);
 // Configure the HTTP request pipeline.
 app.MapGrpcService<SkyboxDeviceService>();
 
+app.MapDefaultEndpoints();
+
 app.Run();
 
 static async Task ApplyMigrations(WebApplication app)

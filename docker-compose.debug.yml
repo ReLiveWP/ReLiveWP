@@ -5,6 +5,8 @@ x-dev-env:
   &dev-env
   ASPNETCORE_ENVIRONMENT: Development
   NODE_ENV: development
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+  DOTNET_SYSTEM_NET_DISABLEIPV6: 1
 
 # Allow Visual Studio's vsdbg to ptrace/attach to the dotnet process. The
 # default Docker seccomp profile blocks ptrace, so debugging fails without this.
@@ -123,6 +125,20 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    container_name: aspire-dashboard
+    restart: unless-stopped
+    ports:
+      - "18888:18888"   # dashboard UI
+      - "4317:18889"    # OTLP gRPC
+      - "4318:18890"    # OTLP HTTP (optional, add if you want it)
+    environment:
+      # Skip the login token nonsense for local/dev use
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+    networks:
+      - relive
 
   dnsmasq:
     image: alpine:latest

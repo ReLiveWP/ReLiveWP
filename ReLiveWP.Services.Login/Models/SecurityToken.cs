@@ -2,8 +2,10 @@
 namespace ReLiveWP.Services.Login.Models;
 
 public record SecurityTokenModel(
-    string ServiceTarget, 
+    string ServiceTarget,
     string Token,
-    string TokenType, 
+    string TokenType,
     DateTimeOffset Created,
-    DateTimeOffset Expires);
+    DateTimeOffset Expires,
+    string? RefreshToken = null,
+    DateTimeOffset? RefreshTokenExpires = null);

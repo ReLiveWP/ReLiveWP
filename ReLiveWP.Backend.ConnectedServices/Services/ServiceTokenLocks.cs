@@ -3,7 +3,6 @@ using RedLockNet.SERedis;
 
 namespace ReLiveWP.Backend.ConnectedServices.Services;
 
-
 public class ServiceTokenLocks(RedLockFactory lockFactory)
 {
     private static readonly TimeSpan Expiry = TimeSpan.FromSeconds(60);

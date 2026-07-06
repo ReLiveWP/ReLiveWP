@@ -1,10 +1,14 @@
 using Atom.Formatters;
 using ReLiveWP.Identity;
+using ReLiveWP.Identity.Grpc;
 using ReLiveWP.Services.Activity.Services;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<AuthForwardingInterceptor>();
 
 builder.Services.AddResponseCompression((o) =>
 {
@@ -38,7 +42,8 @@ builder.Services.AddLiveIDAuthentication((o) =>
 builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!))
+    .AddInterceptor<AuthForwardingInterceptor>();
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<SkyDrive.SkyDriveClient>(
@@ -53,4 +58,5 @@ app.UseResponseCompression();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapDefaultEndpoints();
 app.Run();

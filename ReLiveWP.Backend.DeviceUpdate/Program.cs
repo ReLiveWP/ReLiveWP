@@ -115,4 +115,6 @@ app.MapPost("/v6/{webService=ClientWebService}/{filename=client.asmx}", async (H
     return Results.NotFound();
 });
 
+app.MapDefaultEndpoints();
+
 app.Run();

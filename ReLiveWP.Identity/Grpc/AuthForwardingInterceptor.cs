@@ -1,18 +1,19 @@
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+using Microsoft.AspNetCore.Http;
 
-namespace ReLiveWP.Services.Login;
+namespace ReLiveWP.Identity.Grpc;
 
 public class AuthForwardingInterceptor(IHttpContextAccessor httpContextAccessor) : Interceptor
 {
     private CallOptions WithAuth(CallOptions options)
     {
-        var auth = httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
-        if (string.IsNullOrEmpty(auth)) 
+        var auth = httpContextAccessor.HttpContext?.User?.Id();
+        if (string.IsNullOrWhiteSpace(auth)) 
             return options;
 
         Metadata merged = options.Headers != null ? [..options.Headers] : [];
-        merged.Add(new Metadata.Entry("Authorization", auth));
+        merged.Add(new Metadata.Entry("X-User-Id", auth));
         return options.WithHeaders(merged);
     }
 

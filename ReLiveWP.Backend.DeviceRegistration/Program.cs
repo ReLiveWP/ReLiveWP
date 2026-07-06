@@ -22,6 +22,8 @@ ApplyMigrations(app);
 app.MapGrpcService<ClientProvisioningService>();
 app.MapGrpcService<DeviceRegistrationService>();
 
+app.MapDefaultEndpoints();
+
 app.Run();
 
 static void ApplyMigrations(WebApplication app)

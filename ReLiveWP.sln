@@ -70,6 +70,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Services.Orion", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Backend.SkyDrive", "ReLiveWP.Backend.SkyDrive\ReLiveWP.Backend.SkyDrive.csproj", "{23D2B654-3BA4-44E4-832C-0878A4090DBE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReLiveWP.Passport", "ReLiveWP.Passport\ReLiveWP.Passport.csproj", "{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -308,6 +310,18 @@ Global
 		{23D2B654-3BA4-44E4-832C-0878A4090DBE}.Release|x64.Build.0 = Release|Any CPU
 		{23D2B654-3BA4-44E4-832C-0878A4090DBE}.Release|x86.ActiveCfg = Release|Any CPU
 		{23D2B654-3BA4-44E4-832C-0878A4090DBE}.Release|x86.Build.0 = Release|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Debug|x64.Build.0 = Debug|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Debug|x86.Build.0 = Debug|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Release|x64.ActiveCfg = Release|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Release|x64.Build.0 = Release|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Release|x86.ActiveCfg = Release|Any CPU
+		{ADF3ED4B-61D1-4E45-8C11-E167D1303EDB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

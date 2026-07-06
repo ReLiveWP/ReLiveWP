@@ -42,6 +42,8 @@ app.UseMiddleware<DeviceStatusMiddleware>();
 
 app.MapControllers();
 
+app.MapDefaultEndpoints();
+
 app.Run();
 
 public class Utf8XmlOutputFormatter : XmlSerializerOutputFormatter

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Identity.LiveID;
 using Microsoft.Extensions.DependencyInjection;
+using ReLiveWP.Identity.Grpc;
 
 namespace ReLiveWP.Identity;
 
@@ -16,6 +17,13 @@ public static class IdentityExtensions
         public Action<GrpcClientFactoryOptions>? IdentityGrpcConfiguration { internal get; set; }
         public Action<GrpcClientFactoryOptions>? ConnectedServicesGrpcConfiguration { internal get; set; }
         public Action<LiveIDAuthOptions>? LiveIDConfiguration { internal get; set; }
+        public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
+    }
+
+    public class AddGrpcAuthenticationOptions
+    {
+        public AddGrpcAuthenticationOptions() { }
+        public Action<GrpcAuthOptions>? GrpcConfiguration { internal get; set; }
         public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
     }
 
@@ -45,6 +53,24 @@ public static class IdentityExtensions
         collection.AddAuthentication(LiveIDAuthHandler.SchemeName)
                   .AddScheme<LiveIDAuthOptions, LiveIDAuthHandler>(LiveIDAuthHandler.SchemeName, opts.LiveIDConfiguration);
 
+
+        if (opts.AuthorizationConfiguration != null)
+        {
+            collection.AddAuthorization(opts.AuthorizationConfiguration);
+        }
+        else
+        {
+            collection.AddAuthorization();
+        }
+    }
+
+    public static void AddGrpcAuthentication(this IServiceCollection collection, Action<AddGrpcAuthenticationOptions>? options = null)
+    {
+        var opts = new AddGrpcAuthenticationOptions();
+        options?.Invoke(opts);
+
+        collection.AddAuthentication(GrpcAuthHandler.SchemeName)
+                  .AddScheme<GrpcAuthOptions, GrpcAuthHandler>(GrpcAuthHandler.SchemeName, opts.GrpcConfiguration);
 
         if (opts.AuthorizationConfiguration != null)
         {

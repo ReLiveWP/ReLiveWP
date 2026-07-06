@@ -25,7 +25,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
     public override string Name => "Bluesky";
     public override string ProviderId => "AT";
 
-    public BlueskyActivityProvider(string authHeader,
+    public BlueskyActivityProvider(string userId, 
                                    Connection atprotoConnection,
                                    IConfiguration configuration,
                                    ILoggerFactory loggerFactory)
@@ -46,7 +46,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
              .WithServiceEndpointUponLogin(false)
              .Build();
 
-        protocol.Client.DefaultRequestHeaders.Add("Authorization", authHeader);
+        protocol.Client.DefaultRequestHeaders.Add("X-User-Id", userId);
         protocol.Client.DefaultRequestHeaders.Add("X-Connection-Id", atprotoConnection.Id);
 
         this.protocol = protocol;

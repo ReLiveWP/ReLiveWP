@@ -1,8 +1,3 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Principal;
 using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
@@ -49,12 +44,17 @@ public class AuthenticationController(
             if (!connectionModels.TryGetValue(connection.Service, out var connectionList))
                 connectionModels[connection.Service] = connectionList = [];
 
-            connectionList.Add(new ConnectionModel(connection.Id, connection.ServiceUrl, connection.UserName, (connection.Flags & 0x80000000UL) != 0, connection.Capabilities));
+            connectionList.Add(new ConnectionModel(
+                connection.Id,
+                connection.ServiceUrl,
+                connection.UserName,
+                (connection.Flags & 0x80000000UL) != 0,
+                connection.Capabilities));
         }
 
         return new ConnectionModels(connectionModels);
     }
-    
+
     [ActionName("register")]
     public async Task<IActionResult> CreateAccountAsync([FromBody] CreateAccountModel request)
     {
@@ -94,6 +94,8 @@ public class AuthenticationController(
             return Unauthorized();
         }
 
+        grpcRequest.IssueRefreshToken = request.IncludeRefreshToken;
+
         foreach (var tokenRequest in request.TokenRequests)
         {
             grpcRequest.Requests.Add(new SecurityTokenRequest()
@@ -103,26 +105,47 @@ public class AuthenticationController(
             });
         }
 
+        // note: the SPA deliberately does not opt into refresh tokens (IssueRefreshToken stays false)
         var response = await authenticationClient.GetSecurityTokensAsync(grpcRequest, cancellationToken: cancellationToken);
         if (((int)response.Code) < 0)
             return Unauthorized(new ErrorModel(response.Code));
 
-        var securityTokens = new List<SecurityTokenModel>();
-        foreach (var token in response.Tokens)
-        {
-            securityTokens.Add(new SecurityTokenModel(token.ServiceTarget,
-                                                      token.Token,
-                                                      token.TokenType,
-                                                      token.Created.ToDateTimeOffset(),
-                                                      token.Expires.ToDateTimeOffset()));
-        }
+        return Ok(ToModel(response));
+    }
 
-        return Ok(new SecurityTokensResponseModel(
+    [ActionName("refresh_tokens")]
+    [HttpPost(Name = "refresh_tokens")]
+    public async Task<ActionResult<SecurityTokensResponseModel>> RefreshTokens([FromBody] RefreshTokensRequestModel request, CancellationToken cancellationToken)
+    {
+        var grpcRequest = new RefreshTokensRequest();
+        foreach (var token in request.RefreshTokens)
+            grpcRequest.RefreshTokens.Add(token);
+
+        var response = await authenticationClient.RefreshSecurityTokensAsync(
+            grpcRequest, cancellationToken: cancellationToken);
+        if (((int)response.Code) < 0)
+            return Unauthorized(new ErrorModel(response.Code));
+
+        return Ok(ToModel(response));
+    }
+
+    private static SecurityTokensResponseModel ToModel(SecurityTokensResponse response)
+    {
+        var securityTokens = response.Tokens.Select(token =>
+            new SecurityTokenModel(token.ServiceTarget,
+                                   token.Token,
+                                   token.TokenType,
+                                   token.Created.ToDateTimeOffset(),
+                                   token.Expires.ToDateTimeOffset(),
+                                   token.HasRefreshToken ? token.RefreshToken : null,
+                                   token.RefreshTokenExpires?.ToDateTimeOffset()));
+
+        return new SecurityTokensResponseModel(
             response.Puid,
             response.Cid,
             response.Username,
             response.EmailAddress,
-            [.. securityTokens]));
+            [.. securityTokens]);
     }
 
     [ActionName("register_device")]

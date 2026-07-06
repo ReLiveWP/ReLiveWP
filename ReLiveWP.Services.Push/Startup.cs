@@ -20,6 +20,8 @@ public class Startup
         services.AddControllersWithViews();
         services.AddHttpClient();
 
+        services.AddDefaultHealthChecks();
+
         services.AddHostedService<PushTcpService>();
 
         services.AddDbContextFactory<PushDatabase>(
@@ -65,6 +67,7 @@ public class Startup
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
+            endpoints.MapDefaultHealthCheckEndpoints();
         });
     }
 }

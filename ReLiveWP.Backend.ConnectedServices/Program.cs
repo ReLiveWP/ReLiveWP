@@ -27,27 +27,13 @@ builder.Services.AddHttpClient("AtProtoClient", c =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ConnectedServicesDbContext>(options => options.UseNpgsql(connectionString));
 
-builder.Services.AddLiveIDAuthentication(o =>
-{
-    o.IdentityGrpcConfiguration = c => c.Address = new Uri(builder.Configuration["Endpoints:Identity"]!);
-    o.LiveIDConfiguration = c => c.ValidServiceTargets =
-    [
-        "http://Passport.NET/tb",
-        "relivewp.net",
-        "spaces.int.relivewp.net",
-        "spaces.relivewp.net",
-        "skydrive.int.relivewp.com", // oops! 
-        "skydrive.relivewp.com", // oops!
-        "skydrive.int.relivewp.net",
-        "skydrive.relivewp.net",
-    ];
-});
-
+builder.Services.AddGrpcAuthentication();
 builder.Services.AddAuthorization();
 
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddSingleton(sp =>
     RedLockFactory.Create([new RedLockMultiplexer(sp.GetRequiredService<IConnectionMultiplexer>())]));
+
 builder.Services.AddSingleton<ServiceTokenLocks>();
 builder.Services.AddSingleton<PendingOAuthStore>();
 builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
@@ -120,6 +106,8 @@ app.UseAuthorization();
 app.MapGrpcService<ConnectedAccountsService>();
 
 app.MapConnectedServicesProxy();
+
+app.MapDefaultEndpoints();
 
 app.Run();
 

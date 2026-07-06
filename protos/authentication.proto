@@ -10,6 +10,7 @@ service Authentication {
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
+  rpc RefreshSecurityTokens (RefreshTokensRequest) returns (SecurityTokensResponse);
   rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyTokenResponse);
   rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
   rpc ValidateDeviceCertificate (ValidateDeviceCertificateRequest) returns (ValidateDeviceCertificateResponse);
@@ -46,25 +47,36 @@ message RegisterDeviceResponse {
 message SecurityTokenRequest {
   string serviceTarget = 1;
   string servicePolicy = 2;
+  optional bytes supportingData = 3;
 }
 
 message SecurityTokensRequest {
   string username = 1;
   string password = 2;
-
-  string authToken = 4;
-
   repeated SecurityTokenRequest requests = 3;
+  
+  string authToken = 4;
+  bool issueRefreshToken = 5;
+  string deviceAuthToken = 6;
+}
+
+message RefreshTokensRequest {
+  repeated string refreshTokens = 1;
 }
 
 message SecurityTokenResponse {
   string serviceTarget = 1;
   string token = 2;
-  optional string refreshToken = 6;
-  string tokenType = 3; 
+  string tokenType = 3;
 
   google.protobuf.Timestamp created = 4;
   google.protobuf.Timestamp expires = 5;
+
+  optional string refreshToken = 6;
+  optional google.protobuf.Timestamp refreshTokenExpires = 7;
+  optional uint32 code = 8;
+
+  optional bytes proofKey = 9;
 }
 
 message SecurityTokensResponse {
@@ -74,6 +86,7 @@ message SecurityTokensResponse {
   string username = 4;
   string emailAddress = 5;
   repeated SecurityTokenResponse tokens = 6;
+  optional bytes sessionKey = 7;
 }
 
 message ClaimMessage {

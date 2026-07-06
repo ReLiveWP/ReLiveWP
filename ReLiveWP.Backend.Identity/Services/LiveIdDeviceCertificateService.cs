@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using System.Globalization;
+using System.Security.Cryptography.X509Certificates;
 using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
@@ -13,11 +14,13 @@ using Org.BouncyCastle.X509;
 
 namespace ReLiveWP.Backend.Identity.Certificates;
 
+public record UserCertificate(string Thumbprint, byte[] Certificate, DateTimeOffset Expires);
+
 public class LiveIdDeviceCertificateService(
     ILogger<LiveIdDeviceCertificateService> logger,
     RootCACertificateProvider caProvider)
 {
-    public byte[] HandleCertRequest(string puid, byte[] certificateRequest)
+    public UserCertificate HandleCertRequest(string puid, byte[] certificateRequest)
     {
         X509Certificate2 deviceCert;
 
@@ -26,23 +29,23 @@ public class LiveIdDeviceCertificateService(
             throw new Exception("No root certificate available.");
 
         var bcRootCert = DotNetUtilities.FromX509Certificate(rootCert);
-        var certSubject = new X509Name($"CN={puid}.devicedns.live.com");
+        //var certSubject = new X509Name($"CN={puid}.devicedns.live.com");
 
         var random = SecureRandom.GetInstance("SHA_1PRNG");
         var certRequest = new Pkcs10CertificationRequest(certificateRequest);
         var certRequestInfo = certRequest.GetCertificationRequestInfo();
 
         using var localStore = new X509Store("Trusted Windows Live devices", StoreLocation.CurrentUser, OpenFlags.ReadWrite);
-        var storeCollection = localStore.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, certSubject.ToString(), true);
+        var storeCollection = localStore.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, certRequestInfo.Subject.ToString(), true);
         if (storeCollection.Count > 0)
         {
-            logger.LogDebug("Found existing certificate for {SubjectDN}", certSubject);
+            logger.LogDebug("Found existing certificate for {SubjectDN}", certRequestInfo.Subject);
             deviceCert = storeCollection[0];
 
             storeCollection.Remove(deviceCert); // we need to reissue every time
         }
 
-        logger.LogDebug("Generating new certificate for {SubjectDN}", certSubject);
+        logger.LogDebug("Generating new certificate for {SubjectDN}", certRequestInfo.Subject);
         var caKeyPair = DotNetUtilities.GetRsaKeyPair(rootCert.GetRSAPrivateKey());
         var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), random);
 
@@ -51,7 +54,7 @@ public class LiveIdDeviceCertificateService(
         var certificateGenerator = new X509V3CertificateGenerator();
         certificateGenerator.SetSerialNumber(serialNumber);
         certificateGenerator.SetIssuerDN(bcRootCert.SubjectDN);
-        certificateGenerator.SetSubjectDN(certSubject);
+        certificateGenerator.SetSubjectDN(certRequestInfo.Subject);
         certificateGenerator.SetNotBefore(DateTime.UtcNow.Subtract(TimeSpan.FromDays(7)));
         certificateGenerator.SetNotAfter(DateTime.UtcNow.AddYears(1));
         certificateGenerator.SetPublicKey(certRequest.GetPublicKey());
@@ -84,9 +87,17 @@ public class LiveIdDeviceCertificateService(
         deviceCert = new X509Certificate2(cert.GetEncoded(), (string?)null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
         localStore.Add(deviceCert);
 
-        logger.LogInformation("Generated new certificate for {SubjectDN}", certSubject);
+        logger.LogInformation("Generated new certificate for {SubjectDN}", certRequestInfo.Subject);
 
-        return deviceCert.Export(X509ContentType.Cert);
+        var expDate = deviceCert.GetExpirationDateString();
+
+        // yeah i'm
+        var dtf = CultureInfo.CurrentCulture.DateTimeFormat;
+        var pattern = $"{dtf.ShortDatePattern} {dtf.LongTimePattern}";
+        var utcDate = new DateTimeOffset(DateTime.ParseExact(expDate, pattern, CultureInfo.InvariantCulture)
+                         .ToUniversalTime());
+
+        return new UserCertificate(deviceCert.Thumbprint, deviceCert.Export(X509ContentType.Cert), utcDate);
     }
 
     public bool ValidateDeviceCertificate(X509Certificate2 certificate)

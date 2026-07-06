@@ -6,15 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Controllers\RST2Controller.cs" />
-    <Compile Remove="Models\RST2Model.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Remove="Views\RST2.cshtml" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="Grpc.Net.Client" />
@@ -29,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Passport\ReLiveWP.Passport.csproj" />
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
   </ItemGroup>
 
@@ -51,7 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Views\" />
+    <Folder Include="Utilities\" />
   </ItemGroup>
 
 </Project>

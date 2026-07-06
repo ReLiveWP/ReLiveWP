@@ -1,17 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.SkyDrive.Data;
 using ReLiveWP.Backend.SkyDrive.Services;
+using ReLiveWP.Identity.Grpc;
 using ReLiveWP.Services.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
-// Add services to the container.
 builder.Services.AddGrpc();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<AuthForwardingInterceptor>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!))
+    .AddInterceptor<AuthForwardingInterceptor>();
 
 builder.Services.AddScoped<IPhotoSyncProxyClient, GooglePhotosProxyClient>();
 
@@ -22,8 +26,9 @@ var app = builder.Build();
 
 await ApplyMigrations(app);
 
-// Configure the HTTP request pipeline.
 app.MapGrpcService<SkyDriveService>();
+
+app.MapDefaultEndpoints();
 
 app.Run();
 
