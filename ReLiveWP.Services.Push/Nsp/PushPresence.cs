@@ -10,9 +10,10 @@ public class PushPresence
 
     public void Remove(string deviceId, NspSession session)
     {
-        // a reconnect may have already swapped in a newer session under this device, so compare both
         sessions.TryRemove(new (deviceId, session));
     }
 
     public bool TryGet(string deviceId, out NspSession session) => sessions.TryGetValue(deviceId, out session);
+
+    public IEnumerable<string> LocalDevices => sessions.Keys;
 }

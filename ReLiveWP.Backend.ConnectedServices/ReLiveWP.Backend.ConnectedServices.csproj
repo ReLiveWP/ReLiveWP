@@ -1,7 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <UserSecretsId>6cc4b98e-30b7-4216-85cd-65ac619f665a</UserSecretsId>
+  </PropertyGroup>
+  
   <ItemGroup>
     <PackageReference Include="Duende.IdentityModel.OidcClient" />
+    <PackageReference Include="Google.Apis.Auth" />
+    <PackageReference Include="Google.Apis.Oauth2.v2" />
     <PackageReference Include="Grpc.Tools">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -14,7 +20,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="RedLock.net" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
   </ItemGroup>
 

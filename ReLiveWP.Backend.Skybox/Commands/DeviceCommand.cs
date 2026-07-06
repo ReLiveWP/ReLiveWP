@@ -25,7 +25,7 @@ public enum DeviceCommandAckMode : byte
 ///   [1..2]   payloadLength  = 9 + CommandData.Length   (must be 9..256)
 ///   [3]      flags          = (AckMode &lt;&lt; 6) | (Action &amp; 0x3F)
 ///   [4..7]   RequestId      (the device drops duplicates)
-///   [8..11]  Timestamp      (must be &gt;= the device's last processed command — replay guard)
+///   [8..11]  Timestamp      (must be &gt;= the device's last processed command, replay guard)
 ///   [12..]   CommandData    (per-action; empty for Ring/Locate/Wipe)
 /// </code>
 /// </summary>
@@ -35,14 +35,12 @@ public sealed class DeviceCommand
     private const int HeaderLength = 9;        // flags(1) + requestId(4) + timestamp(4)
     private const int MaxPayloadLength = 256;  // the device rejects payloadLength > 0x100
 
-    private static int RequestIdCounter = 0;
-
     public required DeviceCommandAction Action { get; init; }
 
     public DeviceCommandAckMode AckMode { get; init; } = DeviceCommandAckMode.None;
 
     public byte[] CommandData { get; init; } = [];
-    public uint RequestId { get; set; } = unchecked((uint)Interlocked.Increment(ref RequestIdCounter));
+    public uint RequestId { get; set; }
     public uint Timestamp { get; set; } = (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
     public byte[] Serialize()

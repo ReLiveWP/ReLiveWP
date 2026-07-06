@@ -17,23 +17,28 @@ function RelinkLoadingStage() {
 
     useEffect(() => {
         const run = async () => {
-            const response = await fetch(ENDPOINT_RELINK_ACCOUNT, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ connection_id: id }),
-            });
+            try {
+                const response = await fetch(ENDPOINT_RELINK_ACCOUNT, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ connection_id: id }),
+                });
 
-            if (!response.ok) {
+                if (!response.ok) {
+                    error.value = "Something went wrong, try fixing this account later.";
+                    stage.value = 'error';
+                } else {
+                    const { redirect_uri } = await response.json();
+                    redirectUrl.value = redirect_uri;
+                    stage.value = 'redirect';
+                    window.open(redirect_uri, "_blank");
+                }
+            } catch {
                 error.value = "Something went wrong, try fixing this account later.";
                 stage.value = 'error';
-            } else {
-                const { redirect_uri } = await response.json();
-                redirectUrl.value = redirect_uri;
-                stage.value = 'redirect';
-                window.open(redirect_uri, "_blank");
             }
         };
 
@@ -56,6 +61,7 @@ export default function RelinkAccountDialog({ id, onClose }: {
     const redirectUrl = useSignal("");
     const stage = useSignal<Stage>('loading');
     const error = useSignal<string | null>(null);
+    const connectionId = useSignal("");
 
     useEffect(() => {
         const channel = new BroadcastChannel(OAUTH_CHANNEL);
@@ -77,7 +83,7 @@ export default function RelinkAccountDialog({ id, onClose }: {
     };
 
     return (
-        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, id, service: "", onClose }}>
+        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, connectionId, id, service: "", onClose }}>
             <Dialog class="link-account-dialog" onClose={onClose}>
                 {renderStage()}
             </Dialog>

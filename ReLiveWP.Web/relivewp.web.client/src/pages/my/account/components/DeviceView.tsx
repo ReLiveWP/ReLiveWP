@@ -1,14 +1,11 @@
 import { Device } from "~/util/device-types";
-import useVersion from "~/util/version";
 import useDeviceImage from "~/util/device-image";
 import Link from "~/components/Link";
+import DeviceSpecRows from "~/components/DeviceSpecRows";
 
 
 export default function DeviceView({ device }: { device: Device }) {
-    const [versionName, isSad, image] = useVersion(device.os_version);
     const [deviceImage, _] = useDeviceImage(device.manufacturer, device.model);
-
-    const backgroundColor = device.colour_theme === 1 ? '#000' : '#fff';
 
     return (
         <>
@@ -19,21 +16,14 @@ export default function DeviceView({ device }: { device: Device }) {
                 </div>
 
                 <dl class="info">
-                    <dt>model</dt>
-                    <dd>{device.manufacturer} {device.model}</dd>
-                    <dt>operating system</dt>
-                    <dd>{image && <img class="os-icon" src={image} alt="Windows Phone logo" />} Windows Phone {versionName} {isSad && <span>:(</span>} </dd>
-                    <dd><small class="os-version">Version {device.os_version}</small></dd>
-                    <dt>theme</dt>
-                    <dd>
-                        <span class="colour-icon" style={{ backgroundColor: device.accent_colour }} />
-                        &nbsp;
-                        <span class="colour-icon" style={{ backgroundColor }} />
-                    </dd>
-                    <dt>language</dt>
-                    <dd>{device.locale}</dd>
-                    <dt>timezone</dt>
-                    <dd>{device.timezone}</dd>
+                    <DeviceSpecRows
+                        manufacturer={device.manufacturer}
+                        model={device.model}
+                        osVersion={device.os_version}
+                        colourTheme={device.colour_theme}
+                        accentColour={device.accent_colour}
+                        locale={device.locale}
+                        timezone={device.timezone} />
                     <dt>
                         <Link href={`/my/device/${device.id}`} class="view-more text-accent">view more in my phone &gt;</Link>
                     </dt>

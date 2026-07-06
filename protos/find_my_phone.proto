@@ -1,5 +1,4 @@
 syntax = "proto3";
-import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 option csharp_namespace = "ReLiveWP.Services.Grpc.FindMyPhone";
@@ -12,7 +11,10 @@ service FindMyPhone {
   rpc UpdateDeviceInfo (UpdateDeviceInfoRequest) returns (UpdateDeviceInfoResponse);
   rpc GetDevicesForUser(GetDevicesForUserRequest) returns (stream UserDevice);
   rpc GetDeviceExtendedInfo(GetDeviceExtendedInfoRequest) returns (UserDeviceExtended);
-  rpc SendDeviceCommand(DeviceCommandRequest) returns (google.protobuf.Empty);
+  rpc SendDeviceCommand(DeviceCommandRequest) returns (DeviceCommandResponse);
+  rpc ReportCommandStatus(ReportCommandStatusRequest) returns (ReportCommandStatusResponse);
+  rpc StreamCommandStatus(StreamCommandStatusRequest) returns (stream CommandStatusUpdate);
+  rpc ReportDeviceStatus(ReportDeviceStatusRequest) returns (ReportDeviceStatusResponse);
 }
 
 message RegisterDeviceRequest {
@@ -104,10 +106,56 @@ message UserDeviceExtended {
 
 enum DeviceCommandRequestType {
 	COMMAND_RING = 0;
+	COMMAND_LOCATE = 1;
 }
 
 message DeviceCommandRequest {
 	string deviceGuid = 2;
 	string userId = 3;
 	DeviceCommandRequestType command = 1;
+}
+
+message DeviceCommandResponse {
+	uint32 requestId = 1;
+	bool isQueued = 2;
+}
+
+message ReportCommandStatusRequest {
+	string deviceGuid = 1;
+	uint32 requestId = 2;
+	uint32 result = 3;
+	bool final = 4;
+	string data = 5;
+}
+
+message ReportCommandStatusResponse {
+	int32 code = 1;
+}
+
+message StreamCommandStatusRequest {
+	string userId = 1;
+	string deviceGuid = 2;
+}
+
+message CommandStatusUpdate {
+	uint32 requestId = 1;
+	DeviceCommandRequestType action = 2;
+	uint32 result = 3;
+	bool final = 4;
+	string data = 5;
+	google.protobuf.Timestamp reported = 6;
+	optional double lat = 7;
+	optional double long = 8;
+	optional double accuracy = 9;
+}
+
+message ReportDeviceStatusRequest {
+	string deviceGuid = 1;
+	optional int32 batteryLevel = 2;
+	optional google.protobuf.Timestamp deviceTime = 3;
+	optional string clientVersion = 4;
+}
+
+message ReportDeviceStatusResponse {
+	int32 code = 1;
 }

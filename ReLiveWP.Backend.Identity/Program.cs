@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.Data;
@@ -12,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<LiveDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<LiveDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
@@ -24,27 +25,6 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 })
 .AddEntityFrameworkStores<LiveDbContext>()
 .AddDefaultTokenProviders();
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false;
-    options.TokenValidationParameters = new TokenValidationParameters()
-    {
-        ValidateIssuer = true,
-        ValidIssuers = ["https://relivewp.net/"],
-        ValidateAudience = true,
-        ValidAudiences = ["http://Passport.NET/tb", "relivewp.net", "spaces.int.relivewp.net", "spaces.relivewp.net"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]!))
-    };
-});
-
-builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<TokenManager>();
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();
@@ -61,10 +41,9 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<LiveDbContext>().Database.Migrate();
 }
 
-app.UseAuthentication();
-app.UseAuthorization();
-
 app.MapGrpcService<AuthenticationService>();
 app.MapGrpcService<UserService>();
+
+app.MapDefaultEndpoints();
 
 app.Run();

@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Runtime.ConstrainedExecution;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
@@ -8,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
+using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Backend.Identity.Grpc;
@@ -19,6 +22,8 @@ public class AuthenticationService(
     LiveDbContext dbContext,
     ILogger<AuthenticationService> logger) : Authentication.AuthenticationBase
 {
+    private const string LegacyDaTokenTarget = "http://Passport.NET/tb";
+
     private const uint S_OK = 0x0;
     private const uint PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD = 0x80048821;
     private const uint PPCRL_AUTHSTATE_E_UNAUTHENTICATED = 0x80048800;
@@ -85,7 +90,7 @@ public class AuthenticationService(
         {
             // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
             // we're just working with JWTs which are our stand in for a BinarySecurityToken (aka a blob)
-            var (token, created, expires) = await tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
+            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
 
             response.Tokens.Add(new SecurityTokenResponse()
             {
@@ -124,36 +129,140 @@ public class AuthenticationService(
 
     public override async Task<SecurityTokensResponse> GetSecurityTokens(SecurityTokensRequest request, ServerCallContext context)
     {
-        var user = await tokenManager.GetUserForSecurityTokenAsync(request);
-        if (user == null)
+        var authenticated = await tokenManager.GetUserForSecurityTokenAsync(request);
+        if (authenticated == null)
         {
             return new SecurityTokensResponse() { Code = PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD };
         }
 
+        var user = authenticated.User;
         var response = new SecurityTokensResponse()
         {
             Code = S_OK,
             Cid = user.Cid,
             Puid = user.Puid,
             Username = user.UserName,
-            EmailAddress = user.Email
+            EmailAddress = user.Email,
         };
+
+        if (authenticated.SessionKey is { } sk)
+        {
+            response.SessionKey = ByteString.CopyFrom(sk);
+        }
 
         foreach (var tokenRequest in request.Requests)
         {
-            // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
-            // we're just working with JWTs which are our stand in for a BinarySecurityToken (aka a blob)
-            var (token, created, expires) = await tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
+            if (tokenRequest.ServiceTarget == LegacyDaTokenTarget)
+            {
+                var da = tokenManager.CreateDeviceAuthToken(user);
+                response.Tokens.Add(new SecurityTokenResponse()
+                {
+                    ServiceTarget = tokenRequest.ServiceTarget,
+                    Created = Timestamp.FromDateTimeOffset(da.Created),
+                    Expires = Timestamp.FromDateTimeOffset(da.Expires),
+                    Token = da.SealedToken,
+                    TokenType = "urn:passport:legacy",
+                    ProofKey = ByteString.CopyFrom(da.ProofKey),
+                });
+                continue;
+            }
 
-            response.Tokens.Add(new SecurityTokenResponse()
+            if (tokenRequest.ServicePolicy == "MBI_X509_DID")
+            {
+                // device cert time :D
+                var (thumb, cert, certExpiry) = deviceCertificateService.HandleCertRequest(user.Puid.ToString("x2").PadLeft(16, '0'), [.. tokenRequest.SupportingData]);
+                user.Certificates.Add(new LiveUserCertificate()
+                {
+                    UserId = user.Id,
+                    Fingerprint = thumb
+                });
+
+                dbContext.Update(user);
+                await dbContext.SaveChangesAsync();
+
+                var certResponse = new SecurityTokenResponse()
+                {
+                    ServiceTarget = tokenRequest.ServiceTarget,
+                    Created = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow),
+                    Expires = Timestamp.FromDateTimeOffset(certExpiry),
+                    Token = Convert.ToBase64String(cert),
+                    TokenType = tokenRequest.ServicePolicy
+                };
+
+
+                response.Tokens.Add(certResponse);
+                continue;
+            }
+
+            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
+
+            var tokenResponse = new SecurityTokenResponse()
             {
                 ServiceTarget = tokenRequest.ServiceTarget,
                 Created = Timestamp.FromDateTimeOffset(created),
                 Expires = Timestamp.FromDateTimeOffset(expires),
                 Token = token,
+                TokenType = tokenRequest.ServicePolicy
+            };
+
+            if (tokenRequest.ServicePolicy.EndsWith("_KEY"))
+                tokenResponse.ProofKey = ByteString.CopyFrom(RandomNumberGenerator.GetBytes(24));
+
+            if (request.IssueRefreshToken)
+            {
+                var refresh = await tokenManager.IssueRefreshTokenAsync(user, tokenRequest.ServiceTarget);
+                tokenResponse.RefreshToken = refresh.Token;
+                tokenResponse.RefreshTokenExpires = Timestamp.FromDateTimeOffset(refresh.Expires);
+            }
+
+            response.Tokens.Add(tokenResponse);
+        }
+
+        return response;
+    }
+
+    public override async Task<SecurityTokensResponse> RefreshSecurityTokens(RefreshTokensRequest request, ServerCallContext context)
+    {
+        if (request.RefreshTokens.Count == 0)
+            return new SecurityTokensResponse() { Code = 0x80190190 }; // HTTP_E_STATUS_BAD_REQUEST
+
+        var response = new SecurityTokensResponse() { Code = S_OK };
+
+        LiveUser? user = null;
+        foreach (var refreshToken in request.RefreshTokens)
+        {
+            var redemption = await tokenManager.RedeemRefreshTokenAsync(refreshToken);
+            if (redemption == null)
+            {
+                response.Tokens.Add(new SecurityTokenResponse() { Code = PPCRL_AUTHSTATE_E_EXPIRED });
+                continue;
+            }
+
+            user ??= redemption.User;
+
+            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(redemption.User, redemption.ServiceTarget);
+            var refresh = await tokenManager.IssueRefreshTokenAsync(redemption.User, redemption.ServiceTarget);
+
+            response.Tokens.Add(new SecurityTokenResponse()
+            {
+                ServiceTarget = redemption.ServiceTarget,
+                Created = Timestamp.FromDateTimeOffset(created),
+                Expires = Timestamp.FromDateTimeOffset(expires),
+                Token = token,
                 TokenType = "JWT",
+                RefreshToken = refresh.Token,
+                RefreshTokenExpires = Timestamp.FromDateTimeOffset(refresh.Expires),
+                Code = S_OK,
             });
         }
+
+        if (user == null)
+            return new SecurityTokensResponse() { Code = 0x80190190 };
+
+        response.Cid = user.Cid;
+        response.Puid = user.Puid;
+        response.Username = user.UserName;
+        response.EmailAddress = user.Email;
 
         return response;
     }
@@ -161,7 +270,7 @@ public class AuthenticationService(
     public override Task<DeviceCertificateResponse> GetDeviceCertificate(DeviceCertificateRequest request, ServerCallContext context)
     {
         var cert = deviceCertificateService.HandleCertRequest(request.Puid, request.CertificateRequest.ToByteArray());
-        return Task.FromResult(new DeviceCertificateResponse() { Succeeded = true, Certificate = ByteString.CopyFrom(cert) });
+        return Task.FromResult(new DeviceCertificateResponse() { Succeeded = true, Certificate = ByteString.CopyFrom(cert.Certificate) });
     }
 
     public override async Task<ValidateDeviceCertificateResponse> ValidateDeviceCertificate(ValidateDeviceCertificateRequest request, ServerCallContext context)
@@ -170,6 +279,8 @@ public class AuthenticationService(
         if (!deviceCertificateService.ValidateDeviceCertificate(cert))
             return new ValidateDeviceCertificateResponse() { Succeeded = false };
 
+        LiveUser? user = null;
+
         var cn = cert.Subject
                      .Split(',')
                      .Select(part => part.Trim())
@@ -177,13 +288,21 @@ public class AuthenticationService(
                      .Substring(3);
 
         if (!cn.EndsWith("devicedns.live.com"))
-            return new ValidateDeviceCertificateResponse() { Succeeded = false };
+        {
+            //return new ValidateDeviceCertificateResponse() { Succeeded = false };
+            var thumbprint = cert.Thumbprint;
+            user = dbContext.Users.FirstOrDefault(u => u.Certificates.Any(c => c.Fingerprint == thumbprint));
+            if (user != null)
+            {
+                cn = $"{user.Puid.ToString("X2").PadLeft(16, '0')}.devicedns.live.com";
+            }
+        }
 
         var puid = long.Parse(cn.Split('.')[0], NumberStyles.HexNumber);
         if (!UserUtils.IsValidPuid(LiveUserType.Device, (ulong)puid))
             logger.LogWarning("Certificate with an invalid PUID, likely an old user account. Client may need updating!");
 
-        var user = await dbContext.Users.FirstOrDefaultAsync(f => f.Puid == puid);
+        user = await dbContext.Users.FirstOrDefaultAsync(f => f.Puid == puid);
 
         if (user == null)
         {

@@ -8,6 +8,7 @@ namespace ReLiveWP.Services.Activity.Models.Atom;
 [NamespacePrefix("activity", Constants.ActivityStreams_Namespace)]
 [NamespacePrefix("threads", Constants.Threads_Namespace)]
 [NamespacePrefix("media", Constants.Media_Namespace)]
+[NamespacePrefix("a", Constants.Atom_Namespace)]
 [XmlInclude(typeof(LiveAuthor))]
 [XmlInclude(typeof(LiveEntry))]
 [XmlRoot(ElementName = "feed", Namespace = Constants.Atom_Namespace)]

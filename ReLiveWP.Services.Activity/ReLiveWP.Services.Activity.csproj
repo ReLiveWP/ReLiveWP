@@ -16,7 +16,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="System.Linq.Async" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,6 +33,9 @@
     </Protobuf>
     <Protobuf Include="../protos/oauth.proto" GrpcServices="Client">
       <Link>Protos\oauth.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/skydrive.proto" GrpcServices="Client">
+      <Link>Protos\skydrive.proto</Link>
     </Protobuf>
   </ItemGroup>
 

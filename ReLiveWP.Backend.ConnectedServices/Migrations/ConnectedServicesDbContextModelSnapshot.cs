@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ReLiveWP.Backend.ConnectedServices.Data;
 
 #nullable disable
@@ -15,56 +16,63 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "9.0.16")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedService", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("AccessToken")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("AuthorizationEndpoint")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
+
+                    b.Property<long>("AvailableCapabilities")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("DPoPKeyId")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
-                    b.Property<uint>("EnabledCapabilities")
-                        .HasColumnType("INTEGER");
+                    b.Property<long>("EnabledCapabilities")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<uint>("Flags")
-                        .HasColumnType("INTEGER");
+                    b.Property<long>("Flags")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Issuer")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("RefreshToken")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
-                    b.Property<uint>("RowVersion")
+                    b.Property<long>("RowVersion")
                         .IsConcurrencyToken()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Service")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("ServiceUrl")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("TokenEndpoint")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -76,52 +84,15 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
             modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LiveDPoPKey", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("Key")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
                     b.ToTable("DPoPKeys");
-                });
-
-            modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LivePendingOAuth", b =>
-                {
-                    b.Property<string>("State")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AuthorizationEndpoint")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CodeVerifier")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Endpoint")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("ExistingConnectionId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Service")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TokenEndpoint")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("State");
-
-                    b.HasIndex("State");
-
-                    b.ToTable("PendingOAuths");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedService", b =>
@@ -133,23 +104,23 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
                     b.OwnsOne("ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceProfile", "ServiceProfile", b1 =>
                         {
                             b1.Property<Guid>("LiveConnectedServiceId")
-                                .HasColumnType("TEXT");
+                                .HasColumnType("uuid");
 
                             b1.Property<string>("AvatarUrl")
-                                .HasColumnType("TEXT");
+                                .HasColumnType("text");
 
                             b1.Property<string>("DisplayName")
-                                .HasColumnType("TEXT");
+                                .HasColumnType("text");
 
                             b1.Property<string>("EmailAddress")
-                                .HasColumnType("TEXT");
+                                .HasColumnType("text");
 
                             b1.Property<string>("UserId")
                                 .IsRequired()
-                                .HasColumnType("TEXT");
+                                .HasColumnType("text");
 
                             b1.Property<string>("Username")
-                                .HasColumnType("TEXT");
+                                .HasColumnType("text");
 
                             b1.HasKey("LiveConnectedServiceId");
 

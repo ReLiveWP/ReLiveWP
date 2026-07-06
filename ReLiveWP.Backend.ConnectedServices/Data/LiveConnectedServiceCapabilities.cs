@@ -18,5 +18,20 @@ public enum LiveConnectedServiceCapabilities : uint
     FileStorage = 0x800,
 
     Zune = 0x40000000,
-    Xbox = 0x80000000
+    Xbox = 0x80000000,
+
+    All = Email | 
+          Contacts | 
+          Calendar | 
+          Messaging | 
+          PhotoSync | 
+          SocialFeed | 
+          SocialPost | 
+          SocialCheckIn | 
+          SocialNotifications | 
+          MarketplaceStream | 
+          MarketplacePurchase | 
+          FileStorage | 
+          Zune | 
+          Xbox
 }

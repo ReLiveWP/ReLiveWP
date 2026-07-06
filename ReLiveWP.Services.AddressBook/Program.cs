@@ -32,4 +32,6 @@ app.UseEndpoints(endpoints =>
 });
 #pragma warning restore ASP0014 // Suggest using top level route registrations
 
+app.MapDefaultEndpoints();
+
 app.Run();

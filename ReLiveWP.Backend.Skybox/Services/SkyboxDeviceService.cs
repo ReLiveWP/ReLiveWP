@@ -8,7 +8,7 @@ using ReLiveWP.Services.Grpc.FindMyPhone;
 
 namespace ReLiveWP.Backend.Skybox.Services;
 
-public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService deviceCommand) : FindMyPhone.FindMyPhoneBase
+public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbContext dbContext, DeviceCommandService deviceCommand, CommandRegistry registry, CommandStatusHub statusHub) : FindMyPhone.FindMyPhoneBase
 {
     public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
     {
@@ -41,12 +41,14 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
         var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
-        if (!Uri.TryCreate(device.NotificationChannelUrl, UriKind.Absolute, out var uri) || uri.Host != "push.relivewp.net" || uri.Scheme != Uri.UriSchemeHttps)
+        if (!Uri.TryCreate(request.NotificationUri, UriKind.Absolute, out var uri) || (uri.Host != "push.relivewp.net" && uri.Host != "push.int.relivewp.net") || uri.Scheme != Uri.UriSchemeHttps)
         {
+            logger.LogWarning("Device {DeviceId} has invalid notification channel URL: {Url}", device.DeviceGuid, request.NotificationUri);
             device.NotificationChannelUrl = null;
         }
         else
         {
+            logger.LogInformation("Device {DeviceId} has valid notification channel URL: {Url}", device.DeviceGuid, request.NotificationUri);
             device.NotificationChannelUrl = request.NotificationUri;
         }
 
@@ -143,7 +145,7 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
         return resp;
     }
 
-    public override async Task<Empty> SendDeviceCommand(DeviceCommandRequest request, ServerCallContext context)
+    public override async Task<DeviceCommandResponse> SendDeviceCommand(DeviceCommandRequest request, ServerCallContext context)
     {
         var ownerId = Guid.Parse(request.UserId);
         var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId)
@@ -152,15 +154,107 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
         if (string.IsNullOrWhiteSpace(device.NotificationChannelUrl))
             throw new RpcException(new Status(StatusCode.FailedPrecondition, "Device notification channel not registered."));
 
-        switch (request.Command)
+        var command = request.Command switch
         {
-            case DeviceCommandRequestType.CommandRing:
-                await deviceCommand.SendAsync(device.NotificationChannelUrl, DeviceCommand.Ring());
-                break;
+            DeviceCommandRequestType.CommandRing => DeviceCommand.Ring(),
+            DeviceCommandRequestType.CommandLocate => DeviceCommand.Locate(),
+            _ => throw new RpcException(new Status(StatusCode.InvalidArgument, "Unsupported command."))
+        };
+
+        var record = await registry.CreateAsync(device.DeviceGuid, ownerId, command.Action);
+        command.RequestId = record.RequestId;
+
+        await deviceCommand.SendAsync(device.NotificationChannelUrl, command);
+
+        return new DeviceCommandResponse() { RequestId = record.RequestId, IsQueued = false };
+    }
+
+    public override async Task<ReportCommandStatusResponse> ReportCommandStatus(ReportCommandStatusRequest request, ServerCallContext context)
+    {
+        var record = await registry.GetAsync(request.DeviceGuid, request.RequestId);
+        if (record == null)
+        {
+            logger.LogWarning("Status for unknown command {DeviceId}/{RequestId}", request.DeviceGuid, request.RequestId);
+            return new ReportCommandStatusResponse() { Code = 1 };
         }
 
+        var evt = new CommandStatusEvent(record.RequestId, record.Action, request.Result, request.Final,
+            request.Data, DateTimeOffset.UtcNow, null, null, null);
 
-        return new Empty();
+        if (record.Action == DeviceCommandAction.Locate && !string.IsNullOrWhiteSpace(request.Data))
+        {
+            try
+            {
+                var location = SkyDeviceLocation.Parse(request.Data);
+                evt = evt with { Reported = location.Reported, Lat = location.Latitude, Long = location.Longitude, Accuracy = location.Altitude };
+
+                var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
+                if (device != null)
+                {
+                    device.LastLocation = location;
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Couldn't parse locate data '{Data}'", request.Data);
+            }
+        }
+
+        await statusHub.PublishAsync(request.DeviceGuid, evt);
+        await registry.SetStateAsync(record, request.Final ? CommandState.Final : CommandState.Active);
+
+        return new ReportCommandStatusResponse() { Code = 0 };
+    }
+
+    public override async Task StreamCommandStatus(StreamCommandStatusRequest request, IServerStreamWriter<CommandStatusUpdate> responseStream, ServerCallContext context)
+    {
+        var ownerId = Guid.Parse(request.UserId);
+        if (!await dbContext.Devices.AnyAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId))
+            throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+        try
+        {
+            await foreach (var evt in statusHub.StreamAsync(request.DeviceGuid, context.CancellationToken))
+            {
+                var update = new CommandStatusUpdate()
+                {
+                    RequestId = evt.RequestId,
+                    Action = evt.Action == DeviceCommandAction.Locate ? DeviceCommandRequestType.CommandLocate : DeviceCommandRequestType.CommandRing,
+                    Result = evt.Result,
+                    Final = evt.Final,
+                    Data = evt.Data ?? "",
+                    Reported = evt.Reported.ToTimestamp(),
+                };
+
+                if (evt.Lat is double lat) update.Lat = lat;
+                if (evt.Long is double lng) update.Long = lng;
+                if (evt.Accuracy is double acc) update.Accuracy = acc;
+
+                await responseStream.WriteAsync(update);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // shut uppppppp
+        }
+    }
+
+    public override async Task<ReportDeviceStatusResponse> ReportDeviceStatus(ReportDeviceStatusRequest request, ServerCallContext context)
+    {
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
+        if (device == null)
+            return new ReportDeviceStatusResponse() { Code = 1 };
+
+        if (request.HasBatteryLevel)
+            device.BatteryLevel = request.BatteryLevel;
+        if (request.HasClientVersion)
+            device.ClientVersion = request.ClientVersion;
+        if (request.DeviceTime != null)
+            device.LastSeen = request.DeviceTime.ToDateTimeOffset();
+
+        await dbContext.SaveChangesAsync();
+        return new ReportDeviceStatusResponse() { Code = 0 };
     }
 
     private static class SkyProfileKeys
@@ -235,19 +329,7 @@ public class SkyboxDeviceService(SkyDbContext dbContext, DeviceCommandService de
                 device.ScreenResolution = screenResolution;
 
             if (props.TryGetValue(LastLocation, out var lastLocationString))
-            {
-                var lastLocation = new SkyDeviceLocation();
-                var paren = lastLocationString.IndexOf(')');
-                var timestamp = DateTimeOffset.Parse(lastLocationString[1..paren], null, DateTimeStyles.RoundtripKind);
-                var parts = lastLocationString[(paren + 2)..].Split(',');
-
-                lastLocation.Reported = timestamp;
-                lastLocation.Latitude = double.Parse(parts[0], CultureInfo.InvariantCulture);
-                lastLocation.Longitude = double.Parse(parts[1], CultureInfo.InvariantCulture);
-                lastLocation.Altitude = double.Parse(parts[2], CultureInfo.InvariantCulture);
-
-                device.LastLocation = lastLocation;
-            }
+                device.LastLocation = SkyDeviceLocation.Parse(lastLocationString);
         }
     }
 

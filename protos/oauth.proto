@@ -18,6 +18,8 @@ service ConnectedServices {
 
   rpc GetSupportedConnections(google.protobuf.Empty) returns (SupportedConnectionsResponse);
   rpc GetConnections(ConnectionsRequest) returns (stream Connection);
+
+  rpc UpdateCapabilities(UpdateCapabilitiesRequest) returns (google.protobuf.Empty);
 }
 
 message JsonWebKeysResponse {
@@ -42,16 +44,17 @@ message FinaliseAccountLinkingRequest {
 	string state = 2;
 	optional string issuer = 3;
 	string code = 4;
+	repeated string scopes = 5;
 }
 
 message FinaliseAccountLinkingResponse {
-
+	string connectionId = 1;
 }
 
 message SupportedConnection {
 	string service = 1;
 	string displayName = 2;
-	uint64 capabilities = 3;
+	uint32 capabilities = 3;
 }
 
 message SupportedConnectionsResponse {
@@ -60,7 +63,7 @@ message SupportedConnectionsResponse {
 
 message ConnectionsRequest {
     repeated string services = 1;
-	optional uint64 capabilities = 2;
+	optional uint32 capabilities = 2;
 }
 
 message Connection {
@@ -68,7 +71,7 @@ message Connection {
 	string service = 2;
 	optional string serviceUrl = 3;
 	uint64 flags = 4;
-	uint64 capabilities = 5;
+	uint32 capabilities = 5;
 
 	string userId = 6;
 	optional string userName = 7;
@@ -79,6 +82,10 @@ message DeleteConnectionRequest {
 	string connectionId = 1;
 }
 
-message DeleteConnectionResponse {
+// todo: empty?
+message DeleteConnectionResponse { }
 
+message UpdateCapabilitiesRequest {
+	string connectionId = 1;
+	uint32 capabilities = 2;
 }

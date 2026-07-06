@@ -64,7 +64,6 @@ public class RootCACertificateProvider(
             store.Open(OpenFlags.ReadOnly);
 
             var collection = store.Certificates.Find(X509FindType.FindBySubjectDistinguishedName, caDistinguishedName, false);
-
             if (collection.Count > 0)
             {
                 var foundCert = collection[0];

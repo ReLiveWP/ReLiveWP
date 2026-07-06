@@ -6,82 +6,201 @@ x-svc-env:
   ASPNETCORE_ENVIRONMENT: Container
   HOME: /home/app
 
+x-healthcheck:
+  &healthcheck
+  interval: 120s
+  timeout: 3s
+  retries: 3
+  start_period: 30s   # covers EF Database.Migrate() at boot without counting failures
+
 services:
-  identity:
-    image: relive/identity
-    environment: *v-env
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: relive
+      POSTGRES_DB: relive
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    networks:
+      - relive
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-create-databases.sql:ro
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relive"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - relive
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:alpine
     networks:
       - relive
     ports:
-      - 5000:5000
+      - "8086:80"
     volumes:
-      - ./deploy/services.ini:/app/services.ini:ro
-      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
-      - ./deploy/ReLiveWP.Backend.Identity.ini:/app/ReLiveWP.Backend.Identity.ini:ro
-      - ./deploy/data/identity:/app/data
-      - ./deploy/data/identity/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
-      - ./deploy/certs/identity_ca.pfx:/certs/identity_ca.pfx:ro
-      - ./deploy/certs/root_ca.pfx:/certs/root_ca.pfx:ro
-    secrets:
-      - source: jwt_secret
-        target: JWT__Secret
-      - source: identity_ca_password
-        target: CertificateGeneration__CACertPassword
-      - source: root_ca_password
-        target: CertificateGeneration__RootCACertPassword
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      login:
+        condition: service_healthy
+      devices:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+      activity:
+        condition: service_healthy
+      findmyphone:
+        condition: service_healthy
+      push:
+        condition: service_healthy
 
-  connectedservices:
-    image: relive/connectedservices
+  identity:
+    image: relive/identity
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - identity
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.Identity.ini:/app/ReLiveWP.Backend.Identity.ini:ro
+      - ./deploy/data/identity/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
+      - ./deploy/certs/identity_ca.pfx:/certs/identity_ca.pfx:ro
+      - ./deploy/certs/root_ca.pfx:/certs/root_ca.pfx:ro
+    secrets:
+      - source: jwt_private_key
+        target: JWT__PrivateKey
+      - source: passport_sts_key
+        target: Passport__StsKey
+      - source: identity_ca_password
+        target: CertificateGeneration__CACertPassword
+      - source: root_ca_password
+        target: CertificateGeneration__RootCACertPassword
+      - source: identity_db_connection
+        target: ConnectionStrings__DefaultConnection
+
+  connectedservices:
+    image: relive/connectedservices
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      identity:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.ConnectedServices.ini:/app/ReLiveWP.Backend.ConnectedServices.ini:ro
-      - ./deploy/data/connectedservices:/app/data
     secrets:
-      - source: jwt_secret
-        target: JWT__Secret
+      - source: connectedservices_db_connection
+        target: ConnectionStrings__DefaultConnection
 
   deviceregistration:
     image: relive/deviceregistration
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
     environment: *v-env
     networks:
       - relive
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.DeviceRegistration.ini:/app/ReLiveWP.Backend.DeviceRegistration.ini:ro
-      - ./deploy/data/deviceregistration:/app/data
       - ./deploy/data/deviceregistration/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
       - ./deploy/certs/provisioning_ca.pfx:/certs/provisioning_ca.pfx:ro
     secrets:
       - source: provisioning_ca_password
         target: CertificateGeneration__RootCACertPassword
+      - source: deviceregistration_db_connection
+        target: ConnectionStrings__DefaultConnection
 
   skybox:
     image: relive/skybox
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - identity
+      identity:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.Skybox.ini:/app/ReLiveWP.Backend.Skybox.ini:ro
-      - ./deploy/data/skybox:/app/data
+    secrets:
+      - source: skybox_db_connection
+        target: ConnectionStrings__DefaultConnection
 
-  activation:
-    image: relive/activation
+  skydrive:
+    image: relive/skydrive
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - deviceregistration
+      identity:
+        condition: service_healthy
+      connectedservices:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.SkyDrive.ini:/app/ReLiveWP.Backend.SkyDrive.ini:ro
+    secrets:
+      - source: skydrive_db_connection
+        target: ConnectionStrings__DefaultConnection
+
+  activation:
+    image: relive/activation
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10000/health"]
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      deviceregistration:
+        condition: service_healthy
     ports:
       - 10000:10000
     volumes:
@@ -91,13 +210,19 @@ services:
 
   login:
     image: relive/login
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10002/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - identity
-      - connectedservices
-      - deviceregistration
+      identity:
+        condition: service_healthy
+      connectedservices:
+        condition: service_healthy
+      deviceregistration:
+        condition: service_healthy
     ports:
       - 10002:10002
     volumes:
@@ -105,22 +230,11 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Login.ini:/app/ReLiveWP.Services.Login.ini:ro
 
-  zunecommerce:
-    image: relive/zunecommerce
-    environment: *v-env
-    networks:
-      - relive
-    depends_on:
-      - identity
-    ports:
-      - 10003:10003
-    volumes:
-      - ./deploy/services.ini:/app/services.ini:ro
-      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
-      - ./deploy/ReLiveWP.Zune.Commerce.ini:/app/ReLiveWP.Zune.Commerce.ini:ro
-
   web:
     image: relive/web
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
     environment: *v-env
     networks:
       - relive
@@ -133,6 +247,9 @@ services:
 
   push:
     image: relive/push
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10005/health"]
     environment:
       ASPNETCORE_ENVIRONMENT: Container
       HOME: /home/app
@@ -140,41 +257,42 @@ services:
     networks:
       - relive
     depends_on:
-      - identity
+      identity:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - 10005:10005
-      - 33573:33573
+      - 0.0.0.0:33573:33573
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Push.ini:/app/ReLiveWP.Services.Push.ini:ro
-      - ./deploy/data/push:/app/data
       - ./deploy/certs/push.pfx:/certs/push.pfx:ro
       - ./docker/push-openssl.cnf:/app/openssl.cnf:ro
     secrets:
       - source: push_cert_password
         target: Push__ServerCertPassword
-
-  zunecatalog:
-    image: relive/zunecatalog
-    environment: *v-env
-    networks:
-      - relive
-    ports:
-      - 10006:10006
-    volumes:
-      - ./deploy/services.ini:/app/services.ini:ro
-      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
-      - ./deploy/ReLiveWP.Zune.Catalog.ini:/app/ReLiveWP.Zune.Catalog.ini:ro
+      - source: push_db_connection
+        target: ConnectionStrings__Push
 
   activity:
     image: relive/activity
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10007/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - identity
-      - connectedservices
+      identity:
+        condition: service_healthy
+      connectedservices:
+        condition: service_healthy
+      skydrive:
+        condition: service_healthy
     ports:
       - 10007:10007
     volumes:
@@ -184,11 +302,15 @@ services:
 
   exchange:
     image: relive/exchange
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10008/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - identity
+      identity:
+        condition: service_healthy
     ports:
       - 10008:10008
     volumes:
@@ -198,11 +320,15 @@ services:
 
   addressbook:
     image: relive/addressbook
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10010/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - identity
+      identity:
+        condition: service_healthy
     ports:
       - 10010:10010
     volumes:
@@ -226,12 +352,17 @@ services:
 
   devices:
     image: relive/devices
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10011/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - skybox
-      - identity
+      skybox:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
     ports:
       - 10011:10011
     volumes:
@@ -241,12 +372,17 @@ services:
 
   findmyphone:
     image: relive/findmyphone
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10012/health"]
     environment: *v-env
     networks:
       - relive
     depends_on:
-      - skybox
-      - identity
+      skybox:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
     ports:
       - 10012:10012
     volumes:
@@ -256,6 +392,9 @@ services:
 
   orion:
     image: relive/orion
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10013/health"]
     environment: *v-env
     networks:
       - relive
@@ -273,9 +412,15 @@ networks:
   relive:
     driver: bridge
 
+volumes:
+  postgres_data:
+  redis_data:
+
 secrets:
-  jwt_secret:
-    file: ./deploy/secrets/jwt_secret
+  jwt_private_key:
+    file: ./deploy/secrets/jwt_private_key
+  passport_sts_key:
+    file: ./deploy/secrets/passport_sts_key
   identity_ca_password:
     file: ./deploy/secrets/identity_ca_password
   root_ca_password:
@@ -286,3 +431,17 @@ secrets:
     file: ./deploy/secrets/push_cert_password
   api_key_geolocation:
     file: ./deploy/api_keys/geolocation
+  postgres_password:
+    file: ./deploy/secrets/postgres_password
+  identity_db_connection:
+    file: ./deploy/secrets/identity_db_connection
+  connectedservices_db_connection:
+    file: ./deploy/secrets/connectedservices_db_connection
+  deviceregistration_db_connection:
+    file: ./deploy/secrets/deviceregistration_db_connection
+  skybox_db_connection:
+    file: ./deploy/secrets/skybox_db_connection
+  skydrive_db_connection:
+    file: ./deploy/secrets/skydrive_db_connection
+  push_db_connection:
+    file: ./deploy/secrets/push_db_connection

@@ -2,7 +2,7 @@ import { useSignal } from "@preact/signals";
 import { useCallback } from "preact/hooks";
 import { Dialog } from "~/components/Dialog";
 import { useAuthenticatedFetch } from "~/state/app-state";
-import { ENDPOINT_PING_DEVICE, populateEndpoint } from "~/util/endpoints";
+import { ENDPOINT_DEVICE_PING, populateEndpoint } from "~/util/endpoints";
 
 export default function PingDeviceDialog({ onClose, deviceId }: {
     onClose: () => void;
@@ -12,7 +12,7 @@ export default function PingDeviceDialog({ onClose, deviceId }: {
     const error = useSignal<string | null>(null);
     const pingDevice = useCallback(async () => {
         try {
-            const resp = await fetch(populateEndpoint(ENDPOINT_PING_DEVICE, { deviceId: deviceId }), { method: "PUT" });
+            const resp = await fetch(populateEndpoint(ENDPOINT_DEVICE_PING, { deviceId: deviceId }), { method: "PUT" });
             if (!resp.ok) {
                 throw new Error(`failed to ring device: ${resp.status} ${resp.statusText}`);
             }

@@ -50,53 +50,40 @@ public class TokenRefreshService(ILogger<TokenRefreshService> logger,
                         continue;
                     }
 
-                    var serviceLock = tokenLocks.GetOrCreateLock(tmpService.Id);
-                    if (!await serviceLock.WaitAsync(5000))
+                    await using var serviceLock = await tokenLocks.AcquireAsync(tmpService.Id);
+                    if (!serviceLock.IsAcquired)
                     {
                         logger.LogWarning("Timeout acquiring lock for {ServiceId}, potential deadlock?", tmpService.Id);
                         continue;
                     }
 
-                    try
+                    await dbContext.Entry(tmpService).ReloadAsync();
+                    if (dbContext.Entry(tmpService).State == EntityState.Detached)
+                        continue;
+
+                    var service = tmpService;
+
+                    if (service.ExpiresAt <= DateTime.UtcNow ||
+                        (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
                     {
-                        await dbContext.Entry(tmpService).ReloadAsync();
-                        if (dbContext.Entry(tmpService).State == EntityState.Detached)
-                            continue;
-
-                        var service = tmpService;
-
-                        if (service.ExpiresAt <= DateTime.UtcNow ||
-                            (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
+                        var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
+                        if (!await handler.RefreshTokensAsync(service))
                         {
-                            var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
-                            if (!await handler.RefreshTokensAsync(service))
-                            {
-                                logger.LogError("Failed to refresh tokens for {ServiceId}!", tmpService.Id);
-                                service.Flags = LiveConnectedServiceFlags.Busted;
-                            }
-                            else
-                            {
-                                logger.LogInformation("Successfully refreshed tokens for {ServiceId}!", tmpService.Id);
-                                service.Flags = LiveConnectedServiceFlags.None;
-                            }
-
-                            dbContext.ConnectedServices.Update(service);
-                            await dbContext.SaveChangesAsync();
+                            logger.LogError("Failed to refresh tokens for {ServiceId}!", tmpService.Id);
+                            service.Flags = LiveConnectedServiceFlags.Busted;
                         }
-                    }
-                    finally
-                    {
-                        serviceLock.Release();
+                        else
+                        {
+                            logger.LogInformation("Successfully refreshed tokens for {ServiceId}!", tmpService.Id);
+                            service.Flags = LiveConnectedServiceFlags.None;
+                        }
+
+                        dbContext.ConnectedServices.Update(service);
+                        await dbContext.SaveChangesAsync();
                     }
                 }
 
-                var expiredOauths = (await dbContext.PendingOAuths.ToListAsync())
-                    .Where(a => a.ExpiresAt < DateTimeOffset.UtcNow);
-
-                foreach (var expiredOauth in expiredOauths)
-                    dbContext.PendingOAuths.Remove(expiredOauth);
-
-                await dbContext.SaveChangesAsync();
+                // pending-OAuth expiry is handled by the Redis key TTL now (see PendingOAuthStore)
                 logger.LogInformation("Token refresh completed!");
             }
             catch (Exception ex)

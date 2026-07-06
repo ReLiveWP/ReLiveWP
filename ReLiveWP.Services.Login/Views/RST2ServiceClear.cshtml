@@ -1,0 +1,20 @@
+@model ReLiveWP.Services.Login.Models.RST2.RST2Model
+<?xml version="1.0" encoding="utf-8" ?>
+<S:Envelope xmlns:S="http://www.w3.org/2003/05/soap-envelope"
+            xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+            xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+            xmlns:wsa="http://www.w3.org/2005/08/addressing">
+    <S:Header>
+        <wsa:Action wsu:Id="Action" S:mustUnderstand="1">
+            http://schemas.xmlsoap.org/ws/2005/02/trust/RSTR/Issue
+        </wsa:Action><wsa:To wsu:Id="To"
+                             S:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:To><wsse:Security S:mustUnderstand="1">
+        <wsu:Timestamp wsu:Id="TS">
+            <wsu:Created>@Model.TimeZ</wsu:Created>
+            <wsu:Expires>@Model.Time5MZ</wsu:Expires>
+        </wsu:Timestamp>
+    </wsse:Security>
+    @await Html.PartialAsync("~/Views/_RST2ServiceHeader.cshtml", Model)
+</S:Header>
+<S:Body>@await Html.PartialAsync("~/Views/_RST2ServiceTokens.cshtml", Model)</S:Body>
+</S:Envelope>

@@ -22,8 +22,8 @@ const AccentHandler = () => {
         const body = document.body;
         body.className = 'accent-' + accent.value;
 
-        const themeTag = document.querySelector('meta[name="theme-color"]');
-        themeTag?.setAttribute("content", accentColor.value)
+        const themeTag = document.querySelector('meta[name="theme-color"]')!;
+        themeTag.setAttribute("content", accentColor.value)
     });
 
     useAccentColor('red');

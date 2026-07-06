@@ -14,6 +14,7 @@ public class LiveConnectedService
     public required string RefreshToken { get; set; }
     public required DateTimeOffset ExpiresAt { get; set; }
     public required LiveConnectedServiceFlags Flags { get; set; } = LiveConnectedServiceFlags.None;
+    public required LiveConnectedServiceCapabilities AvailableCapabilities { get; set; }
     public required LiveConnectedServiceCapabilities EnabledCapabilities { get; set; }
 
     [ConcurrencyCheck]

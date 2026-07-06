@@ -231,8 +231,7 @@ public class InferenceController(ILogger<InferenceController> logger, IHttpClien
 
         var trackingId = request.RequestHeader?.TrackingId;
         logger.LogInformation(
-            "GetTileUsingPosition for ({Lat},{Lon}) — returning empty tile set (trackingId {TrackingId})",
-            request.Position?.Latitude, request.Position?.Longitude, trackingId);
+            "GetTileUsingPosition returning empty tile set (trackingId {TrackingId})", trackingId);
 
         var response = new GetTileUsingPositionResponse
         {
@@ -252,21 +251,23 @@ public class InferenceController(ILogger<InferenceController> logger, IHttpClien
         return Xml(response);
     }
 
-    private FileContentResult Xml(GetLocationUsingFingerprintResponse response)
+    private IActionResult Xml(GetLocationUsingFingerprintResponse response)
         => Xml(response, ResponseSerializer);
 
-    private FileContentResult Xml(GetTileUsingPositionResponse response)
+    private IActionResult Xml(GetTileUsingPositionResponse response)
         => Xml(response, TileResponseSerializer);
 
-    private FileContentResult Xml(object response, XmlSerializer serializer)
+    private IActionResult Xml(object response, XmlSerializer serializer)
     {
         var ns = new XmlSerializerNamespaces();
         ns.Add(string.Empty, InferenceNs);
 
-        using var stream = new MemoryStream();
+        var stream = new MemoryStream();
         using (var xmlWriter = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = new System.Text.UTF8Encoding(false) }))
             serializer.Serialize(xmlWriter, response, ns);
 
-        return File(stream.ToArray(), "text/xml");
+        stream.Seek(0, SeekOrigin.Begin);
+
+        return File(stream, "text/xml");
     }
 }

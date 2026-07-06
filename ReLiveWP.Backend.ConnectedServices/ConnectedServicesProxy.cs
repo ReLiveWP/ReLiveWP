@@ -19,11 +19,11 @@ public static class ConnectedServicesProxy
 
 
     private static Task XRpcProxyHandler(HttpContext context,
-                                           ConnectedServicesDbContext dbContext,
-                                           IEnumerable<IConnectedServiceProxy> proxies,
-                                           ILogger<ConnectedServicesProxyLog> logger,
-                                           ServiceTokenLocks tokenLocks,
-                                           string path)
+                                         ConnectedServicesDbContext dbContext,
+                                         IEnumerable<IConnectedServiceProxy> proxies,
+                                         ILogger<ConnectedServicesProxyLog> logger,
+                                         ServiceTokenLocks tokenLocks,
+                                         string path)
         => ProxyHandler(context, dbContext, proxies, logger, tokenLocks, AtProto.SERVICE_NAME, path);
 
     private static async Task ProxyHandler(HttpContext context,
@@ -58,16 +58,16 @@ public static class ConnectedServicesProxy
                 return;
             }
 
-            var serviceLock = tokenLocks.GetOrCreateLock(service.Id);
-            if (!await serviceLock.WaitAsync(5000, context.RequestAborted))
-            {
-                logger.LogError("Failed to acquire lock on {ServiceId}!", service.Id);
-                context.Response.StatusCode = StatusCodes.Status408RequestTimeout;
-                return;
-            }
-
+            var serviceLock = await tokenLocks.AcquireAsync(service.Id, context.RequestAborted);
             try
             {
+                if (!serviceLock.IsAcquired)
+                {
+                    logger.LogError("Failed to acquire lock on {ServiceId}!", service.Id);
+                    context.Response.StatusCode = StatusCodes.Status408RequestTimeout;
+                    return;
+                }
+
                 service = await LoadServiceAsync(dbContext, userId, connectionId, serviceId);
                 if (service == null)
                 {
@@ -112,7 +112,7 @@ public static class ConnectedServicesProxy
             }
             finally
             {
-                serviceLock.Release();
+                await serviceLock.DisposeAsync();
             }
 
 

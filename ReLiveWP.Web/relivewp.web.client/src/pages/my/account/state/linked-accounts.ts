@@ -6,7 +6,18 @@ import MastodonIcon from "../icons/mastodon";
 import MisskeyIcon from "../icons/misskey";
 import OneDriveIcon from "../icons/onedrive";
 import { Signal } from "@preact/signals";
-import { createContext } from "preact";
+import { createContext, type JSX } from "preact";
+import { ServiceCaps } from "~/util/service-caps";
+import GooglePhotosIcon from "../icons/google-photos";
+
+export type AccountIcon = (props: { class?: string }) => JSX.Element;
+
+export type AccountTypeEntry = {
+    name: string;
+    icon: AccountIcon;
+    allowsMany: boolean;
+    capOptions?: Partial<Record<number, { name?: string, icon?: AccountIcon }>>
+};
 
 export const AccountTypes = {
     "atproto": {
@@ -24,13 +35,19 @@ export const AccountTypes = {
         icon: MisskeyIcon,
         allowsMany: true,
     },
-    "google_drive": {
-        name: "google drive",
+    "google": {
+        name: "google",
         icon: GoogleDriveIcon,
-        allowsMany: false
+        allowsMany: false,
+        capOptions: {
+            [ServiceCaps.photoSync]: {
+                name: "google photos",
+                icon: GooglePhotosIcon
+            }
+        }
     },
-    "onedrive": {
-        name: "onedrive",
+    "microsoft": {
+        name: "microsoft onedrive",
         icon: OneDriveIcon,
         allowsMany: false
     },
@@ -39,33 +56,52 @@ export const AccountTypes = {
         icon: DropboxIcon,
         allowsMany: true
     }
-}
+} satisfies Record<string, AccountTypeEntry>;
 
 export type AccountType = keyof typeof AccountTypes;
 
-export const AccountTypeGroups: { [key: string]: AccountType[] } = {
-    "Social": ["atproto", "mastodon", "misskey"],
-    "Storage": ["onedrive", "google_drive", "dropbox"]
+export interface CapabilityGroup {
+    name: string;
+    caps: number;
 }
+
+export const CapabilityGroups: CapabilityGroup[] = [
+    { name: "Social",       caps: ServiceCaps.socialFeed | ServiceCaps.socialPost | ServiceCaps.socialCheckIn | ServiceCaps.socialNotifications },
+    { name: "Mail",         caps: ServiceCaps.email },
+    { name: "People",       caps: ServiceCaps.contacts },
+    { name: "Calendar",     caps: ServiceCaps.calendar },
+    { name: "Messenger",    caps: ServiceCaps.messaging },
+    { name: "Photo Sync",   caps: ServiceCaps.photoSync },
+    { name: "File Storage", caps: ServiceCaps.fileStorage },
+    { name: "Marketplace",  caps: ServiceCaps.marketplaceStream | ServiceCaps.marketplacePurchase },
+];
 
 export type AccountInfo = {
     id: string
     name: string
     url: string
     needs_relink: boolean
+    enabled_capabilities?: number
 }
 
 export type Connections = {
     connections: Partial<{ [key in AccountType]: AccountInfo[] | undefined }>
 }
 
+export type AvailableConnectedService = {
+    service: string;
+    displayName: string;
+    capabilities: number;
+}
+
 export type LinkedAccountsContext = {
     linkedAccounts: Signal<Connections>
+    availableLinks: Signal<AvailableConnectedService[]>
     doRefresh: () => void
 }
 
 export type OpenDialogAction =
-    | { dialog: 'link'; service: AccountType }
+    | { dialog: 'link'; service: AccountType; initialCaps?: number; existingConnectionId?: string; currentEnabledCaps?: number }
     | { dialog: 'unlink'; service: AccountType; id: string }
     | { dialog: 'relink'; id: string };
 
