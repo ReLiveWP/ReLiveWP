@@ -1,4 +1,6 @@
+using System.Net;
 using System.ServiceModel;
+using System.Web;
 using Grpc.Core;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Profile.Models;
@@ -23,11 +25,15 @@ public class ProfileService(
         if (string.IsNullOrWhiteSpace(token))
             throw new FaultException("Missing TicketToken.");
 
+        var parser = HttpUtility.ParseQueryString(token);
+
         // TODO: there is 100% a better way to do this, i refuse to believe SoapCore doesn't
         // offer an auth mechanism of its own
-        var verify = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
+        var verify = new VerifyTokenRequest { Token = parser["t"], TokenType = "JWT" };
         verify.ServiceTargets.Add("directory.services.live.com");
+        verify.ServiceTargets.Add("directory.services.live-int.com");
         verify.ServiceTargets.Add("contacts.relivewp.net");
+        verify.ServiceTargets.Add("contacts.int.relivewp.net");
 
         VerifyTokenResponse reply;
         try

@@ -176,12 +176,12 @@ public class TokenManager(
         if (!string.IsNullOrWhiteSpace(request.AuthToken))
         {
             TokenValidationResult result = await ValidateJwtAsync(request.AuthToken, ["http://Passport.NET/tb"]);
-#if !DEBUG
+            
             if (!result.IsValid)
             {
                 return null;
             }
-#endif
+
             if (!result.Claims.TryGetValue(ClaimTypes.NameIdentifier, out var userId))
             {
                 return null;

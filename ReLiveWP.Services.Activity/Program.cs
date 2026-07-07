@@ -47,7 +47,8 @@ builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<SkyDrive.SkyDriveClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:SkyDrive"]!));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:SkyDrive"]!))
+    .AddInterceptor<AuthForwardingInterceptor>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ActivityProviderService>();

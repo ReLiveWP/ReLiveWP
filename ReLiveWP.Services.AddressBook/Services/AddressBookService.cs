@@ -1,4 +1,5 @@
 ﻿using System.ServiceModel;
+using System.Xml.Serialization;
 using ReLiveWP.Services.AddressBook.Models;
 
 namespace ReLiveWP.Services.AddressBook.Services;
@@ -93,28 +94,25 @@ public class AddressBookService : IAddressBookService
         var now = DateTime.UtcNow;
         return new ViewABNetworksResponse()
         {
-            Result =
+            ViewABNetworksResult =
             {
-                Networks =
+                new NetworkInfo()
                 {
-                    new NetworkInfo()
-                    {
-                        DomainId = 22,
-                        SourceId = "TWITR",
-                        DomainTag = "WL",
-                        DisplayName = "Wam",
-                        ProfileURL = "https://bsky.app/profile/wamwoowam.co.uk",
-                        UserTileURL = "https://cdn.bsky.app/img/avatar/plain/did:plc:7rfssi44thh6f4ywcl3u5nvt/bafkreihkzoksalhxgsivjew4xbftdnsa27bcc5xcl5vf5opaou2eswtsda@jpeg",
-                        CreateDate = now,
-                        LastChanged = now,
-                        RelationshipStateDate = now,
-                        Annotations =
-                        [
-                            new() { Name = "Live.Network.PSAState", Value = "Accept" },
-                            // TODO: this parses with LOCALE_SYSTEM_DEFAULT on device, which feels like the footgun of all time
-                            new() { Name = "Live.Network.LastSync", Value = DateTime.Now.ToString() } 
-                        ]
-                    }
+                    DomainId = 22,
+                    SourceId = "TWITR",
+                    DomainTag = "WL",
+                    DisplayName = "Wam",
+                    // ProfileURL = "https://bsky.app/profile/wamwoowam.co.uk",
+                    // UserTileURL = "https://cdn.bsky.app/img/avatar/plain/did:plc:7rfssi44thh6f4ywcl3u5nvt/bafkreihkzoksalhxgsivjew4xbftdnsa27bcc5xcl5vf5opaou2eswtsda@jpeg",
+                    // CreateDate = now,
+                    // LastChanged = now,
+                    // RelationshipStateDate = now,
+                    Annotations =
+                    [
+                        new() { Name = "Live.Network.PSAState", Value = "Accept" },
+                        // TODO: this parses with LOCALE_SYSTEM_DEFAULT on device, which feels like the footgun of all time
+                        new() { Name = "Live.Network.LastSync", Value = DateTime.Now.ToString() }
+                    ]
                 }
             }
         };
