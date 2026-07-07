@@ -7,10 +7,17 @@
   <Folder Name="/! Libraries/">
     <Project Path="Libraries/Atom/Atom.csproj" />
     <Project Path="ReLiveWP.Identity/ReLiveWP.Identity.csproj" />
+    <Project Path="ReLiveWP.Passport/ReLiveWP.Passport.csproj" />
     <Project Path="ReLiveWP.ServiceDefaults/ReLiveWP.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/! Solution Items/">
+    <File Path=".dockerignore" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
     <File Path="Directory.Build.props" />
+    <File Path="docker-compose.override.yml" />
+    <File Path="docker-compose.yml" />
+    <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/Activation/">
     <Project Path="ReLiveWP.Backend.DeviceRegistration/ReLiveWP.Backend.DeviceRegistration.csproj" />
@@ -40,9 +47,10 @@
   </Folder>
   <Folder Name="/Windows Live/">
     <Project Path="ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />
+    <Project Path="ReLiveWP.Services.Profile/ReLiveWP.Services.Profile.csproj" />
+    <Project Path="ReLiveWP.Backend.SkyDrive/ReLiveWP.Backend.SkyDrive.csproj" />
     <Project Path="ReLiveWP.Services.Activity/ReLiveWP.Services.Activity.csproj" />
     <Project Path="ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />
-    <Project Path="ReLiveWP.Services.Profile/ReLiveWP.Services.Profile.csproj" />
   </Folder>
   <Project Path="ReLiveWP/ReLiveWP.csproj" />
 </Solution>
