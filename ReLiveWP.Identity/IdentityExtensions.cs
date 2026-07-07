@@ -1,10 +1,11 @@
 ﻿using System.Security.Claims;
 using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authorization;
-using ReLiveWP.Services.Grpc;
-using ReLiveWP.Identity.LiveID;
 using Microsoft.Extensions.DependencyInjection;
+using ReLiveWP.Identity.Exchange;
 using ReLiveWP.Identity.Grpc;
+using ReLiveWP.Identity.LiveID;
+using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Identity;
 
@@ -20,11 +21,49 @@ public static class IdentityExtensions
         public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
     }
 
+    public class AddExchangeAuthenticationOptions
+    {
+        public AddExchangeAuthenticationOptions() { }
+
+        public Action<GrpcClientFactoryOptions>? IdentityGrpcConfiguration { internal get; set; }
+        public Action<ExchangeAuthOptions>? ExchangeConfiguration { internal get; set; }
+        public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
+    }
+
+
     public class AddGrpcAuthenticationOptions
     {
         public AddGrpcAuthenticationOptions() { }
         public Action<GrpcAuthOptions>? GrpcConfiguration { internal get; set; }
         public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
+    }
+
+    public static void AddExchangeAuthentication(this IServiceCollection collection, Action<AddExchangeAuthenticationOptions> options)
+    {
+        var opts = new AddExchangeAuthenticationOptions();
+        options(opts);
+
+        if (opts.IdentityGrpcConfiguration != null)
+        {
+            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient", opts.IdentityGrpcConfiguration);
+        }
+        else
+        {
+            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient"); ;
+        }
+
+
+        collection.AddAuthentication(ExchangeAuthHandler.SchemeName)
+                  .AddScheme<ExchangeAuthOptions, ExchangeAuthHandler>(ExchangeAuthHandler.SchemeName, opts.ExchangeConfiguration);
+
+        if (opts.AuthorizationConfiguration != null)
+        {
+            collection.AddAuthorization(opts.AuthorizationConfiguration);
+        }
+        else
+        {
+            collection.AddAuthorization();
+        }
     }
 
     public static void AddLiveIDAuthentication(this IServiceCollection collection, Action<AddLiveIDAuthenticationOptions> options)

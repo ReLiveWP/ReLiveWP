@@ -35,7 +35,7 @@ public class ProfileService(
         verify.ServiceTargets.Add("contacts.relivewp.net");
         verify.ServiceTargets.Add("contacts.int.relivewp.net");
 
-        VerifyTokenResponse reply;
+        VerifyResponse reply;
         try
         {
             reply = await authentication.VerifySecurityTokenAsync(verify);

@@ -33,7 +33,7 @@ public class TokenManager(
     private byte[] StsKey => Convert.FromBase64String(
         configuration["Passport:StsKey"] ?? throw new InvalidOperationException("Passport:StsKey is not configured."));
 
-    public DeviceAuthToken CreateDeviceAuthToken(LiveUser user)
+    public DeviceAuthToken IssueDeviceAuthToken(LiveUser user)
     {
         var sessionKey = DaToken.GenerateSessionKey();
         var created = DateTimeOffset.UtcNow;
@@ -50,18 +50,32 @@ public class TokenManager(
         return new DeviceAuthToken(sealed_, sessionKey, created, expires);
     }
 
-    public DaTokenPayload UnsealDeviceAuthToken(string cipherValue) 
+    public DaTokenPayload UnsealDeviceAuthToken(string cipherValue)
         => DaToken.Unseal(StsKey, cipherValue);
 
-    public SecurityToken CreateJwtSecurityToken(LiveUser user, string serviceTarget)
+    public SecurityToken IssueJwtAsync(LiveUser user, string serviceTarget)
     {
-        var authClaims = new List<Claim>()
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        List<Claim> authClaims =
+        [
             new Claim(JwtRegisteredClaimNames.Aud, serviceTarget),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iss, JwtIssuer),
 
+            ..BuildIdentityClaims(user)
+        ];
+
+        var created = DateTimeOffset.UtcNow;
+        var expires = created.AddDays(30);
+        var token = CreateToken(authClaims, expires);
+
+        return new SecurityToken(new JwtSecurityTokenHandler().WriteToken(token), created, expires);
+    }
+
+    public IEnumerable<Claim> BuildIdentityClaims(LiveUser user)
+    {
+        return
+        [
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("cid", user.Cid),
             new Claim("puid", user.Puid.ToString("X2").PadLeft(16, '0')),
             new Claim("user_type", ((int)user.Type).ToString()),
@@ -69,13 +83,7 @@ public class TokenManager(
             //new Claim(JwtRegisteredClaimNames.FamilyName, "May"),
             new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
             new Claim(JwtRegisteredClaimNames.PreferredUsername, user.UserName ?? ""),
-        };
-
-        var created = DateTimeOffset.UtcNow;
-        var expires = created.AddDays(30);
-        var token = CreateToken(authClaims, expires);
-
-        return new SecurityToken(new JwtSecurityTokenHandler().WriteToken(token), created, expires);
+        ];
     }
 
     public async Task<SecurityToken> IssueRefreshTokenAsync(LiveUser user, string serviceTarget)
@@ -107,7 +115,7 @@ public class TokenManager(
         var token = await dbContext.LiveRefreshTokens.AsNoTracking().FirstOrDefaultAsync(t => t.TokenHash == hash);
         if (token == null || token.RevokedAt != null || token.ExpiresAt <= now)
             return null;
-            
+
         var affected = await dbContext.LiveRefreshTokens
             .Where(t => t.Id == token.Id && t.RevokedAt == null)
             .ExecuteUpdateAsync(s => s
@@ -176,7 +184,7 @@ public class TokenManager(
         if (!string.IsNullOrWhiteSpace(request.AuthToken))
         {
             TokenValidationResult result = await ValidateJwtAsync(request.AuthToken, ["http://Passport.NET/tb"]);
-            
+
             if (!result.IsValid)
             {
                 return null;

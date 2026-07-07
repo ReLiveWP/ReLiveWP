@@ -30,7 +30,7 @@ public class MailboxDbContext : DbContext
 
         if (!optionsBuilder.IsConfigured)
             optionsBuilder
-                .UseSqlite("Data Source=mailbox.db")
+                .UseNpgsql("Host=localhost;Database=relive_mailbox;Username=relive;Password=relive")
                 .AddInterceptors(new ChangeLogInterceptor());
     }
 

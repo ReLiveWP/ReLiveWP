@@ -7,15 +7,10 @@ using ReLiveWP.Services.Grpc.Mailbox;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
-builder.Services.AddLiveIDAuthentication(opts =>
+builder.Services.AddExchangeAuthentication(opts =>
 {
     opts.IdentityGrpcConfiguration = o =>
         o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!);
-    opts.LiveIDConfiguration = o =>
-    {
-        o.AcceptBasicAuth = true;
-        o.ValidServiceTargets = ["http://Passport.NET/tb"];
-    };
 });
 
 builder.Services.AddGrpcClient<User.UserClient>(
