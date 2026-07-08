@@ -28,4 +28,16 @@ public class AuthForwardingInterceptor(IHttpContextAccessor httpContextAccessor)
         AsyncServerStreamingCallContinuation<TRequest, TResponse> continuation) =>
         continuation(request, new ClientInterceptorContext<TRequest, TResponse>(
             context.Method, context.Host, WithAuth(context.Options)));
+
+    public override AsyncClientStreamingCall<TRequest, TResponse> AsyncClientStreamingCall<TRequest, TResponse>(
+        ClientInterceptorContext<TRequest, TResponse> context,
+        AsyncClientStreamingCallContinuation<TRequest, TResponse> continuation) =>
+        continuation(new ClientInterceptorContext<TRequest, TResponse>(
+            context.Method, context.Host, WithAuth(context.Options)));
+
+    public override AsyncDuplexStreamingCall<TRequest, TResponse> AsyncDuplexStreamingCall<TRequest, TResponse>(
+        ClientInterceptorContext<TRequest, TResponse> context,
+        AsyncDuplexStreamingCallContinuation<TRequest, TResponse> continuation) =>
+        continuation(new ClientInterceptorContext<TRequest, TResponse>(
+            context.Method, context.Host, WithAuth(context.Options)));
 }

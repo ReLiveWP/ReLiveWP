@@ -7,5 +7,5 @@ public interface IPhotoSyncProxyClient
 {
     string ServiceId { get; }
 
-    Task<ProviderUploadResult> UploadAsync(string connectionId, string authorization, PhotoUpload photo, CancellationToken ct = default);
+    Task<ProviderUploadResult> UploadAsync(string userId, string connectionId, PhotoUpload photo, CancellationToken ct = default);
 }

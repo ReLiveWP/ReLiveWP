@@ -12,7 +12,7 @@ public class GooglePhotosProxyClient(IHttpClientFactory httpClientFactory, IConf
 
     public string ServiceId => ServiceName;
 
-    public async Task<ProviderUploadResult> UploadAsync(string connectionId, string authorization, PhotoUpload photo, CancellationToken ct = default)
+    public async Task<ProviderUploadResult> UploadAsync(string userId, string connectionId, PhotoUpload photo, CancellationToken ct = default)
     {
         var proxyBase = configuration["Endpoints:ConnectedServices:Proxy"]!.TrimEnd('/');
         using var client = httpClientFactory.CreateClient();
@@ -25,7 +25,7 @@ public class GooglePhotosProxyClient(IHttpClientFactory httpClientFactory, IConf
         uploadRequest.Headers.TryAddWithoutValidation("X-Goog-Upload-Protocol", "raw");
         uploadRequest.Headers.TryAddWithoutValidation("X-Goog-Upload-File-Name", photo.FileName);
         uploadRequest.Headers.TryAddWithoutValidation("X-Connection-ID", connectionId);
-        uploadRequest.Headers.TryAddWithoutValidation("Authorization", authorization);
+        uploadRequest.Headers.TryAddWithoutValidation("X-User-ID", userId);
 
         using var uploadResponse = await client.SendAsync(uploadRequest, ct);
         var uploadToken = (await uploadResponse.Content.ReadAsStringAsync(ct)).Trim();
@@ -53,7 +53,7 @@ public class GooglePhotosProxyClient(IHttpClientFactory httpClientFactory, IConf
             Content = JsonContent.Create(batchBody)
         };
         batchRequest.Headers.TryAddWithoutValidation("X-Connection-ID", connectionId);
-        batchRequest.Headers.TryAddWithoutValidation("Authorization", authorization);
+        batchRequest.Headers.TryAddWithoutValidation("X-User-ID", userId);
 
         using var batchResponse = await client.SendAsync(batchRequest, ct);
         var json = await batchResponse.Content.ReadAsStringAsync(ct);

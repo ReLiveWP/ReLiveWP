@@ -1,12 +1,15 @@
 using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.SkyDrive.Data;
+using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Backend.SkyDrive.Services;
 
+[Authorize]
 public class SkyDriveService(SkyDriveDbContext dbContext,
                              ConnectedServices.ConnectedServicesClient connectedServicesClient,
                              IEnumerable<IPhotoSyncProxyClient> photoSyncProxyClients,
@@ -15,7 +18,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
     private const uint PhotoSyncCapability = 0x10;
     public override async Task<LibraryReply> GetLibrary(GetLibraryRequest request, ServerCallContext context)
     {
-        var ownerId = Guid.Parse(request.UserId);
+        var ownerId = GetOwnerId(context);
         var library = await dbContext.Libraries
             .FirstOrDefaultAsync(l => l.OwnerId == ownerId && l.Category == request.Category);
 
@@ -27,7 +30,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
 
     public override async Task<ListLibrariesReply> ListLibraries(ListLibrariesRequest request, ServerCallContext context)
     {
-        var ownerId = Guid.Parse(request.UserId);
+        var ownerId = GetOwnerId(context);
 
         // Bootstrap the defaults so a never-provisioned user still gets a populated feed, mirroring
         // the lazy EnsureLibraryAsync in UploadPhoto/ProvisionUser.
@@ -45,7 +48,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
 
     public override async Task<LibraryReply> CreateOrUpdateLibrary(CreateOrUpdateLibraryRequest request, ServerCallContext context)
     {
-        var ownerId = Guid.Parse(request.UserId);
+        var ownerId = GetOwnerId(context);
         var now = DateTimeOffset.UtcNow;
 
         var library = await dbContext.Libraries.AsTracking()
@@ -79,7 +82,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
 
     public override async Task<Empty> ProvisionUser(ProvisionUserRequest request, ServerCallContext context)
     {
-        var ownerId = Guid.Parse(request.UserId);
+        var ownerId = GetOwnerId(context);
 
         foreach (var category in DefaultLibraries)
             await EnsureLibraryAsync(ownerId, category);
@@ -130,44 +133,34 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
         if (metadata == null)
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Missing photo metadata."));
 
-        var ownerId = Guid.Parse(metadata.UserId);
+        var userId = GetUserId(context);
+        var ownerId = Guid.Parse(userId);
         var photo = new PhotoUpload(metadata.FileName, metadata.ContentType, metadata.Summary, buffer.ToArray());
         var reply = new PhotoReply();
 
         await EnsureLibraryAsync(ownerId, metadata.Category);
 
-        var authorization = context.RequestHeaders
-            .FirstOrDefault(e => e.Key.Equals("authorization", StringComparison.OrdinalIgnoreCase))?.Value;
+        var call = connectedServicesClient.GetConnections(new ConnectionsRequest { Capabilities = PhotoSyncCapability }, cancellationToken: ct);
 
-        if (authorization == null)
+        await foreach (var connection in call.ResponseStream.ReadAllAsync(ct))
         {
-            logger.LogWarning("No Authorization header forwarded with photo upload for {UserId}; skipping provider sync", ownerId);
-        }
-        else
-        {
-            var headers = new Metadata { { "Authorization", authorization } };
-            var call = connectedServicesClient.GetConnections(new ConnectionsRequest { Capabilities = PhotoSyncCapability }, headers, cancellationToken: ct);
-
-            await foreach (var connection in call.ResponseStream.ReadAllAsync(ct))
+            var proxyClient = photoSyncProxyClients.FirstOrDefault(p => p.ServiceId == connection.Service);
+            if (proxyClient == null)
             {
-                var proxyClient = photoSyncProxyClients.FirstOrDefault(p => p.ServiceId == connection.Service);
-                if (proxyClient == null)
-                {
-                    logger.LogWarning("No photo-sync proxy client registered for {Service}", connection.Service);
-                    continue;
-                }
+                logger.LogWarning("No photo-sync proxy client registered for {Service}", connection.Service);
+                continue;
+            }
 
-                try
-                {
-                    var result = await proxyClient.UploadAsync(connection.Id, authorization, photo, ct);
-                    reply.ProviderItems.Add(new ProviderItem { Service = connection.Service, ItemId = result.ItemId, Url = result.Url ?? "" });
+            try
+            {
+                var result = await proxyClient.UploadAsync(userId, connection.Id, photo, ct);
+                reply.ProviderItems.Add(new ProviderItem { Service = connection.Service, ItemId = result.ItemId, Url = result.Url ?? "" });
 
-                    logger.LogInformation("Synced photo {FileName} to {Service} as {ItemId}", photo.FileName, connection.Service, result.ItemId);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to sync photo to {Service} ({ConnectionId})", connection.Service, connection.Id);
-                }
+                logger.LogInformation("Synced photo {FileName} to {Service} as {ItemId}", photo.FileName, connection.Service, result.ItemId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to sync photo to {Service} ({ConnectionId})", connection.Service, connection.Id);
             }
         }
 
@@ -193,7 +186,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
 
     public override async Task<Empty> SetAlbumPermissions(SetAlbumPermissionsRequest request, ServerCallContext context)
     {
-        var ownerId = Guid.Parse(request.UserId);
+        var ownerId = GetOwnerId(context);
         var library = await dbContext.Libraries.AsTracking()
             .FirstOrDefaultAsync(l => l.OwnerId == ownerId && l.Category == request.Category)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Library not found!"));
@@ -204,6 +197,15 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
 
         return new Empty();
     }
+
+    // Owner is always the authenticated caller; the UserId carried in requests is ignored so a
+    // caller can't read or mutate another user's libraries by spoofing it.
+    private static string GetUserId(ServerCallContext context)
+        => context.GetHttpContext().User.Id()
+           ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid user."));
+
+    private static Guid GetOwnerId(ServerCallContext context)
+        => Guid.Parse(GetUserId(context));
 
     private static Library ToProto(SkyLibrary library) => new()
     {

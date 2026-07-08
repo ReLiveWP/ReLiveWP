@@ -88,18 +88,11 @@ public class AuthenticationService(
 
         foreach (var tokenRequest in request.Requests)
         {
-            // TODO: there's a few different tokens that can be requested here inclduing x509 certificates, for now
-            // we're just working with JWTs which are our stand in for a BinarySecurityToken (aka a blob)
-            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
+            var tokenResponse = await IssueTokenAsync(user, tokenRequest);
+            if (tokenResponse == null)
+                continue;
 
-            response.Tokens.Add(new SecurityTokenResponse()
-            {
-                ServiceTarget = tokenRequest.ServiceTarget,
-                Created = Timestamp.FromDateTimeOffset(created),
-                Expires = Timestamp.FromDateTimeOffset(expires),
-                Token = token,
-                TokenType = "JWT",
-            });
+            response.Tokens.Add(tokenResponse);
         }
 
         return response;
@@ -149,73 +142,77 @@ public class AuthenticationService(
 
         foreach (var tokenRequest in request.Requests)
         {
-            if (tokenRequest.ServiceTarget == LegacyDaTokenTarget)
-            {
-                var da = tokenManager.CreateDeviceAuthToken(user);
-                response.Tokens.Add(new SecurityTokenResponse()
-                {
-                    ServiceTarget = tokenRequest.ServiceTarget,
-                    Created = Timestamp.FromDateTimeOffset(da.Created),
-                    Expires = Timestamp.FromDateTimeOffset(da.Expires),
-                    Token = da.SealedToken,
-                    TokenType = "urn:passport:legacy",
-                    ProofKey = ByteString.CopyFrom(da.ProofKey),
-                });
+            var tokenResponse = await IssueTokenAsync(user, tokenRequest);
+            if (tokenResponse == null)
                 continue;
-            }
-
-            if (tokenRequest.ServicePolicy == "MBI_X509_DID")
-            {
-                // device cert time :D
-                var (thumb, cert, certExpiry) = deviceCertificateService.HandleCertRequest(user.Puid.ToString("x2").PadLeft(16, '0'), [.. tokenRequest.SupportingData]);
-                user.Certificates.Add(new LiveUserCertificate()
-                {
-                    UserId = user.Id,
-                    Fingerprint = thumb
-                });
-
-                dbContext.Update(user);
-                await dbContext.SaveChangesAsync();
-
-                var certResponse = new SecurityTokenResponse()
-                {
-                    ServiceTarget = tokenRequest.ServiceTarget,
-                    Created = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow),
-                    Expires = Timestamp.FromDateTimeOffset(certExpiry),
-                    Token = Convert.ToBase64String(cert),
-                    TokenType = tokenRequest.ServicePolicy
-                };
-
-
-                response.Tokens.Add(certResponse);
-                continue;
-            }
-
-            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(user, tokenRequest.ServiceTarget);
-
-            var tokenResponse = new SecurityTokenResponse()
-            {
-                ServiceTarget = tokenRequest.ServiceTarget,
-                Created = Timestamp.FromDateTimeOffset(created),
-                Expires = Timestamp.FromDateTimeOffset(expires),
-                Token = token,
-                TokenType = tokenRequest.ServicePolicy
-            };
-
-            if (tokenRequest.ServicePolicy.EndsWith("_KEY"))
-                tokenResponse.ProofKey = ByteString.CopyFrom(RandomNumberGenerator.GetBytes(24));
-
-            if (request.IssueRefreshToken)
-            {
-                var refresh = await tokenManager.IssueRefreshTokenAsync(user, tokenRequest.ServiceTarget);
-                tokenResponse.RefreshToken = refresh.Token;
-                tokenResponse.RefreshTokenExpires = Timestamp.FromDateTimeOffset(refresh.Expires);
-            }
 
             response.Tokens.Add(tokenResponse);
         }
 
         return response;
+    }
+
+    private async Task<SecurityTokenResponse?> IssueTokenAsync(LiveUser user, SecurityTokenRequest tokenRequest, bool issueRefreshToken = false)
+    {
+        if (tokenRequest.ServiceTarget == LegacyDaTokenTarget)
+        {
+            var da = tokenManager.IssueDeviceAuthToken(user);
+
+            return new()
+            {
+                ServiceTarget = tokenRequest.ServiceTarget,
+                Created = Timestamp.FromDateTimeOffset(da.Created),
+                Expires = Timestamp.FromDateTimeOffset(da.Expires),
+                Token = da.SealedToken,
+                TokenType = "urn:passport:legacy",
+                ProofKey = ByteString.CopyFrom(da.ProofKey),
+            };
+        }
+
+        if (tokenRequest.ServicePolicy == "MBI_X509_DID")
+        {
+            // device cert time :D
+            var (thumb, cert, certExpiry) = deviceCertificateService.IssueCertificateAsync(user.Puid.ToString("x16"), [.. tokenRequest.SupportingData]);
+            user.Certificates.Add(new LiveUserCertificate()
+            {
+                UserId = user.Id,
+                Fingerprint = thumb
+            });
+
+            dbContext.Update(user);
+            await dbContext.SaveChangesAsync();
+
+            return new()
+            {
+                ServiceTarget = tokenRequest.ServiceTarget,
+                Created = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow),
+                Expires = Timestamp.FromDateTimeOffset(certExpiry),
+                Token = Convert.ToBase64String(cert),
+                TokenType = tokenRequest.ServicePolicy
+            };
+        }
+
+        var (token, created, expires) = tokenManager.IssueJwtAsync(user, tokenRequest.ServiceTarget);
+        var tokenResponse = new SecurityTokenResponse()
+        {
+            ServiceTarget = tokenRequest.ServiceTarget,
+            Created = Timestamp.FromDateTimeOffset(created),
+            Expires = Timestamp.FromDateTimeOffset(expires),
+            Token = token,
+            TokenType = tokenRequest.ServicePolicy
+        };
+
+        if (tokenRequest.ServicePolicy.EndsWith("_KEY"))
+            tokenResponse.ProofKey = ByteString.CopyFrom(RandomNumberGenerator.GetBytes(24));
+
+        if (issueRefreshToken)
+        {
+            var refresh = await tokenManager.IssueRefreshTokenAsync(user, tokenRequest.ServiceTarget);
+            tokenResponse.RefreshToken = refresh.Token;
+            tokenResponse.RefreshTokenExpires = Timestamp.FromDateTimeOffset(refresh.Expires);
+        }
+
+        return tokenResponse;
     }
 
     public override async Task<SecurityTokensResponse> RefreshSecurityTokens(RefreshTokensRequest request, ServerCallContext context)
@@ -270,7 +267,33 @@ public class AuthenticationService(
         return Task.FromResult(new DeviceCertificateResponse() { Succeeded = true, Certificate = ByteString.CopyFrom(cert.Certificate) });
     }
 
-    public override async Task<ValidateDeviceCertificateResponse> ValidateDeviceCertificate(ValidateDeviceCertificateRequest request, ServerCallContext context)
+    public override async Task<VerifyResponse> VerifyPassword(VerifyPasswordRequest request, ServerCallContext context)
+    {
+        var user =
+            request.HasUsername ?
+            await userManager.FindByNameAsync(request.Username) :
+            await userManager.FindByEmailAsync(request.EmailAddress);
+
+        if (user == null)
+            return new VerifyResponse() { Code = PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD };
+
+        if (!await userManager.CheckPasswordAsync(user, request.Password))
+            return new VerifyResponse() { Code = PPCRL_REQUEST_E_BAD_MEMBER_NAME_OR_PASSWORD };
+
+        var response = new VerifyResponse() { Code = S_OK, Id = user.Id.ToString() };
+        foreach (var claim in tokenManager.BuildIdentityClaims(user))
+        {
+            // verifying a JWT maps some claims to standardised names, we're mostly just after the user's ID though 
+            // so NameIdentifier all we map here
+            if (claim.Type == JwtRegisteredClaimNames.Sub)
+                response.Claims.Add(new ClaimMessage() { Type = ClaimTypes.NameIdentifier, Value = claim.Value });
+
+            response.Claims.Add(new ClaimMessage() { Type = claim.Type, Value = claim.Value });
+        }
+        return response;
+    }
+
+    public override async Task<VerifyDeviceCertificateResponse> VerifyDeviceCertificate(VerifyDeviceCertificateRequest request, ServerCallContext context)
     {
         var cert = X509CertificateLoader.LoadCertificate(request.Certificate.ToByteArray());
         if (!deviceCertificateService.ValidateDeviceCertificate(cert))
@@ -291,7 +314,7 @@ public class AuthenticationService(
             user = dbContext.Users.FirstOrDefault(u => u.Certificates.Any(c => c.Fingerprint == thumbprint));
             if (user != null)
             {
-                cn = $"{user.Puid.ToString("X2").PadLeft(16, '0')}.devicedns.live.com";
+                cn = $"{user.Puid.ToString("X16")}.devicedns.live.com";
             }
         }
 
@@ -317,5 +340,30 @@ public class AuthenticationService(
             Username = user.UserName,
             DeviceId = cn
         };
+    }
+
+    public override async Task<Empty> ChangePassword(ChangePasswordRequest request, ServerCallContext context)
+    {
+
+        LiveUser? user = null;
+        if (request.HasUid)
+        {
+            var uid = Guid.Parse(request.Uid);
+            user = await dbContext.Users.FindAsync(uid);
+        }
+        else if (request.HasPuid)
+        {
+            var puid = long.Parse(request.Puid, NumberStyles.HexNumber);
+            user = await dbContext.Users.FirstOrDefaultAsync(f => f.Puid == puid);
+        }
+
+        if (user == null)
+            throw new RpcException(new Status(StatusCode.NotFound, "User not found!"));
+
+        var result = await userManager.ChangePasswordAsync(user, request.OldPassword, request.NewPassword);
+        if (!result.Succeeded)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid username or password."));
+
+        return new Empty();
     }
 }

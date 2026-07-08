@@ -10,6 +10,6 @@ public class PPCrlCheckController : Controller
         return Content(@"<Config>
 <DeviceID minversion=""7.0.13340.0""/>
 <MobileCfg minversion=""7.0.13340.0""/>
-</Config>");
+</Config>", "text/xml");
     }
 }

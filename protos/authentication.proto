@@ -3,6 +3,7 @@ syntax = "proto3";
 option csharp_namespace = "ReLiveWP.Services.Grpc";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
 package identity;
 
@@ -10,6 +11,10 @@ service Authentication {
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
+  rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
+ 
+  rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
+
   rpc RefreshSecurityTokens (RefreshTokensRequest) returns (SecurityTokensResponse);
   rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyTokenResponse);
   rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
@@ -126,4 +131,17 @@ message ValidateDeviceCertificateResponse {
   optional string username = 4;
   optional string emailAddress = 5;
   optional string deviceId = 6;
+}
+
+message VerifyPasswordRequest {
+	optional string username = 1;
+	optional string emailAddress = 3;
+	string password = 2;
+}
+
+message ChangePasswordRequest {
+	optional string uid = 1;
+	optional string puid = 2; // DeviceChangeCredental looks up bu puid 
+	string oldPassword = 3;
+	string newPassword = 4;
 }

@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Xml;
+using Grpc.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Razor.Templating.Core;
@@ -10,12 +11,14 @@ namespace ReLiveWP.Services.Login.Controllers;
 
 [Consumes("application/soap+xml")]
 [Produces("application/soap+xml")]
-[Route("/ppsecure/{action}.srf")]
+[Route("/ppsecure/[action].srf")]
 public class PPSecureController(
     ILogger<PPSecureController> logger,
     IRazorTemplateEngine razorTemplateEngine,
     Authentication.AuthenticationClient authenticationClient) : ControllerBase
 {
+    [HttpPost]
+    [ActionName("DeviceAddCredential")]
     [EnableRateLimiting("DeviceRegisterLimit")]
     public async Task<IActionResult> DeviceAddCredential()
     {
@@ -49,8 +52,57 @@ public class PPSecureController(
             Requests = { }
         });
 
-        var model = new DeviceAddResponseModel(response.Puid.ToString("X2").PadLeft(16, '0'));
+        var model = new DeviceAddResponseModel(response.Puid.ToString("X16"));
         var content = await razorTemplateEngine.RenderAsync("~/Views/DeviceAddCredential.success.cshtml", model);
         return Content(content, "application/soap+xml");
+    }
+
+    [HttpPost]
+    [ActionName("DeviceChangeCredential")]
+    [EnableRateLimiting("DeviceRegisterLimit")]
+    public async Task<IActionResult> DeviceChangeCredential()
+    {
+        string body;
+        using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
+            body = await reader.ReadToEndAsync();
+
+        var document = new XmlDocument { PreserveWhitespace = true };
+        try
+        {
+            document.LoadXml(body);
+        }
+        catch (XmlException ex)
+        {
+            logger.LogWarning(ex, "RST2 request was not well-formed XML");
+            return BadRequest();
+        }
+
+        var puid = document.SelectSingleNode("//Puid")?.InnerText;
+        var password = document.SelectSingleNode("//Password")?.InnerText;
+        var newPassword = document.SelectSingleNode("//NewPassword")?.InnerText;
+
+        if (string.IsNullOrEmpty(puid) || string.IsNullOrWhiteSpace(password))
+        {
+            return BadRequest();
+        }
+
+        try
+        {
+            var response = await authenticationClient.ChangePasswordAsync(new ChangePasswordRequest()
+            {
+                Puid = puid,
+                OldPassword = password,
+                NewPassword = newPassword,
+            });
+
+            var model = new DeviceAddResponseModel(puid);
+            var content = await razorTemplateEngine.RenderAsync("~/Views/DeviceChangeCredential.success.cshtml", model);
+            return Content(content, "application/soap+xml");
+        }
+        catch (RpcException ex)
+        {
+            var content = await razorTemplateEngine.RenderAsync("~/Views/DeviceChangeCredential.fail.cshtml", new DeviceAddResponseModel("", "0x8004805F"));
+            return Content(content, "application/soap+xml");
+        }
     }
 }
