@@ -163,7 +163,7 @@ public class RST2Controller(
         var model = new RST2Model()
         {
             CID = response.Cid,
-            PUIDHex = response.Puid.ToString("X2").PadLeft(16, '0'),
+            PUIDHex = response.Puid.ToString("X16"),
 
             TimeZ = FormatZ(created),
             TomorrowZ = FormatZ(expires),
@@ -196,7 +196,7 @@ public class RST2Controller(
         var model = new RST2Model()
         {
             CID = response.Cid,
-            PUIDHex = response.Puid.ToString("X2").PadLeft(16, '0'),
+            PUIDHex = response.Puid.ToString("X16"),
 
             TimeZ = FormatZ(created),
             TomorrowZ = FormatZ(expires),

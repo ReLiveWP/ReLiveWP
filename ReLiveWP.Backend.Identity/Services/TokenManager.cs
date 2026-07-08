@@ -77,7 +77,7 @@ public class TokenManager(
         [
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("cid", user.Cid),
-            new Claim("puid", user.Puid.ToString("X2").PadLeft(16, '0')),
+            new Claim("puid", user.Puid.ToString("X16")),
             new Claim("user_type", ((int)user.Type).ToString()),
             //new Claim(JwtRegisteredClaimNames.GivenName, "Thomas"),
             //new Claim(JwtRegisteredClaimNames.FamilyName, "May"),

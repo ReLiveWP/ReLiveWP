@@ -30,6 +30,7 @@ public class ConnectedServiceProxyBase<T>(string serviceId, IServiceProvider ser
                 header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase) ||
                 header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase) ||
                 header.Key.Equals("DPoP", StringComparison.OrdinalIgnoreCase) ||
+                header.Key.Equals("X-User-ID", StringComparison.OrdinalIgnoreCase) ||
                 header.Key.Equals("X-Connection-ID", StringComparison.OrdinalIgnoreCase) ||
                 header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase) ||
                 FilterRequestHeaders(service, header.Key))

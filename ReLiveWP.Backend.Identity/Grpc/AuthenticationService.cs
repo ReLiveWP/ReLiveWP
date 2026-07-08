@@ -89,7 +89,7 @@ public class AuthenticationService(
         foreach (var tokenRequest in request.Requests)
         {
             var tokenResponse = await IssueTokenAsync(user, tokenRequest);
-            if (tokenResponse != null)
+            if (tokenResponse == null)
                 continue;
 
             response.Tokens.Add(tokenResponse);
@@ -144,7 +144,7 @@ public class AuthenticationService(
         foreach (var tokenRequest in request.Requests)
         {
             var tokenResponse = await IssueTokenAsync(user, tokenRequest, request.IssueRefreshToken);
-            if (tokenResponse != null)
+            if (tokenResponse == null)
                 continue;
 
             response.Tokens.Add(tokenResponse);
@@ -173,7 +173,7 @@ public class AuthenticationService(
         if (tokenRequest.ServicePolicy == "MBI_X509_DID")
         {
             // device cert time :D
-            var (thumb, cert, certExpiry) = deviceCertificateService.IssueCertificateAsync(user.Puid.ToString("x2").PadLeft(16, '0'), [.. tokenRequest.SupportingData]);
+            var (thumb, cert, certExpiry) = deviceCertificateService.IssueCertificateAsync(user.Puid.ToString("x16"), [.. tokenRequest.SupportingData]);
             user.Certificates.Add(new LiveUserCertificate()
             {
                 UserId = user.Id,
@@ -287,7 +287,7 @@ public class AuthenticationService(
         {
             // verifying a JWT maps some claims to standardised names, we're mostly just after the user's ID though 
             // so NameIdentifier all we map here
-            if (claim.Type  == JwtRegisteredClaimNames.Sub)
+            if (claim.Type == JwtRegisteredClaimNames.Sub)
                 response.Claims.Add(new ClaimMessage() { Type = ClaimTypes.NameIdentifier, Value = claim.Value });
 
             response.Claims.Add(new ClaimMessage() { Type = claim.Type, Value = claim.Value });
@@ -316,7 +316,7 @@ public class AuthenticationService(
             user = dbContext.Users.FirstOrDefault(u => u.Certificates.Any(c => c.Fingerprint == thumbprint));
             if (user != null)
             {
-                cn = $"{user.Puid.ToString("X2").PadLeft(16, '0')}.devicedns.live.com";
+                cn = $"{user.Puid.ToString("X16")}.devicedns.live.com";
             }
         }
 
@@ -343,5 +343,30 @@ public class AuthenticationService(
             Username = user.UserName,
             DeviceId = cn
         };
+    }
+
+    public override async Task<Empty> ChangePassword(ChangePasswordRequest request, ServerCallContext context)
+    {
+
+        LiveUser? user = null;
+        if (request.HasUid)
+        {
+            var uid = Guid.Parse(request.Uid);
+            user = await dbContext.Users.FindAsync(uid);
+        }
+        else if (request.HasPuid)
+        {
+            var puid = long.Parse(request.Puid, NumberStyles.HexNumber);
+            user = await dbContext.Users.FirstOrDefaultAsync(f => f.Puid == puid);
+        }
+
+        if (user == null)
+            throw new RpcException(new Status(StatusCode.NotFound, "User not found!"));
+
+        var result = await userManager.ChangePasswordAsync(user, request.OldPassword, request.NewPassword);
+        if (!result.Succeeded)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid username or password."));
+
+        return new Empty();
     }
 }

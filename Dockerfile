@@ -14,7 +14,7 @@ COPY . .
 
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=dotnet_tools,target=/root/.dotnet \
-    dotnet restore ReLiveWP.sln
+    dotnet restore ReLiveWP.slnx
 
 FROM base-build AS build
 ARG PROJECT

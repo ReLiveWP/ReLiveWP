@@ -30,9 +30,6 @@
 
   <ItemGroup>
     <PackageReference Include="System.ComponentModel.Annotations" />
-    <PackageReference Include="System.Xml.ReaderWriter" />
-    <PackageReference Include="System.Xml.XmlSerializer" />
-    <PackageReference Include="System.Xml.XmlDocument" />
   </ItemGroup>
   
   <ItemGroup>

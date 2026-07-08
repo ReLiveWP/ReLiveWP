@@ -27,8 +27,11 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
+#pragma warning disable EXTEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 builder.Services.AddGrpcClient<FindMyPhone.FindMyPhoneClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:Skybox"]!));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Skybox"]!))
+    .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 builder.Services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:DeviceRegistration"]!));
 
