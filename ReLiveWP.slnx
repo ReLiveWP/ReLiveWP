@@ -35,6 +35,7 @@
     <Project Path="ReLiveWP.Backend.DeviceUpdate/ReLiveWP.Backend.DeviceUpdate.csproj" />
   </Folder>
   <Folder Name="/Exchange/">
+    <Project Path="ReLiveWP.Backend.Mailbox/ReLiveWP.Backend.Mailbox.csproj" />
     <Project Path="ReLiveWP.Services.AddressBook/ReLiveWP.Services.AddressBook.csproj" />
     <Project Path="ReLiveWP.Services.Exchange/ReLiveWP.Services.Exchange.csproj" />
   </Folder>
@@ -46,6 +47,7 @@
   </Folder>
   <Folder Name="/Windows Live/">
     <Project Path="ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />
+    <Project Path="ReLiveWP.Services.Profile/ReLiveWP.Services.Profile.csproj" />
     <Project Path="ReLiveWP.Backend.SkyDrive/ReLiveWP.Backend.SkyDrive.csproj" />
     <Project Path="ReLiveWP.Services.Activity/ReLiveWP.Services.Activity.csproj" />
     <Project Path="ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />

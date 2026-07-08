@@ -37,6 +37,18 @@ services:
       args:
         PROJECT: ReLiveWP.Backend.SkyDrive
 
+  mailbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.Mailbox
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 0o01777
+
   activation:
     build:
       context: .
@@ -83,6 +95,13 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.AddressBook
+
+  profile:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Profile
 
   devices:
     build:

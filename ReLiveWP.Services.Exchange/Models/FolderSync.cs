@@ -2,58 +2,10 @@
 
 namespace ReLiveWP.Services.Exchange.Models;
 
-public static class Constants
+public static partial class Constants
 {
     public const string WindowsLive = "WindowsLive";
     public const string FolderHierarchy = "FolderHierarchy";
-}
-
-
-[XmlRoot("FolderSync", Namespace = Constants.FolderHierarchy)]
-public class FolderSync
-{
-    [XmlElement("Status", Namespace = Constants.FolderHierarchy)]
-    public int Status { get; set; } = 1;
-
-    [XmlElement("SyncKey", Namespace = Constants.FolderHierarchy)]
-    public string SyncKey { get; set; }
-
-    // Appears only in some responses
-    [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
-    public Annotations Annotations { get; set; }
-
-    // Appears only in some responses
-    [XmlElement("Changes", Namespace = Constants.FolderHierarchy)]
-    public Changes Changes { get; set; }
-}
-
-// WindowsLive block
-public class Annotations
-{
-    [XmlElement("Annotation", Namespace = Constants.WindowsLive)]
-    public List<Annotation> Items { get; set; }
-}
-
-public class Annotation
-{
-    [XmlElement("Name", Namespace = Constants.WindowsLive)]
-    public string Name { get; set; }
-}
-
-// FolderHierarchy block
-public class Changes
-{
-    [XmlElement("Count", Namespace = Constants.FolderHierarchy)]
-    public int Count { get; set; }
-
-    [XmlElement("Add", Namespace = Constants.FolderHierarchy)]
-    public List<FolderChange> Add { get; set; } = [];
-
-    [XmlElement("Update", Namespace = Constants.FolderHierarchy)]
-    public List<FolderChange> Update { get; set; } = [];
-
-    [XmlElement("Delete", Namespace = Constants.FolderHierarchy)]
-    public List<FolderChange> Delete { get; set; } = [];
 }
 
 public enum FolderType
@@ -76,7 +28,43 @@ public enum FolderType
     Journal,
     Notes,
     Unknown,
-    RecipientInformationCache // ??
+    RecipientInformationCache, // ??
+    MeContact = 27
+}
+
+[XmlRoot("FolderSync", Namespace = Constants.FolderHierarchy)]
+public class FolderSync
+{
+    [XmlElement("Status", Namespace = Constants.FolderHierarchy)]
+    public int Status { get; set; } = 1;
+
+    [XmlElement("SyncKey", Namespace = Constants.FolderHierarchy)]
+    public string SyncKey { get; set; }
+
+    // Present in response when client subscribed to FolderSync-level annotations
+    [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
+    public Annotations? Annotations { get; set; }
+    public bool ShouldSerializeAnnotations() => Annotations?.Items is { Count: > 0 };
+
+    // Appears only in some responses
+    [XmlElement("Changes", Namespace = Constants.FolderHierarchy)]
+    public Changes? Changes { get; set; }
+}
+
+// FolderHierarchy block
+public class Changes
+{
+    [XmlElement("Count", Namespace = Constants.FolderHierarchy)]
+    public int Count { get; set; }
+
+    [XmlElement("Add", Namespace = Constants.FolderHierarchy)]
+    public List<FolderChange> Add { get; set; } = [];
+
+    [XmlElement("Update", Namespace = Constants.FolderHierarchy)]
+    public List<FolderChange> Update { get; set; } = [];
+
+    [XmlElement("Delete", Namespace = Constants.FolderHierarchy)]
+    public List<FolderChange> Delete { get; set; } = [];
 }
 
 public class FolderChange
@@ -105,4 +93,11 @@ public class FolderChange
             Type = (FolderType)value;
         }
     }
+
+    // A Delete carries only ServerId; suppress the (unset, 0) Type element for deletes.
+    public bool ShouldSerializeTypeInt() => Type != default;
+
+    [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
+    public Annotations? Annotations { get; set; }
+    public bool ShouldSerializeAnnotations() => Annotations?.Items is { Count: > 0 };
 }

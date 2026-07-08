@@ -128,12 +128,8 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive) : Controller
 
         fileName = string.IsNullOrWhiteSpace(fileName) ? $"{Guid.NewGuid():N}.jpg" : fileName;
         imageContentType ??= "image/jpeg";
-        
-        var auth = Request.Headers.Authorization.ToString();
-        var authHeader = string.Concat("Bearer ", auth.AsSpan(auth.IndexOf(' ')));
-        var headers = new Metadata { { "Authorization", authHeader } };
 
-        using var call = skyDrive.UploadPhoto(headers, cancellationToken: HttpContext.RequestAborted);
+        using var call = skyDrive.UploadPhoto(cancellationToken: HttpContext.RequestAborted);
         await call.RequestStream.WriteAsync(new UploadPhotoRequest
         {
             Metadata = new PhotoUploadMetadata

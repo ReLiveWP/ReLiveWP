@@ -2,6 +2,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -15,22 +16,15 @@ using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Identity.LiveID;
 
-internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
+internal class LiveIDAuthHandler(
+    ILoggerFactory loggerFactory,
+    ILogger<LiveIDAuthHandler> logger,
+    IOptionsMonitor<LiveIDAuthOptions> options,
+    UrlEncoder encoder,
+    GrpcClientFactory grpcClientFactory) : AuthenticationHandler<LiveIDAuthOptions>(options, loggerFactory, encoder)
 {
     public const string SchemeName = "LiveID";
-    private readonly Authentication.AuthenticationClient authenticationClient;
-    private readonly ILogger<LiveIDAuthHandler> logger;
-
-    public LiveIDAuthHandler(
-        ILoggerFactory loggerFactory,
-        ILogger<LiveIDAuthHandler> logger,
-        GrpcClientFactory grpcClientFactory,
-        IOptionsMonitor<LiveIDAuthOptions> options,
-        UrlEncoder encoder) : base(options, loggerFactory, encoder)
-    {
-        this.logger = logger;
-        this.authenticationClient = grpcClientFactory.CreateClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
-    }
+    private readonly Authentication.AuthenticationClient authenticationClient = grpcClientFactory.CreateClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
 
     public new LiveIDAuthEvents Events
     {
@@ -52,10 +46,6 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
     }
 
-    /// <summary>
-    /// Searches the 'Authorization' header for a 'Bearer' token. If the 'Bearer' token is found, it is validated via the gRPC authentication service.
-    /// </summary>
-    /// <returns></returns>
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue(Options.HeaderNameOverride ?? "Authorization", out var value))
@@ -64,24 +54,11 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
             return AuthenticateResult.NoResult();
         }
 
-        var authHeader = value.ToString();
-
-        string token;
-        if (authHeader.StartsWith("Bearer", StringComparison.OrdinalIgnoreCase))
-        {
-            // standard JWT bearer
-            token = authHeader["Bearer".Length..].Trim();
-        }
-        else if (authHeader.StartsWith("WLID1.0", StringComparison.OrdinalIgnoreCase))
-        {
-            // WLID1.0
-            token = authHeader["WLID1.0".Length..].Trim();
-        }
+        string? token;
+        if (AuthenticationHeaderValue.TryParse(value.ToString(), out var header) && !string.IsNullOrWhiteSpace(header?.Parameter))
+            token = header.Parameter!;
         else
-        {
-            // bad header, ignore
-            token = authHeader.Trim();
-        }
+            token = value.ToString().Trim();
 
         if (string.IsNullOrWhiteSpace(token))
             return AuthenticateResult.Fail("Missing token");
@@ -102,11 +79,9 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
 
         var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
         foreach (var validService in Options.ValidServiceTargets)
-        {
             request.ServiceTargets.Add(validService);
-        }
 
-        VerifyTokenResponse reply;
+        VerifyResponse reply;
         try
         {
             reply = await authenticationClient.VerifySecurityTokenAsync(request);
@@ -114,7 +89,7 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to validate token!");
-            return AuthenticateResult.Fail($"Auth service error: {ex.Message}");
+            return AuthenticateResult.Fail(ex);
         }
 
         if (reply.Code > 0)
@@ -148,8 +123,6 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
 
         Response.StatusCode = 401;
-        if (Options.AcceptBasicAuth)
-            Response.Headers.WWWAuthenticate = $"Basic realm=\"{Options.BasicAuthRealm}\"";
         await Response.WriteAsync("Unauthorized");
     }
 

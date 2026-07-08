@@ -57,6 +57,13 @@ services:
         CONFIGURATION: Debug
     environment: *dev-env
 
+  mailbox:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
   activation:
     <<: *debug
     build:
@@ -120,6 +127,13 @@ services:
     environment: *dev-env
 
   orion:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  profile:
     <<: *debug
     build:
       args:

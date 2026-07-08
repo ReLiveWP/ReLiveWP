@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Runtime.ConstrainedExecution;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Google.Protobuf;
@@ -7,10 +7,10 @@ using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
-using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Backend.Identity.Grpc;
@@ -98,16 +98,16 @@ public class AuthenticationService(
         return response;
     }
 
-    public override async Task<VerifyTokenResponse> VerifySecurityToken(VerifyTokenRequest request, ServerCallContext context)
+    public override async Task<VerifyResponse> VerifySecurityToken(VerifyTokenRequest request, ServerCallContext context)
     {
         var result = await tokenManager.ValidateJwtAsync(request.Token, [.. request.ServiceTargets]);
+
         if (!result.IsValid)
         {
-            // TODO: figure out what was actually invalid
-            return new VerifyTokenResponse() { Code = PPCRL_AUTHSTATE_E_EXPIRED };
+            return new VerifyResponse() { Code = PPCRL_AUTHSTATE_E_EXPIRED };
         }
 
-        var response = new VerifyTokenResponse() { Code = S_OK };
+        var response = new VerifyResponse() { Code = S_OK, Id = result.ClaimsIdentity.Claims.First(c => c.Type == ClaimTypes.NameIdentifier)!.Value };
         foreach (var claim in result.Claims)
         {
             if (claim.Value is string value) // TODO: other types
@@ -129,6 +129,7 @@ public class AuthenticationService(
         var response = new SecurityTokensResponse()
         {
             Code = S_OK,
+            Id = user.Id.ToString(),
             Cid = user.Cid,
             Puid = user.Puid,
             Username = user.UserName,
@@ -142,7 +143,7 @@ public class AuthenticationService(
 
         foreach (var tokenRequest in request.Requests)
         {
-            var tokenResponse = await IssueTokenAsync(user, tokenRequest);
+            var tokenResponse = await IssueTokenAsync(user, tokenRequest, request.IssueRefreshToken);
             if (tokenResponse == null)
                 continue;
 
@@ -234,7 +235,7 @@ public class AuthenticationService(
 
             user ??= redemption.User;
 
-            var (token, created, expires) = tokenManager.CreateJwtSecurityToken(redemption.User, redemption.ServiceTarget);
+            var (token, created, expires) = tokenManager.IssueJwtAsync(redemption.User, redemption.ServiceTarget);
             var refresh = await tokenManager.IssueRefreshTokenAsync(redemption.User, redemption.ServiceTarget);
 
             response.Tokens.Add(new SecurityTokenResponse()
@@ -253,6 +254,7 @@ public class AuthenticationService(
         if (user == null)
             return new SecurityTokensResponse() { Code = 0x80190190 };
 
+        response.Id = user.Id.ToString();
         response.Cid = user.Cid;
         response.Puid = user.Puid;
         response.Username = user.UserName;
@@ -263,7 +265,7 @@ public class AuthenticationService(
 
     public override Task<DeviceCertificateResponse> GetDeviceCertificate(DeviceCertificateRequest request, ServerCallContext context)
     {
-        var cert = deviceCertificateService.HandleCertRequest(request.Puid, request.CertificateRequest.ToByteArray());
+        var cert = deviceCertificateService.IssueCertificateAsync(request.Puid, request.CertificateRequest.ToByteArray());
         return Task.FromResult(new DeviceCertificateResponse() { Succeeded = true, Certificate = ByteString.CopyFrom(cert.Certificate) });
     }
 
@@ -297,7 +299,7 @@ public class AuthenticationService(
     {
         var cert = X509CertificateLoader.LoadCertificate(request.Certificate.ToByteArray());
         if (!deviceCertificateService.ValidateDeviceCertificate(cert))
-            return new ValidateDeviceCertificateResponse() { Succeeded = false };
+            return new VerifyDeviceCertificateResponse() { Succeeded = false };
 
         LiveUser? user = null;
 
@@ -328,12 +330,13 @@ public class AuthenticationService(
         {
             // the certificate validates fine, we just dont really know who this is, this is kinda a nasty fallback 
             // but it's honestly fine so long as the Ids remain consistent.
-            return new ValidateDeviceCertificateResponse() { Succeeded = true, DeviceId = cn };
+            return new VerifyDeviceCertificateResponse() { Succeeded = true, DeviceId = cn };
         }
 
-        return new ValidateDeviceCertificateResponse()
+        return new VerifyDeviceCertificateResponse()
         {
             Succeeded = true,
+            Id = user.Id.ToString(),
             Cid = user.Cid,
             Puid = user.Puid,
             EmailAddress = user.Email,

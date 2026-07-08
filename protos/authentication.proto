@@ -8,17 +8,18 @@ import "google/protobuf/empty.proto";
 package identity;
 
 service Authentication {
-  rpc Register(RegisterRequest) returns (RegisterResponse);
-  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+  rpc Register (RegisterRequest) returns (RegisterResponse);
+  rpc RegisterDevice (RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
   rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
  
   rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
 
   rpc RefreshSecurityTokens (RefreshTokensRequest) returns (SecurityTokensResponse);
-  rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyTokenResponse);
-  rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
-  rpc ValidateDeviceCertificate (ValidateDeviceCertificateRequest) returns (ValidateDeviceCertificateResponse);
+
+  rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyResponse);
+  rpc VerifyPassword (VerifyPasswordRequest) returns (VerifyResponse);
+  rpc VerifyDeviceCertificate (VerifyDeviceCertificateRequest) returns (VerifyDeviceCertificateResponse);
 }
 
 message RegisterRequest {
@@ -86,6 +87,7 @@ message SecurityTokenResponse {
 
 message SecurityTokensResponse {
   uint32 code = 1;
+  string id = 8;
   int64 puid = 2;
   string cid = 3;
   string username = 4;
@@ -105,8 +107,9 @@ message VerifyTokenRequest {
   string tokenType = 3; 
 }
 
-message VerifyTokenResponse {
+message VerifyResponse {
   uint32 code = 1;
+  string id = 3;
   repeated ClaimMessage claims = 2;
 }
 
@@ -120,12 +123,13 @@ message DeviceCertificateResponse {
   bytes certificate = 2;
 }
 
-message ValidateDeviceCertificateRequest {
+message VerifyDeviceCertificateRequest {
 	bytes certificate = 1;
 }
 
-message ValidateDeviceCertificateResponse {
+message VerifyDeviceCertificateResponse {
   bool succeeded = 1;
+  optional string id = 7;
   optional int64 puid = 2;
   optional string cid = 3;
   optional string username = 4;

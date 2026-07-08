@@ -93,6 +93,8 @@ builder.Services.AddConnectedServices()
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MicrosoftOAuthProvider>())
     });
 
+
+
 builder.Services.AddGrpc();
 builder.Services.AddHostedService<TokenRefreshService>();
 

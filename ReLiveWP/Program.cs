@@ -15,12 +15,14 @@ else
 }
 
 var identity = builder.AddProject("ReLiveWP.Backend.Identity");
+var registration = builder.AddProject("ReLiveWP.Backend.DeviceRegistration");
+var deviceUpdate = builder.AddProject("ReLiveWP.Backend.DeviceUpdate");
+
 var connectedServices = builder.AddProject("ReLiveWP.Backend.ConnectedServices")
     .DependsOn(identity);
 
-var registration = builder.AddProject("ReLiveWP.Backend.DeviceRegistration");
-
-var deviceUpdate = builder.AddProject("ReLiveWP.Backend.DeviceUpdate");
+var mailbox = builder.AddProject("ReLiveWP.Backend.Mailbox")
+    .DependsOn(identity);
 
 var skybox = builder.AddProject("ReLiveWP.Backend.Skybox")
     .DependsOn(identity);
@@ -46,15 +48,12 @@ builder.AddProject("ReLiveWP.Services.Push")
     .DependsOn(identity);
 
 builder.AddProject("ReLiveWP.Services.AddressBook")
-    .DependsOn(identity);
+    .DependsOn(identity)
+    .DependsOn(mailbox);
 
 builder.AddProject("ReLiveWP.Services.Exchange")
-    .DependsOn(identity);
-
-builder.AddProject("ReLiveWP.Zune.Catalog");
-
-builder.AddProject("ReLiveWP.Zune.Commerce")
-    .DependsOn(identity);
+    .DependsOn(identity)
+    .DependsOn(mailbox);
 
 builder.AddProject("ReLiveWP.Services.FindMyPhone")
     .DependsOn(skybox)
@@ -65,6 +64,10 @@ builder.AddProject("ReLiveWP.Services.Devices")
     .DependsOn(identity);
 
 builder.AddProject("ReLiveWP.Services.Orion");
+
+builder.AddProject("ReLiveWP.Services.Profile")
+    .DependsOn(identity)
+    .DependsOn(mailbox);
 
 builder.Build()
     .Run();

@@ -469,7 +469,7 @@ public class PushSession
 
     private async Task<bool> ValidateCertificateAsync()
     {
-        var resp = await authenticationClient.ValidateDeviceCertificateAsync(new ValidateDeviceCertificateRequest()
+        var resp = await authenticationClient.VerifyDeviceCertificateAsync(new VerifyDeviceCertificateRequest()
         {
             Certificate = ByteString.CopyFrom(Certificate.Export(X509ContentType.Cert))
         });

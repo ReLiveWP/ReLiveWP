@@ -20,7 +20,7 @@ public class LiveIdDeviceCertificateService(
     ILogger<LiveIdDeviceCertificateService> logger,
     RootCACertificateProvider caProvider)
 {
-    public UserCertificate HandleCertRequest(string puid, byte[] certificateRequest)
+    public UserCertificate IssueCertificateAsync(string puid, byte[] certificateRequest)
     {
         X509Certificate2 deviceCert;
 

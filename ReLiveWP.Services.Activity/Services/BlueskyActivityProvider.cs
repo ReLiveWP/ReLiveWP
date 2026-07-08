@@ -3,6 +3,7 @@ using System.Net;
 using FishyFlip;
 using FishyFlip.Lexicon.App.Bsky.Embed;
 using FishyFlip.Lexicon.App.Bsky.Feed;
+using FishyFlip.Lexicon.App.Bsky.Richtext;
 using FishyFlip.Lexicon.Com.Atproto.Repo;
 using FishyFlip.Models;
 using ReLiveWP.Services.Activity.Models;
@@ -54,10 +55,12 @@ public class BlueskyActivityProvider : ActivityProviderBase
 
     public override async Task CreatePostAsync(string text)
     {
+        var facets = await ExtractFacetsAsync(text);
         var record = new Post
         {
             Text = text,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Facets = facets
         };
 
         _ = (await protocol.CreateRecordAsync(did, "app.bsky.feed.post", record))
@@ -121,11 +124,106 @@ public class BlueskyActivityProvider : ActivityProviderBase
         } while (total < count && !string.IsNullOrWhiteSpace(cursor));
     }
 
+    public override async Task<bool> CreateReplyAsync(string provider, string activityId, string text)
+    {
+        var uri = ParseActivityIdToUri(provider, activityId);
+        if (uri == null)
+            return false;
+
+        var replyPostViews = (await protocol.GetPostsAsync([uri]))
+            .HandleResult();
+        var replyPostView = replyPostViews?.Posts.FirstOrDefault();
+        if (replyPostView is not { PostRecord: { } postRecord })
+            return false;
+
+        var replyPostReplyDef = postRecord.Reply;
+        var replyRef = new ReplyRefDef()
+        {
+            Root = replyPostReplyDef?.Root ?? new StrongRef() { Uri = replyPostView.Uri, Cid = replyPostView.Cid },
+            Parent = new StrongRef() { Uri = replyPostView.Uri, Cid = replyPostView.Cid }
+        };
+
+        var facets = await ExtractFacetsAsync(text);
+
+        var record = new Post
+        {
+            Text = text,
+            Reply = replyRef,
+            Facets = facets,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _ = (await protocol.CreateRecordAsync(did, "app.bsky.feed.post", record))
+            .HandleResult();
+
+        return true;
+    }
+
+    private async Task<List<Facet>> ExtractFacetsAsync(string text)
+    {
+        Facet[] handleFacets = [];
+        var postHandles = ATHandle.FromPostText(text);
+        if (postHandles.Length > 0)
+        {
+            var feedProfiles = (await protocol.Actor.GetProfilesAsync([.. postHandles]))
+                .HandleResult();
+            handleFacets = Facet.ForMentions(text, [.. feedProfiles!.Profiles!]);
+        }
+
+        var hashtagFacets = Facet.ForHashtags(text);
+        var uriFacets = Facet.ForUris(text);
+        return [.. handleFacets, .. hashtagFacets, .. uriFacets];
+    }
+
+    public override async IAsyncEnumerable<EntryModel> GetRepliesAsync(string provider, string activityId, int count)
+    {
+        var uri = ParseActivityIdToUri(provider, activityId);
+        if (uri == null)
+            yield break;
+
+        var thread = (await protocol.Feed.GetPostThreadAsync(uri, depth: 1, parentHeight: 0))
+            .HandleResult();
+
+        if (thread?.Thread is not ThreadViewPost root || root.Replies == null)
+            yield break;
+
+        var total = 0;
+        foreach (var reply in root.Replies)
+        {
+            if (total >= count)
+                break;
+
+            if (reply is ThreadViewPost { Post: { Record: Post post } postView })
+            {
+                yield return MapPostView(postView, post);
+                total++;
+            }
+        }
+    }
+
+    private static ATUri? ParseActivityIdToUri(string provider, string activityId)
+    {
+        if (string.Compare("AT", provider, true) != 0)
+            return null;
+
+        // id format: "{identity}+{collection}+{rkey}" => at://{identity}/{collection}/{rkey}
+        var parts = activityId.Split('+');
+        if (parts.Length != 3)
+            return null;
+
+        return new ATUri($"at://{parts[0]}/{parts[1]}/{parts[2]}");
+    }
+
     private EntryModel? CreatePostEntry(FeedViewPost feedViewPost)
     {
         if (feedViewPost.Post is not { Record: Post post } postView || feedViewPost.Reply is { })
             return null;
 
+        return MapPostView(postView, post);
+    }
+
+    private EntryModel MapPostView(PostView postView, Post post)
+    {
         var author = new ProfileModel()
         {
             IsMe = postView.Author.Did.Equals(this.did),
