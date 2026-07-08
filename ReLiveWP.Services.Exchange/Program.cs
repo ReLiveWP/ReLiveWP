@@ -22,6 +22,7 @@ builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
 builder.Services.AddControllers();
 
 builder.Services.AddSingleton<EasRequestLog>();
+builder.Services.AddSingleton<OrphanFolderTracker>();
 
 builder.Services.AddScoped<FolderSyncService>();
 builder.Services.AddScoped<ItemSyncService>();

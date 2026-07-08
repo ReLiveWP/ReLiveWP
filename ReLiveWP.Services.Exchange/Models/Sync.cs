@@ -105,10 +105,15 @@ public class SyncCollection
     public int? DeletesAsMoves { get; set; }
     public bool ShouldSerializeDeletesAsMoves() => DeletesAsMoves.HasValue;
 
-    // Request: whether to return server-side changes; 0|1
+    [XmlIgnore]
+    public bool GetChanges { get; set; }
+
     [XmlElement("GetChanges", Namespace = Constants.AirSync)]
-    public int? GetChanges { get; set; }
-    public bool ShouldSerializeGetChanges() => GetChanges.HasValue;
+    public string? GetChangesXml
+    {
+        get => GetChanges ? string.Empty : null;
+        set => GetChanges = value != null;
+    }
 
     // Request: max items to sync per response (1–512, default 100)
     [XmlElement("WindowSize", Namespace = Constants.AirSync)]

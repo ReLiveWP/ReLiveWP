@@ -5,7 +5,7 @@ using ProtoFolderType = ReLiveWP.Services.Grpc.Mailbox.FolderType;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
-public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
+public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, OrphanFolderTracker orphans)
 {
     public async Task<GetItemEstimateResponse> EstimateAsync(string userId,
                                                              string deviceId,
@@ -29,6 +29,22 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
                                                              CancellationToken ct)
     {
         var collectionId = req.CollectionId;
+
+        // Resolve the folder first: a stale/unknown collection (e.g. a ghost left over from a
+        // rebuilt mailbox) is reported as gone (status 8) and recorded so the next FolderSync sends
+        // a Delete for it, regardless of whether we still hold sync state for it.
+        Folder folder;
+        try
+        {
+            folder = await mailbox.GetFolderAsync(
+                new GetFolderRequest { UserId = userId, ServerId = collectionId },
+                cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            orphans.Record(deviceId, collectionId);
+            return MakeError(collectionId, 8);
+        }
 
         SyncState? state;
         try
@@ -58,20 +74,6 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox)
             var events = await ReadAllItemEventsAsync(userId, collectionId, state.Watermark, ct);
             var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.Id, e.ServerId, e.EventType)).ToList());
             estimate = delta.Added.Count + delta.Updated.Count + delta.Deleted.Count;
-        }
-
-        Folder? folder;
-        try
-        {
-            folder = await mailbox.GetFolderAsync(
-                new GetFolderRequest { UserId = userId, ServerId = collectionId },
-                cancellationToken: ct);
-        }
-        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
-        {
-            // Folder doesn't exist (e.g. stale ID from a previous database).
-            // Return status=8 (object not found) so the device knows to stop asking.
-            return MakeError(collectionId, 8);
         }
 
         var itemClass = folder.Type switch

@@ -9,6 +9,7 @@ namespace ReLiveWP.Services.Exchange.Services;
 
 public class FolderSyncService(
     MailboxStore.MailboxStoreClient mailbox,
+    OrphanFolderTracker orphans,
     ILogger<FolderSyncService> logger)
 {
     public const int StatusSuccess = 1;
@@ -99,11 +100,16 @@ public class FolderSyncService(
                                                         IReadOnlySet<string>? requestedAnnotations,
                                                         CancellationToken ct)
     {
+        // Ghost collections the device still references but that no longer exist as folders
+        // (e.g. left over from a rebuilt mailbox). WP7 ignores FolderSync Status 9, so we reconcile
+        // a stale hierarchy by pushing explicit Deletes for these.
+        var orphanIds = orphans.Drain(state.DeviceId);
+
         var events = new List<SyncEvent>();
         await foreach (var e in ReadFolderEventsAsync(userId, state.Watermark, ct))
             events.Add(new SyncEvent(e.Id, e.ServerId, e.EventType));
 
-        if (events.Count == 0)
+        if (events.Count == 0 && orphanIds.Count == 0)
         {
             await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
             {
@@ -116,21 +122,30 @@ public class FolderSyncService(
             return new FolderSync { Status = StatusSuccess, SyncKey = state.SyncKey, Changes = new Changes() };
         }
 
-        var delta = SyncEngine.Collapse(events);
+        var changes = new Changes();
+        long watermark = state.Watermark;
 
-        bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
-        var wanted = delta.Added.Concat(delta.Updated).ToHashSet();
-        var folders = new Dictionary<string, Folder>();
-        await foreach (var f in ReadFoldersAsync(userId, abchRequested, ct))
-            if (wanted.Contains(f.Id))
-                folders[f.Id] = f;
-
-        var changes = new Changes
+        if (events.Count > 0)
         {
-            Add = [.. delta.Added.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id], requestedAnnotations))],
-            Update = [.. delta.Updated.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id], requestedAnnotations))],
-            Delete = [.. delta.Deleted.Select(id => new FolderChange { ServerId = id })],
-        };
+            var delta = SyncEngine.Collapse(events);
+            watermark = delta.Watermark;
+
+            bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
+            var wanted = delta.Added.Concat(delta.Updated).ToHashSet();
+            var folders = new Dictionary<string, Folder>();
+            await foreach (var f in ReadFoldersAsync(userId, abchRequested, ct))
+                if (wanted.Contains(f.Id))
+                    folders[f.Id] = f;
+
+            changes.Add = [.. delta.Added.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id], requestedAnnotations))];
+            changes.Update = [.. delta.Updated.Where(folders.ContainsKey).Select(id => ToFolderChange(folders[id], requestedAnnotations))];
+            changes.Delete = [.. delta.Deleted.Select(id => new FolderChange { ServerId = id })];
+        }
+
+        foreach (var id in orphanIds)
+            if (!changes.Delete.Any(d => d.ServerId == id))
+                changes.Delete.Add(new FolderChange { ServerId = id });
+
         changes.Count = changes.Add.Count + changes.Update.Count + changes.Delete.Count;
 
         var newKey = SyncEngine.NextSyncKey(state.SyncKey);
@@ -140,7 +155,7 @@ public class FolderSyncService(
             DeviceId = state.DeviceId,
             CollectionId = HierarchyCollectionId,
             SyncKey = newKey,
-            Watermark = delta.Watermark,
+            Watermark = watermark,
         }, cancellationToken: ct);
 
         return new FolderSync { Status = StatusSuccess, SyncKey = newKey, Changes = changes };

@@ -9,9 +9,6 @@ using ReLiveWP.Services.Exchange.Extensions;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
-// Backs per-collection item sync (email, contacts, calendar, tasks).
-// Data access is via the MailboxStore gRPC client. All sync logic
-// (SyncKey lifecycle, SyncEngine.Collapse, XML serialization) stays here.
 public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
 {
     public async Task<SyncCollection> SyncAsync(string userId,
@@ -20,7 +17,7 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                                                 CancellationToken ct = default)
     {
         var collectionId = request.CollectionId;
-        bool getChanges = request.GetChanges.GetValueOrDefault(1) != 0;
+        bool getChanges = request.GetChanges;
 
         SyncState? state;
         try
@@ -515,7 +512,11 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         Add("UserTileHash", ann.HasUserTileHash ? ann.UserTileHash : null);
         Add("TrustLevel", ann.HasTrustLevel ? ann.TrustLevel.ToString() : null);
         Add("FavoriteOrder", ann.HasFavoriteOrder ? ann.FavoriteOrder.ToString() : null);
-        Add("CID", ann.HasCid ? ann.Cid.ToString("x") : null);
+
+        bool isSelf = ann.HasContactType &&
+              string.Equals(ann.ContactType, "Me", StringComparison.OrdinalIgnoreCase);
+        if (!isSelf)
+            Add("CID", ann.HasCid ? ann.Cid.ToString("x16") : null);
 
         return items.Count > 0 ? new Annotations { Items = items } : null;
     }

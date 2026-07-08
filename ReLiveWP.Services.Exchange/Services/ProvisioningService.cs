@@ -14,17 +14,17 @@ public class ProvisioningService(
 {
     private static readonly (string Name, EasFolderType Type)[] DefaultFolders =
     [
-        ("Inbox",         EasFolderType.InboxDefault),
-        ("Drafts",        EasFolderType.DraftsDefault),
-        ("Deleted Items", EasFolderType.DeletedItemsDefault),
-        ("Sent Items",    EasFolderType.SentItemsDefault),
-        ("Outbox",        EasFolderType.OutboxDefault),
-        ("Tasks",         EasFolderType.TasksDefault),
-        ("Calendar",      EasFolderType.CalendarDefault),
-        ("Contacts",      EasFolderType.ContactsDefault),
-        ("Notes",         EasFolderType.NotesDefault),
-        ("Journal",       EasFolderType.JournalDefault),
-        ("Windows Live Contacts",     EasFolderType.Contacts),
+        ("Inbox",                   EasFolderType.InboxDefault),
+        ("Drafts",                  EasFolderType.DraftsDefault),
+        ("Deleted Items",           EasFolderType.DeletedItemsDefault),
+        ("Sent Items",              EasFolderType.SentItemsDefault),
+        ("Outbox",                  EasFolderType.OutboxDefault),
+        ("Tasks",                   EasFolderType.TasksDefault),
+        ("Calendar",                EasFolderType.CalendarDefault),
+        ("Contacts",                EasFolderType.ContactsDefault),
+        ("Notes",                   EasFolderType.NotesDefault),
+        ("Journal",                 EasFolderType.JournalDefault),
+        ("Windows Live Contacts",   EasFolderType.Contacts),
     ];
 
     private async Task EnsureFoldersAsync(string userId, CancellationToken ct)
@@ -65,20 +65,20 @@ public class ProvisioningService(
         await EnsureFoldersAsync(userId, ct);
 
         var folders = mailbox.ListFolders(new ListFoldersRequest() { UserId = userId, IncludeHidden = true, IncludeDeleted = true }, cancellationToken: ct);
-        var contactsFolder = await folders.ResponseStream
+        var liveContactsFolder = await folders.ResponseStream
             .ReadAllAsync(cancellationToken: ct)
-            .FirstOrDefaultAsync(a => a.Type == FolderType.ContactsDefault, cancellationToken: ct)
-            ?? throw new InvalidOperationException("Provisioning failed!");
+            .FirstOrDefaultAsync(a => a.Type == FolderType.Contacts && a.SourceId == "WL", cancellationToken: ct)
+            ?? throw new InvalidOperationException("Provisioning failed: Windows Live Contacts folder missing");
 
         var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = userId }, cancellationToken: ct);
 
-        var itemsList = mailbox.ListItems(new ListItemsRequest() { UserId = userId, CollectionId = contactsFolder.Id, IncludeDeleted = false }, cancellationToken: ct);
+        var itemsList = mailbox.ListItems(new ListItemsRequest() { UserId = userId, CollectionId = liveContactsFolder.Id, IncludeDeleted = false }, cancellationToken: ct);
         var meContact = await itemsList.ResponseStream
             .ReadAllAsync(cancellationToken: ct)
                 .FirstOrDefaultAsync(a => a.Contact.Email1Address == userInfo.EmailAddress, cancellationToken: ct);
 
-        // Create Me contact in the Contacts folder.
-        if (contactsFolder.Id is not null && meContact == null)
+        // Create the Me contact in the Windows Live Contacts folder.
+        if (liveContactsFolder.Id is not null && meContact == null)
         {
             var contact = new ContactItem
             {
@@ -92,18 +92,17 @@ public class ProvisioningService(
                 ContactItemId = string.Empty, // filled server-side
                 WlId = userInfo.EmailAddress,
                 ObjectId = userId,
-                ImMri = "WL:" + userInfo.Puid,
+                ImMri = "WL:" + long.Parse(userInfo.Cid, NumberStyles.HexNumber),
                 UserTileUrl = "http://wamwoowam.co.uk/static/8835590ae4f581354e14177b48f9d95d.png",
                 ContactType = "Me",
             };
 
-            if (userInfo.Puid != 0)
-                ann.Cid = long.Parse(userInfo.Cid, NumberStyles.HexNumber);
+            ann.Cid = long.Parse(userInfo.Cid, NumberStyles.HexNumber);
 
             await mailbox.CreateItemAsync(new CreateItemRequest
             {
                 UserId = userId,
-                CollectionId = contactsFolder.Id,
+                CollectionId = liveContactsFolder.Id,
                 Contact = contact,
                 Annotation = ann,
             }, cancellationToken: ct);
@@ -114,8 +113,7 @@ public class ProvisioningService(
         logger.LogInformation("Provisioned user {User}", userId);
     }
 
-    // Stub ingestion: drop a welcome message into the Inbox on first provision so a fresh device
-    // has mail to sync. Real inbound delivery would call MailboxStore.DeliverEmail instead.
+
     private async Task SeedInboxAsync(string userId, string userEmail, CancellationToken ct)
     {
         var folders = mailbox.ListFolders(new ListFoldersRequest { UserId = userId, IncludeHidden = true, IncludeDeleted = false }, cancellationToken: ct);

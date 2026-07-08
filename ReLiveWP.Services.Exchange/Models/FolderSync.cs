@@ -94,6 +94,9 @@ public class FolderChange
         }
     }
 
+    // A Delete carries only ServerId; suppress the (unset, 0) Type element for deletes.
+    public bool ShouldSerializeTypeInt() => Type != default;
+
     [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
     public Annotations? Annotations { get; set; }
     public bool ShouldSerializeAnnotations() => Annotations?.Items is { Count: > 0 };
