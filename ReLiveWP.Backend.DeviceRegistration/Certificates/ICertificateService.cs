@@ -2,6 +2,6 @@
 {
     public interface ICertificateService
     {
-        byte[] HandleCertRequest(byte[] certificateRequest);
+        byte[] HandleCertRequest(byte[] certificateRequest, bool isVersion2);
     }
 }

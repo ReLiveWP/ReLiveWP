@@ -19,11 +19,11 @@ using Org.BouncyCastle.X509;
 
 namespace ReLiveWP.Backend.DeviceRegistration.Certificates;
 
-public class WP7CertificateService(
-    ILogger<WP7CertificateService> logger,
+public class WindowsPhoneCertificateService(
+    ILogger<WindowsPhoneCertificateService> logger,
     RootCACertificateProvider caProvider) : ICertificateService
 {
-    public byte[] HandleCertRequest(byte[] certificateRequest)
+    public byte[] HandleCertRequest(byte[] certificateRequest, bool isVersion2)
     {
         X509Certificate2 deviceCert;
 
@@ -49,7 +49,11 @@ public class WP7CertificateService(
         var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(long.MaxValue), random);
 
         // var publicKeyInfo = SubjectPublicKeyInfoFactory.CreateSubjectPublicKeyInfo(keyPair.Public);
-        var signatureFactory = new Asn1SignatureFactory("SHA1WITHRSA", caKeyPair.Private, random); // secure lol
+        var signatureFactory = isVersion2 
+            ? new Asn1SignatureFactory("SHA256WITHRSA", caKeyPair.Private, random) 
+            : new Asn1SignatureFactory("SHA1WITHRSA", caKeyPair.Private, random); // secure lol
+
+
         var certificateGenerator = new X509V3CertificateGenerator();
         certificateGenerator.SetSerialNumber(serialNumber);
         certificateGenerator.SetIssuerDN(bcRootCert.SubjectDN);
