@@ -15,6 +15,9 @@ public class AuthenticationController(
     Authentication.AuthenticationClient authenticationClient,
     ConnectedServices.ConnectedServicesClient connectedServicesClient) : ControllerBase
 {
+    // TODO: placeholder
+    private const string StaticStsInlineFlowToken = "-Duj0!xC4I*UcMjptEuiPqI7Wkr9B53Yjdsypyodu2NRXcB5TvESw3jJWwMEjMVCeKMF289Qm6q5MtkGHalfq5GCj1ynTj8sBOiIDVlKqF*Bm";
+
     [Authorize]
     [ActionName("user")]
     public async Task<ActionResult<UserModel>> GetUser(string id, CancellationToken cancellationToken)
@@ -111,6 +114,41 @@ public class AuthenticationController(
             return Unauthorized(new ErrorModel(response.Code));
 
         return Ok(ToModel(response));
+    }
+
+    [ActionName("inline_login")]
+    [HttpPost(Name = "inline_login")]
+    public async Task<ActionResult<InlineLoginResponseModel>> InlineLogin([FromBody] InlineLoginRequestModel request, CancellationToken cancellationToken)
+    {
+        if (!request.Credentials.TryGetValue("ps:password", out var password) || string.IsNullOrEmpty(password))
+            return Unauthorized();
+
+        var grpcRequest = new SecurityTokensRequest() { Username = request.Identity, Password = password };
+        grpcRequest.Requests.Add(new SecurityTokenRequest()
+        {
+            ServiceTarget = "http://Passport.NET/tb",
+            ServicePolicy = "LEGACY"
+        });
+
+        var response = await authenticationClient.GetSecurityTokensAsync(grpcRequest, cancellationToken: cancellationToken);
+        if (((int)response.Code) < 0)
+            return Unauthorized(new ErrorModel(response.Code));
+
+        var tb = response.Tokens.FirstOrDefault(t => t.ServiceTarget == "http://Passport.NET/tb");
+        if (tb is null || !tb.HasProofKey)
+            return Unauthorized(new ErrorModel(0x80048800)); // PPCRL_AUTHSTATE_E_UNAUTHENTICATED
+
+        return Ok(new InlineLoginResponseModel(
+            DaToken: PassportSoap.BinaryDaTokenEnvelope(tb.Token),
+            DaSessionKey: tb.ProofKey.ToBase64(),
+            DaStartTime: PassportSoap.FormatZ(tb.Created.ToDateTimeOffset()),
+            DaExpires: PassportSoap.FormatZ(tb.Expires.ToDateTimeOffset()),
+            StsInlineFlowToken: StaticStsInlineFlowToken,
+            Cid: response.Cid,
+            Puid: response.Puid.ToString("X16"),
+            Username: response.Username,
+            FirstName: null,
+            LastName: null));
     }
 
     [ActionName("refresh_tokens")]

@@ -369,3 +369,4 @@ deploy/*
 !deploy/example/
 
 .DS_Store
+/ReLiveWP.Services.Login/wwwroot/ppsecure

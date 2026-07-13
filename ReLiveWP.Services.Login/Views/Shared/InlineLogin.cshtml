@@ -1,0 +1,31 @@
+@using System.Text.Json
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@model ReLiveWP.Services.Login.Models.InlineLoginModel;
+@{
+    // Default System.Text.Json escaping renders <, >, & as \uXXXX, so this is safe to inline
+    // in a <script> (no </script> breakout) and forms a valid JS object literal.
+    var config = JsonSerializer.Serialize(new
+    {
+        id = Model.Id,
+        mkt = Model.Mkt,
+        lc = Model.Lc,
+        opid = Model.Opid,
+        uaid = Model.Uaid,
+        postUrl = Model.PostUrl
+    });
+}<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=10">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, minimum-scale=1.0">
+    <title>Sign in to your ReLive account</title>
+    <link rel="stylesheet" href="@Model.AssetBase/login.css" asp-append-version="true">
+    <script>window.__INLINE__ = @(new Microsoft.AspNetCore.Html.HtmlString(config));</script>
+    <noscript>ReLive requires JavaScript to sign in.</noscript>
+</head>
+<body class="light">
+    <app id="app"></app>
+    <script src="@Model.AssetBase/login.js" asp-append-version="true"></script>
+</body>
+</html>

@@ -46,4 +46,21 @@
     <Folder Include="Utilities\" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <LoginSpaDir>$(MSBuildProjectDirectory)\..\ReLiveWP.Web\relivewp.web.login</LoginSpaDir>
+    <BuildLoginSpa Condition="'$(BuildLoginSpa)' == ''">false</BuildLoginSpa>
+  </PropertyGroup>
+
+  <Target Name="BuildLoginSpa" BeforeTargets="AssignTargetPaths" Condition="'$(BuildLoginSpa)' == 'true'">
+    <Message Importance="high" Text="Building relivewp.web.login (IE11 bundle)..." />
+    <Exec Command="pnpm install --frozen-lockfile" WorkingDirectory="$(LoginSpaDir)" />
+    <Exec Command="pnpm run build" WorkingDirectory="$(LoginSpaDir)" />
+    <ItemGroup>
+      <LoginSpaAssets Include="$(LoginSpaDir)\dist\assets\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LoginSpaAssets)"
+          DestinationFolder="$(MSBuildProjectDirectory)\wwwroot\ppsecure\assets\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

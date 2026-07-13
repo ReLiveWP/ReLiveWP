@@ -232,7 +232,7 @@ public class RST2Controller(
     ];
 
     private static string FormatZ(DateTimeOffset value)
-        => value.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        => PassportSoap.FormatZ(value);
     private static string GenerateReferenceForBlob(string base64Token)
         => Convert.ToBase64String(SHA1.HashData(Convert.FromBase64String(base64Token)));
     private static string GenerateReferenceForString(string token)

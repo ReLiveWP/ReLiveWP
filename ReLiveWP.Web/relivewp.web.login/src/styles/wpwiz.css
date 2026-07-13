@@ -1,0 +1,741 @@
+@-ms-viewport {
+    width: device-width;
+}
+
+html,
+body,
+div,
+span,
+applet,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+b,
+u,
+i,
+center,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td,
+article,
+aside,
+canvas,
+details,
+embed,
+figure,
+figcaption,
+footer,
+header,
+hgroup,
+menu,
+nav,
+output,
+ruby,
+section,
+summary,
+time,
+mark,
+audio,
+video,
+button {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    vertical-align: baseline;
+    -ms-user-select: none
+}
+
+html,
+body,
+form {
+    height: 100%;
+    background-color: Background
+}
+
+body {
+    font-family: 'Segoe WP', 'Segoe UI';
+    font-size: 17pt;
+    font-weight: normal;
+    margin: 0 auto;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+    direction: ltr
+}
+
+body.light {
+    color: #000
+}
+
+body.dark {
+    color: #fff
+}
+
+#iPageElt,
+#c_base,
+#c_content {
+    height: 100%
+}
+
+label {
+    font-family: 'Segoe WP', 'Segoe UI';
+    font-size: 17pt
+}
+
+a {
+    font-family: 'Segoe WP', 'Segoe UI'
+}
+
+body.light a {
+    color: #000
+}
+
+body.dark a {
+    color: #fff
+}
+
+.hide {
+    display: none
+}
+
+.row,
+.stdMarginBottom {
+    margin-bottom: 32px
+}
+
+.inlineLabel {
+    display: block;
+    margin-bottom: 9px;
+    font-size: 15pt;
+    font-family: 'Segoe WP', 'Segoe UI'
+}
+
+body.light .inlineLabel {
+    color: rgba(0, 0, 0, .6)
+}
+
+body.dark .inlineLabel {
+    color: rgba(255, 255, 255, .6)
+}
+
+.navButton img {
+    width: 33px;
+    height: 60px;
+    border: 0;
+    outline: none
+}
+
+.primaryText {
+    font-family: 'Segoe WP', 'Segoe UI';
+    font-size: 17pt
+}
+
+.wpBluePage {
+    width: calc(100% - 48px);
+    padding: 32px 24px 42px 24px;
+    max-width: 600px
+}
+
+.wpBluePage #pageControlHost,
+.wpBluePage #pageControlHost .recoveryCancelPageContainer,
+.wpBluePage #pageControlHost .recoveryCancelPageContainer>div {
+    height: 100%
+}
+
+.pageContentHolder.buttons {
+    max-height: 500px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin-bottom: 50px
+}
+
+.pageButtons {
+    position: relative
+}
+
+.pageButtons .buttonHolder {
+    width: 50%;
+    position: absolute
+}
+
+.pageButtons .buttonHolder.back {
+    left: 0
+}
+
+.pageButtons .buttonHolder.next {
+    right: 0
+}
+
+.pageButtons .buttonHolder button {
+    border: 2px solid #000;
+    width: 95%;
+    min-height: 30px;
+    position: absolute
+}
+
+.pageButtons .buttonHolder button.back {
+    left: 0
+}
+
+.pageButtons .buttonHolder button.next {
+    right: 0
+}
+
+.pageContent {
+    padding-left: 4px
+}
+
+div.pageTitleLarge,
+html[lang='en-us'] .pageTitleContainer,
+html[lang='en'] .pageTitleContainer {
+    font-size: 50pt
+}
+
+.pageTitleContainer {
+    font-size: 32pt;
+    height: 169px;
+    display: table-cell;
+    vertical-align: bottom;
+    line-height: 85px;
+    font-family: 'Segoe WP', 'Segoe UI' !important;
+    font-weight: 300
+}
+
+.pageTitleContainer>div {
+    width: 100%;
+    margin-bottom: 24px
+}
+
+div.tou {
+    white-space: pre-wrap;
+    word-wrap: break-word
+}
+
+.smallTitle {
+    font-family: 'Segoe WP Semibold', 'Segoe UI Semibold' !important;
+    font-size: 17pt !important;
+    margin-bottom: 38px !important;
+    margin-top: 14px !important;
+    text-transform: uppercase
+}
+
+div.pageProgress {
+    height: 100%;
+    width: 100%;
+    display: -ms-grid;
+    -ms-grid-rows: 100%;
+    -ms-grid-columns: 100%
+}
+
+div.pageProgress>div {
+    -ms-grid-row: 1;
+    -ms-grid-row-align: center;
+    -ms-grid-column: 1;
+    -ms-grid-column-align: center
+}
+
+div.pageProgress>div>div {
+    text-align: center
+}
+
+span.sessionid {
+    font-weight: bold
+}
+
+.error {
+    font-family: 'Segoe WP', 'Segoe UI';
+    margin-top: 9px;
+    color: Highlight;
+    width: calc(100% - 18px)
+}
+
+input[type='text'],
+input[type='password'],
+input[type='email'],
+input[type='number'],
+input[type='tel'],
+input[type='url'],
+input[type='search'] {
+    width: calc(100% - 44px);
+    height: 32px;
+    border: 3px solid #ccc;
+    font-family: 'Segoe WP', 'Segoe UI';
+    padding: 5px 10px;
+    font-size: 17pt;
+    background-color: #ccc
+}
+
+input[type='text']:focus,
+input[type='password']:focus,
+input[type='email']:focus,
+input[type='number']:focus,
+input[type='tel']:focus,
+input[type='url']:focus,
+input[type='search']:focus {
+    background-color: #fff;
+    border-color: Highlight
+}
+
+input:-ms-input-placeholder {
+    color: #202020
+}
+
+@media(-ms-high-contrast:white-on-black) {
+    input:-ms-input-placeholder {
+        color: #fff
+    }
+
+    ::selection {
+        color: #000;
+        background: #0ff
+    }
+}
+
+@media(-ms-high-contrast:black-on-white) {
+    input:-ms-input-placeholder {
+        color: #000
+    }
+
+    ::selection {
+        color: #fff;
+        background: #37006e
+    }
+}
+
+input[type="submit"].default {
+    height: 60px;
+    width: 32px;
+    margin-right: 9px;
+    margin-left: 52px
+}
+
+input[type="button"].cancel {
+    height: 60px;
+    width: 32px
+}
+
+input[type="button"].cancel.prooflistitem {
+    margin-right: 12px;
+    margin-left: 12px
+}
+
+.hintText {
+    margin-top: 10px;
+    font-size: 15pt;
+    font-family: 'Segoe WP', 'Segoe UI'
+}
+
+input[type="tel"],
+input[type="email"],
+input[type="password"],
+input[type="number"] {
+    ime-mode: inactive
+}
+
+select {
+    background-color: Background;
+    width: calc(100% - 18px);
+    height: 47px;
+    border: 3px solid;
+    font-family: 'Segoe WP', 'Segoe UI';
+    padding: 5px 5px;
+    font-size: 17pt;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+    -webkit-appearance: listbox
+}
+
+select:focus {
+    background-color: Highlight;
+    color: HighlightText
+}
+
+select::-ms-expand {
+    display: none
+}
+
+body.light select {
+    color: #000;
+    border-color: #000
+}
+
+body.dark select {
+    color: #fff;
+    border-color: #fff
+}
+
+option:hover {
+    background-color: Highlight;
+    color: HighlightText
+}
+
+input[type=checkbox] {
+    width: 28px;
+    height: 28px;
+    margin-right: 16px;
+    border: solid 1px;
+    padding: 0;
+    outline: none;
+    display: inline-block;
+    float: left
+}
+
+input[type=checkbox]:-ms-lang(ar, dv, fa, he, ku-Arab, pa-Arab, prs, ps, sd-Arab, syr, ug, ur, qps-plocm) {
+    margin-right: 0;
+    margin-left: 16px
+}
+
+input[type=checkbox]+label {
+    display: inline-block;
+    width: calc(100% - 64px)
+}
+
+input[type=radio] {
+    width: 24px;
+    height: 24px;
+    vertical-align: bottom
+}
+
+input[disabled]::-ms-check {
+    border: 2px solid
+}
+
+input::-ms-check {
+    background-clip: border-box;
+    background-color: transparent;
+    border: none;
+    border: 2px solid;
+    padding: 0
+}
+
+input[type='checkbox']::-ms-check {
+    height: 24px;
+    width: 24px
+}
+
+input::-ms-check:hover {
+    background-clip: border-box;
+    border: 2px solid;
+    padding: 0
+}
+
+body.light input::-ms-check {
+    border-color: #000;
+    color: #000
+}
+
+body.dark input::-ms-check {
+    border-color: #fff;
+    color: #fff
+}
+
+progress {
+    color: Highlight
+}
+
+.touSection {
+    margin-top: 44px;
+    width: calc(100% - 18px)
+}
+
+#livelinkctr,
+#easilinkctr {
+    margin-top: 24px
+}
+
+.helppop {
+    width: calc(100% - 18px);
+    margin-top: 9px
+}
+
+.descText {
+    font-size: 17pt;
+    font-family: 'Segoe WP', 'Segoe UI';
+    margin-bottom: 24px
+}
+
+#page6 pre {
+    width: calc(100% - 18px);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Segoe WP', 'Segoe UI';
+    font-size: 17pt
+}
+
+#page6 {
+    font-family: 'Segoe WP', 'Segoe UI';
+    font-size: 17pt
+}
+
+#WLX_HIP_CTL_AMFE img.cssWLSPHIPAudio,
+#icdHIP img.cssWLSPHIPAudio {
+    width: 60px !important;
+    height: 60px !important
+}
+
+#WLX_HIP_CTL_AMFE td,
+#icdHIP td {
+    text-align: left !important
+}
+
+#WLX_HIP_CTL_AMFE .hipInputText,
+#icdHIP .hip {
+    width: calc(100% - 42px) !important;
+    height: 32px !important;
+    border: 2px solid !important;
+    font-family: 'Segoe WP', 'Segoe UI' !important;
+    padding: 5px 10px !important;
+    font-size: 17pt !important
+}
+
+#WLX_HIP_CTL_AMFE .hipMenuText,
+#icdHIP .hip-menu {
+    font-family: 'Segoe WP', 'Segoe UI' !important;
+    font-size: 17pt !important;
+    width: calc(100% - 18px)
+}
+
+#WLX_HIP_CTL_AMFE img,
+#icdHIP img {
+    left: 2px
+}
+
+.hip-menu div b,
+.hipMenuText div b {
+    visibility: hidden
+}
+
+#WLX_HIP_CTL_AMFE table td,
+#WLX_HIP_CTL_AMFE table,
+#icdHIP table td,
+#icdHIP table,
+#WLX_HIP_CONTR_AMFE {
+    width: 100% !important
+}
+
+div#sugerror {
+    display: none;
+    word-wrap: break-word;
+    overflow: hidden;
+    padding-left: 17px;
+    padding-bottom: 4px;
+    background: url('images/icon_error.gif') no-repeat left top
+}
+
+div#sug {
+    font-family: 'Segoe WP', 'Segoe UI';
+    font-size: 24pt;
+    width: 412px
+}
+
+div#sug div#mysugs {
+    width: calc(100% - 18px);
+    word-wrap: break-word;
+    overflow-x: auto;
+    margin-bottom: 10px
+}
+
+div#sug div#mysugs div {
+    padding-bottom: 28px;
+    font-family: 'Segoe WP SemiLight', 'Segoe UI Semilight';
+    cursor: pointer
+}
+
+div#sug div#mysugs a {
+    font-family: 'Segoe WP SemiLight', 'Segoe UI Semilight';
+    text-decoration: none
+}
+
+div#sug div#sugavail {
+    display: none
+}
+
+div#sugcont,
+.sugiframe {
+    display: none
+}
+
+.pageExplanation {
+    margin-top: -3px;
+    margin-bottom: 33px;
+    font-family: 'Segoe WP', 'Segoe UI'
+}
+
+.proofsList {
+    margin-top: 33px;
+    margin-bottom: 10px
+}
+
+.proofsgap {
+    margin-bottom: 34px
+}
+
+.countryCodesGap {
+    margin-bottom: 12px
+}
+
+.truncate {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: 372px;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: bottom;
+    word-wrap: normal
+}
+
+.birthdate {
+    margin-bottom: 21px
+}
+
+.birthdate:last-child {
+    margin-bottom: 0
+}
+
+.consentOffers>div,
+.consentOffers ul li {
+    margin-bottom: 18px
+}
+
+.consentOffers ul li:last-child {
+    margin-bottom: 32px
+}
+
+li {
+    font-size: 15pt;
+    opacity: .6;
+    list-style-type: none
+}
+
+div.appfooter a {
+    padding-left: 9px;
+    margin-right: 10px;
+    white-space: nowrap
+}
+
+div.appfooter>div.links a:first-child {
+    padding-left: 0;
+    border-left-style: none
+}
+
+body.light div.appfooter a {
+    border-left: 1px solid #000
+}
+
+body.dark div.appfooter a {
+    border-left: 1px solid #fff
+}
+
+.inputAlignMiddle {
+    vertical-align: middle
+}
+
+.dirltr_inline {
+    direction: ltr;
+    display: inline-block
+}
+
+.break {
+    word-wrap: break-word
+}
+
+.hiddenSubmit {
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: none
+}
+
+.ltr_override {
+    direction: ltr
+}
+
+div.pageTitleContainer,
+div.pageContent .row {
+    animation-duration: .5s;
+    animation-timing-function: cubic-bezier(0, 0, 0, 1)
+}
+
+html[dir=ltr] body.animate div.pageTitleContainer,
+html[dir=ltr] body.animate div.pageContent .row,
+body.ltr.animate div.pageTitleContainer,
+body.ltr.animate div.pageContent .row {
+    animation-name: rl-t
+}
+
+html[dir=rtl] body.animate div.pageTitleContainer,
+html[dir=rtl] body.animate div.pageContent .row,
+body.rtl.animate div.pageTitleContainer,
+body.rtl.animate div.pageContent .row {
+    animation-name: lr-t
+}
+
+@-ms-keyframes lr-t {
+    from {
+        -ms-transform: translateX(-100%)
+    }
+
+    to {
+        -ms-transform: translateX(0%)
+    }
+}
+
+@-ms-keyframes rl-t {
+    from {
+        -ms-transform: translateX(100%)
+    }
+
+    to {
+        -ms-transform: translateX(0%)
+    }
+}
+
+span.email {
+    direction: ltr
+}

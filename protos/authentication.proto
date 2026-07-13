@@ -94,6 +94,7 @@ message SecurityTokensResponse {
   string emailAddress = 5;
   repeated SecurityTokenResponse tokens = 6;
   optional bytes sessionKey = 7;
+  optional string deviceId = 9;
 }
 
 message ClaimMessage {
