@@ -1,9 +1,5 @@
 namespace ReLiveWP.Services.Exchange.Models;
 
-/// <summary>
-/// Command codes used in the EAS binary query string (MS-ASHTTP §2.2.1.1.1.3).
-/// Codes 5–8 are not assigned in the specification.
-/// </summary>
 public enum EasCommand : byte
 {
     Sync = 0,
@@ -11,7 +7,6 @@ public enum EasCommand : byte
     SmartForward = 2,
     SmartReply = 3,
     GetAttachment = 4,
-    // 5–8: unassigned
     FolderSync = 9,
     FolderCreate = 10,
     FolderDelete = 11,

@@ -4,6 +4,9 @@
     <Protobuf Include="../protos/find_my_phone.proto">
       <Link>Protos\find_my_phone.proto</Link>
     </Protobuf>
+    <Protobuf Include="../protos/email.proto" GrpcServices="Client">
+      <Link>Protos\email.proto</Link>
+    </Protobuf>
   </ItemGroup>
 
   <ItemGroup>

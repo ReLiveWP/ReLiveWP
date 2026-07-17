@@ -9,15 +9,89 @@ using ReLiveWP.Services.Exchange.Extensions;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
-public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
+public class ItemSyncService(
+    MailboxStore.MailboxStoreClient mailbox,
+    ILogger<ItemSyncService> logger)
 {
+    private static readonly IReadOnlySet<string> EmptyServerIds = new HashSet<string>();
+
+    // if we can't find a collection, the device is probably out of sync, reset it
+    public async Task<bool> ResolveStaleHierarchyAsync(string userId,
+                                                       string deviceId,
+                                                       IEnumerable<SyncCollection> collections,
+                                                       CancellationToken ct = default)
+    {
+        bool stale = false;
+        foreach (var c in collections)
+        {
+            if (string.IsNullOrEmpty(c.CollectionId)) continue;
+            try
+            {
+                await mailbox.GetFolderAsync(
+                    new GetFolderRequest { UserId = userId, ServerId = c.CollectionId },
+                    cancellationToken: ct);
+            }
+            catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+            {
+                stale = true;
+                break;
+            }
+        }
+
+        if (stale)
+            await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+            {
+                UserId = userId,
+                DeviceId = deviceId,
+                CollectionId = FolderSyncService.HierarchyCollectionId, // "0"
+                SyncKey = "0",
+                Watermark = 0,
+            }, cancellationToken: ct);
+
+        return stale;
+    }
+
+    public async Task<List<string>> ListDeviceCollectionIdsAsync(string userId, string deviceId, CancellationToken ct = default)
+    {
+        var ids = new List<string>();
+        using var call = mailbox.ListSyncStates(
+            new ListSyncStatesRequest { UserId = userId, DeviceId = deviceId }, cancellationToken: ct);
+        await foreach (var s in call.ResponseStream.ReadAllAsync(ct))
+            ids.Add(s.CollectionId);
+        return ids;
+    }
+
+    public async Task<SyncCollection?> SyncByCollectionIdAsync(string userId,
+                                                               string deviceId,
+                                                               string collectionId,
+                                                               CancellationToken ct = default)
+    {
+        SyncState state;
+        try
+        {
+            state = await mailbox.GetSyncStateAsync(
+                new GetSyncStateRequest { UserId = userId, DeviceId = deviceId, CollectionId = collectionId },
+                cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            return null;
+        }
+
+        var request = new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, GetChanges = true };
+        return await SyncAsync(userId, deviceId, request, ct);
+    }
+
     public async Task<SyncCollection> SyncAsync(string userId,
                                                 string deviceId,
                                                 SyncCollection request,
                                                 CancellationToken ct = default)
     {
         var collectionId = request.CollectionId;
-        bool getChanges = request.GetChanges;
+        bool hasClientCommands = request.Commands is { } reqCmds &&
+            (reqCmds.Add.Count > 0 || reqCmds.Change.Count > 0 || reqCmds.Delete.Count > 0 || reqCmds.Fetch.Count > 0);
+        // explicit GetChanges wins; if absent it defaults to false only at key 0
+        bool getChanges = request.GetChanges ?? (request.SyncKey != "0");
 
         SyncState? state;
         try
@@ -32,14 +106,43 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         }
 
         SyncCollection result;
+        IReadOnlySet<string> serverChangedIds;
+        int windowSize = SyncEngine.ResolveWindowSize(request.WindowSize);
+        // MS-ASCMD 2.2.3.116: MoreAvailable is reported only if the client's request actually
+        // included a WindowSize element (a missing element still gets the 100-item default window,
+        // it just never advertises more content beyond it)
+        bool windowSizeSent = request.WindowSize.HasValue;
 
         if (request.SyncKey == "0")
         {
             var annotationNames = request.Options?.Annotations?.RequestedNames();
             result = await InitialSyncAsync(userId, deviceId, collectionId, state, annotationNames, ct);
+            serverChangedIds = EmptyServerIds;
+        }
+        else if (state is not null && request.SyncKey == state.PreviousSyncKey && request.SyncKey != state.SyncKey)
+        {
+            // client resent a key it never got a response for: roll back to that checkpoint and
+            // recompute from current code rather than replay a stored blob, so retries and
+            // command resends are handled the same way
+            state = new SyncState
+            {
+                UserId = userId,
+                DeviceId = deviceId,
+                CollectionId = collectionId,
+                SyncKey = request.SyncKey,
+                Watermark = state.PreviousWatermark,
+                CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+                PreviousSyncKey = state.PreviousSyncKey,
+                PreviousWatermark = state.PreviousWatermark,
+            };
+
+            var annotationNames = ParseCachedAnnotationNames(state.CachedAnnotationNames);
+            var bodyPref = SelectBodyPreference(request.Options);
+            (result, serverChangedIds) = await IncrementalSyncAsync(userId, collectionId, state, getChanges, hasClientCommands, annotationNames, bodyPref, windowSize, windowSizeSent, ct);
         }
         else if (state is null || state.SyncKey != request.SyncKey)
         {
+            // key is neither current nor the one-deep checkpoint: genuinely out of window, re-prime from 0
             if (state is not null)
                 await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
                 {
@@ -48,6 +151,9 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                     CollectionId = collectionId,
                     SyncKey = "0",
                     Watermark = 0,
+                    CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+                    PreviousSyncKey = "0",
+                    PreviousWatermark = 0,
                 }, cancellationToken: ct);
 
             return new SyncCollection { CollectionId = collectionId, SyncKey = "0", Status = 3 };
@@ -56,15 +162,25 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         {
             var annotationNames = ParseCachedAnnotationNames(state.CachedAnnotationNames);
             var bodyPref = SelectBodyPreference(request.Options);
-            result = await IncrementalSyncAsync(userId, collectionId, state, getChanges, annotationNames, bodyPref, ct);
+            (result, serverChangedIds) = await IncrementalSyncAsync(userId, collectionId, state, getChanges, hasClientCommands, annotationNames, bodyPref, windowSize, windowSizeSent, ct);
         }
 
-        if (request.Commands is { } cmds && (cmds.Add.Count > 0 || cmds.Change.Count > 0 || cmds.Delete.Count > 0))
+        if (request.Commands is { } cmds &&
+            (cmds.Add.Count > 0 || cmds.Change.Count > 0 || cmds.Delete.Count > 0 || cmds.Fetch.Count > 0))
         {
             var itemClass = await GetItemClassAsync(userId, collectionId, ct);
-            var responses = await ProcessClientCommandsAsync(userId, collectionId, itemClass, cmds, ct);
+            var bodyPref = SelectBodyPreference(request.Options);
+            var conflictPolicy = request.Options?.Conflict ?? SyncConflict.ServerWins;
+            var responses = await ProcessClientCommandsAsync(userId, collectionId, itemClass, cmds, bodyPref, serverChangedIds, conflictPolicy, ct);
             if (responses is not null)
                 result.Responses = responses;
+
+            // never hand back a server Add/Change for an item the client just deleted: re-adding what
+            // it asked to remove wedges WP7 into resending the Delete forever
+            SyncEngine.SuppressDeleted(result.Commands, cmds.Delete.Select(d => d.ServerId));
+            if (result.Commands is { } rc &&
+                rc.Add.Count + rc.Change.Count + rc.Delete.Count + rc.SoftDelete.Count + rc.Fetch.Count == 0)
+                result.Commands = null;
         }
 
         return result;
@@ -78,7 +194,8 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                                                         CancellationToken ct)
     {
         var cached = requestedAnnotations is { Count: > 0 }
-            ? string.Join(",", requestedAnnotations) : null;
+            ? string.Join(",", requestedAnnotations)
+            : string.IsNullOrEmpty(state?.CachedAnnotationNames) ? null : state.CachedAnnotationNames;
 
         await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
         {
@@ -88,84 +205,75 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
             SyncKey = "1",
             Watermark = -1,
             CachedAnnotationNames = cached ?? string.Empty,
+            PreviousSyncKey = "0",
+            PreviousWatermark = 0,
         }, cancellationToken: ct);
 
         return new SyncCollection { CollectionId = collectionId, SyncKey = "1", Status = 1 };
     }
 
-    private async Task<SyncCollection> IncrementalSyncAsync(string userId,
-                                                            string collectionId,
-                                                            SyncState state,
-                                                            bool getChanges,
-                                                            IReadOnlySet<string>? requestedAnnotations,
-                                                            BodyPreference? bodyPref,
-                                                            CancellationToken ct)
+    private async Task<(SyncCollection Collection, IReadOnlySet<string> ServerChangedIds)> IncrementalSyncAsync(
+        string userId,
+        string collectionId,
+        SyncState state,
+        bool getChanges,
+        bool hasClientCommands,
+        IReadOnlySet<string>? requestedAnnotations,
+        BodyPreference? bodyPref,
+        int windowSize,
+        bool windowSizeSent,
+        CancellationToken ct)
     {
-        if (state.Watermark == -1)
+        // records a one-deep checkpoint on advance so a retransmit of the prior key can roll back
+        Task UpsertAdvancedAsync(string newKey, long newWatermark)
         {
-            // First real sync: enumerate all live items + advance watermark.
-            var tip = (await mailbox.GetItemEventTipAsync(
-                new ItemEventTipRequest { UserId = userId, CollectionId = collectionId },
-                cancellationToken: ct)).Value;
-
-            var commands = new SyncCommands();
-            await foreach (var i in ReadItemsAsync(userId, collectionId, ct))
-                commands.Add.Add(new SyncAdd { ServerId = i.ServerId, ApplicationData = Serialize(i, requestedAnnotations, bodyPref) });
-
-            var newKey = SyncEngine.NextSyncKey(state.SyncKey);
-            await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+            bool advanced = newKey != state.SyncKey;
+            return mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
             {
                 UserId = userId,
                 DeviceId = state.DeviceId,
                 CollectionId = collectionId,
                 SyncKey = newKey,
-                Watermark = tip,
+                Watermark = newWatermark,
                 CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
-            }, cancellationToken: ct);
-
-            return new SyncCollection
-            {
-                CollectionId = collectionId,
-                SyncKey = newKey,
-                Status = 1,
-                Commands = commands.Add.Count > 0 ? commands : null,
-            };
+                PreviousSyncKey = advanced ? state.SyncKey : state.PreviousSyncKey,
+                PreviousWatermark = advanced ? state.Watermark : state.PreviousWatermark,
+            }, cancellationToken: ct).ResponseAsync;
         }
 
+        // -1 means "never synced": treat as watermark 0 so the very first real sync flows through
+        // the same ItemEvent-log-driven path (and windowing) as every incremental sync
+        long baseline = state.Watermark == -1 ? 0 : state.Watermark;
+
+        // commands must still advance the key or the client treats the batch as uncommitted and
+        // resends it. GetChanges=0 means don't surface content, but a client Change in the same
+        // request still needs the server-changed-id set for conflict detection, so events are
+        // still read here (unwindowed: nothing is being surfaced, so there's nothing to page),
+        // just without advancing the stored watermark past content the client was never shown.
         if (!getChanges)
         {
-            await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
-            {
-                UserId = userId,
-                DeviceId = state.DeviceId,
-                CollectionId = collectionId,
-                SyncKey = state.SyncKey,
-                Watermark = state.Watermark,
-                CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
-            }, cancellationToken: ct);
-            return new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, Status = 1 };
+            var noContentEvents = new List<SyncEvent>();
+            await foreach (var e in ReadItemEventsAsync(userId, collectionId, baseline, ct))
+                noContentEvents.Add(new SyncEvent(e.Id, e.ServerId, e.EventType));
+            var noContentDelta = SyncEngine.Collapse(noContentEvents);
+
+            var key = hasClientCommands ? SyncEngine.NextSyncKey(state.SyncKey) : state.SyncKey;
+            await UpsertAdvancedAsync(key, state.Watermark);
+            return (new SyncCollection { CollectionId = collectionId, SyncKey = key, Status = 1 }, noContentDelta.AllUpdatedServerIds);
         }
 
         var events = new List<SyncEvent>();
-        await foreach (var e in ReadItemEventsAsync(userId, collectionId, state.Watermark, ct))
+        await foreach (var e in ReadItemEventsAsync(userId, collectionId, baseline, ct))
             events.Add(new SyncEvent(e.Id, e.ServerId, e.EventType));
 
         if (events.Count == 0)
         {
-            await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
-            {
-                UserId = userId,
-                DeviceId = state.DeviceId,
-                CollectionId = collectionId,
-                SyncKey = state.SyncKey,
-                Watermark = state.Watermark,
-                CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
-            }, cancellationToken: ct);
-
-            return new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, Status = 1 };
+            var key = hasClientCommands ? SyncEngine.NextSyncKey(state.SyncKey) : state.SyncKey;
+            await UpsertAdvancedAsync(key, state.Watermark);
+            return (new SyncCollection { CollectionId = collectionId, SyncKey = key, Status = 1 }, EmptyServerIds);
         }
 
-        var delta = SyncEngine.Collapse(events);
+        var delta = SyncEngine.Collapse(events, windowSize);
         var ids = delta.Added.Concat(delta.Updated).ToList();
 
         var itemMap = new Dictionary<string, Item>();
@@ -174,43 +282,52 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
 
         var cmds = new SyncCommands
         {
-            Add = [.. delta.Added.Where(itemMap.ContainsKey).Select(id => new SyncAdd { ServerId = id, ApplicationData = Serialize(itemMap[id], requestedAnnotations, bodyPref) })],
-            Change = [.. delta.Updated.Where(itemMap.ContainsKey).Select(id => new SyncChange { ServerId = id, ApplicationData = Serialize(itemMap[id], requestedAnnotations, bodyPref) })],
             Delete = [.. delta.Deleted.Select(id => new SyncItemRef { ServerId = id })],
         };
 
-        var nextKey = SyncEngine.NextSyncKey(state.SyncKey);
-        await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+        // a bad row is skipped, not thrown, so it doesn't cost the device the whole batch
+        foreach (var id in delta.Added)
         {
-            UserId = userId,
-            DeviceId = state.DeviceId,
-            CollectionId = collectionId,
-            SyncKey = nextKey,
-            Watermark = delta.Watermark,
-            CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
-        }, cancellationToken: ct);
+            if (!itemMap.TryGetValue(id, out var item)) continue;
+            var data = TrySerialize(item, requestedAnnotations, bodyPref);
+            if (data is not null) cmds.Add.Add(new SyncAdd { ServerId = id, ApplicationData = data });
+        }
+        foreach (var id in delta.Updated)
+        {
+            if (!itemMap.TryGetValue(id, out var item)) continue;
+            var data = TrySerialize(item, requestedAnnotations, bodyPref);
+            if (data is not null) cmds.Change.Add(new SyncChange { ServerId = id, ApplicationData = data });
+        }
+
+        var nextKey = SyncEngine.NextSyncKey(state.SyncKey);
+        await UpsertAdvancedAsync(nextKey, delta.Watermark);
 
         bool hasChanges = cmds.Add.Count + cmds.Change.Count + cmds.Delete.Count > 0;
-        return new SyncCollection
+        return (new SyncCollection
         {
             CollectionId = collectionId,
             SyncKey = nextKey,
             Status = 1,
             Commands = hasChanges ? cmds : null,
-        };
+            // MoreAvailable is only ever advertised in response to a client-supplied WindowSize
+            MoreAvailable = delta.MoreAvailable && windowSizeSent,
+        }, delta.AllUpdatedServerIds);
     }
 
     private async Task<SyncResponses?> ProcessClientCommandsAsync(string userId,
                                                                   string collectionId,
                                                                   string itemClass,
                                                                   SyncCommands cmds,
+                                                                  BodyPreference? bodyPref,
+                                                                  IReadOnlySet<string> serverChangedIds,
+                                                                  SyncConflict conflictPolicy,
                                                                   CancellationToken ct)
     {
         var responses = new SyncResponses();
 
         foreach (var add in cmds.Add)
         {
-            var (serverId, status) = await HandleAddAsync(userId, collectionId, itemClass, add.ApplicationData, ct);
+            var (serverId, status) = await HandleAddAsync(userId, collectionId, itemClass, add.ClientId, add.ApplicationData, ct);
             responses.Add.Add(new SyncResponseAdd
             {
                 ClientId = add.ClientId ?? string.Empty,
@@ -221,7 +338,7 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
 
         foreach (var change in cmds.Change)
         {
-            int status = await HandleChangeAsync(userId, itemClass, change, ct);
+            int status = await HandleChangeAsync(userId, itemClass, change, serverChangedIds, conflictPolicy, ct);
             if (status != 1)
                 responses.Change.Add(new SyncResponseChange { ServerId = change.ServerId, Status = status });
         }
@@ -232,28 +349,81 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                 new DeleteItemRequest { UserId = userId, ServerId = delete.ServerId },
                 cancellationToken: ct);
             if (!result.Found)
-                responses.Change.Add(new SyncResponseChange { ServerId = delete.ServerId, Status = 8 });
+                responses.Delete.Add(new SyncResponseDelete { ServerId = delete.ServerId, Status = 8 });
         }
 
-        bool any = responses.Add.Count + responses.Change.Count + responses.Fetch.Count > 0;
+        foreach (var fetch in cmds.Fetch)
+            responses.Fetch.Add(await HandleFetchAsync(userId, fetch.ServerId, bodyPref, ct));
+
+        bool any = responses.Add.Count + responses.Change.Count + responses.Delete.Count + responses.Fetch.Count > 0;
         return any ? responses : null;
+    }
+
+    // some devices fetch message bodies with an embedded fetch
+    private async Task<SyncResponseFetch> HandleFetchAsync(string userId,
+                                                           string serverId,
+                                                           BodyPreference? bodyPref,
+                                                           CancellationToken ct)
+    {
+        Item item;
+        try
+        {
+            item = await mailbox.GetItemAsync(
+                new GetItemRequest { UserId = userId, ServerId = serverId },
+                cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            return new SyncResponseFetch { ServerId = serverId, Status = 8 }; // object not found
+        }
+
+        var appData = TrySerialize(item, requestedAnnotations: null, bodyPref);
+        if (appData is null)
+            return new SyncResponseFetch { ServerId = serverId, Status = 8 };
+
+        return new SyncResponseFetch { ServerId = serverId, Status = 1, ApplicationData = appData };
     }
 
     private async Task<(string? serverId, int status)> HandleAddAsync(string userId,
                                                                       string collectionId,
                                                                       string itemClass,
+                                                                      string? clientId,
                                                                       ApplicationData? appData,
                                                                       CancellationToken ct)
     {
-        var req = BuildCreateRequest(userId, collectionId, itemClass, appData);
+        CreateItemRequest? req;
+        try
+        {
+            req = BuildCreateRequest(userId, collectionId, itemClass, appData);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            logger.LogWarning(e, "Sync Add: unparseable {ItemClass} content in {Collection}", itemClass, collectionId);
+            return (null, 6);
+        }
+
         if (req is null) return (null, 6);
-        var item = await mailbox.CreateItemAsync(req, cancellationToken: ct);
-        return (item.ServerId, 1);
+        // client id lets the store dedupe a retransmitted add
+        if (!string.IsNullOrEmpty(clientId)) req.ClientId = clientId;
+
+        try
+        {
+            var item = await mailbox.CreateItemAsync(req, cancellationToken: ct);
+            return (item.ServerId, 1);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.InvalidArgument)
+        {
+            // status 6 is scoped to this item, so the rest of the batch still commits
+            logger.LogWarning("Sync Add rejected in {Collection}: {Detail}", collectionId, e.Status.Detail);
+            return (null, 6);
+        }
     }
 
     private async Task<int> HandleChangeAsync(string userId,
                                               string itemClass,
                                               SyncChange change,
+                                              IReadOnlySet<string> serverChangedIds,
+                                              SyncConflict conflictPolicy,
                                               CancellationToken ct)
     {
         Item existing;
@@ -268,11 +438,39 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
             return 8;
         }
 
-        var req = BuildUpdateRequest(userId, itemClass, change.ServerId, change.ApplicationData, existing);
+        // MS-ASCMD 2.2.3.34 Conflict: server-wins (default/Conflict=1) discards the client's
+        // change and reports Status 7 when the item also changed server-side since the
+        // client's last sync; Conflict=0 is client-wins and always applies the change below
+        if (conflictPolicy == SyncConflict.ServerWins && serverChangedIds.Contains(change.ServerId))
+        {
+            logger.LogInformation(
+                "Sync Change conflict for {ServerId}: server-wins, discarding client change", change.ServerId);
+            return 7;
+        }
+
+        UpdateItemRequest? req;
+        try
+        {
+            req = BuildUpdateRequest(userId, itemClass, change.ServerId, change.ApplicationData, existing);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            logger.LogWarning(e, "Sync Change: unparseable {ItemClass} content for {ServerId}", itemClass, change.ServerId);
+            return 6;
+        }
+
         if (req is null) return 8;
 
-        var result = await mailbox.UpdateItemAsync(req, cancellationToken: ct);
-        return result.Found ? 1 : 8;
+        try
+        {
+            var result = await mailbox.UpdateItemAsync(req, cancellationToken: ct);
+            return result.Found ? 1 : 8;
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.InvalidArgument)
+        {
+            logger.LogWarning("Sync Change rejected for {ServerId}: {Detail}", change.ServerId, e.Status.Detail);
+            return 6;
+        }
     }
 
     private static CreateItemRequest? BuildCreateRequest(string userId,
@@ -294,6 +492,20 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                     UserId = userId,
                     CollectionId = collectionId,
                     Calendar = cal.ToProtoCalendar()
+                },
+            "Task" when DeserializeAppData<TaskData>(appData) is { } td =>
+                new CreateItemRequest
+                {
+                    UserId = userId,
+                    CollectionId = collectionId,
+                    Task = td.ToProtoTask()
+                },
+            "Note" when DeserializeAppData<NoteData>(appData) is { } nd =>
+                new CreateItemRequest
+                {
+                    UserId = userId,
+                    CollectionId = collectionId,
+                    Note = nd.ToProtoNote()
                 },
             _ => null,
         };
@@ -326,11 +538,23 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                     ServerId = serverId,
                     Email = ApplyEmailChange(existing.Email, ed)
                 },
+            "Task" when DeserializeAppData<TaskData>(appData) is { } td =>
+                new UpdateItemRequest
+                {
+                    UserId = userId,
+                    ServerId = serverId,
+                    Task = ApplyTaskChange(existing.Task, td)
+                },
+            "Note" when DeserializeAppData<NoteData>(appData) is { } nd =>
+                new UpdateItemRequest
+                {
+                    UserId = userId,
+                    ServerId = serverId,
+                    Note = ApplyNoteChange(existing.Note, nd)
+                },
             _ => null,
         };
 
-    // Clients change e-mail items to set the Read flag or add/clear a follow-up Flag.
-    // Other email fields are server-owned and ignored on Change.
     private static EmailItem ApplyEmailChange(EmailItem existing, EmailData ed)
     {
         var e = existing.Clone();
@@ -345,8 +569,6 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         return e;
     }
 
-    // The client may send multiple BodyPreferences (e.g. plaintext + HTML); pick the one that
-    // best matches the stored body. We prefer HTML (Type 2) when offered, else the first.
     private static BodyPreference? SelectBodyPreference(SyncOptions? options)
     {
         var prefs = options?.BodyPreference;
@@ -354,15 +576,8 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         return prefs.FirstOrDefault(p => p.Type == BodyType.HTML) ?? prefs[0];
     }
 
-
-    // These map EAS XML DTOs (from WBXML decode) → proto ContactItem / CalendarItem.
-    // The proto then goes to MailboxStore for persistence. On the read side, the stored
-    // proto is serialized back to EAS XML for the device response.
     private static ContactItem ApplyContactChange(ContactItem existing, ContactData cd)
     {
-        // Full replace: start from the stored state and overwrite with EAS payload.
-        // This preserves server-side fields (WeightedRank, annotation) not present in
-        // the client's Change payload.
         var c = existing.Clone();
         if (cd.FirstName is not null) c.FirstName = cd.FirstName;
         if (cd.MiddleName is not null) c.MiddleName = cd.MiddleName;
@@ -449,7 +664,7 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         if (cd.BusyStatus.HasValue) cal.BusyStatus = cd.BusyStatus.Value;
         if (cd.Sensitivity.HasValue) cal.Sensitivity = cd.Sensitivity.Value;
         if (cd.MeetingStatus.HasValue) cal.MeetingStatus = cd.MeetingStatus.Value;
-        if (cd.ResponseType.HasValue) cal.ResponseType = cd.ResponseType.Value;
+        // ResponseType / AppointmentReplyTime / OnlineMeeting* are server-owned; a client echo is ignored
         if (cd.ResponseRequested.HasValue) cal.ResponseRequested = cd.ResponseRequested != 0;
         if (cd.DisallowNewTimeProposal.HasValue) cal.DisallowNewTimeProposal = cd.DisallowNewTimeProposal != 0;
         var notes = cd.Body?.Data ?? cd.BodyLegacy;
@@ -471,6 +686,76 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         return cal;
     }
 
+    private static TaskItem ApplyTaskChange(TaskItem existing, TaskData td)
+    {
+        var t = existing.Clone();
+        if (td.Subject is not null) t.Subject = td.Subject;
+        if (td.Importance.HasValue) t.Importance = td.Importance.Value;
+        if (td.Sensitivity.HasValue) t.Sensitivity = td.Sensitivity.Value;
+        if (td.StartDate.HasValue) t.StartDate = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(td.StartDate.Value, DateTimeKind.Utc));
+        if (td.UtcStartDate.HasValue) t.UtcStartDate = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(td.UtcStartDate.Value, DateTimeKind.Utc));
+        if (td.DueDate.HasValue) t.DueDate = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(td.DueDate.Value, DateTimeKind.Utc));
+        if (td.UtcDueDate.HasValue) t.UtcDueDate = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(td.UtcDueDate.Value, DateTimeKind.Utc));
+        if (td.Complete.HasValue) t.Complete = td.Complete != 0;
+        if (td.DateCompleted.HasValue) t.DateCompleted = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(td.DateCompleted.Value, DateTimeKind.Utc));
+        if (td.ReminderSet.HasValue) t.ReminderSet = td.ReminderSet != 0;
+        if (td.ReminderTime.HasValue) t.ReminderTime = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(td.ReminderTime.Value, DateTimeKind.Utc));
+        var notes = td.Body?.Data;
+        if (notes is not null) t.Notes = notes;
+        if (td.NativeBodyType.HasValue) t.NativeBodyType = td.NativeBodyType.Value;
+        if (td.Recurrence is { } r)
+        {
+            if (r.Type.HasValue) t.RecurrenceType = r.Type.Value;
+            if (r.Start.HasValue) t.RecurrenceStart = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(r.Start.Value, DateTimeKind.Utc));
+            if (r.Until.HasValue) t.RecurrenceUntil = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.SpecifyKind(r.Until.Value, DateTimeKind.Utc));
+            if (r.Occurrences.HasValue) t.RecurrenceOccurrences = r.Occurrences.Value;
+            if (r.Interval.HasValue) t.RecurrenceInterval = r.Interval.Value;
+            if (r.DayOfWeek.HasValue) t.RecurrenceDayOfWeek = r.DayOfWeek.Value;
+            if (r.DayOfMonth.HasValue) t.RecurrenceDayOfMonth = r.DayOfMonth.Value;
+            if (r.WeekOfMonth.HasValue) t.RecurrenceWeekOfMonth = r.WeekOfMonth.Value;
+            if (r.MonthOfYear.HasValue) t.RecurrenceMonthOfYear = r.MonthOfYear.Value;
+            if (r.Regenerate.HasValue) t.RecurrenceRegenerate = r.Regenerate != 0;
+            if (r.DeadOccur.HasValue) t.RecurrenceDeadOccur = r.DeadOccur.Value;
+            if (r.CalendarType.HasValue) t.RecurrenceCalendarType = r.CalendarType.Value;
+            if (r.IsLeapMonth.HasValue) t.RecurrenceIsLeapMonth = r.IsLeapMonth != 0;
+            if (r.FirstDayOfWeek.HasValue) t.RecurrenceFirstDayOfWeek = r.FirstDayOfWeek.Value;
+        }
+        return t;
+    }
+
+    private static NoteItem ApplyNoteChange(NoteItem existing, NoteData nd)
+    {
+        var n = existing.Clone();
+        // absent Subject/Body is not an implicit delete
+        if (nd.Subject is not null) n.Subject = nd.Subject;
+        var body = nd.Body?.Data;
+        if (body is not null) n.Body = body;
+        if (nd.NativeBodyType.HasValue) n.NativeBodyType = nd.NativeBodyType.Value;
+        if (nd.MessageClass is not null) n.MessageClass = nd.MessageClass;
+        n.LastModifiedDate = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow);
+        // a missing Categories element means delete: replace wholesale with what the client sent
+        n.Categories.Clear();
+        n.Categories.AddRange(nd.Categories?.Items.Select(c => new NoteCategory
+        { Id = Guid.NewGuid().ToString("N"), Category = c }) ?? []);
+        return n;
+    }
+
+    // Serialize, but never let a single malformed stored item throw out of the sync batch.
+    private ApplicationData? TrySerialize(Item item,
+                                          IReadOnlySet<string>? requestedAnnotations = null,
+                                          BodyPreference? bodyPref = null)
+    {
+        try
+        {
+            return Serialize(item, requestedAnnotations, bodyPref);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "dropping unserializable item {ServerId} from sync", item.ServerId);
+            return null;
+        }
+    }
+
     private static ApplicationData? Serialize(Item item,
                                               IReadOnlySet<string>? requestedAnnotations = null,
                                               BodyPreference? bodyPref = null)
@@ -479,7 +764,9 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         {
             Item.BodyOneofCase.Contact => item.Contact.ToApplicationData(),
             Item.BodyOneofCase.Calendar => item.Calendar.ToApplicationData(),
+            Item.BodyOneofCase.Task => item.Task.ToApplicationData(),
             Item.BodyOneofCase.Email => item.Email.ToApplicationData(bodyPref),
+            Item.BodyOneofCase.Note => item.Note.ToApplicationData(),
             _ => null,
         };
 
@@ -504,7 +791,6 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                 items.Add(new Annotation { Name = name, Value = value });
         }
 
-        Add("OID", ann.HasObjectId ? ann.ObjectId : null);
         Add("WLID", ann.HasWlId ? ann.WlId : null);
         Add("IMMRI", ann.HasImMri ? ann.ImMri : null);
         Add("Type", ann.HasContactType ? ann.ContactType : null);
@@ -515,8 +801,13 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
 
         bool isSelf = ann.HasContactType &&
               string.Equals(ann.ContactType, "Me", StringComparison.OrdinalIgnoreCase);
+
+        // OID/CID on the current user's own contact makes WP7 reject the entire contact sync
         if (!isSelf)
+        {
+            Add("OID", ann.HasObjectId ? ann.ObjectId : null);
             Add("CID", ann.HasCid ? ann.Cid.ToString("x16") : null);
+        }
 
         return items.Count > 0 ? new Annotations { Items = items } : null;
     }
@@ -529,14 +820,6 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
         serializer.Serialize(sw, annotations);
         doc.LoadXml(sw.ToString());
         appData.Elements.Add(doc.DocumentElement!);
-    }
-
-    private async IAsyncEnumerable<Item> ReadItemsAsync(string userId, string collectionId,
-        [EnumeratorCancellation] CancellationToken ct)
-    {
-        using var call = mailbox.ListItems(new ListItemsRequest { UserId = userId, CollectionId = collectionId, IncludeDeleted = false }, cancellationToken: ct);
-        await foreach (var i in call.ResponseStream.ReadAllAsync(ct))
-            yield return i;
     }
 
     private async IAsyncEnumerable<Item> ReadItemsByIdsAsync(string userId, List<string> serverIds,
@@ -569,6 +852,7 @@ public class ItemSyncService(MailboxStore.MailboxStoreClient mailbox)
                 ProtoFolderType.CalendarDefault or ProtoFolderType.Calendar => "Calendar",
                 ProtoFolderType.ContactsDefault or ProtoFolderType.Contacts or ProtoFolderType.MeContact => "Contact",
                 ProtoFolderType.TasksDefault or ProtoFolderType.Task => "Task",
+                ProtoFolderType.NotesDefault or ProtoFolderType.Notes => "Note",
                 _ => "Email",
             };
         }

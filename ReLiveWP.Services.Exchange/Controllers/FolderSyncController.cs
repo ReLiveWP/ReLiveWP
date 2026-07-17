@@ -12,7 +12,6 @@ namespace ReLiveWP.Services.Exchange.Controllers;
 [Consumes("application/vnd.ms-sync.wbxml", "application/vnd.ms-sync")]
 [Produces("application/vnd.ms-sync.wbxml")]
 public class FolderSyncController(ILogger<FolderSyncController> logger,
-                                  ProvisioningService provisioningService,
                                   FolderSyncService folderSync) : ActiveSyncCommandController
 {
     [HttpPost]
@@ -27,8 +26,6 @@ public class FolderSyncController(ILogger<FolderSyncController> logger,
         logger.LogInformation(
             "FolderSync from {User} on {DeviceId} ({DeviceType}), SyncKey={SyncKey}",
             userId, EasContext.DeviceId, EasContext.DeviceType, request?.SyncKey ?? "0");
-
-        await provisioningService.EnsureProvisionedAsync(userId, ct);
 
         var response = await folderSync.SyncAsync(userId, EasContext.DeviceId, request?.SyncKey,
             request?.Annotations?.RequestedNames(), ct);

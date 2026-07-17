@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Skybox.Data;
 using ReLiveWP.Backend.Skybox.Services;
+using ReLiveWP.Services.Grpc.Email;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -17,6 +18,9 @@ builder.Services.AddSingleton<CommandStatusHub>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<SkyDbContext>(options => options.UseNpgsql(connectionString));
+
+builder.Services.AddGrpcClient<Email.EmailClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));
 
 var app = builder.Build();
 

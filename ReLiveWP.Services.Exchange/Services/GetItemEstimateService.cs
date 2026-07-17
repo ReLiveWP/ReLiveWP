@@ -30,9 +30,7 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
     {
         var collectionId = req.CollectionId;
 
-        // Resolve the folder first: a stale/unknown collection (e.g. a ghost left over from a
-        // rebuilt mailbox) is reported as gone (status 8) and recorded so the next FolderSync sends
-        // a Delete for it, regardless of whether we still hold sync state for it.
+        // a stale/unknown collection is reported gone (status 8) and recorded for the next FolderSync delete
         Folder folder;
         try
         {
@@ -58,24 +56,6 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
             return MakeError(collectionId, 3);
         }
 
-        if (state.SyncKey != req.SyncKey)
-            return MakeError(collectionId, 4);
-
-        int estimate;
-
-        if (state.Watermark == -1)
-        {
-            estimate = (await mailbox.CountLiveItemsAsync(
-                new CountLiveItemsRequest { UserId = userId, CollectionId = collectionId },
-                cancellationToken: ct)).Count;
-        }
-        else
-        {
-            var events = await ReadAllItemEventsAsync(userId, collectionId, state.Watermark, ct);
-            var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.Id, e.ServerId, e.EventType)).ToList());
-            estimate = delta.Added.Count + delta.Updated.Count + delta.Deleted.Count;
-        }
-
         var itemClass = folder.Type switch
         {
             ProtoFolderType.CalendarDefault or ProtoFolderType.Calendar => "Calendar",
@@ -83,6 +63,36 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
             ProtoFolderType.TasksDefault or ProtoFolderType.Task => "Tasks",
             _ => "Email",
         };
+
+        // a one-deep retransmit recomputes from the checkpoint watermark (mirrors Sync); anything older is Status 4
+        long estimateWatermark;
+        if (state.SyncKey == req.SyncKey)
+        {
+            estimateWatermark = state.Watermark;
+        }
+        else if (req.SyncKey == state.PreviousSyncKey)
+        {
+            estimateWatermark = state.PreviousWatermark;
+        }
+        else
+        {
+            return MakeError(collectionId, 4);
+        }
+
+        int estimate;
+
+        if (estimateWatermark == -1)
+        {
+            estimate = (await mailbox.CountLiveItemsAsync(
+                new CountLiveItemsRequest { UserId = userId, CollectionId = collectionId },
+                cancellationToken: ct)).Count;
+        }
+        else
+        {
+            var events = await ReadAllItemEventsAsync(userId, collectionId, estimateWatermark, ct);
+            var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.Id, e.ServerId, e.EventType)).ToList());
+            estimate = delta.Added.Count + delta.Updated.Count + delta.Deleted.Count;
+        }
 
         return new GieResponse
         {
@@ -103,7 +113,12 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
     {
         var result = new List<ItemEvent>();
         using var call = mailbox.GetItemEvents(new GetItemEventsRequest
-        { UserId = userId, CollectionId = collectionId, AfterWatermark = afterWatermark }, cancellationToken: ct);
+        {
+            UserId = userId,
+            CollectionId = collectionId,
+            AfterWatermark = afterWatermark
+        }, cancellationToken: ct);
+
         await foreach (var e in call.ResponseStream.ReadAllAsync(ct))
             result.Add(e);
         return result;

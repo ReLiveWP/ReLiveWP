@@ -22,6 +22,46 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbAttachment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("Content")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("ContentId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentLocation")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmailItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("EstimatedDataSize")
+                        .HasColumnType("integer");
+
+                    b.Property<bool?>("IsInline")
+                        .HasColumnType("boolean");
+
+                    b.Property<byte?>("Method")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmailItemId");
+
+                    b.ToTable("Attachments");
+                });
+
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbCalendarAttendee", b =>
                 {
                     b.Property<string>("Id")
@@ -229,6 +269,8 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
 
                     b.HasKey("ContactItemId");
 
+                    b.HasIndex("Cid");
+
                     b.ToTable("ContactAnnotations");
                 });
 
@@ -270,6 +312,42 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.HasIndex("ContactItemId");
 
                     b.ToTable("ContactChildren");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactIdentity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<long>("ContactCid")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ContactItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactItemId");
+
+                    b.HasIndex("UserId", "ContactCid");
+
+                    b.HasIndex("UserId", "Provider", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("ContactIdentities");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbDeviceInfo", b =>
@@ -414,6 +492,9 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("ClientId")
+                        .HasColumnType("text");
+
                     b.Property<string>("CollectionId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -437,11 +518,23 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("ValidationFlaggedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValidationReason")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CollectionId");
 
                     b.HasIndex("UserId", "CollectionId");
+
+                    b.HasIndex("UserId", "ServerId");
+
+                    b.HasIndex("UserId", "CollectionId", "ClientId")
+                        .IsUnique()
+                        .HasFilter("\"ClientId\" IS NOT NULL AND \"DeletedAt\" IS NULL");
 
                     b.HasIndex("UserId", "CollectionId", "ServerId")
                         .IsUnique();
@@ -486,6 +579,26 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.ToTable("ItemEvents");
                 });
 
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbNoteCategory", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NoteItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NoteItemId");
+
+                    b.ToTable("NoteCategories");
+                });
+
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbSyncState", b =>
                 {
                     b.Property<int>("Id")
@@ -508,6 +621,13 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Property<DateTime>("LastSeenAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("PreviousSyncKey")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("PreviousWatermark")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("SyncKey")
                         .IsRequired()
                         .HasColumnType("text");
@@ -518,6 +638,12 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
 
                     b.Property<long>("Watermark")
                         .HasColumnType("bigint");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -946,14 +1072,162 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Property<string>("To")
                         .HasColumnType("text");
 
+                    b.HasIndex("UserId", "ConversationId");
+
                     b.HasDiscriminator().HasValue("Email");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbNote", b =>
+                {
+                    b.HasBaseType("ReLiveWP.Backend.Mailbox.Data.Entities.DbItem");
+
+                    b.Property<string>("Body")
+                        .HasColumnType("text")
+                        .HasColumnName("Note_Body");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Note_LastModifiedDate");
+
+                    b.Property<string>("MessageClass")
+                        .HasColumnType("text")
+                        .HasColumnName("Note_MessageClass");
+
+                    b.Property<byte?>("NativeBodyType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Note_NativeBodyType");
+
+                    b.Property<string>("Subject")
+                        .HasColumnType("text")
+                        .HasColumnName("Note_Subject");
+
+                    b.HasDiscriminator().HasValue("Note");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbTask", b =>
                 {
                     b.HasBaseType("ReLiveWP.Backend.Mailbox.Data.Entities.DbItem");
 
+                    b.Property<bool?>("Complete")
+                        .HasColumnType("boolean")
+                        .HasColumnName("Task_Complete");
+
+                    b.Property<DateTime?>("DateCompleted")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_DateCompleted");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_DueDate");
+
+                    b.Property<byte?>("Importance")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_Importance");
+
+                    b.Property<byte?>("NativeBodyType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_NativeBodyType");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("Task_Notes");
+
+                    b.Property<byte?>("RecurrenceCalendarType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceCalendarType");
+
+                    b.Property<byte?>("RecurrenceDayOfMonth")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceDayOfMonth");
+
+                    b.Property<byte?>("RecurrenceDayOfWeek")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceDayOfWeek");
+
+                    b.Property<byte?>("RecurrenceDeadOccur")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceDeadOccur");
+
+                    b.Property<byte?>("RecurrenceFirstDayOfWeek")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceFirstDayOfWeek");
+
+                    b.Property<int?>("RecurrenceInterval")
+                        .HasColumnType("integer")
+                        .HasColumnName("Task_RecurrenceInterval");
+
+                    b.Property<bool?>("RecurrenceIsLeapMonth")
+                        .HasColumnType("boolean")
+                        .HasColumnName("Task_RecurrenceIsLeapMonth");
+
+                    b.Property<byte?>("RecurrenceMonthOfYear")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceMonthOfYear");
+
+                    b.Property<byte?>("RecurrenceOccurrences")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceOccurrences");
+
+                    b.Property<bool?>("RecurrenceRegenerate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("Task_RecurrenceRegenerate");
+
+                    b.Property<DateTime?>("RecurrenceStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_RecurrenceStart");
+
+                    b.Property<byte?>("RecurrenceType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceType");
+
+                    b.Property<DateTime?>("RecurrenceUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_RecurrenceUntil");
+
+                    b.Property<byte?>("RecurrenceWeekOfMonth")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_RecurrenceWeekOfMonth");
+
+                    b.Property<bool?>("ReminderSet")
+                        .HasColumnType("boolean")
+                        .HasColumnName("Task_ReminderSet");
+
+                    b.Property<DateTime?>("ReminderTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_ReminderTime");
+
+                    b.Property<byte?>("Sensitivity")
+                        .HasColumnType("smallint")
+                        .HasColumnName("Task_Sensitivity");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_StartDate");
+
+                    b.Property<string>("Subject")
+                        .HasColumnType("text")
+                        .HasColumnName("Task_Subject");
+
+                    b.Property<DateTime?>("UtcDueDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_UtcDueDate");
+
+                    b.Property<DateTime?>("UtcStartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("Task_UtcStartDate");
+
                     b.HasDiscriminator().HasValue("Task");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbAttachment", b =>
+                {
+                    b.HasOne("ReLiveWP.Backend.Mailbox.Data.Entities.DbEmail", "EmailItem")
+                        .WithMany("Attachments")
+                        .HasForeignKey("EmailItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EmailItem");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbCalendarAttendee", b =>
@@ -1044,6 +1318,17 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Navigation("ContactItem");
                 });
 
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactIdentity", b =>
+                {
+                    b.HasOne("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactItem", "ContactItem")
+                        .WithMany()
+                        .HasForeignKey("ContactItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ContactItem");
+                });
+
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbItem", b =>
                 {
                     b.HasOne("ReLiveWP.Backend.Mailbox.Data.Entities.DbFolder", "Collection")
@@ -1053,6 +1338,17 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                         .IsRequired();
 
                     b.Navigation("Collection");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbNoteCategory", b =>
+                {
+                    b.HasOne("ReLiveWP.Backend.Mailbox.Data.Entities.DbNote", "NoteItem")
+                        .WithMany("Categories")
+                        .HasForeignKey("NoteItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NoteItem");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbCalendarException", b =>
@@ -1083,6 +1379,16 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Navigation("Categories");
 
                     b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbEmail", b =>
+                {
+                    b.Navigation("Attachments");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbNote", b =>
+                {
+                    b.Navigation("Categories");
                 });
 #pragma warning restore 612, 618
         }

@@ -12,7 +12,7 @@ service Authentication {
   rpc RegisterDevice (RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
   rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
- 
+
   rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
 
   rpc RefreshSecurityTokens (RefreshTokensRequest) returns (SecurityTokensResponse);
@@ -23,47 +23,47 @@ service Authentication {
 }
 
 message RegisterRequest {
-  string username = 1;
+  string username     = 1;
   string emailAddress = 2;
-  string password = 3;
+  string password     = 3;
 }
 
 message RegisterResponse {
-  uint32 code = 1;
-  optional string id = 2;
-  optional int64 puid = 3;
-  optional string cid = 4;
+  uint32          code = 1;
+  optional string id   = 2;
+  optional int64  puid = 3;
+  optional string cid  = 4;
 }
 
 message RegisterDeviceRequest {
-  string deviceId = 1;
-  string username = 2;
-  string password = 3;
+  string                        deviceId = 1;
+  string                        username = 2;
+  string                        password = 3;
   repeated SecurityTokenRequest requests = 4;
 }
 
 message RegisterDeviceResponse {
-  uint32 code = 1;
-  optional string id = 2;
-  optional int64 puid = 3;
-  optional string cid = 4;
+  uint32                         code   = 1;
+  optional string                id     = 2;
+  optional int64                 puid   = 3;
+  optional string                cid    = 4;
   repeated SecurityTokenResponse tokens = 5;
 }
 
 message SecurityTokenRequest {
-  string serviceTarget = 1;
-  string servicePolicy = 2;
+  string         serviceTarget  = 1;
+  string         servicePolicy  = 2;
   optional bytes supportingData = 3;
 }
 
 message SecurityTokensRequest {
-  string username = 1;
-  string password = 2;
+  string                        username = 1;
+  string                        password = 2;
   repeated SecurityTokenRequest requests = 3;
-  
-  string authToken = 4;
-  bool issueRefreshToken = 5;
-  string deviceAuthToken = 6;
+
+  string authToken         = 4;
+  bool   issueRefreshToken = 5;
+  string deviceAuthToken   = 6;
 }
 
 message RefreshTokensRequest {
@@ -72,80 +72,80 @@ message RefreshTokensRequest {
 
 message SecurityTokenResponse {
   string serviceTarget = 1;
-  string token = 2;
-  string tokenType = 3;
+  string token         = 2;
+  string tokenType     = 3;
 
   google.protobuf.Timestamp created = 4;
   google.protobuf.Timestamp expires = 5;
 
-  optional string refreshToken = 6;
+  optional string                    refreshToken        = 6;
   optional google.protobuf.Timestamp refreshTokenExpires = 7;
-  optional uint32 code = 8;
+  optional uint32                    code                = 8;
 
   optional bytes proofKey = 9;
 }
 
 message SecurityTokensResponse {
-  uint32 code = 1;
-  string id = 8;
-  int64 puid = 2;
-  string cid = 3;
-  string username = 4;
-  string emailAddress = 5;
-  repeated SecurityTokenResponse tokens = 6;
-  optional bytes sessionKey = 7;
+  uint32                         code         = 1;
+  string                         id           = 8;
+  int64                          puid         = 2;
+  string                         cid          = 3;
+  string                         username     = 4;
+  string                         emailAddress = 5;
+  repeated SecurityTokenResponse tokens       = 6;
+  optional bytes                 sessionKey   = 7;
 }
 
 message ClaimMessage {
-  string type = 1;
+  string type  = 1;
   string value = 2;
 }
 
 message VerifyTokenRequest {
   repeated string serviceTargets = 1;
-  string token = 2;
-  string tokenType = 3; 
+  string          token          = 2;
+  string          tokenType      = 3;
 }
 
 message VerifyResponse {
-  uint32 code = 1;
-  string id = 3;
+  uint32                code   = 1;
+  string                id     = 3;
   repeated ClaimMessage claims = 2;
 }
 
 message DeviceCertificateRequest {
-  bytes certificateRequest = 1;
-  string puid = 2;
+  bytes  certificateRequest = 1;
+  string puid               = 2;
 }
 
 message DeviceCertificateResponse {
-  bool succeeded = 1;
+  bool  succeeded   = 1;
   bytes certificate = 2;
 }
 
 message VerifyDeviceCertificateRequest {
-	bytes certificate = 1;
+  bytes certificate = 1;
 }
 
 message VerifyDeviceCertificateResponse {
-  bool succeeded = 1;
-  optional string id = 7;
-  optional int64 puid = 2;
-  optional string cid = 3;
-  optional string username = 4;
+  bool            succeeded    = 1;
+  optional string id           = 7;
+  optional int64  puid         = 2;
+  optional string cid          = 3;
+  optional string username     = 4;
   optional string emailAddress = 5;
-  optional string deviceId = 6;
+  optional string deviceId     = 6;
 }
 
 message VerifyPasswordRequest {
-	optional string username = 1;
-	optional string emailAddress = 3;
-	string password = 2;
+  optional string username     = 1;
+  optional string emailAddress = 3;
+  string          password     = 2;
 }
 
 message ChangePasswordRequest {
-	optional string uid = 1;
-	optional string puid = 2; // DeviceChangeCredental looks up bu puid 
-	string oldPassword = 3;
-	string newPassword = 4;
+  optional string uid         = 1;
+  optional string puid        = 2; // DeviceChangeCredental looks up bu puid
+  string          oldPassword = 3;
+  string          newPassword = 4;
 }

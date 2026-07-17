@@ -83,6 +83,16 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> 
         }
     }
 
+    public override async IAsyncEnumerable<EntryModel> GetAuthorEntriesAsync(string providerToken, string externalId, int count)
+    {
+        // providers ignore identities they don't own (provider-token mismatch)
+        foreach (var provider in providers)
+        {
+            await foreach (var item in provider.GetAuthorEntriesAsync(providerToken, externalId, count))
+                yield return item;
+        }
+    }
+
     public override async Task CreatePostAsync(string text)
     {
         await Task.WhenAll(providers.Select(s => s.CreatePostAsync(text)));

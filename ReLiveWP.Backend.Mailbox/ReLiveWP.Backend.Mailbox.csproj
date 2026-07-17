@@ -4,6 +4,12 @@
     <Protobuf Include="../protos/mailbox_store.proto" GrpcServices="Server">
       <Link>Protos\mailbox_store.proto</Link>
     </Protobuf>
+    <Protobuf Include="../protos/user.proto" GrpcServices="Client">
+      <Link>Protos\user.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/email.proto" GrpcServices="Server">
+      <Link>Protos\email.proto</Link>
+    </Protobuf>
   </ItemGroup>
 
   <ItemGroup>

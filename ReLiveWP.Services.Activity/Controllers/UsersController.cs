@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ReLiveWP.Identity;
 using ReLiveWP.Services.Activity.Models.Atom;
 using ReLiveWP.Services.Activity.Services;
+using Link = Atom.Xml.Link;
 
 namespace ReLiveWP.Services.Activity.Controllers;
 
@@ -9,7 +12,9 @@ namespace ReLiveWP.Services.Activity.Controllers;
 [Route("/Users({id})/[action]")]
 [Route("/Users({provider}:{id})/[action]")]
 [Produces("application/atom+xml")]
-public class UsersController(ActivityProviderService activityProvider) : Controller
+public class UsersController(
+    FeedRenderer feeds,
+    ActivityProviderService activityProvider) : Controller
 {
     [HttpPost]
     [Authorize]
@@ -27,8 +32,9 @@ public class UsersController(ActivityProviderService activityProvider) : Control
         return NoContent();
     }
 
+    [Authorize]
     [Route("/Users({provider}:{id})/ContactsActivities", Name = "contacts_activities_route_for_user")]
-    public Task<ActionResult> ContactsActivities(
+    public Task<ActionResult<LiveFeed>> ContactsActivities(
         string id,
         string? provider = null,
         [FromQuery(Name = "Count")] int count = 10,
@@ -36,13 +42,12 @@ public class UsersController(ActivityProviderService activityProvider) : Control
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
-    {
-        return Task.FromResult<ActionResult>(NoContent());
-    }
+        // A contact card's "what's new" is that contact's own activity.
+        => ContactFeedAsync(id, count, "contacts_activities_route_for_user");
 
-
+    [Authorize]
     [Route("/Users({provider}:{id})/Activities", Name = "activities_route_for_user")]
-    public Task<ActionResult> Activities(
+    public Task<ActionResult<LiveFeed>> Activities(
         string id,
         string? provider = null,
         [FromQuery(Name = "Count")] int count = 10,
@@ -50,7 +55,42 @@ public class UsersController(ActivityProviderService activityProvider) : Control
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
+        => ContactFeedAsync(id, count, "activities_route_for_user");
+
+    // Per-contact feed: resolve the contact CID to its linked external identities, fetch each
+    // identity's author feed, and merge. Every entry binds to this one contact CID so the card's
+    // social tab shows all of the contact's accounts, merged.
+    private async Task<ActionResult<LiveFeed>> ContactFeedAsync(string id, int count, string routeName)
     {
-        return Task.FromResult<ActionResult>(NoContent());
+        Response.Headers.Append("X-QueriedServices", "WL");
+
+        if (!long.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cid))
+            return NoContent();
+
+        var contactAuthor = new LiveAuthor()
+        {
+            Id = cid.ToString(CultureInfo.InvariantCulture),
+            Name = "",
+            Url = this.Url.Link(routeName, new { provider = "WL", id = cid.ToString(CultureInfo.InvariantCulture) }),
+            Links = []
+        };
+
+        var feed = new LiveFeed()
+        {
+            Title = "What's New",
+            Id = this.Url.Link(routeName, new { provider = "WL", id = cid.ToString(CultureInfo.InvariantCulture) }),
+            Updated = DateTime.UtcNow,
+            Author = contactAuthor,
+            Links = [new Link(this.Url.Link(routeName, new { provider = "WL", id = cid.ToString(CultureInfo.InvariantCulture) }))]
+        };
+
+        var provider = await activityProvider.GetActivityProviderAsync();
+        if (provider == null)
+            return feed;
+
+        feed.Entries.AddRange(
+            await feeds.RenderContactFeedAsync(Url, provider, cid, count, User.Id()!));
+
+        return feed;
     }
 }

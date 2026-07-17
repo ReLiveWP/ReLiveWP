@@ -35,8 +35,10 @@
     <Project Path="ReLiveWP.Backend.DeviceUpdate/ReLiveWP.Backend.DeviceUpdate.csproj" />
   </Folder>
   <Folder Name="/Exchange/">
+    <Project Path="ReLiveWP.Backend.Mailbox.Tests/ReLiveWP.Backend.Mailbox.Tests.csproj" />
     <Project Path="ReLiveWP.Backend.Mailbox/ReLiveWP.Backend.Mailbox.csproj" />
     <Project Path="ReLiveWP.Services.AddressBook/ReLiveWP.Services.AddressBook.csproj" />
+    <Project Path="ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />
     <Project Path="ReLiveWP.Services.Exchange/ReLiveWP.Services.Exchange.csproj" />
   </Folder>
   <Folder Name="/Push/">
@@ -51,6 +53,7 @@
     <Project Path="ReLiveWP.Backend.SkyDrive/ReLiveWP.Backend.SkyDrive.csproj" />
     <Project Path="ReLiveWP.Services.Activity/ReLiveWP.Services.Activity.csproj" />
     <Project Path="ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />
+    <Project Path="ReLiveWP.Services.Messenger/ReLiveWP.Services.Messenger.csproj" />
   </Folder>
   <Project Path="ReLiveWP/ReLiveWP.csproj" />
 </Solution>

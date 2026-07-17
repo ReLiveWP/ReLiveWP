@@ -2,17 +2,14 @@ namespace ReLiveWP.Backend.Mailbox.Data.Entities;
 
 public class DbCalendarItem : DbItem
 {
-    // Timing
     public string? Timezone { get; set; }
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public DateTime? DtStamp { get; set; }
 
-    // Identity
     public string? Uid { get; set; }
     public string? ClientUid { get; set; }
 
-    // Meeting
     public string? Subject { get; set; }
     public string? Location { get; set; }
     public uint? Reminder { get; set; }
@@ -23,23 +20,19 @@ public class DbCalendarItem : DbItem
     public string? OrganizerName { get; set; }
     public string? OrganizerEmail { get; set; }
 
-    // Body
     public string? Notes { get; set; }
     public byte? NativeBodyType { get; set; }
     public string? BodyLegacy { get; set; }
     public bool? BodyTruncated { get; set; }
 
-    // Response
     public DateTime? AppointmentReplyTime { get; set; }
     public uint? ResponseType { get; set; }
     public bool? ResponseRequested { get; set; }
     public bool? DisallowNewTimeProposal { get; set; }
 
-    // Online meeting
     public string? OnlineMeetingConfLink { get; set; }
     public string? OnlineMeetingExternalLink { get; set; }
 
-    // Recurrence
     public byte? RecurrenceType { get; set; }
     public ushort? RecurrenceOccurrences { get; set; }
     public ushort? RecurrenceInterval { get; set; }
@@ -52,7 +45,6 @@ public class DbCalendarItem : DbItem
     public bool? RecurrenceIsLeapMonth { get; set; }
     public byte? RecurrenceFirstDayOfWeek { get; set; }
 
-    // Child collections
     public List<DbCalendarAttendee> Attendees { get; set; } = [];
     public List<DbCalendarCategory> Categories { get; set; } = [];
     public List<DbCalendarException> Exceptions { get; set; } = [];

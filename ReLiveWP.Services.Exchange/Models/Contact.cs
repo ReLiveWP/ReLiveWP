@@ -9,10 +9,8 @@ public static partial class Constants
     public const string Contacts2 = "Contacts2";
 }
 
-// Represents the content of an airsync:ApplicationData element for the Contacts class.
-// Serialised with XmlSerializer; the root element is used only when round-tripping the
-// full document — in Sync responses the child elements are injected directly into
-// ApplicationData.Elements.
+// root element is only used when round-tripping the full document; Sync responses inject
+// child elements directly into ApplicationData.Elements instead
 [XmlRoot("ApplicationData", Namespace = Constants.AirSync)]
 public class ContactData
 {
@@ -184,8 +182,6 @@ public class ContactData
     [XmlElement("WebPage", Namespace = Constants.Contacts)]
     public string? WebPage { get; set; }
 
-    // Birthday: xs:dateTime on the wire, stored as EAS compact format yyyyMMddTHHmmssZ.
-    // The time portion SHOULD be ignored per spec.
     [XmlIgnore]
     public DateTime? Birthday { get; set; }
 
@@ -206,11 +202,9 @@ public class ContactData
         set => Anniversary = EasDateHelper.ToDateTime(value);
     }
 
-    // xs:string on the wire (base64-encoded). XmlSerializer handles byte[] ↔ base64.
     [XmlElement("Picture", Namespace = Constants.Contacts)]
     public byte[]? Picture { get; set; }
 
-    // Read-only; only present in RIC responses.
     [XmlElement("WeightedRank", Namespace = Constants.Contacts)]
     public int? WeightedRank { get; set; }
 
@@ -220,16 +214,13 @@ public class ContactData
     [XmlElement("Children", Namespace = Constants.Contacts)]
     public ContactChildren? Children { get; set; }
 
-    // airsyncbase:Body is the canonical notes element for all versions >= 12.0.
     [XmlElement("Body", Namespace = Constants.AirSyncBase)]
     public AirSyncBody? Body { get; set; }
 
-    // Present in Sync responses to indicate the native body format stored on the server.
-    // xs:unsignedByte: 1=PlainText, 2=HTML, 3=RTF.
+    // 1=PlainText 2=HTML 3=RTF
     [XmlElement("NativeBodyType", Namespace = Constants.AirSyncBase)]
     public byte? NativeBodyType { get; set; }
 
-    // contacts:Body / BodySize / BodyTruncated are only used with protocol 2.5.
     [XmlElement("Body", Namespace = Constants.Contacts)]
     public string? BodyLegacy { get; set; }
 
@@ -241,17 +232,14 @@ public class ContactData
 
     [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
     public Annotations? Annotations { get; set; } = null;
-
 }
 
-// <contacts:Categories> container
 public class ContactCategories
 {
     [XmlElement("Category", Namespace = Constants.Contacts)]
     public List<string> Items { get; set; } = [];
 }
 
-// <contacts:Children> container
 public class ContactChildren
 {
     [XmlElement("Child", Namespace = Constants.Contacts)]

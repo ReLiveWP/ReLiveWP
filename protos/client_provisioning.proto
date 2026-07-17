@@ -14,6 +14,6 @@ message WP7ProvisioningRequest {
 }
 
 message DeviceProvisioningResponse {
-  bool succeeded = 1;
+  bool  succeeded   = 1;
   bytes certificate = 2;
 }

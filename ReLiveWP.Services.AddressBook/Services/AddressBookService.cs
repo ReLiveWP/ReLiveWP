@@ -23,6 +23,7 @@ public class ViewABNetworks
     public ABAuthHeader ABAuthHeader { get; set; } = null!;
 }
 
+[XmlRoot(Namespace = "http://www.msn.com/webservices/AddressBook")]
 public class ServiceHeader
 {
     [XmlElement("Version", Namespace = "http://www.msn.com/webservices/AddressBook")]
@@ -100,7 +101,7 @@ public class AddressBookService : IAddressBookService
                 {
                     DomainId = 22,
                     SourceId = "TWITR",
-                    DomainTag = "WL",
+                    DomainTag = "TWITR",
                     DisplayName = "Wam",
                     // ProfileURL = "https://bsky.app/profile/wamwoowam.co.uk",
                     // UserTileURL = "https://cdn.bsky.app/img/avatar/plain/did:plc:7rfssi44thh6f4ywcl3u5nvt/bafkreihkzoksalhxgsivjew4xbftdnsa27bcc5xcl5vf5opaou2eswtsda@jpeg",
@@ -111,7 +112,9 @@ public class AddressBookService : IAddressBookService
                     [
                         new() { Name = "Live.Network.PSAState", Value = "Accept" },
                         // TODO: this parses with LOCALE_SYSTEM_DEFAULT on device, which feels like the footgun of all time
-                        new() { Name = "Live.Network.LastSync", Value = DateTime.Now.ToString() }
+                        new() { Name = "Live.Network.LastSync", Value = DateTime.Now.ToString() },
+                        // Capability bitmask, TODO: figure out what this means
+                        new() { Name = "Live.Network.Offers", Value = "2129" }
                     ]
                 }
             }

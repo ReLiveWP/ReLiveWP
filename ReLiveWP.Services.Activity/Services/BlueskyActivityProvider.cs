@@ -26,6 +26,9 @@ public class BlueskyActivityProvider : ActivityProviderBase
     public override string Name => "Bluesky";
     public override string ProviderId => "AT";
 
+    public const string IdentityProviderToken = "atproto";
+    public override string IdentityProvider => IdentityProviderToken;
+
     public BlueskyActivityProvider(string userId, 
                                    Connection atprotoConnection,
                                    IConfiguration configuration,
@@ -112,6 +115,39 @@ public class BlueskyActivityProvider : ActivityProviderBase
             foreach (var feedViewPost in feedViewPosts)
             {
                 if (total == count)
+                    break;
+
+                var entry = CreatePostEntry(feedViewPost);
+                if (entry == null)
+                    continue;
+
+                total++;
+                yield return entry;
+            }
+        } while (total < count && !string.IsNullOrWhiteSpace(cursor));
+    }
+
+    public override async IAsyncEnumerable<EntryModel> GetAuthorEntriesAsync(string provider, string externalId, int count)
+    {
+        if (!string.Equals(provider, IdentityProvider, StringComparison.OrdinalIgnoreCase))
+            yield break;
+
+        var targetDid = ATDid.Create(externalId);
+        if (targetDid == null)
+            yield break;
+
+        var cursor = "";
+        var total = 0;
+        do
+        {
+            var toFetch = Math.Clamp(count - total, 10, 100);
+            var atFeed = (await protocol.Feed.GetAuthorFeedAsync(targetDid, limit: toFetch, cursor: cursor, filter: "posts_no_replies", includePins: false))
+                .HandleResult()!;
+            cursor = WebUtility.UrlEncode(atFeed.Cursor);
+
+            foreach (var feedViewPost in atFeed.Feed)
+            {
+                if (total >= count)
                     break;
 
                 var entry = CreatePostEntry(feedViewPost);
@@ -227,6 +263,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
         var author = new ProfileModel()
         {
             IsMe = postView.Author.Did.Equals(this.did),
+            Provider = IdentityProvider,
             Id = $"{postView.Author.Did}",
             ScreenName = $"@{postView.Author.Handle}",
             DisplayName = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,

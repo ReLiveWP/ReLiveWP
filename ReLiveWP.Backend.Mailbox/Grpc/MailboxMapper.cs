@@ -4,14 +4,8 @@ using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Backend.Mailbox.Grpc;
 
-// Entity → proto and proto → entity conversions.
-// Entity optional numerics (byte?, ushort?, uint?, int?, long?, bool?) must be set
-// procedurally (not in object initializers) so that proto3 HasX semantics are preserved:
-// leaving a field unset means HasX=false, which callers use to distinguish "not present"
-// from the zero-value (e.g. BusyStatus=0 means Free, not absent).
-//
-// optional Timestamp fields are nullable reference types (Timestamp?) — check != null,
-// not HasX.
+// entity <-> proto conversions. grpc has no nullable scalars, so null/missing fields skip the setter
+// entirely; Timestamp fields are the exception and are checked with != null instead of HasX.
 public static class MailboxMapper
 {
     public static Timestamp? ToProtoTs(DateTime? dt) =>
@@ -96,6 +90,8 @@ public static class MailboxMapper
             SyncKey = s.SyncKey,
             Watermark = s.Watermark,
             LastSeenAt = Timestamp.FromDateTime(DateTime.SpecifyKind(s.LastSeenAt, DateTimeKind.Utc)),
+            PreviousSyncKey = s.PreviousSyncKey,
+            PreviousWatermark = s.PreviousWatermark,
         };
 
         if (s.CachedAnnotationNames is not null) p.CachedAnnotationNames = s.CachedAnnotationNames;
@@ -134,13 +130,15 @@ public static class MailboxMapper
             CreatedAt = ToProtoTs(item.CreatedAt),
             DeletedAt = ToProtoTs(item.DeletedAt),
         };
+        if (item.ClientId is not null) p.ClientId = item.ClientId;
 
         switch (item)
         {
             case DbContactItem c: p.Contact = ToProto(c); break;
             case DbCalendarItem cal: p.Calendar = ToProto(cal); break;
-            case DbTask: p.Task = new TaskItem(); break;
+            case DbTask t: p.Task = ToProto(t); break;
             case DbEmail e: p.Email = ToProto(e); break;
+            case DbNote n: p.Note = ToProto(n); break;
             default: throw new InvalidOperationException($"Unknown item type {item.GetType().Name}");
         }
 
@@ -480,6 +478,110 @@ public static class MailboxMapper
         return cal;
     }
 
+    public static TaskItem ToProto(DbTask t)
+    {
+        var p = new TaskItem
+        {
+            StartDate = ToProtoTs(t.StartDate),
+            UtcStartDate = ToProtoTs(t.UtcStartDate),
+            DueDate = ToProtoTs(t.DueDate),
+            UtcDueDate = ToProtoTs(t.UtcDueDate),
+            DateCompleted = ToProtoTs(t.DateCompleted),
+            ReminderTime = ToProtoTs(t.ReminderTime),
+            RecurrenceStart = ToProtoTs(t.RecurrenceStart),
+            RecurrenceUntil = ToProtoTs(t.RecurrenceUntil),
+        };
+
+        if (t.Subject is not null) p.Subject = t.Subject;
+        if (t.Notes is not null) p.Notes = t.Notes;
+        if (t.Importance.HasValue) p.Importance = t.Importance.Value;
+        if (t.Sensitivity.HasValue) p.Sensitivity = t.Sensitivity.Value;
+        if (t.NativeBodyType.HasValue) p.NativeBodyType = t.NativeBodyType.Value;
+        if (t.Complete.HasValue) p.Complete = t.Complete.Value;
+        if (t.ReminderSet.HasValue) p.ReminderSet = t.ReminderSet.Value;
+        if (t.RecurrenceType.HasValue) p.RecurrenceType = t.RecurrenceType.Value;
+        if (t.RecurrenceOccurrences.HasValue) p.RecurrenceOccurrences = t.RecurrenceOccurrences.Value;
+        if (t.RecurrenceInterval.HasValue) p.RecurrenceInterval = t.RecurrenceInterval.Value;
+        if (t.RecurrenceDayOfWeek.HasValue) p.RecurrenceDayOfWeek = t.RecurrenceDayOfWeek.Value;
+        if (t.RecurrenceDayOfMonth.HasValue) p.RecurrenceDayOfMonth = t.RecurrenceDayOfMonth.Value;
+        if (t.RecurrenceWeekOfMonth.HasValue) p.RecurrenceWeekOfMonth = t.RecurrenceWeekOfMonth.Value;
+        if (t.RecurrenceMonthOfYear.HasValue) p.RecurrenceMonthOfYear = t.RecurrenceMonthOfYear.Value;
+        if (t.RecurrenceRegenerate.HasValue) p.RecurrenceRegenerate = t.RecurrenceRegenerate.Value;
+        if (t.RecurrenceDeadOccur.HasValue) p.RecurrenceDeadOccur = t.RecurrenceDeadOccur.Value;
+        if (t.RecurrenceCalendarType.HasValue) p.RecurrenceCalendarType = t.RecurrenceCalendarType.Value;
+        if (t.RecurrenceIsLeapMonth.HasValue) p.RecurrenceIsLeapMonth = t.RecurrenceIsLeapMonth.Value;
+        if (t.RecurrenceFirstDayOfWeek.HasValue) p.RecurrenceFirstDayOfWeek = t.RecurrenceFirstDayOfWeek.Value;
+
+        return p;
+    }
+
+    public static DbTask ToEntity(string userId, string collectionId, TaskItem p) =>
+        ApplyToEntity(new DbTask { UserId = userId, CollectionId = collectionId }, p);
+
+    public static DbTask ApplyToEntity(DbTask t, TaskItem p)
+    {
+        t.Subject = p.HasSubject ? p.Subject : null;
+        t.Notes = p.HasNotes ? p.Notes : null;
+        t.Importance = p.HasImportance ? (byte)p.Importance : null;
+        t.Sensitivity = p.HasSensitivity ? (byte)p.Sensitivity : null;
+        t.NativeBodyType = p.HasNativeBodyType ? (byte)p.NativeBodyType : null;
+        t.StartDate = p.StartDate != null ? FromProtoTs(p.StartDate) : null;
+        t.UtcStartDate = p.UtcStartDate != null ? FromProtoTs(p.UtcStartDate) : null;
+        t.DueDate = p.DueDate != null ? FromProtoTs(p.DueDate) : null;
+        t.UtcDueDate = p.UtcDueDate != null ? FromProtoTs(p.UtcDueDate) : null;
+        t.Complete = p.HasComplete ? p.Complete : null;
+        t.DateCompleted = p.DateCompleted != null ? FromProtoTs(p.DateCompleted) : null;
+        t.ReminderSet = p.HasReminderSet ? p.ReminderSet : null;
+        t.ReminderTime = p.ReminderTime != null ? FromProtoTs(p.ReminderTime) : null;
+        t.RecurrenceType = p.HasRecurrenceType ? (byte)p.RecurrenceType : null;
+        t.RecurrenceStart = p.RecurrenceStart != null ? FromProtoTs(p.RecurrenceStart) : null;
+        t.RecurrenceUntil = p.RecurrenceUntil != null ? FromProtoTs(p.RecurrenceUntil) : null;
+        t.RecurrenceOccurrences = p.HasRecurrenceOccurrences ? (byte)p.RecurrenceOccurrences : null;
+        t.RecurrenceInterval = p.HasRecurrenceInterval ? (ushort)p.RecurrenceInterval : null;
+        t.RecurrenceDayOfWeek = p.HasRecurrenceDayOfWeek ? (byte)p.RecurrenceDayOfWeek : null;
+        t.RecurrenceDayOfMonth = p.HasRecurrenceDayOfMonth ? (byte)p.RecurrenceDayOfMonth : null;
+        t.RecurrenceWeekOfMonth = p.HasRecurrenceWeekOfMonth ? (byte)p.RecurrenceWeekOfMonth : null;
+        t.RecurrenceMonthOfYear = p.HasRecurrenceMonthOfYear ? (byte)p.RecurrenceMonthOfYear : null;
+        t.RecurrenceRegenerate = p.HasRecurrenceRegenerate ? p.RecurrenceRegenerate : null;
+        t.RecurrenceDeadOccur = p.HasRecurrenceDeadOccur ? (byte)p.RecurrenceDeadOccur : null;
+        t.RecurrenceCalendarType = p.HasRecurrenceCalendarType ? (byte)p.RecurrenceCalendarType : null;
+        t.RecurrenceIsLeapMonth = p.HasRecurrenceIsLeapMonth ? p.RecurrenceIsLeapMonth : null;
+        t.RecurrenceFirstDayOfWeek = p.HasRecurrenceFirstDayOfWeek ? (byte)p.RecurrenceFirstDayOfWeek : null;
+        return t;
+    }
+
+    public static NoteItem ToProto(DbNote n)
+    {
+        var p = new NoteItem
+        {
+            LastModifiedDate = ToProtoTs(n.LastModifiedDate),
+        };
+
+        if (n.Subject is not null) p.Subject = n.Subject;
+        if (n.MessageClass is not null) p.MessageClass = n.MessageClass;
+        if (n.Body is not null) p.Body = n.Body;
+        if (n.NativeBodyType.HasValue) p.NativeBodyType = n.NativeBodyType.Value;
+
+        p.Categories.AddRange(n.Categories.Select(c => new NoteCategory
+        { Id = c.Id, NoteItemId = c.NoteItemId, Category = c.Category }));
+
+        return p;
+    }
+
+    public static DbNote ToEntity(string userId, string collectionId, NoteItem p) =>
+        ApplyToEntity(new DbNote { UserId = userId, CollectionId = collectionId }, p);
+
+    // Scalar fields only; Categories are synced in MailboxStoreService (as with Contact/Calendar).
+    public static DbNote ApplyToEntity(DbNote n, NoteItem p)
+    {
+        n.Subject = p.HasSubject ? p.Subject : null;
+        n.MessageClass = p.HasMessageClass ? p.MessageClass : null;
+        n.LastModifiedDate = p.LastModifiedDate != null ? FromProtoTs(p.LastModifiedDate) : null;
+        n.Body = p.HasBody ? p.Body : null;
+        n.NativeBodyType = p.HasNativeBodyType ? (byte)p.NativeBodyType : null;
+        return n;
+    }
+
     public static EmailItem ToProto(DbEmail e)
     {
         var p = new EmailItem
@@ -513,8 +615,40 @@ public static class MailboxMapper
         if (e.FlagStatus.HasValue || e.FlagType is not null || e.FlagSubject is not null)
             p.Flag = ToFlagProto(e);
 
+        p.Attachments.AddRange(e.Attachments.Select(ToProto));
+
         return p;
     }
+
+    // metadata only - Content is intentionally never populated here, matching the
+    // "write-only" contract documented on AttachmentItem.content in the proto
+    public static AttachmentItem ToProto(DbAttachment a)
+    {
+        var p = new AttachmentItem { Id = a.Id };
+
+        if (a.DisplayName is not null) p.DisplayName = a.DisplayName;
+        if (a.ContentType is not null) p.ContentType = a.ContentType;
+        if (a.EstimatedDataSize.HasValue) p.EstimatedDataSize = a.EstimatedDataSize.Value;
+        if (a.Method.HasValue) p.Method = a.Method.Value;
+        if (a.ContentId is not null) p.ContentId = a.ContentId;
+        if (a.ContentLocation is not null) p.ContentLocation = a.ContentLocation;
+        if (a.IsInline.HasValue) p.IsInline = a.IsInline.Value;
+        return p;
+    }
+
+    public static DbAttachment ToEntity(string emailItemId, AttachmentItem p) => new()
+    {
+        Id = Guid.NewGuid().ToString("N"),
+        EmailItemId = emailItemId,
+        DisplayName = p.HasDisplayName ? p.DisplayName : null,
+        ContentType = p.HasContentType ? p.ContentType : null,
+        EstimatedDataSize = p.HasEstimatedDataSize ? p.EstimatedDataSize : null,
+        Method = p.HasMethod ? (byte)p.Method : null,
+        ContentId = p.HasContentId ? p.ContentId : null,
+        ContentLocation = p.HasContentLocation ? p.ContentLocation : null,
+        IsInline = p.HasIsInline ? p.IsInline : null,
+        Content = p.HasContent ? p.Content.ToByteArray() : null,
+    };
 
     private static EmailFlag ToFlagProto(DbEmail e)
     {

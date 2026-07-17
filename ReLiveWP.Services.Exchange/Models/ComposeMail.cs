@@ -7,8 +7,6 @@ public static partial class Constants
     public const string ComposeMail = "ComposeMail";
 }
 
-// MS-ASCMD §2.2.3.162 / §6.36 — SendMail request (protocol 14.x WBXML form).
-// The Mime element carries the raw RFC822 message as opaque WBXML data.
 [XmlRoot("SendMail", Namespace = Constants.ComposeMail)]
 public class SendMailRequest
 {
@@ -18,7 +16,7 @@ public class SendMailRequest
     [XmlElement("AccountId", Namespace = Constants.ComposeMail)]
     public string? AccountId { get; set; }
 
-    // Empty element; presence (non-null) means "save a copy in Sent Items".
+    // presence of the (empty) element means "save a copy in sent items"
     [XmlElement("SaveInSentItems", Namespace = Constants.ComposeMail)]
     public string? SaveInSentItems { get; set; }
 
@@ -26,7 +24,6 @@ public class SendMailRequest
     public string? Mime { get; set; }
 }
 
-// §6.38 — SmartReply / §6.40 — SmartForward. Both add a required Source referencing the original.
 [XmlRoot("SmartReply", Namespace = Constants.ComposeMail)]
 public class SmartReplyRequest
 {
@@ -71,7 +68,6 @@ public class SmartForwardRequest
     public string? Mime { get; set; }
 }
 
-// §2.2.3.176 — Source: FolderId+ItemId identify the original message; or LongId alone.
 public class ComposeMailSource
 {
     [XmlElement("FolderId", Namespace = Constants.ComposeMail)]
@@ -87,7 +83,7 @@ public class ComposeMailSource
     public string? InstanceId { get; set; }
 }
 
-// Error responses. On success the server returns an empty HTTP 200 (no body).
+// on success the server returns an empty HTTP 200; this is only used for error responses
 [XmlRoot("SendMail", Namespace = Constants.ComposeMail)]
 public class SendMailResponse
 {

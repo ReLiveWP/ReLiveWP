@@ -28,7 +28,7 @@ public enum FolderType
     Journal,
     Notes,
     Unknown,
-    RecipientInformationCache, // ??
+    RecipientInformationCache,
     MeContact = 27
 }
 
@@ -41,17 +41,14 @@ public class FolderSync
     [XmlElement("SyncKey", Namespace = Constants.FolderHierarchy)]
     public string SyncKey { get; set; }
 
-    // Present in response when client subscribed to FolderSync-level annotations
     [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
     public Annotations? Annotations { get; set; }
     public bool ShouldSerializeAnnotations() => Annotations?.Items is { Count: > 0 };
 
-    // Appears only in some responses
     [XmlElement("Changes", Namespace = Constants.FolderHierarchy)]
     public Changes? Changes { get; set; }
 }
 
-// FolderHierarchy block
 public class Changes
 {
     [XmlElement("Count", Namespace = Constants.FolderHierarchy)]
@@ -94,7 +91,6 @@ public class FolderChange
         }
     }
 
-    // A Delete carries only ServerId; suppress the (unset, 0) Type element for deletes.
     public bool ShouldSerializeTypeInt() => Type != default;
 
     [XmlElement("Annotations", Namespace = Constants.WindowsLive)]

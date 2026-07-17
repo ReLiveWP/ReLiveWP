@@ -1,20 +1,15 @@
 syntax = "proto3";
-
 option csharp_namespace = "ReLiveWP.Services.Grpc.Mailbox";
-
 package mailbox_store;
-
 import "google/protobuf/timestamp.proto";
 
 service MailboxStore {
-  // ── Folders ──────────────────────────────────────────────────────────────
   rpc CreateFolder    (CreateFolderRequest)    returns (Folder);
   rpc UpdateFolder    (UpdateFolderRequest)    returns (MutationResult);
   rpc DeleteFolder    (DeleteFolderRequest)    returns (MutationResult);
   rpc GetFolder       (GetFolderRequest)       returns (Folder);
   rpc ListFolders     (ListFoldersRequest)     returns (stream Folder);
 
-  // ── Items ─────────────────────────────────────────────────────────────────
   rpc CreateItem      (CreateItemRequest)      returns (Item);
   rpc UpdateItem      (UpdateItemRequest)      returns (MutationResult);
   rpc DeleteItem      (DeleteItemRequest)      returns (MutationResult);
@@ -22,50 +17,61 @@ service MailboxStore {
   rpc GetItems        (GetItemsRequest)        returns (stream Item);
   rpc ListItems       (ListItemsRequest)       returns (stream Item);
   rpc CountLiveItems  (CountLiveItemsRequest)  returns (CountResult);
-  // Stub ingestion: deliver an inbound email into a user's folder (default Inbox).
-  // Stands in for a real SMTP/IMAP transport.
+  rpc MoveItem        (MoveItemRequest)        returns (MoveItemResult);
+  rpc MoveConversation (MoveConversationRequest) returns (MoveConversationResult);
+  rpc EmptyFolder     (EmptyFolderRequest)     returns (EmptyFolderResult);
+
   rpc DeliverEmail    (DeliverEmailRequest)    returns (Item);
 
-  // ── Change log ────────────────────────────────────────────────────────────
+  rpc DeleteMailbox   (DeleteMailboxRequest)   returns (DeleteMailboxResult);
+
+  rpc GetAttachmentContent (GetAttachmentContentRequest) returns (AttachmentContent);
+
   rpc GetFolderEvents    (GetFolderEventsRequest) returns (stream FolderEvent);
   rpc GetItemEvents      (GetItemEventsRequest)   returns (stream ItemEvent);
   rpc GetFolderEventTip  (FolderEventTipRequest)  returns (Watermark);
   rpc GetItemEventTip    (ItemEventTipRequest)     returns (Watermark);
 
-  // ── Sync state ────────────────────────────────────────────────────────────
   rpc GetSyncState    (GetSyncStateRequest)    returns (SyncState);
   rpc UpsertSyncState (UpsertSyncStateRequest) returns (SyncState);
+  rpc ListSyncStates  (ListSyncStatesRequest)  returns (stream SyncState);
 
-  // ── Device info ───────────────────────────────────────────────────────────
   rpc UpsertDeviceInfo (UpsertDeviceInfoRequest) returns (DeviceInfo);
   rpc GetDeviceInfo    (GetDeviceInfoRequest)    returns (DeviceInfo);
+
+  rpc UpsertContactIdentity    (UpsertContactIdentityRequest)    returns (MutationResult);
+  rpc DeleteContactIdentity    (DeleteContactIdentityRequest)    returns (MutationResult);
+  rpc ResolveAuthorsToContacts (ResolveAuthorsToContactsRequest) returns (ResolveAuthorsToContactsResponse);
+  rpc ResolveContactIdentities (ResolveContactIdentitiesRequest) returns (ResolveContactIdentitiesResponse);
+  rpc GetContactProfiles      (GetContactProfilesRequest)      returns (GetContactProfilesResponse);
+
+  rpc ReconcileDuplicateItems (ReconcileDuplicateItemsRequest) returns (ReconcileDuplicateItemsResult);
+  rpc RevalidateItems (RevalidateItemsRequest) returns (RevalidateItemsResult);
+  rpc ListFlaggedItems (ListFlaggedItemsRequest) returns (stream FlaggedItem);
+  rpc ReconcileSyncState (ReconcileSyncStateRequest) returns (ReconcileSyncStateResult);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Enums
-// ─────────────────────────────────────────────────────────────────────────────
-
 enum FolderType {
-  FOLDER_TYPE_UNKNOWN              = 0;
-  FOLDER_TYPE_GENERIC              = 1;
-  FOLDER_TYPE_INBOX_DEFAULT        = 2;
-  FOLDER_TYPE_DRAFTS_DEFAULT       = 3;
-  FOLDER_TYPE_DELETED_ITEMS_DEFAULT = 4;
-  FOLDER_TYPE_SENT_ITEMS_DEFAULT   = 5;
-  FOLDER_TYPE_OUTBOX_DEFAULT       = 6;
-  FOLDER_TYPE_TASKS_DEFAULT        = 7;
-  FOLDER_TYPE_CALENDAR_DEFAULT     = 8;
-  FOLDER_TYPE_CONTACTS_DEFAULT     = 9;
-  FOLDER_TYPE_NOTES_DEFAULT        = 10;
-  FOLDER_TYPE_JOURNAL_DEFAULT      = 11;
-  FOLDER_TYPE_MAIL                 = 12;
-  FOLDER_TYPE_CALENDAR             = 13;
-  FOLDER_TYPE_CONTACTS             = 14;
-  FOLDER_TYPE_TASK                 = 15;
-  FOLDER_TYPE_JOURNAL              = 16;
-  FOLDER_TYPE_NOTES                = 17;
+  FOLDER_TYPE_UNKNOWN                     = 0;
+  FOLDER_TYPE_GENERIC                     = 1;
+  FOLDER_TYPE_INBOX_DEFAULT               = 2;
+  FOLDER_TYPE_DRAFTS_DEFAULT              = 3;
+  FOLDER_TYPE_DELETED_ITEMS_DEFAULT       = 4;
+  FOLDER_TYPE_SENT_ITEMS_DEFAULT          = 5;
+  FOLDER_TYPE_OUTBOX_DEFAULT              = 6;
+  FOLDER_TYPE_TASKS_DEFAULT               = 7;
+  FOLDER_TYPE_CALENDAR_DEFAULT            = 8;
+  FOLDER_TYPE_CONTACTS_DEFAULT            = 9;
+  FOLDER_TYPE_NOTES_DEFAULT               = 10;
+  FOLDER_TYPE_JOURNAL_DEFAULT             = 11;
+  FOLDER_TYPE_MAIL                        = 12;
+  FOLDER_TYPE_CALENDAR                    = 13;
+  FOLDER_TYPE_CONTACTS                    = 14;
+  FOLDER_TYPE_TASK                        = 15;
+  FOLDER_TYPE_JOURNAL                     = 16;
+  FOLDER_TYPE_NOTES                       = 17;
   FOLDER_TYPE_RECIPIENT_INFORMATION_CACHE = 19;
-  FOLDER_TYPE_ME_CONTACT           = 27;
+  FOLDER_TYPE_ME_CONTACT                  = 27;
 }
 
 enum ChangeEventType {
@@ -73,10 +79,6 @@ enum ChangeEventType {
   CHANGE_EVENT_TYPE_UPDATE = 1;
   CHANGE_EVENT_TYPE_DELETE = 2;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Common
-// ─────────────────────────────────────────────────────────────────────────────
 
 message MutationResult {
   bool found = 1;
@@ -90,42 +92,38 @@ message Watermark {
   int64 value = 1;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Folder
-// ─────────────────────────────────────────────────────────────────────────────
-
 message Folder {
-  string id              = 1;
-  string user_id         = 2;
-  string parent_server_id = 3;
-  string display_name    = 4;
-  FolderType type        = 5;
-  optional google.protobuf.Timestamp created_at = 6;
-  optional google.protobuf.Timestamp deleted_at = 7;
-  optional string source_id    = 8;
-  optional string account_name = 9;
-  bool is_hidden         = 10;
+  string                             id               = 1;
+  string                             user_id          = 2;
+  string                             parent_server_id = 3;
+  string                             display_name     = 4;
+  FolderType                         type             = 5;
+  optional google.protobuf.Timestamp created_at       = 6;
+  optional google.protobuf.Timestamp deleted_at       = 7;
+  optional string                    source_id        = 8;
+  optional string                    account_name     = 9;
+  bool                               is_hidden        = 10;
 }
 
 message CreateFolderRequest {
-  string user_id         = 1;
-  string display_name    = 2;
-  FolderType type        = 3;
-  string parent_server_id = 4;  // default "0"
-  optional string source_id    = 5;
-  optional string account_name = 6;
-  bool is_hidden         = 7;
+  string          user_id          = 1;
+  string          display_name     = 2;
+  FolderType      type             = 3;
+  string          parent_server_id = 4;  // default "0"
+  optional string source_id        = 5;
+  optional string account_name     = 6;
+  bool            is_hidden        = 7;
 }
 
 message UpdateFolderRequest {
-  string user_id      = 1;
-  string server_id    = 2;
-  string display_name = 3;
-  string parent_server_id = 4;
-  FolderType type     = 5;
-  optional string source_id    = 6;
-  optional string account_name = 7;
-  bool is_hidden      = 8;
+  string          user_id          = 1;
+  string          server_id        = 2;
+  string          display_name     = 3;
+  string          parent_server_id = 4;
+  FolderType      type             = 5;
+  optional string source_id        = 6;
+  optional string account_name     = 7;
+  bool            is_hidden        = 8;
 }
 
 message DeleteFolderRequest {
@@ -139,49 +137,43 @@ message GetFolderRequest {
 }
 
 message ListFoldersRequest {
-  string user_id          = 1;
-  bool include_hidden     = 2;
-  bool include_deleted    = 3;
+  string user_id         = 1;
+  bool   include_hidden  = 2;
+  bool   include_deleted = 3;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Items — typed envelope with oneof body
-// ─────────────────────────────────────────────────────────────────────────────
-
 message Item {
-  string id            = 1;
-  string user_id       = 2;
-  string collection_id = 3;
-  string server_id     = 4;
-  optional google.protobuf.Timestamp created_at = 5;
-  optional google.protobuf.Timestamp deleted_at = 6;
+  string                             id            = 1;
+  string                             user_id       = 2;
+  string                             collection_id = 3;
+  string                             server_id     = 4;
+  optional google.protobuf.Timestamp created_at    = 5;
+  optional google.protobuf.Timestamp deleted_at    = 6;
+  optional string                    client_id     = 7;  // EAS Add ClientId, when client-originated
 
   oneof body {
     ContactItem  contact  = 10;
     CalendarItem calendar = 11;
     TaskItem     task     = 12;
     EmailItem    email    = 13;
+    NoteItem     note     = 14;
   }
 }
 
-// ── ContactItem ───────────────────────────────────────────────────────────────
 message ContactItem {
-  // Name
-  optional string first_name   = 1;
-  optional string middle_name  = 2;
-  optional string last_name    = 3;
-  optional string title        = 4;
-  optional string suffix       = 5;
-  optional string file_as      = 6;
-  optional string alias        = 7;
-  optional string nick_name    = 8;
+  optional string first_name  = 1;
+  optional string middle_name = 2;
+  optional string last_name   = 3;
+  optional string title       = 4;
+  optional string suffix      = 5;
+  optional string file_as     = 6;
+  optional string alias       = 7;
+  optional string nick_name   = 8;
 
-  // Yomi
   optional string yomi_first_name   = 9;
   optional string yomi_last_name    = 10;
   optional string yomi_company_name = 11;
 
-  // Organisation
   optional string company_name    = 12;
   optional string department      = 13;
   optional string job_title       = 14;
@@ -192,67 +184,58 @@ message ContactItem {
   optional string government_id   = 19;
   optional string assistant_name  = 20;
 
-  // Email
   optional string email1_address = 21;
   optional string email2_address = 22;
   optional string email3_address = 23;
 
-  // Phone
-  optional string business_phone_number   = 24;
-  optional string business2_phone_number  = 25;
-  optional string business_fax_number     = 26;
-  optional string home_phone_number       = 27;
-  optional string home2_phone_number      = 28;
-  optional string home_fax_number         = 29;
-  optional string mobile_phone_number     = 30;
-  optional string car_phone_number        = 31;
-  optional string pager_number            = 32;
-  optional string radio_phone_number      = 33;
-  optional string assistant_phone_number  = 34;
-  optional string company_main_phone      = 35;
-  optional string mms                     = 36;
+  optional string business_phone_number  = 24;
+  optional string business2_phone_number = 25;
+  optional string business_fax_number    = 26;
+  optional string home_phone_number      = 27;
+  optional string home2_phone_number     = 28;
+  optional string home_fax_number        = 29;
+  optional string mobile_phone_number    = 30;
+  optional string car_phone_number       = 31;
+  optional string pager_number           = 32;
+  optional string radio_phone_number     = 33;
+  optional string assistant_phone_number = 34;
+  optional string company_main_phone     = 35;
+  optional string mms                    = 36;
 
-  // IM
   optional string im_address  = 37;
   optional string im_address2 = 38;
   optional string im_address3 = 39;
 
-  // Business address
   optional string business_address_street      = 40;
   optional string business_address_city        = 41;
   optional string business_address_state       = 42;
   optional string business_address_postal_code = 43;
   optional string business_address_country     = 44;
 
-  // Home address
   optional string home_address_street      = 45;
   optional string home_address_city        = 46;
   optional string home_address_state       = 47;
   optional string home_address_postal_code = 48;
   optional string home_address_country     = 49;
 
-  // Other address
   optional string other_address_street      = 50;
   optional string other_address_city        = 51;
   optional string other_address_state       = 52;
   optional string other_address_postal_code = 53;
   optional string other_address_country     = 54;
 
-  // Personal
-  optional string spouse       = 55;
-  optional google.protobuf.Timestamp birthday    = 56;
-  optional google.protobuf.Timestamp anniversary = 57;
-  optional string web_page     = 58;
-  optional string notes        = 59;
-  optional bytes  picture      = 60;
-  optional int32  weighted_rank = 61;
+  optional string                    spouse        = 55;
+  optional google.protobuf.Timestamp birthday      = 56;
+  optional google.protobuf.Timestamp anniversary   = 57;
+  optional string                    web_page      = 58;
+  optional string                    notes         = 59;
+  optional bytes                     picture       = 60;
+  optional int32                     weighted_rank = 61;
 
-  // Multi-valued
   repeated ContactCategory categories = 62;
   repeated ContactChild    children   = 63;
 
-  // Annotation (loaded on demand)
-  optional ContactAnnotation annotation = 64;
+  optional ContactAnnotation annotation = 64;  // loaded on demand
 }
 
 message ContactCategory {
@@ -268,83 +251,74 @@ message ContactChild {
 }
 
 message ContactAnnotation {
-  string contact_item_id        = 1;
-  optional int64  cid           = 2;
-  optional string object_id     = 3;
-  optional string wl_id         = 4;
-  optional string im_mri        = 5;
-  optional string contact_type  = 6;
-  optional string user_tile_url = 7;
-  optional string user_tile_hash = 8;
-  optional int32  trust_level    = 9;
-  optional int32  favorite_order = 10;
+  string          contact_item_id = 1;
+  optional int64  cid             = 2;
+  optional string object_id       = 3;
+  optional string wl_id           = 4;
+  optional string im_mri          = 5;
+  optional string contact_type    = 6;
+  optional string user_tile_url   = 7;
+  optional string user_tile_hash  = 8;
+  optional int32  trust_level     = 9;
+  optional int32  favorite_order  = 10;
 }
 
-// ── CalendarItem ──────────────────────────────────────────────────────────────
 message CalendarItem {
-  // Timing
-  optional string timezone  = 1;
+  optional string                    timezone   = 1;
   optional google.protobuf.Timestamp start_time = 2;
   optional google.protobuf.Timestamp end_time   = 3;
   optional google.protobuf.Timestamp dt_stamp   = 4;
 
-  // Identity
   optional string uid        = 5;
   optional string client_uid = 6;
 
-  // Meeting
-  optional string subject          = 7;
-  optional string location         = 8;
-  optional uint32 reminder         = 9;
-  optional bool   all_day_event    = 10;
-  optional uint32 busy_status      = 11;
-  optional uint32 sensitivity      = 12;
-  optional uint32 meeting_status   = 13;
-  optional string organizer_name   = 14;
-  optional string organizer_email  = 15;
+  optional string subject         = 7;
+  optional string location        = 8;
+  optional uint32 reminder        = 9;
+  optional bool   all_day_event   = 10;
+  optional uint32 busy_status     = 11;
+  optional uint32 sensitivity     = 12;
+  optional uint32 meeting_status  = 13;
+  optional string organizer_name  = 14;
+  optional string organizer_email = 15;
 
-  // Body
   optional string notes            = 16;
   optional uint32 native_body_type = 17;
   optional string body_legacy      = 18;
   optional bool   body_truncated   = 19;
 
-  // Response
-  optional google.protobuf.Timestamp appointment_reply_time = 20;
-  optional uint32 response_type              = 21;
-  optional bool   response_requested         = 22;
-  optional bool   disallow_new_time_proposal = 23;
+  optional google.protobuf.Timestamp appointment_reply_time     = 20;
+  optional uint32                    response_type              = 21;
+  optional bool                      response_requested         = 22;
+  optional bool                      disallow_new_time_proposal = 23;
 
-  // Online meeting
   optional string online_meeting_conf_link     = 24;
   optional string online_meeting_external_link = 25;
 
-  // Recurrence (embedded)
-  optional uint32 recurrence_type             = 30;
-  optional uint32 recurrence_occurrences      = 31;
-  optional uint32 recurrence_interval         = 32;
-  optional uint32 recurrence_week_of_month    = 33;
-  optional uint32 recurrence_day_of_week      = 34;
-  optional uint32 recurrence_month_of_year    = 35;
-  optional google.protobuf.Timestamp recurrence_until = 36;
-  optional uint32 recurrence_day_of_month     = 37;
-  optional uint32 recurrence_calendar_type    = 38;
-  optional bool   recurrence_is_leap_month    = 39;
-  optional uint32 recurrence_first_day_of_week = 40;
+  optional uint32                    recurrence_type              = 30;
+  optional uint32                    recurrence_occurrences       = 31;
+  optional uint32                    recurrence_interval          = 32;
+  optional uint32                    recurrence_week_of_month     = 33;
+  optional uint32                    recurrence_day_of_week       = 34;
+  optional uint32                    recurrence_month_of_year     = 35;
+  optional google.protobuf.Timestamp recurrence_until             = 36;
+  optional uint32                    recurrence_day_of_month      = 37;
+  optional uint32                    recurrence_calendar_type     = 38;
+  optional bool                      recurrence_is_leap_month     = 39;
+  optional uint32                    recurrence_first_day_of_week = 40;
 
-  // Child collections
   repeated CalendarAttendee  attendees  = 50;
   repeated CalendarCategory  categories = 51;
   repeated CalendarException exceptions = 52;
 }
 
 message CalendarAttendee {
-  string id               = 1;
-  string calendar_item_id = 2;
-  string email            = 3;
-  string name             = 4;
-  optional uint32 attendee_status = 5;
-  optional uint32 attendee_type   = 6;
+  string          id               = 1;
+  string          calendar_item_id = 2;
+  string          email            = 3;
+  string          name             = 4;
+  optional uint32 attendee_status  = 5;
+  optional uint32 attendee_type    = 6;
 }
 
 message CalendarCategory {
@@ -357,38 +331,38 @@ message CalendarException {
   string id               = 1;
   string calendar_item_id = 2;
 
-  optional bool   deleted             = 3;
+  optional bool   deleted              = 3;
   optional string exception_start_time = 4;
-  optional string instance_id         = 5;
+  optional string instance_id          = 5;
 
-  optional string subject             = 6;
-  optional google.protobuf.Timestamp start_time = 7;
-  optional google.protobuf.Timestamp end_time   = 8;
-  optional string location            = 9;
-  optional uint32 sensitivity         = 10;
-  optional uint32 busy_status         = 11;
-  optional bool   all_day_event       = 12;
-  optional uint32 reminder            = 13;
-  optional google.protobuf.Timestamp dt_stamp   = 14;
-  optional uint32 meeting_status      = 15;
-  optional google.protobuf.Timestamp appointment_reply_time = 16;
-  optional uint32 response_type       = 17;
-  optional string online_meeting_conf_link     = 18;
-  optional string online_meeting_external_link = 19;
-  optional string notes               = 20;
-  optional string body_legacy         = 21;
+  optional string                    subject                      = 6;
+  optional google.protobuf.Timestamp start_time                   = 7;
+  optional google.protobuf.Timestamp end_time                     = 8;
+  optional string                    location                     = 9;
+  optional uint32                    sensitivity                  = 10;
+  optional uint32                    busy_status                  = 11;
+  optional bool                      all_day_event                = 12;
+  optional uint32                    reminder                     = 13;
+  optional google.protobuf.Timestamp dt_stamp                     = 14;
+  optional uint32                    meeting_status               = 15;
+  optional google.protobuf.Timestamp appointment_reply_time       = 16;
+  optional uint32                    response_type                = 17;
+  optional string                    online_meeting_conf_link     = 18;
+  optional string                    online_meeting_external_link = 19;
+  optional string                    notes                        = 20;
+  optional string                    body_legacy                  = 21;
 
-  repeated CalendarExceptionAttendee  attendees  = 30;
-  repeated CalendarExceptionCategory  categories = 31;
+  repeated CalendarExceptionAttendee attendees  = 30;
+  repeated CalendarExceptionCategory categories = 31;
 }
 
 message CalendarExceptionAttendee {
-  string id                    = 1;
-  string calendar_exception_id = 2;
-  string email                 = 3;
-  string name                  = 4;
-  optional uint32 attendee_status = 5;
-  optional uint32 attendee_type   = 6;
+  string          id                    = 1;
+  string          calendar_exception_id = 2;
+  string          email                 = 3;
+  string          name                  = 4;
+  optional uint32 attendee_status       = 5;
+  optional uint32 attendee_type         = 6;
 }
 
 message CalendarExceptionCategory {
@@ -397,65 +371,118 @@ message CalendarExceptionCategory {
   string category              = 3;
 }
 
-// ── TaskItem / EmailItem ──────────────────────────────────────────────────────
-message TaskItem {}
+message TaskItem {
+  optional string                    subject        = 1;
+  optional uint32                    importance     = 2;  // 0 low, 1 normal, 2 high
+  optional uint32                    sensitivity    = 3;  // 0 normal, 1 personal, 2 private, 3 confidential
+  optional string                    notes          = 4;
+  optional uint32                    native_body_type = 5;
 
-// Follow-up flag on a mail item (MS-ASEMAIL §2.2.2.34). Carried as an optional
-// sub-message; absent message => no flag, present => flag (possibly empty).
+  optional google.protobuf.Timestamp start_date     = 6;
+  optional google.protobuf.Timestamp utc_start_date = 7;
+  optional google.protobuf.Timestamp due_date       = 8;
+  optional google.protobuf.Timestamp utc_due_date   = 9;
+
+  optional bool                      complete       = 10;
+  optional google.protobuf.Timestamp date_completed = 11;
+
+  optional bool                      reminder_set   = 12;
+  optional google.protobuf.Timestamp reminder_time  = 13;
+
+  optional uint32                    recurrence_type              = 30;
+  optional google.protobuf.Timestamp recurrence_start             = 31;
+  optional google.protobuf.Timestamp recurrence_until             = 32;
+  optional uint32                    recurrence_occurrences       = 33;
+  optional uint32                    recurrence_interval          = 34;
+  optional uint32                    recurrence_day_of_week       = 35;
+  optional uint32                    recurrence_day_of_month      = 36;
+  optional uint32                    recurrence_week_of_month     = 37;
+  optional uint32                    recurrence_month_of_year     = 38;
+  optional bool                      recurrence_regenerate        = 39;
+  optional uint32                    recurrence_dead_occur        = 40;
+  optional uint32                    recurrence_calendar_type     = 41;
+  optional bool                      recurrence_is_leap_month     = 42;
+  optional uint32                    recurrence_first_day_of_week = 43;
+}
+
 message EmailFlag {
-  optional string subject                          = 1;  // tasks:Subject
-  optional int32  status                           = 2;  // 0 clear, 1 active, 2 complete
-  optional string flag_type                        = 3;
-  optional google.protobuf.Timestamp date_completed   = 4;
-  optional google.protobuf.Timestamp complete_time    = 5;
-  optional google.protobuf.Timestamp start_date       = 6;
-  optional google.protobuf.Timestamp due_date         = 7;
-  optional google.protobuf.Timestamp utc_start_date   = 8;
-  optional google.protobuf.Timestamp utc_due_date     = 9;
-  optional bool   reminder_set                     = 10;
-  optional google.protobuf.Timestamp reminder_time    = 11;
+  optional string                    subject        = 1;
+  optional int32                     status         = 2;  // 0 clear, 1 active, 2 complete
+  optional string                    flag_type      = 3;
+  optional google.protobuf.Timestamp date_completed = 4;
+  optional google.protobuf.Timestamp complete_time  = 5;
+  optional google.protobuf.Timestamp start_date     = 6;
+  optional google.protobuf.Timestamp due_date       = 7;
+  optional google.protobuf.Timestamp utc_start_date = 8;
+  optional google.protobuf.Timestamp utc_due_date   = 9;
+  optional bool                      reminder_set   = 10;
+  optional google.protobuf.Timestamp reminder_time  = 11;
 }
 
 message EmailItem {
-  // Addressing (email ns)
   optional string to         = 1;
   optional string cc         = 2;
   optional string bcc        = 3;
   optional string from       = 4;
   optional string reply_to   = 5;
   optional string display_to = 6;
-  optional string sender     = 7;   // email2 ns
+  optional string sender     = 7;
 
-  // Headers
-  optional string subject       = 8;
+  optional string                    subject       = 8;
   optional google.protobuf.Timestamp date_received = 9;
-  optional string thread_topic  = 10;
-  optional int32  importance    = 11;  // 0 low, 1 normal, 2 high
-  optional bool   read          = 12;
-  optional string message_class = 13;
-  optional string internet_cpid = 14;
-  optional string content_class = 15;
+  optional string                    thread_topic  = 10;
+  optional int32                     importance    = 11;  // 0 low, 1 normal, 2 high
+  optional bool                      read          = 12;
+  optional string                    message_class = 13;
+  optional string                    internet_cpid = 14;
+  optional string                    content_class = 15;
 
-  // Conversation (email2 ns) — opaque BLOBs
-  optional bytes  conversation_id    = 16;
-  optional bytes  conversation_index = 17;
+  optional bytes conversation_id    = 16;
+  optional bytes conversation_index = 17;
 
-  // Reply/forward verb tracking (email2 ns)
-  optional int32  last_verb_executed = 18;  // 0 none, 1 reply, 2 reply-all, 3 forward
+  optional int32                     last_verb_executed       = 18;  // 0 none, 1 reply, 2 reply-all, 3 forward
   optional google.protobuf.Timestamp last_verb_execution_time = 19;
 
-  // Body
-  optional string body             = 20;  // full body data (plain/html)
-  optional int32  body_type        = 21;  // stored body Type: 1 plain, 2 html
+  optional string body             = 20;
+  optional int32  body_type        = 21;  // 1 plain, 2 html
   optional int32  native_body_type = 22;
-  optional string mime_raw         = 23;  // raw RFC822 MIME (for ItemOperations Fetch / sent items)
+  optional string mime_raw         = 23;  // raw MIME, for ItemOperations Fetch / sent items
 
   optional EmailFlag flag = 30;
+
+  // content is write-only: settable on create/deliver to seed storage, bytes
+  // are otherwise fetched separately via GetAttachmentContent
+  repeated AttachmentItem attachments = 40;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Item CRUD requests
-// ─────────────────────────────────────────────────────────────────────────────
+message AttachmentItem {
+  string          id                   = 1;  // FileReference value
+  optional string display_name         = 2;
+  optional string content_type         = 3;
+  optional int32  estimated_data_size  = 4;
+  optional int32  method               = 5;  // 1=normal 5=embedded message 6=OLE
+  optional string content_id           = 6;
+  optional string content_location     = 7;
+  optional bool   is_inline            = 8;
+  optional bytes  content              = 9;  // write-only, see attachments field comment above
+}
+
+// "body" holds the note text; named body (not notes) to avoid confusion with the Notes item class
+message NoteItem {
+  optional string                    subject            = 1;
+  optional string                    message_class      = 2;
+  optional google.protobuf.Timestamp last_modified_date = 3;  // server-stamped, client value ignored
+  optional string                    body               = 4;
+  optional uint32                    native_body_type   = 5;
+
+  repeated NoteCategory categories = 6;
+}
+
+message NoteCategory {
+  string id           = 1;
+  string note_item_id = 2;
+  string category     = 3;
+}
 
 message CreateItemRequest {
   string user_id       = 1;
@@ -465,8 +492,11 @@ message CreateItemRequest {
     CalendarItem calendar = 11;
     TaskItem     task     = 12;
     EmailItem    email    = 13;
+    NoteItem     note     = 14;
   }
   optional ContactAnnotation annotation = 20;
+
+  optional string client_id = 21;  // nonce, prevents re-creating the same item twice
 }
 
 message UpdateItemRequest {
@@ -477,6 +507,7 @@ message UpdateItemRequest {
     CalendarItem calendar = 11;
     TaskItem     task     = 12;
     EmailItem    email    = 13;
+    NoteItem     note     = 14;
   }
   optional ContactAnnotation annotation = 20;
 }
@@ -486,12 +517,66 @@ message DeleteItemRequest {
   string server_id = 2;
 }
 
-// Stub email ingestion. If collection_id is empty, the server resolves the
-// user's default Inbox folder.
-message DeliverEmailRequest {
+message MoveItemRequest {
+  string user_id           = 1;
+  string server_id         = 2;
+  string dst_collection_id = 3;
+  optional string src_collection_id = 4; // optional; for source validation
+}
+
+message MoveItemResult {
+  MoveItemStatus status        = 1;
+  string         new_server_id = 2;
+}
+
+enum MoveItemStatus {
+  MOVE_SUCCESS         = 0;
+  MOVE_INVALID_SOURCE  = 1; // item (or src folder) not found
+  MOVE_INVALID_DEST    = 2; // dst folder not found
+  MOVE_SAME_COLLECTION = 3; // src == dst
+  MOVE_INVALID_CLASS   = 4; // dst folder holds a different item class than the item
+}
+
+// moves every email sharing conversation_id into dst_collection_id; conversations are
+// email-only here, so MOVE_INVALID_CLASS never fires for this RPC
+message MoveConversationRequest {
+  string user_id           = 1;
+  bytes  conversation_id   = 2;
+  string dst_collection_id = 3;
+}
+
+message MoveConversationResult {
+  MoveItemStatus status       = 1;
+  int32          items_moved  = 2;
+}
+
+message EmptyFolderRequest {
   string user_id            = 1;
+  string collection_id      = 2;
+  bool   delete_sub_folders = 3;
+}
+
+message EmptyFolderResult {
+  bool  found         = 1;  
+  int32 items_deleted = 2;
+}
+
+message DeliverEmailRequest {
+  string          user_id       = 1;
   optional string collection_id = 2;
-  EmailItem email           = 3;
+  EmailItem       email         = 3;
+}
+
+message GetAttachmentContentRequest {
+  string user_id       = 1;
+  string attachment_id = 2;  // FileReference value
+}
+
+message AttachmentContent {
+  string          id           = 1;
+  optional string display_name = 2;
+  optional string content_type = 3;
+  bytes           content      = 4;
 }
 
 message GetItemRequest {
@@ -500,13 +585,13 @@ message GetItemRequest {
 }
 
 message GetItemsRequest {
-  string user_id            = 1;
+  string          user_id    = 1;
   repeated string server_ids = 2;
 }
 
 message ListItemsRequest {
-  string user_id       = 1;
-  string collection_id = 2;
+  string user_id         = 1;
+  string collection_id   = 2;
   bool   include_deleted = 3;
 }
 
@@ -515,38 +600,34 @@ message CountLiveItemsRequest {
   string collection_id = 2;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Change log
-// ─────────────────────────────────────────────────────────────────────────────
-
 message FolderEvent {
-  int64  id           = 1;
-  string user_id      = 2;
-  ChangeEventType event_type = 3;
-  string server_id    = 4;
-  optional string parent_server_id = 5;
-  optional string display_name     = 6;
-  optional FolderType folder_type  = 7;
-  google.protobuf.Timestamp occurred_at = 8;
+  int64                     id               = 1;
+  string                    user_id          = 2;
+  ChangeEventType           event_type       = 3;
+  string                    server_id        = 4;
+  optional string           parent_server_id = 5;
+  optional string           display_name     = 6;
+  optional FolderType       folder_type      = 7;
+  google.protobuf.Timestamp occurred_at      = 8;
 }
 
 message ItemEvent {
-  int64  id            = 1;
-  string user_id       = 2;
-  string collection_id = 3;
-  ChangeEventType event_type = 4;
-  string server_id     = 5;
-  google.protobuf.Timestamp occurred_at = 6;
+  int64                     id            = 1;
+  string                    user_id       = 2;
+  string                    collection_id = 3;
+  ChangeEventType           event_type    = 4;
+  string                    server_id     = 5;
+  google.protobuf.Timestamp occurred_at   = 6;
 }
 
 message GetFolderEventsRequest {
-  string user_id        = 1;
+  string user_id         = 1;
   int64  after_watermark = 2;
 }
 
 message GetItemEventsRequest {
-  string user_id        = 1;
-  string collection_id  = 2;
+  string user_id         = 1;
+  string collection_id   = 2;
   int64  after_watermark = 3;
 }
 
@@ -559,18 +640,17 @@ message ItemEventTipRequest {
   string collection_id = 2;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sync state
-// ─────────────────────────────────────────────────────────────────────────────
-
 message SyncState {
-  string user_id       = 1;
-  string device_id     = 2;
-  string collection_id = 3;
-  string sync_key      = 4;
-  int64  watermark     = 5;
-  google.protobuf.Timestamp last_seen_at = 6;
-  optional string cached_annotation_names = 7;
+  string                    user_id                 = 1;
+  string                    device_id               = 2;
+  string                    collection_id           = 3;
+  string                    sync_key                = 4;
+  int64                     watermark               = 5;
+  google.protobuf.Timestamp last_seen_at            = 6;
+  optional string           cached_annotation_names = 7;
+
+  string                    previous_sync_key       = 8;  // lets us roll back one sync key if a device rejects the update
+  int64                     previous_watermark      = 9;
 }
 
 message GetSyncStateRequest {
@@ -580,48 +660,156 @@ message GetSyncStateRequest {
 }
 
 message UpsertSyncStateRequest {
-  string user_id       = 1;
-  string device_id     = 2;
-  string collection_id = 3;
-  string sync_key      = 4;
-  int64  watermark     = 5;
+  string          user_id                 = 1;
+  string          device_id               = 2;
+  string          collection_id           = 3;
+  string          sync_key                = 4;
+  int64           watermark               = 5;
   optional string cached_annotation_names = 6;
+  string          previous_sync_key       = 7;
+  int64           previous_watermark      = 8;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Device info
-// ─────────────────────────────────────────────────────────────────────────────
-
-message DeviceInfo {
+message ListSyncStatesRequest {
   string user_id   = 1;
   string device_id = 2;
-  optional string model            = 3;
-  optional string imei             = 4;
-  optional string friendly_name    = 5;
-  optional string os               = 6;
-  optional string os_language      = 7;
-  optional string phone_number     = 8;
-  optional string user_agent       = 9;
-  optional int32  enable_outbound_sms = 10;
-  optional string mobile_operator  = 11;
-  google.protobuf.Timestamp updated_at = 12;
+}
+
+message ReconcileDuplicateItemsRequest {
+  optional string user_id       = 1;
+  optional string collection_id = 2;
+}
+
+message ReconcileDuplicateItemsResult {
+  int32 groups_collapsed = 1;
+  int32 items_deleted    = 2;
+}
+
+message RevalidateItemsRequest {
+  optional string user_id       = 1;
+  optional string collection_id = 2;
+}
+
+message RevalidateItemsResult {
+  int32 items_scanned   = 1;
+  int32 items_corrected = 2;
+  int32 items_flagged   = 3;
+}
+
+message ListFlaggedItemsRequest {
+  string user_id = 1;
+}
+
+message ReconcileSyncStateRequest {
+  optional string user_id = 1;
+}
+
+message ReconcileSyncStateResult {
+  int32 sync_states_deleted    = 1;
+}
+
+message FlaggedItem {
+  Item                      item       = 1;
+  google.protobuf.Timestamp flagged_at = 2;
+  string                    reason     = 3;
+}
+
+message DeviceInfo {
+  string                    user_id             = 1;
+  string                    device_id           = 2;
+  optional string           model               = 3;
+  optional string           imei                = 4;
+  optional string           friendly_name       = 5;
+  optional string           os                  = 6;
+  optional string           os_language         = 7;
+  optional string           phone_number        = 8;
+  optional string           user_agent          = 9;
+  optional int32            enable_outbound_sms = 10;
+  optional string           mobile_operator     = 11;
+  google.protobuf.Timestamp updated_at          = 12;
 }
 
 message UpsertDeviceInfoRequest {
-  string user_id   = 1;
-  string device_id = 2;
-  optional string model            = 3;
-  optional string imei             = 4;
-  optional string friendly_name    = 5;
-  optional string os               = 6;
-  optional string os_language      = 7;
-  optional string phone_number     = 8;
-  optional string user_agent       = 9;
+  string          user_id             = 1;
+  string          device_id           = 2;
+  optional string model               = 3;
+  optional string imei                = 4;
+  optional string friendly_name       = 5;
+  optional string os                  = 6;
+  optional string os_language         = 7;
+  optional string phone_number        = 8;
+  optional string user_agent          = 9;
   optional int32  enable_outbound_sms = 10;
-  optional string mobile_operator  = 11;
+  optional string mobile_operator     = 11;
 }
 
 message GetDeviceInfoRequest {
   string user_id   = 1;
   string device_id = 2;
+}
+
+message ContactIdentity {
+  string contact_item_id = 1;
+  int64  contact_cid     = 2;  // contact's faux CID
+  string provider        = 3;  // provider token, e.g. "atproto"
+  string external_id     = 4;  // provider-native id, e.g. a DID
+}
+
+message UpsertContactIdentityRequest {
+  string user_id         = 1;
+  string contact_item_id = 2;
+  int64  contact_cid     = 3;
+  string provider        = 4;
+  string external_id     = 5;
+}
+
+message DeleteContactIdentityRequest {
+  string user_id     = 1;
+  string provider    = 2;
+  string external_id = 3;
+}
+
+message ResolveAuthorsToContactsRequest {
+  string          user_id      = 1;
+  string          provider     = 2;
+  repeated string external_ids = 3;
+}
+
+message ResolveAuthorsToContactsResponse {
+  map<string, int64> contact_cids = 1;  // external_id -> contact_cid
+}
+
+message ResolveContactIdentitiesRequest {
+  string         user_id = 1;
+  repeated int64 cids    = 2;
+}
+
+message ResolveContactIdentitiesResponse {
+  repeated ContactIdentity identities = 1;
+}
+
+message GetContactProfilesRequest {
+  string         user_id = 1;
+  repeated int64 cids    = 2;
+}
+
+message ContactProfile {
+  int64           cid          = 1;
+  string          display_name = 2;
+  optional string avatar_url   = 3;
+}
+
+message GetContactProfilesResponse {
+  repeated ContactProfile profiles = 1;
+}
+
+// hard-deletes every row for a user (GDPR-style account deletion); irreversible.
+message DeleteMailboxRequest {
+  string user_id = 1;
+}
+
+message DeleteMailboxResult {
+  bool  found           = 1;
+  int32 folders_deleted = 2;
+  int32 items_deleted   = 3;
 }

@@ -1,16 +1,29 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.Backend.Mailbox.Data.Entities;
+using ReLiveWP.ServiceDefaults.Events;
+using StackExchange.Redis;
 
 namespace ReLiveWP.Backend.Mailbox.Data;
 
-// Automatically emits FolderEvent / ItemEvent rows whenever entities are
-// saved, so callers never need to hand-write event rows.
-//
-// Runs inside the same SaveChanges call — events are committed atomically
-// with the data change. Registered via AddDbContext interceptor option.
+// records change log entries (for activesync) and emits redis pubsub events (for push) on every save
 public sealed class ChangeLogInterceptor : SaveChangesInterceptor
 {
+    private const string FolderHierarchyCollectionId = "0";
+
+    private readonly IConnectionMultiplexer? _redis;
+    private readonly ILogger<ChangeLogInterceptor> _logger;
+
+    public ChangeLogInterceptor() : this(null, null) { }
+    public ChangeLogInterceptor(IConnectionMultiplexer redis) : this(redis, null) { }
+    public ChangeLogInterceptor(IConnectionMultiplexer? redis, ILogger<ChangeLogInterceptor>? logger)
+    {
+        _redis = redis;
+        _logger = logger ?? NullLogger<ChangeLogInterceptor>.Instance;
+    }
+
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
         InterceptionResult<int> result,
@@ -28,21 +41,57 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
         return base.SavingChanges(eventData, result);
     }
 
+    public override async ValueTask<int> SavedChangesAsync(
+        SaveChangesCompletedEventData eventData,
+        int result,
+        CancellationToken ct = default)
+    {
+        await PublishNotificationsAsync((MailboxDbContext)eventData.Context!);
+        return await base.SavedChangesAsync(eventData, result, ct);
+    }
+
+    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
+    {
+        var db = (MailboxDbContext)eventData.Context!;
+        _ = PublishNotificationsAsync(db).ContinueWith(
+            t => _logger.LogError(t.Exception, "failed publishing mailbox.changed notifications"),
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        return base.SavedChanges(eventData, result);
+    }
+
+    private async Task PublishNotificationsAsync(MailboxDbContext db)
+    {
+        if (db.PendingChangeNotifications.Count == 0)
+            return;
+
+        var pending = db.PendingChangeNotifications.ToArray();
+        db.PendingChangeNotifications.Clear();
+
+        if (_redis is null)
+            return;
+
+        foreach (var evt in pending)
+            await _redis.PublishChangedAsync(evt);
+    }
+
+    private static MailboxChangeKind ToKind(DbChangeEventType t) => t switch
+    {
+        DbChangeEventType.Add => MailboxChangeKind.Add,
+        DbChangeEventType.Delete => MailboxChangeKind.Delete,
+        _ => MailboxChangeKind.Update,
+    };
+
     private static void EmitEvents(MailboxDbContext db)
     {
         var now = DateTime.UtcNow;
         var entries = db.ChangeTracker.Entries().ToList();
-
-        // Collect server IDs of items that need an Update event because a child
-        // row changed but the parent item itself wasn't directly modified.
         var childItemServerIds = new HashSet<string>();
 
         foreach (var entry in entries)
         {
             switch (entry.Entity)
             {
-                //
-                // items
                 case DbItem item when entry.State == EntityState.Added:
                     db.ItemEvents.Add(new DbItemEvent
                     {
@@ -55,6 +104,30 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     break;
 
                 case DbItem item when entry.State == EntityState.Modified:
+                    // a move is a delete from the old collection plus an add to the new one
+                    var collectionProp = entry.Property(nameof(DbItem.CollectionId));
+                    if (collectionProp.IsModified &&
+                        (string?)collectionProp.OriginalValue != (string?)collectionProp.CurrentValue)
+                    {
+                        db.ItemEvents.Add(new DbItemEvent
+                        {
+                            UserId = item.UserId,
+                            CollectionId = (string)collectionProp.OriginalValue!,
+                            EventType = DbChangeEventType.Delete,
+                            ServerId = item.ServerId,
+                            OccurredAt = now,
+                        });
+                        db.ItemEvents.Add(new DbItemEvent
+                        {
+                            UserId = item.UserId,
+                            CollectionId = (string)collectionProp.CurrentValue!,
+                            EventType = DbChangeEventType.Add,
+                            ServerId = item.ServerId,
+                            OccurredAt = now,
+                        });
+                        break;
+                    }
+
                     if (IsSoftDelete(entry))
                     {
                         db.ItemEvents.Add(new DbItemEvent
@@ -62,6 +135,18 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                             UserId = item.UserId,
                             CollectionId = item.CollectionId,
                             EventType = DbChangeEventType.Delete,
+                            ServerId = item.ServerId,
+                            OccurredAt = now,
+                        });
+                    }
+                    else if (IsValidationFlagTransition(entry, out var becameFlagged))
+                    {
+                        // delete items that become invalid, add them back when fixed
+                        db.ItemEvents.Add(new DbItemEvent
+                        {
+                            UserId = item.UserId,
+                            CollectionId = item.CollectionId,
+                            EventType = becameFlagged ? DbChangeEventType.Delete : DbChangeEventType.Add,
                             ServerId = item.ServerId,
                             OccurredAt = now,
                         });
@@ -79,8 +164,6 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     }
                     break;
 
-                //
-                // folders
                 case DbFolder folder when entry.State == EntityState.Added:
                     db.FolderEvents.Add(new DbFolderEvent
                     {
@@ -120,8 +203,6 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     }
                     break;
 
-                //
-                // contact children
                 case DbContactCategory c when IsChildMutation(entry):
                     TryAddChildUpdate(db, c.ContactItemId, childItemServerIds);
                     break;
@@ -132,8 +213,6 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     TryAddChildUpdate(db, a.ContactItemId, childItemServerIds);
                     break;
 
-                //
-                // calendar children
                 case DbCalendarAttendee a when IsChildMutation(entry):
                     TryAddChildUpdate(db, a.CalendarItemId, childItemServerIds);
                     break;
@@ -144,8 +223,6 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     TryAddChildUpdate(db, ex.CalendarItemId, childItemServerIds);
                     break;
 
-                //
-                // nested calendar children
                 case DbCalendarExceptionAttendee ea when IsChildMutation(entry):
                     TryBubbleThroughException(db, ea.CalendarExceptionId, childItemServerIds);
                     break;
@@ -155,9 +232,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
             }
         }
 
-        // Emit Update events for items touched only via child rows.
-        // Skip any item whose parent was already directly modified above
-        // (those already have their own event row).
+        // items only modified through children still need an update event
         var alreadyHandled = entries
             .Where(e => e.Entity is DbItem && e.State is EntityState.Added or EntityState.Modified)
             .Select(e => ((DbItem)e.Entity).ServerId)
@@ -179,21 +254,40 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                 OccurredAt = now,
             });
         }
+
+        // deliver push notifications after the save completes, not before (avoids a race)
+        foreach (var e in db.ChangeTracker.Entries<DbItemEvent>())
+            if (e.State == EntityState.Added)
+                db.PendingChangeNotifications.Add(new MailboxChangedEvent(
+                    e.Entity.UserId, e.Entity.CollectionId, e.Entity.ServerId, ToKind(e.Entity.EventType)));
+
+        foreach (var e in db.ChangeTracker.Entries<DbFolderEvent>())
+            if (e.State == EntityState.Added)
+                db.PendingChangeNotifications.Add(new MailboxChangedEvent(
+                    e.Entity.UserId, FolderHierarchyCollectionId, e.Entity.ServerId, ToKind(e.Entity.EventType)));
     }
 
-    // True when a child entity was added, modified, or deleted in this batch.
-    private static bool IsChildMutation(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry) =>
+    private static bool IsChildMutation(EntityEntry entry) =>
         entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted;
 
-    // Soft-delete: DeletedAt changed from null to a value.
-    private static bool IsSoftDelete(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+    private static bool IsSoftDelete(EntityEntry entry)
     {
         var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "DeletedAt");
         return prop is { IsModified: true } && prop.OriginalValue is null && prop.CurrentValue is not null;
     }
 
-    // Resolve the parent item's ServerId from its Id (PK = same as ServerId by convention).
-    // Checks the Local identity map first to avoid a round-trip.
+    private static bool IsValidationFlagTransition(EntityEntry entry, out bool becameFlagged)
+    {
+        var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == nameof(DbItem.ValidationFlaggedAt));
+        if (prop is { IsModified: true } && (prop.OriginalValue is null) != (prop.CurrentValue is null))
+        {
+            becameFlagged = prop.CurrentValue is not null;
+            return true;
+        }
+        becameFlagged = false;
+        return false;
+    }
+
     private static void TryAddChildUpdate(MailboxDbContext db, string itemId, HashSet<string> target)
     {
         var item = db.Items.Local.FirstOrDefault(i => i.Id == itemId);
@@ -201,7 +295,6 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
             target.Add(item.ServerId);
     }
 
-    // For exception children: look up the exception in the Local map, then bubble to its owner.
     private static void TryBubbleThroughException(MailboxDbContext db, string exceptionId, HashSet<string> target)
     {
         var ex = db.CalendarExceptions.Local.FirstOrDefault(e => e.Id == exceptionId);

@@ -3,6 +3,7 @@ using ReLiveWP.Identity;
 using ReLiveWP.Identity.Grpc;
 using ReLiveWP.Services.Activity.Services;
 using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Grpc.Mailbox;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -46,12 +47,15 @@ builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
     .AddInterceptor<AuthForwardingInterceptor>();
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));
 builder.Services.AddGrpcClient<SkyDrive.SkyDriveClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:SkyDrive"]!))
     .AddInterceptor<AuthForwardingInterceptor>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ActivityProviderService>();
+builder.Services.AddScoped<FeedRenderer>();
 
 var app = builder.Build();
 

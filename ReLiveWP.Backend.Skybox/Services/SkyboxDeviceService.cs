@@ -2,18 +2,30 @@
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.Json;
+using Org.BouncyCastle.Ocsp;
 using ReLiveWP.Backend.Skybox.Commands;
 using ReLiveWP.Backend.Skybox.Data;
+using ReLiveWP.Services.Grpc.Email;
 using ReLiveWP.Services.Grpc.FindMyPhone;
 
 namespace ReLiveWP.Backend.Skybox.Services;
 
-public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbContext dbContext, DeviceCommandService deviceCommand, CommandRegistry registry, CommandStatusHub statusHub) : FindMyPhone.FindMyPhoneBase
+public class SkyboxDeviceService(
+    ILogger<SkyboxDeviceService> logger,
+    SkyDbContext dbContext,
+    DeviceCommandService deviceCommand,
+    CommandRegistry registry,
+    CommandStatusHub statusHub,
+    Email.EmailClient email) : FindMyPhone.FindMyPhoneBase
 {
+    private const string SERVICE_NAME = "find my phone";
+
     public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)
     {
         var userId = new Guid(request.UserId);
-        var existing = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        var existing = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == deviceGuid);
         if (existing != null)
         {
             dbContext.Devices.Remove(existing);
@@ -24,7 +36,7 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
             OwnerId = userId,
 
             // Correlates to UniqueId in DeviceRegistration
-            DeviceGuid = request.DeviceGuid
+            DeviceGuid = deviceGuid
         };
 
         SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
@@ -32,33 +44,52 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
         dbContext.Devices.Add(device);
         await dbContext.SaveChangesAsync();
 
+        try
+        {
+            await email.SendSystemEmailAsync(new SendSystemEmailRequest()
+            {
+                UserId = userId.ToString(),
+                ServiceName = SERVICE_NAME,
+                Subject = "New device added!",
+                Body = $"A new device was added to your account!\r\nThe device \"{device.FriendlyName}\" has been registered and can now be managed at https://relivewp.net/my/device/{device.DeviceGuid}\r\nIf you don't recognise this device, please reset your password and contact an administrator immediately."
+            });
+        }
+        catch (RpcException ex)
+        {
+            logger.LogError(ex, "Failed to send notification email for new device registration.");
+        }
 
         return new RegisterDeviceResponse() { Code = 0, Enabled = true, Message = "OK" };
     }
 
     public override async Task<RegisterChannelResponse> RegisterChannel(RegisterChannelRequest request, ServerCallContext context)
     {
-        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid)
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == deviceGuid)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
-        if (!Uri.TryCreate(request.NotificationUri, UriKind.Absolute, out var uri) || (uri.Host != "push.relivewp.net" && uri.Host != "push.int.relivewp.net") || uri.Scheme != Uri.UriSchemeHttps)
-        {
-            logger.LogWarning("Device {DeviceId} has invalid notification channel URL: {Url}", device.DeviceGuid, request.NotificationUri);
-            device.NotificationChannelUrl = null;
-        }
-        else
-        {
-            logger.LogInformation("Device {DeviceId} has valid notification channel URL: {Url}", device.DeviceGuid, request.NotificationUri);
-            device.NotificationChannelUrl = request.NotificationUri;
-        }
+        var valid = Uri.TryCreate(request.NotificationUri, UriKind.Absolute, out var uri)
+            && (uri.Host == "push.relivewp.net" || uri.Host == "push.int.relivewp.net")
+            && uri.Scheme == Uri.UriSchemeHttps;
 
+        device.NotificationChannelUrl = valid ? request.NotificationUri : null;
+
+        dbContext.Update(device);
         await dbContext.SaveChangesAsync();
+
+        // Logged after the save so it reflects what actually committed, not just intent.
+        if (valid)
+            logger.LogInformation("Device {DeviceId} has valid notification channel URL: {Url}", device.DeviceGuid, request.NotificationUri);
+        else
+            logger.LogWarning("Device {DeviceId} has invalid notification channel URL: {Url}", device.DeviceGuid, request.NotificationUri);
+
         return new RegisterChannelResponse() { Code = 0, Enabled = true, Message = "OK" };
     }
 
     public override async Task<UpdateDeviceInfoResponse> UpdateDeviceInfo(UpdateDeviceInfoRequest request, ServerCallContext context)
     {
-        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid)
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == deviceGuid)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
         SkyProfileKeys.ApplyProperties(device, request.DeviceProps);
@@ -107,7 +138,8 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
     public override async Task<UserDeviceExtended> GetDeviceExtendedInfo(GetDeviceExtendedInfoRequest request, ServerCallContext context)
     {
         var ownerId = Guid.Parse(request.UserId);
-        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId)
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == deviceGuid && d.OwnerId == ownerId)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
         var resp = new UserDeviceExtended()
@@ -148,11 +180,12 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
     public override async Task<DeviceCommandResponse> SendDeviceCommand(DeviceCommandRequest request, ServerCallContext context)
     {
         var ownerId = Guid.Parse(request.UserId);
-        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId)
+        var deviceId = request.DeviceGuid.ToLowerInvariant();
+        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == deviceId && d.OwnerId == ownerId)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
         if (string.IsNullOrWhiteSpace(device.NotificationChannelUrl))
-            throw new RpcException(new Status(StatusCode.FailedPrecondition, "Device notification channel not registered."));
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, $"Device {deviceId} notification channel not registered."));
 
         var command = request.Command switch
         {
@@ -166,15 +199,35 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
 
         await deviceCommand.SendAsync(device.NotificationChannelUrl, command);
 
+        // TODO: other requests
+        if (request.Command == DeviceCommandRequestType.CommandRing)
+        {
+            try
+            {
+                await email.SendSystemEmailAsync(new SendSystemEmailRequest()
+                {
+                    UserId = request.UserId,
+                    ServiceName = SERVICE_NAME,
+                    Subject = $"A sound was played on {device.FriendlyName}",
+                    Body = $"A sound was played on {device.FriendlyName} at {DateTime.Now:T} on {DateTime.Now:D}\r\n\r\nIf you don't recognise this action, please reset your password and contact an administrator immediately."
+                });
+            }
+            catch (RpcException ex)
+            {
+                logger.LogError(ex, "Failed to send notification email for new device registration.");
+            }
+        }
+
         return new DeviceCommandResponse() { RequestId = record.RequestId, IsQueued = false };
     }
 
     public override async Task<ReportCommandStatusResponse> ReportCommandStatus(ReportCommandStatusRequest request, ServerCallContext context)
     {
-        var record = await registry.GetAsync(request.DeviceGuid, request.RequestId);
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        var record = await registry.GetAsync(deviceGuid, request.RequestId);
         if (record == null)
         {
-            logger.LogWarning("Status for unknown command {DeviceId}/{RequestId}", request.DeviceGuid, request.RequestId);
+            logger.LogWarning("Status for unknown command {DeviceId}/{RequestId}", deviceGuid, request.RequestId);
             return new ReportCommandStatusResponse() { Code = 1 };
         }
 
@@ -188,7 +241,7 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
                 var location = SkyDeviceLocation.Parse(request.Data);
                 evt = evt with { Reported = location.Reported, Lat = location.Latitude, Long = location.Longitude, Accuracy = location.Altitude };
 
-                var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
+                var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == deviceGuid);
                 if (device != null)
                 {
                     device.LastLocation = location;
@@ -201,7 +254,7 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
             }
         }
 
-        await statusHub.PublishAsync(request.DeviceGuid, evt);
+        await statusHub.PublishAsync(deviceGuid, evt);
         await registry.SetStateAsync(record, request.Final ? CommandState.Final : CommandState.Active);
 
         return new ReportCommandStatusResponse() { Code = 0 };
@@ -210,12 +263,13 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
     public override async Task StreamCommandStatus(StreamCommandStatusRequest request, IServerStreamWriter<CommandStatusUpdate> responseStream, ServerCallContext context)
     {
         var ownerId = Guid.Parse(request.UserId);
-        if (!await dbContext.Devices.AnyAsync(d => d.DeviceGuid == request.DeviceGuid && d.OwnerId == ownerId))
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        if (!await dbContext.Devices.AnyAsync(d => d.DeviceGuid == deviceGuid && d.OwnerId == ownerId))
             throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
 
         try
         {
-            await foreach (var evt in statusHub.StreamAsync(request.DeviceGuid, context.CancellationToken))
+            await foreach (var evt in statusHub.StreamAsync(deviceGuid, context.CancellationToken))
             {
                 var update = new CommandStatusUpdate()
                 {
@@ -242,7 +296,8 @@ public class SkyboxDeviceService(ILogger<SkyboxDeviceService> logger, SkyDbConte
 
     public override async Task<ReportDeviceStatusResponse> ReportDeviceStatus(ReportDeviceStatusRequest request, ServerCallContext context)
     {
-        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == request.DeviceGuid);
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        var device = await dbContext.Devices.AsTracking().FirstOrDefaultAsync(d => d.DeviceGuid == deviceGuid);
         if (device == null)
             return new ReportDeviceStatusResponse() { Code = 1 };
 

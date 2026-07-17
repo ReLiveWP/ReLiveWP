@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -6,17 +7,14 @@ using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
-// Handles the outbound ComposeMail commands (SendMail / SmartReply / SmartForward).
-// There is no real transport yet: a copy is stored in the user's Sent Items folder when the
-// client requests SaveInSentItems, and the original is annotated with the reply/forward verb.
-public class OutboundMailService(MailboxStore.MailboxStoreClient mailbox)
+public class OutboundMailService(
+    MailboxStore.MailboxStoreClient mailbox,
+    ILogger<OutboundMailService> logger)
 {
     public const int VerbReply = 1;
     public const int VerbReplyAll = 2;
     public const int VerbForward = 3;
 
-    // Stores the composed message in Sent Items (when requested). Returns nothing — SendMail's
-    // success response is an empty HTTP 200.
     public async Task SendAsync(string userId, string fromAddress, string mime, bool saveInSent, CancellationToken ct)
     {
         if (!saveInSent || string.IsNullOrEmpty(mime))
@@ -27,12 +25,15 @@ public class OutboundMailService(MailboxStore.MailboxStoreClient mailbox)
             return;
 
         var email = ParseMime(mime, fromAddress);
-        await mailbox.DeliverEmailAsync(
-            new DeliverEmailRequest { UserId = userId, CollectionId = sentFolderId, Email = email },
+
+        // CreateItem's ClientId is store-deduped (unique per user+folder), so a retried SendMail
+        // depositing the same MIME doesn't leave a second copy in Sent Items
+        var clientId = "sentmail:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(mime)));
+        await mailbox.CreateItemAsync(
+            new CreateItemRequest { UserId = userId, CollectionId = sentFolderId, Email = email, ClientId = clientId },
             cancellationToken: ct);
     }
 
-    // Records that the user replied to / forwarded the original message (MS-ASEMAIL §2.2.2.39).
     public async Task MarkSourceVerbAsync(string userId, string? serverId, int verb, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(serverId))
@@ -74,9 +75,7 @@ public class OutboundMailService(MailboxStore.MailboxStoreClient mailbox)
         return null;
     }
 
-    // Minimal MIME → EmailItem projection. The full RFC822 blob is preserved for ItemOperations
-    // Fetch; the parsed fields drive the Sync metadata view of the sent item.
-    private static EmailItem ParseMime(string mime, string fromAddress)
+    private EmailItem ParseMime(string mime, string fromAddress)
     {
         var email = new EmailItem
         {
@@ -91,7 +90,7 @@ public class OutboundMailService(MailboxStore.MailboxStoreClient mailbox)
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(mime));
             var msg = MimeMessage.Load(stream);
 
-            // From is authoritative from the server side per MS-ASCMD §2.2.1.17.
+            // the server-side address is authoritative for From
             email.From = string.IsNullOrEmpty(fromAddress) ? msg.From.ToString() : fromAddress;
             if (msg.To.Count > 0) email.To = msg.To.ToString();
             if (msg.Cc.Count > 0) email.Cc = msg.Cc.ToString();
@@ -112,13 +111,63 @@ public class OutboundMailService(MailboxStore.MailboxStoreClient mailbox)
                 email.BodyType = 1;
                 email.NativeBodyType = 1;
             }
+
+            email.Attachments.AddRange(ExtractAttachments(msg));
         }
-        catch
+        catch(Exception ex)
         {
-            // Couldn't parse the MIME; keep the raw blob and a sensible From.
+            // MIME parsing probably failed, keep the raw blob and a sensible From.
             email.From = fromAddress;
+            logger.LogWarning(ex, "Failed to parse MIME for outgoing email");
         }
 
         return email;
+    }
+
+    // walks the MIME attachment parts, populating metadata plus the decoded bytes
+    // (the bytes ride along on AttachmentItem.content, a write-only field only ever
+    // populated on create/deliver requests, never set when reading attachments back)
+    private List<AttachmentItem> ExtractAttachments(MimeMessage msg)
+    {
+        var result = new List<AttachmentItem>();
+
+        foreach (var entity in msg.Attachments)
+        {
+            if (entity is not MimePart part || part.Content is null)
+                continue; // nested message/rfc822 attachments (Method=5) not handled yet
+
+            byte[] bytes;
+            try
+            {
+                using var ms = new MemoryStream();
+                part.Content.DecodeTo(ms);
+                bytes = ms.ToArray();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to decode MIME attachment part {FileName}", part.FileName);
+                continue;
+            }
+
+            var isInline = string.Equals(part.ContentDisposition?.Disposition, "inline", StringComparison.OrdinalIgnoreCase)
+                || !string.IsNullOrEmpty(part.ContentId);
+
+            var item = new AttachmentItem
+            {
+                ContentType = part.ContentType?.MimeType ?? "application/octet-stream",
+                EstimatedDataSize = bytes.Length,
+                Method = 1, // normal attachment
+                IsInline = isInline,
+                Content = Google.Protobuf.ByteString.CopyFrom(bytes),
+            };
+
+            if (!string.IsNullOrEmpty(part.FileName)) item.DisplayName = part.FileName;
+            if (!string.IsNullOrEmpty(part.ContentId)) item.ContentId = part.ContentId;
+            if (part.ContentLocation is not null) item.ContentLocation = part.ContentLocation.ToString();
+
+            result.Add(item);
+        }
+
+        return result;
     }
 }

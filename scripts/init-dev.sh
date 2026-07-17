@@ -9,7 +9,7 @@ IDENTITY_DIR="$ROOT_DIR/ReLiveWP.Backend.Identity"
 
 mkdir -p "$SECRETS_DIR"
 
-# ── JWT ECDSA P-256 key pair ──────────────────────────────────────────────────
+# -- JWT ECDSA P-256 key pair --------------------------------------------------
 if [ -f "$SECRETS_DIR/jwt_private_key" ]; then
     echo "JWT private key already exists, skipping generation."
 else

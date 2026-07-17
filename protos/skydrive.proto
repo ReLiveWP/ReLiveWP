@@ -11,30 +11,26 @@ service SkyDrive {
   rpc CreateOrUpdateLibrary (CreateOrUpdateLibraryRequest) returns (LibraryReply);
   rpc ProvisionUser (ProvisionUserRequest) returns (google.protobuf.Empty);
   rpc SetAlbumPermissions (SetAlbumPermissionsRequest) returns (google.protobuf.Empty);
-
-  // Client-streams photo metadata (first message) followed by the raw image bytes. Owns the
-  // whole upload: discovers the user's enabled photo-sync connections via ConnectedServices,
-  // uploads through its HTTP proxy, and records the resulting SkyPhoto row.
   rpc UploadPhoto (stream UploadPhotoRequest) returns (PhotoReply);
 }
 
 message Library {
-  string id = 1;
-  string type = 2;
-  string category = 3;
+  string id            = 1;
+  string type          = 2;
+  string category      = 3;
   string sharing_level = 4;
-  string title = 5;
-  string summary = 6;
+  string title         = 5;
+  string summary       = 6;
   string email_keyword = 7;
 }
 
 message GetLibraryRequest {
-  string userId = 1;
+  string userId   = 1;
   string category = 2;
 }
 
 message LibraryReply {
-  bool exists = 1;
+  bool    exists  = 1;
   Library library = 2;
 }
 
@@ -47,12 +43,12 @@ message ListLibrariesReply {
 }
 
 message CreateOrUpdateLibraryRequest {
-  string userId = 1;
-  string type = 2;
-  string category = 3;
+  string userId        = 1;
+  string type          = 2;
+  string category      = 3;
   string sharing_level = 4;
-  string title = 5;
-  string summary = 6;
+  string title         = 5;
+  string summary       = 6;
   string email_keyword = 7;
 }
 
@@ -61,33 +57,33 @@ message ProvisionUserRequest {
 }
 
 message SetAlbumPermissionsRequest {
-  string userId = 1;
-  string category = 2;
+  string userId        = 1;
+  string category      = 2;
   string sharing_level = 3;
 }
 
 message ProviderItem {
   string service = 1;
   string item_id = 2;
-  string url = 3;
+  string url     = 3;
 }
 
 message UploadPhotoRequest {
   oneof payload {
     PhotoUploadMetadata metadata = 1;
-    bytes chunk = 2;
+    bytes               chunk    = 2;
   }
 }
 
 message PhotoUploadMetadata {
-  string user_id = 1;
-  string category = 2;
-  string file_name = 3;
+  string user_id      = 1;
+  string category     = 2;
+  string file_name    = 3;
   string content_type = 4;
-  string summary = 5;
+  string summary      = 5;
 }
 
 message PhotoReply {
-  string id = 1;
+  string                id             = 1;
   repeated ProviderItem provider_items = 2;
 }

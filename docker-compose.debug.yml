@@ -22,6 +22,10 @@ services:
     ports:
       - 15432:5432
 
+  redis:
+    ports:
+      - 6379:6379
+
   identity:
     <<: *debug
     build:
@@ -154,17 +158,17 @@ services:
     networks:
       - relive
 
-  dnsmasq:
-    image: alpine:latest
-    command: >
-      sh -c "apk add --no-cache dnsmasq &&
-             dnsmasq --no-daemon --conf-file=/etc/dnsmasq.conf"
-    networks:
-      - relive
-    ports:
-      - "127.0.0.1:5354:5354/udp"
-    volumes:
-      - ./deploy/dnsmasq.conf:/etc/dnsmasq.conf:ro
+  # dnsmasq:
+  #   image: alpine:latest
+  #   command: >
+  #     sh -c "apk add --no-cache dnsmasq &&
+  #            dnsmasq --no-daemon --conf-file=/etc/dnsmasq.conf"
+  #   networks:
+  #     - relive
+  #   ports:
+  #     - "127.0.0.1:5354:5354/udp"
+  #   volumes:
+  #     - ./deploy/dnsmasq.conf:/etc/dnsmasq.conf:ro
 
   nginx:
     image: nginx:alpine

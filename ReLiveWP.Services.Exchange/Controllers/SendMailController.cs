@@ -25,7 +25,7 @@ public class SendMailController(
 
         if (request?.Mime is null)
         {
-            // 150 = invalid MIME / message could not be sent.
+            // 150 = invalid MIME / message could not be sent
             await WriteWbxmlResponseAsync(new SendMailResponse { Status = 150 }, logger);
             return;
         }
@@ -35,7 +35,6 @@ public class SendMailController(
 
         await outbound.SendAsync(userId, fromAddress, request.Mime, request.SaveInSentItems is not null, ct);
 
-        // Success: empty HTTP 200 with no body (MS-ASCMD §2.2.1.17).
         HttpContext.Response.StatusCode = 200;
     }
 

@@ -123,4 +123,10 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Orion
-        
+
+  messenger:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Messenger

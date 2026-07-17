@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Mailbox.Data.Entities;
+using ReLiveWP.ServiceDefaults.Events;
 
 namespace ReLiveWP.Backend.Mailbox.Data;
 
@@ -9,20 +11,35 @@ public class MailboxDbContext : DbContext
 
     public MailboxDbContext(DbContextOptions options) : base(options) { }
 
+    // not a table; ChangeLogInterceptor buffers events here for redis pubsub, never persisted
+    [NotMapped]
+    internal List<MailboxChangedEvent> PendingChangeNotifications { get; } = [];
+
     public DbSet<DbDeviceInfo> DeviceInfos { get; set; }
+
     public DbSet<DbFolder> Folders { get; set; }
     public DbSet<DbFolderEvent> FolderEvents { get; set; }
+
     public DbSet<DbSyncState> SyncStates { get; set; }
+
     public DbSet<DbItem> Items { get; set; }
-    public DbSet<DbContactAnnotation> ContactAnnotations { get; set; }
     public DbSet<DbItemEvent> ItemEvents { get; set; }
+
+    public DbSet<DbContactAnnotation> ContactAnnotations { get; set; }
+    public DbSet<DbContactIdentity> ContactIdentities { get; set; }
     public DbSet<DbContactCategory> ContactCategories { get; set; }
     public DbSet<DbContactChild> ContactChildren { get; set; }
+
+    public DbSet<DbNoteCategory> NoteCategories { get; set; }
+
+    public DbSet<DbAttachment> Attachments { get; set; }
+
     public DbSet<DbCalendarAttendee> CalendarAttendees { get; set; }
     public DbSet<DbCalendarCategory> CalendarCategories { get; set; }
     public DbSet<DbCalendarException> CalendarExceptions { get; set; }
     public DbSet<DbCalendarExceptionAttendee> CalendarExceptionAttendees { get; set; }
     public DbSet<DbCalendarExceptionCategory> CalendarExceptionCategories { get; set; }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -31,7 +48,7 @@ public class MailboxDbContext : DbContext
         if (!optionsBuilder.IsConfigured)
             optionsBuilder
                 .UseNpgsql("Host=localhost;Database=relive_mailbox;Username=relive;Password=relive")
-                .AddInterceptors(new ChangeLogInterceptor());
+                .AddInterceptors(new ItemValidationInterceptor(), new ChangeLogInterceptor());
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -60,26 +77,61 @@ public class MailboxDbContext : DbContext
         modelBuilder.Entity<DbSyncState>(e =>
         {
             e.HasIndex(d => new { d.UserId, d.DeviceId, d.CollectionId }).IsUnique();
+
+            // SyncState is the most contended row (every Sync request touches it). xmin is a
+            // Postgres system column that already changes on every update, so mapping a shadow
+            // property onto it (the documented Npgsql pattern) needs no migration and no
+            // app-managed rowversion column.
+            if (Database.IsNpgsql())
+            {
+                e.Property<uint>("xmin")
+                    .HasColumnName("xmin")
+                    .HasColumnType("xid")
+                    .ValueGeneratedOnAddOrUpdate()
+                    .IsConcurrencyToken();
+            }
         });
 
         modelBuilder.Entity<DbItem>(e =>
         {
             e.HasIndex(i => new { i.UserId, i.CollectionId, i.ServerId }).IsUnique();
             e.HasIndex(i => new { i.UserId, i.CollectionId });
+            // supports GetItem/UpdateItem/DeleteItem/MoveItem/GetItems lookups by (UserId, ServerId)
+            // alone; the composite unique index above leads with CollectionId so can't serve these
+            e.HasIndex(i => new { i.UserId, i.ServerId });
+            // idempotency guard for client Adds: one live row per (user, collection, client_id)
+            e.HasIndex(i => new { i.UserId, i.CollectionId, i.ClientId })
+                .IsUnique()
+                .HasFilter("\"ClientId\" IS NOT NULL AND \"DeletedAt\" IS NULL");
             e.HasDiscriminator<string>("ItemClass")
                 .HasValue<DbContactItem>("Contact")
                 .HasValue<DbCalendarItem>("Calendar")
                 .HasValue<DbTask>("Task")
-                .HasValue<DbEmail>("Email");
+                .HasValue<DbEmail>("Email")
+                .HasValue<DbNote>("Note");
         });
 
-        // Subject and NativeBodyType would otherwise collide with DbCalendarItem's columns on
-        // the shared TPH table. Give Email distinct column names so the existing calendar
-        // columns are left untouched (otherwise EF reassigns the unprefixed column to Email).
+        // Subject/NativeBodyType would otherwise collide with DbCalendarItem's columns on the shared TPH table
         modelBuilder.Entity<DbEmail>(e =>
         {
             e.Property(m => m.Subject).HasColumnName("Email_Subject");
             e.Property(m => m.NativeBodyType).HasColumnName("Email_NativeBodyType");
+            // supports MoveConversation's per-user conversation scan
+            e.HasIndex(m => new { m.UserId, m.ConversationId });
+        });
+
+        // DbTask shares the TPH table with Calendar; prefix every column so none collide
+        modelBuilder.Entity<DbTask>(e =>
+        {
+            foreach (var p in e.Metadata.GetDeclaredProperties())
+                e.Property(p.Name).HasColumnName($"Task_{p.Name}");
+        });
+
+        // same TPH collision as DbTask above
+        modelBuilder.Entity<DbNote>(e =>
+        {
+            foreach (var p in e.Metadata.GetDeclaredProperties())
+                e.Property(p.Name).HasColumnName($"Note_{p.Name}");
         });
 
         modelBuilder.Entity<DbContactAnnotation>(e =>
@@ -88,6 +140,18 @@ public class MailboxDbContext : DbContext
             e.HasOne(a => a.ContactItem)
              .WithOne(c => c.Annotation)
              .HasForeignKey<DbContactAnnotation>(a => a.ContactItemId);
+            // supports GetContactProfiles' cid lookup join
+            e.HasIndex(a => a.Cid);
+        });
+
+        modelBuilder.Entity<DbContactIdentity>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.UserId, x.Provider, x.ExternalId }).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.ContactCid });
+            e.HasOne(x => x.ContactItem)
+             .WithMany()
+             .HasForeignKey(x => x.ContactItemId);
         });
 
         modelBuilder.Entity<DbItemEvent>(e =>
@@ -107,6 +171,20 @@ public class MailboxDbContext : DbContext
             e.HasOne(c => c.ContactItem)
                 .WithMany(i => i.Children)
                 .HasForeignKey(c => c.ContactItemId);
+        });
+
+        modelBuilder.Entity<DbNoteCategory>(e =>
+        {
+            e.HasOne(c => c.NoteItem)
+                .WithMany(i => i.Categories)
+                .HasForeignKey(c => c.NoteItemId);
+        });
+
+        modelBuilder.Entity<DbAttachment>(e =>
+        {
+            e.HasOne(a => a.EmailItem)
+                .WithMany(i => i.Attachments)
+                .HasForeignKey(a => a.EmailItemId);
         });
 
         modelBuilder.Entity<DbCalendarAttendee>(e =>

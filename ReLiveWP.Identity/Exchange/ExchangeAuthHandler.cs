@@ -53,9 +53,26 @@ internal class ExchangeAuthHandler(
             return AuthenticateResult.NoResult();
         }
 
-        var data = Encoding.UTF8.GetString(Convert.FromBase64String(header.Parameter!));
-        var username = data.Substring(0, data.IndexOf(':'));
-        var password = data.Substring(data.IndexOf(':') + 1);
+        string data;
+        try
+        {
+            data = Encoding.UTF8.GetString(Convert.FromBase64String(header.Parameter!));
+        }
+        catch (FormatException)
+        {
+            logger.LogInformation("Basic auth header was not valid base64!");
+            return AuthenticateResult.Fail("Malformed Authorization header");
+        }
+
+        var colonIndex = data.IndexOf(':');
+        if (colonIndex < 0)
+        {
+            logger.LogInformation("Basic auth header was missing a colon separator!");
+            return AuthenticateResult.Fail("Malformed Authorization header");
+        }
+
+        var username = data.Substring(0, colonIndex).Trim();
+        var password = data.Substring(colonIndex + 1).Trim();
 
         VerifyResponse response;
         try
@@ -99,6 +116,7 @@ internal class ExchangeAuthHandler(
         }
 
         Response.StatusCode = 401;
+        Response.Headers.WWWAuthenticate = "Basic realm=\"Microsoft-Server-ActiveSync\"";
         await Response.WriteAsync("Unauthorized");
     }
 

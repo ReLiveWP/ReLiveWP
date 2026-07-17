@@ -5,8 +5,6 @@ using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Services.Exchange.Extensions;
 
-// Extension methods that convert EAS XML DTOs → typed proto messages for
-// use with the MailboxStore gRPC client (Create/Update item calls).
 public static class ProtoExtensions
 {
     private static Timestamp? Ts(DateTime? dt) =>
@@ -92,9 +90,12 @@ public static class ProtoExtensions
             StartTime = Ts(cd.StartTime),
             EndTime = Ts(cd.EndTime),
             DtStamp = Ts(cd.DtStamp),
-            AppointmentReplyTime = Ts(cd.AppointmentReplyTime),
         };
 
+        // AppointmentReplyTime, ResponseType, and the OnlineMeeting* links are server-owned and
+        // must not appear in a request; WP7 echoes the whole item back on a Change anyway, so a
+        // client-sent value here is ignored rather than refused (a stale echo must never
+        // overwrite the server's value or cost the user the whole item)
         if (cd.Timezone is not null) p.Timezone = cd.Timezone;
         if (cd.Uid is not null) p.Uid = cd.Uid;
         if (cd.ClientUid is not null) p.ClientUid = cd.ClientUid;
@@ -102,15 +103,12 @@ public static class ProtoExtensions
         if (cd.Location is not null) p.Location = cd.Location;
         if (cd.OrganizerName is not null) p.OrganizerName = cd.OrganizerName;
         if (cd.OrganizerEmail is not null) p.OrganizerEmail = cd.OrganizerEmail;
-        if (cd.OnlineMeetingConfLink is not null) p.OnlineMeetingConfLink = cd.OnlineMeetingConfLink;
-        if (cd.OnlineMeetingExternalLink is not null) p.OnlineMeetingExternalLink = cd.OnlineMeetingExternalLink;
         if (cd.Reminder.HasValue) p.Reminder = cd.Reminder.Value;
         if (cd.AllDayEvent.HasValue) p.AllDayEvent = cd.AllDayEvent != 0;
         if (cd.BusyStatus.HasValue) p.BusyStatus = cd.BusyStatus.Value;
         if (cd.Sensitivity.HasValue) p.Sensitivity = cd.Sensitivity.Value;
         if (cd.MeetingStatus.HasValue) p.MeetingStatus = cd.MeetingStatus.Value;
         if (cd.NativeBodyType.HasValue) p.NativeBodyType = cd.NativeBodyType.Value;
-        if (cd.ResponseType.HasValue) p.ResponseType = cd.ResponseType.Value;
         if (cd.ResponseRequested.HasValue) p.ResponseRequested = cd.ResponseRequested != 0;
         if (cd.DisallowNewTimeProposal.HasValue) p.DisallowNewTimeProposal = cd.DisallowNewTimeProposal != 0;
         if (cd.BodyTruncated.HasValue) p.BodyTruncated = cd.BodyTruncated != 0;
@@ -152,17 +150,14 @@ public static class ProtoExtensions
                 EndTime = Ts(ex.EndTime),
                 Location = ex.Location,
                 DtStamp = Ts(ex.DtStamp),
-                AppointmentReplyTime = Ts(ex.AppointmentReplyTime),
             };
+            // server-owned on an exception too, see ToProtoCalendar above
             if (ex.Deleted.HasValue) dbEx.Deleted = ex.Deleted != 0;
             if (ex.Sensitivity.HasValue) dbEx.Sensitivity = ex.Sensitivity.Value;
             if (ex.BusyStatus.HasValue) dbEx.BusyStatus = ex.BusyStatus.Value;
             if (ex.AllDayEvent.HasValue) dbEx.AllDayEvent = ex.AllDayEvent != 0;
             if (ex.Reminder.HasValue) dbEx.Reminder = ex.Reminder.Value;
             if (ex.MeetingStatus.HasValue) dbEx.MeetingStatus = ex.MeetingStatus.Value;
-            if (ex.ResponseType.HasValue) dbEx.ResponseType = ex.ResponseType.Value;
-            if (ex.OnlineMeetingConfLink is not null) dbEx.OnlineMeetingConfLink = ex.OnlineMeetingConfLink;
-            if (ex.OnlineMeetingExternalLink is not null) dbEx.OnlineMeetingExternalLink = ex.OnlineMeetingExternalLink;
             var exNotes = ex.Body?.Data ?? ex.BodyLegacy;
             if (exNotes is not null) dbEx.Notes = exNotes;
             if (ex.BodyLegacy is not null) dbEx.BodyLegacy = ex.BodyLegacy;
@@ -177,6 +172,68 @@ public static class ProtoExtensions
             { Id = Guid.NewGuid().ToString("N"), CalendarExceptionId = exId, Category = c }) ?? []);
             return dbEx;
         }) ?? []);
+
+        return p;
+    }
+
+    public static TaskItem ToProtoTask(this TaskData td)
+    {
+        var p = new TaskItem
+        {
+            StartDate = Ts(td.StartDate),
+            UtcStartDate = Ts(td.UtcStartDate),
+            DueDate = Ts(td.DueDate),
+            UtcDueDate = Ts(td.UtcDueDate),
+            DateCompleted = Ts(td.DateCompleted),
+            ReminderTime = Ts(td.ReminderTime),
+        };
+
+        if (td.Subject is not null) p.Subject = td.Subject;
+        if (td.Importance.HasValue) p.Importance = td.Importance.Value;
+        if (td.Sensitivity.HasValue) p.Sensitivity = td.Sensitivity.Value;
+        if (td.Complete.HasValue) p.Complete = td.Complete != 0;
+        if (td.ReminderSet.HasValue) p.ReminderSet = td.ReminderSet != 0;
+        if (td.NativeBodyType.HasValue) p.NativeBodyType = td.NativeBodyType.Value;
+        var notes = td.Body?.Data;
+        if (notes is not null) p.Notes = notes;
+
+        if (td.Recurrence is { } r)
+        {
+            if (r.Type.HasValue) p.RecurrenceType = r.Type.Value;
+            p.RecurrenceStart = Ts(r.Start);
+            p.RecurrenceUntil = Ts(r.Until);
+            if (r.Occurrences.HasValue) p.RecurrenceOccurrences = r.Occurrences.Value;
+            if (r.Interval.HasValue) p.RecurrenceInterval = r.Interval.Value;
+            if (r.DayOfWeek.HasValue) p.RecurrenceDayOfWeek = r.DayOfWeek.Value;
+            if (r.DayOfMonth.HasValue) p.RecurrenceDayOfMonth = r.DayOfMonth.Value;
+            if (r.WeekOfMonth.HasValue) p.RecurrenceWeekOfMonth = r.WeekOfMonth.Value;
+            if (r.MonthOfYear.HasValue) p.RecurrenceMonthOfYear = r.MonthOfYear.Value;
+            if (r.Regenerate.HasValue) p.RecurrenceRegenerate = r.Regenerate != 0;
+            if (r.DeadOccur.HasValue) p.RecurrenceDeadOccur = r.DeadOccur.Value;
+            if (r.CalendarType.HasValue) p.RecurrenceCalendarType = r.CalendarType.Value;
+            if (r.IsLeapMonth.HasValue) p.RecurrenceIsLeapMonth = r.IsLeapMonth != 0;
+            if (r.FirstDayOfWeek.HasValue) p.RecurrenceFirstDayOfWeek = r.FirstDayOfWeek.Value;
+        }
+
+        return p;
+    }
+
+    public static NoteItem ToProtoNote(this NoteData nd)
+    {
+        var p = new NoteItem
+        {
+            // server owns the modified time; stamp now and ignore any client value
+            LastModifiedDate = Ts(DateTime.UtcNow),
+            MessageClass = nd.MessageClass ?? "IPM.StickyNote",
+        };
+
+        if (nd.Subject is not null) p.Subject = nd.Subject;
+        var body = nd.Body?.Data;
+        if (body is not null) p.Body = body;
+        if (nd.NativeBodyType.HasValue) p.NativeBodyType = nd.NativeBodyType.Value;
+
+        p.Categories.AddRange(nd.Categories?.Items.Select(c => new NoteCategory
+        { Id = Guid.NewGuid().ToString("N"), Category = c }) ?? []);
 
         return p;
     }

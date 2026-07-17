@@ -14,6 +14,7 @@ builder.AddServiceEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<LiveDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;

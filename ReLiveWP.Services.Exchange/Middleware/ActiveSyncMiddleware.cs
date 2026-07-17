@@ -5,22 +5,20 @@ using ReLiveWP.Services.Exchange.Services;
 
 namespace ReLiveWP.Services.Exchange.Middleware;
 
-/// <summary>
-/// Parses the EAS request URI (text or binary base64 format), decodes the WBXML
-/// body (when present), and stores an <see cref="ActiveSyncContext"/> in
-/// <see cref="HttpContext.Items"/> under <see cref="ContextKey"/>.
-/// Must run before MVC so that <c>EasCommandAttribute</c> constraints can read it.
-/// </summary>
-public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddleware> logger, EasRequestLog requestLog)
+// must run before MVC so EasCommandAttribute constraints can read the parsed context
+public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddleware> logger, IConfiguration configuration)
 {
-    /// <summary>Key used to store <see cref="ActiveSyncContext"/> in <see cref="HttpContext.Items"/>.</summary>
     public const string ContextKey = "EasContext";
-
     private const string EasPath = "/Microsoft-Server-ActiveSync";
+    private const int MaxLoggedXmlLength = 4000;
+
+    // opt-in only: request/response XML carries message bodies, contacts, and other PII, so it
+    // must never be logged by default on a public deployment. Enable via Eas:LogMessageBodies.
+    private readonly bool logMessageBodies = configuration.GetValue<bool>("Eas:LogMessageBodies");
 
     public async Task InvokeAsync(HttpContext context)
     {
-        ActiveSyncContext? easContext = null;
+        ActiveSyncContext? ctx = null;
         try
         {
             if (!context.Request.Path.StartsWithSegments(EasPath, StringComparison.OrdinalIgnoreCase)
@@ -33,14 +31,17 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
             // Buffer the body so controllers can read it after we consume it here.
             context.Request.EnableBuffering();
 
-            easContext = new ActiveSyncContext
+            ctx = new ActiveSyncContext
             {
                 ProtocolVersion = context.Request.Headers["MS-ASProtocolVersion"].FirstOrDefault(),
+                AcceptMultiPart = string.Equals(
+                    context.Request.Headers["MS-ASAcceptMultiPart"].FirstOrDefault(), "T",
+                    StringComparison.OrdinalIgnoreCase),
             };
 
             try
             {
-                ParseQueryString(context.Request, easContext);
+                ParseQueryString(context.Request, ctx);
             }
             catch (Exception ex)
             {
@@ -51,34 +52,43 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
             }
 
             logger.LogDebug("EAS {Command} from {User}/{DeviceId} ({DeviceType}), key={PolicyKey}",
-                easContext.Command, easContext.User, easContext.DeviceId, easContext.DeviceType, easContext.PolicyKey);
+                ctx.Command, ctx.User, ctx.DeviceId, ctx.DeviceType, ctx.PolicyKey);
 
-            await DecodeBodyAsync(context.Request, easContext);
+            await DecodeBodyAsync(context.Request, ctx);
 
-            context.Items[ContextKey] = easContext;
+            context.Items[ContextKey] = ctx;
 
             await next(context);
         }
         finally
         {
-            if (easContext != null)
-                await requestLog.RecordAsync(easContext);
+            if (ctx != null)
+            {
+                if (logMessageBodies)
+                    logger.LogDebug("{Command}, {DeviceId}, {InputXml}, {OutputXml}", ctx.Command.ToString(), ctx.DeviceId,
+                        Truncate(ctx.XmlDocument?.OuterXml) ?? "No xml", Truncate(ctx.OutputXml) ?? "No xml");
+                else
+                    logger.LogDebug("{Command} from {DeviceId} completed", ctx.Command.ToString(), ctx.DeviceId);
+            }
         }
     }
 
+    private static string? Truncate(string? xml) => xml switch
+    {
+        null => null,
+        { Length: <= MaxLoggedXmlLength } => xml,
+        _ => $"{xml[..MaxLoggedXmlLength]}... [truncated, {xml.Length} chars total]",
+    };
+
     private static void ParseQueryString(HttpRequest request, ActiveSyncContext ctx)
     {
-        // Detect binary vs text format.
-        // Text format always has a "Cmd" key; binary format is a single base64 blob.
+        // text format always has a "Cmd" key; binary format is a single base64 blob
         if (request.Query.ContainsKey("Cmd"))
             ParseTextQueryString(request, ctx);
         else
             ParseBinaryQueryString(request, ctx);
     }
 
-    /// <summary>
-    /// Text format: ?Cmd=FolderSync&amp;User=alice&amp;DeviceId=…&amp;DeviceType=…
-    /// </summary>
     private static void ParseTextQueryString(HttpRequest request, ActiveSyncContext ctx)
     {
         var q = request.Query;
@@ -88,7 +98,6 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         ctx.DeviceId = q["DeviceId"].FirstOrDefault() ?? string.Empty;
         ctx.DeviceType = q["DeviceType"].FirstOrDefault() ?? string.Empty;
 
-        // Command-specific text parameters
         ctx.AttachmentName = q["AttachmentName"].FirstOrDefault();
         ctx.CollectionId = q["CollectionId"].FirstOrDefault();
         ctx.ItemId = q["ItemId"].FirstOrDefault();
@@ -97,7 +106,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         ctx.SaveInSent = string.Equals(q["SaveInSent"].FirstOrDefault(), "T",
                                 StringComparison.OrdinalIgnoreCase);
 
-        // Policy key can also be sent as a request header in text-format requests
+        // policy key can also arrive as a request header in text-format requests
         if (request.Headers.TryGetValue("X-MS-PolicyKey", out var pk)
             && uint.TryParse(pk.FirstOrDefault(), out var policyKey))
         {
@@ -105,28 +114,13 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         }
     }
 
-    /// <summary>
-    /// Binary format (MS-ASHTTP §2.2.1.1.1.1):
-    /// <code>
-    /// [0]     Protocol version (1 byte, e.g. 141 = 14.1)
-    /// [1]     Command code (1 byte)
-    /// [2–3]   Locale (2 bytes, little-endian)
-    /// [4]     Device ID length
-    /// [5…]    Device ID bytes
-    /// [n]     Policy key length (0 or 4)
-    /// [n+1…]  Policy key (4 bytes, optional, little-endian uint)
-    /// [m]     Device type length
-    /// [m+1…]  Device type bytes
-    /// [rest]  Command parameters: Tag (1), Length (1), Value (variable) …
-    /// </code>
-    /// </summary>
     private static void ParseBinaryQueryString(HttpRequest request, ActiveSyncContext ctx)
     {
         var raw = request.QueryString.Value?.TrimStart('?') ?? string.Empty;
         if (string.IsNullOrEmpty(raw))
             return;
 
-        // Base64url and standard base64 both accepted — normalise padding
+        // base64url and standard base64 both accepted, normalize padding
         var padded = raw.PadRight((raw.Length + 3) & ~3, '=');
         var bytes = Convert.FromBase64String(padded);
         var span = bytes.AsSpan();
@@ -134,20 +128,16 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
 
         if (span.Length < 4) return;
 
-        // Byte 0: protocol version (e.g., 141 → "14.1")
         byte protocolByte = span[pos++];
         ctx.ProtocolVersion ??= FormatProtocolVersion(protocolByte);
 
-        // Byte 1: command code
         byte commandCode = span[pos++];
         ctx.Command = (EasCommand)commandCode;
 
-        // Bytes 2–3: locale (little-endian ushort, informational — not stored)
-        pos += 2; // locale
+        pos += 2;
 
         if (pos >= span.Length) return;
 
-        // Device ID
         int devIdLen = span[pos++];
         if (devIdLen > 0 && pos + devIdLen <= span.Length)
         {
@@ -157,7 +147,6 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
 
         if (pos >= span.Length) return;
 
-        // Policy key (0 or 4 bytes)
         int pkLen = span[pos++];
         if (pkLen == 4 && pos + 4 <= span.Length)
         {
@@ -166,12 +155,11 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         }
         else
         {
-            pos += pkLen; // skip unexpected length
+            pos += pkLen;
         }
 
         if (pos >= span.Length) return;
 
-        // Device type
         int devTypeLen = span[pos++];
         if (devTypeLen > 0 && pos + devTypeLen <= span.Length)
         {
@@ -179,10 +167,6 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
             pos += devTypeLen;
         }
 
-        // Command parameters: TLV sequence (MS-ASHTTP §2.2.1.1.1.1.1)
-        // Tag values (§2.2.1.1.1.4):
-        //   0 = AttachmentName, 3 = ItemId, 4 = LongId, 6 = Occurrence,
-        //   7 = Options (bitmask: 0x01=SaveInSent, 0x02=AcceptMultiPart), 8 = User
         while (pos + 2 <= span.Length)
         {
             byte tag = span[pos++];
@@ -200,16 +184,15 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
                 case 4: ctx.LongId = value; break;
                 case 6: ctx.Occurrence = value; break;
                 case 7:
-                    // Options is a single bitmask byte, not a string
+                    // options is a single bitmask byte, not a string
                     if (length == 1)
                     {
-                        byte opts = span[pos - 1]; // already advanced; re-read the byte
+                        byte opts = span[pos - 1]; // already advanced past it
                         ctx.SaveInSent = (opts & 0x01) != 0;
-                        ctx.AcceptMultiPart = (opts & 0x02) != 0;
+                        ctx.AcceptMultiPart |= (opts & 0x02) != 0;
                     }
                     break;
                 case 8: ctx.User = value; break;
-                    // Unknown tags: skip silently
             }
         }
     }
@@ -218,7 +201,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
     {
         var contentType = request.ContentType ?? string.Empty;
 
-        // Only decode WBXML bodies; leave MIME/XML bodies for the controller to handle.
+        // only decode WBXML bodies, leave MIME/XML bodies for the controller to handle
         if (!contentType.StartsWith("application/vnd.ms-sync", StringComparison.OrdinalIgnoreCase))
             return;
 
@@ -237,8 +220,6 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
             var decoder = new ASWBXML();
             decoder.LoadBytes(bytes);
             ctx.XmlDocument = decoder.GetXmlDocument();
-
-            logger.LogDebug("Decoded WBXML body: {Xml}", ctx.XmlDocument.OuterXml);
         }
         catch (Exception ex)
         {

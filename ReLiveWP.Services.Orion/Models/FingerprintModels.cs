@@ -41,7 +41,7 @@ public class RequestHeader
     public MarketIdentifier MarketIdentifier { get; set; }
 }
 
-// ── Beacon detection types ───────────────────────────────────────────────
+// -- Beacon detection types -----------------------------------------------
 
 [XmlType(TypeName = "Mrl7", Namespace = Ns)]
 public class Mrl7

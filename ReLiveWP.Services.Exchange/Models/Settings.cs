@@ -23,7 +23,6 @@ public class SettingsDeviceInformationRequest
     public DeviceInformationSet? Set { get; set; }
 }
 
-// Fields the client sends in DeviceInformation/Set (all request-only per spec §2.2.1.18)
 public class DeviceInformationSet
 {
     [XmlElement("Model", Namespace = Constants.Settings)]
@@ -55,7 +54,7 @@ public class DeviceInformationSet
     public string? MobileOperator { get; set; }
 }
 
-// UserInformation/Get is an empty element — its presence signals the client wants email addresses
+// UserInformation/Get is an empty element - its presence signals the client wants email addresses
 public class SettingsUserInformationRequest
 {
     [XmlElement("Get", Namespace = Constants.Settings)]
@@ -74,15 +73,12 @@ public class SettingsResponse
     public SettingsUserInformationResponse? UserInformation { get; set; }
 }
 
-// DeviceInformation response mirrors request structure: status is inside <Set>
 public class SettingsDeviceInformationResponse
 {
     [XmlElement("Set", Namespace = Constants.Settings)]
     public SettingsStatusOnly? Set { get; set; }
 }
 
-// UserInformation: Status is a direct child, then Get contains the account list.
-// In protocol 14.1+, EmailAddresses lives inside Account, not directly under Get.
 public class SettingsUserInformationResponse
 {
     [XmlElement("Status", Namespace = Constants.Settings)]
@@ -94,7 +90,6 @@ public class SettingsUserInformationResponse
 
 public class UserInformationResponseGet
 {
-    // 14.1+: email addresses are inside Accounts/Account/EmailAddresses
     [XmlElement("Accounts", Namespace = Constants.Settings)]
     public UserAccounts? Accounts { get; set; }
 }
@@ -107,7 +102,7 @@ public class UserAccounts
 
 public class UserAccount
 {
-    // Omitted for the primary account per spec; secondary accounts carry an ID
+    // omitted for the primary account; secondary accounts carry an id
     [XmlElement("AccountId", Namespace = Constants.Settings)]
     public string? AccountId { get; set; }
 
@@ -117,7 +112,7 @@ public class UserAccount
     [XmlElement("UserDisplayName", Namespace = Constants.Settings)]
     public string? UserDisplayName { get; set; }
 
-    // 0 = sending enabled; present even when 0 so clients know they can send
+    // 0=sending enabled; present even when 0 so clients know they can send
     [XmlElement("SendDisabled", Namespace = Constants.Settings)]
     public int SendDisabled { get; set; }
 
@@ -130,12 +125,11 @@ public class UserEmailAddresses
     [XmlElement("SMTPAddress", Namespace = Constants.Settings)]
     public List<string> SMTPAddresses { get; set; } = [];
 
-    // Primary SMTP address — used by SendMail when no AccountId is provided
+    // used by SendMail when no AccountId is provided
     [XmlElement("PrimarySmtpAddress", Namespace = Constants.Settings)]
     public string? PrimarySmtpAddress { get; set; }
 }
 
-// Generic status-only container used inside Set/Get wrappers
 public class SettingsStatusOnly
 {
     [XmlElement("Status", Namespace = Constants.Settings)]

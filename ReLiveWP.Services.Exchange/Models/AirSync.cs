@@ -2,11 +2,6 @@ using System.Xml.Serialization;
 
 namespace ReLiveWP.Services.Exchange.Models;
 
-// Shared DTOs for the AirSyncBase namespace (code page 17).
-// Used across all item classes: Email, Calendar, Contacts, Tasks.
-
-// <airsyncbase:Body> — response element containing the body/notes for any item.
-// Used in Sync, ItemOperations, and Search responses for all item classes.
 public class AirSyncBody
 {
     [XmlIgnore]
@@ -19,26 +14,19 @@ public class AirSyncBody
         set => Type = (BodyType)value;
     }
 
-    // Present in responses; omitted when the body has not been truncated and
-    // EstimatedDataSize equals the actual data length.
     [XmlElement("EstimatedDataSize", Namespace = Constants.AirSyncBase)]
     public int? EstimatedDataSize { get; set; }
 
-    // 0|1 (EAS boolean); present only when the body was truncated.
     [XmlElement("Truncated", Namespace = Constants.AirSyncBase)]
     public int? Truncated { get; set; }
 
     [XmlElement("Data", Namespace = Constants.AirSyncBase)]
     public string? Data { get; set; }
 
-    // Short plain-text preview of the body (≤255 chars); returned when the
-    // client requested a preview via BodyPreference/Preview.
     [XmlElement("Preview", Namespace = Constants.AirSyncBase)]
     public string? Preview { get; set; }
 }
 
-// <airsyncbase:Location> — rich location element used in Calendar v16.0+.
-// Replaces the plain-string calendar:Location element.
 public class AirSyncLocation
 {
     [XmlElement("DisplayName", Namespace = Constants.AirSyncBase)]

@@ -134,10 +134,78 @@ internal static class ApplicationDataExtensions
                 CalendarType = cal.HasRecurrenceCalendarType ? (byte?)cal.RecurrenceCalendarType : null,
                 IsLeapMonth = cal.HasRecurrenceIsLeapMonth ? (cal.RecurrenceIsLeapMonth ? (byte)1 : (byte)0) : null,
                 FirstDayOfWeek = cal.HasRecurrenceFirstDayOfWeek ? (byte?)cal.RecurrenceFirstDayOfWeek : null,
-                Until = cal.RecurrenceUntil != null ? EasDateHelper.FromDateTime(cal.RecurrenceUntil.ToDateTime()) : null,
+                Until = cal.RecurrenceUntil != null ? EasDateHelper.FromDateTimeCompact(cal.RecurrenceUntil.ToDateTime()) : null,
             };
         }
         return DtoToApplicationData(cd);
+    }
+
+    public static ApplicationData ToApplicationData(this TaskItem t)
+    {
+        var td = new TaskData
+        {
+            Subject = t.HasSubject ? t.Subject : null,
+            StartDate = t.StartDate != null ? t.StartDate.ToDateTime() : null,
+            UtcStartDate = t.UtcStartDate != null ? t.UtcStartDate.ToDateTime() : null,
+            DueDate = t.DueDate != null ? t.DueDate.ToDateTime() : null,
+            UtcDueDate = t.UtcDueDate != null ? t.UtcDueDate.ToDateTime() : null,
+            DateCompleted = t.DateCompleted != null ? t.DateCompleted.ToDateTime() : null,
+            ReminderTime = t.ReminderTime != null ? t.ReminderTime.ToDateTime() : null,
+        };
+
+        if (t.HasImportance) td.Importance = (byte)t.Importance;
+        if (t.HasSensitivity) td.Sensitivity = (byte)t.Sensitivity;
+        if (t.HasComplete) td.Complete = t.Complete ? (byte)1 : (byte)0;
+        // WP7 refuses a completed task with no DateCompleted (silently fails to render);
+        // backstop for rows written before completion-time stamping existed
+        if (td.Complete == 1 && td.DateCompleted is null)
+            td.DateCompleted = DateTime.UtcNow;
+        if (t.HasReminderSet) td.ReminderSet = t.ReminderSet ? (byte)1 : (byte)0;
+        if (t.HasNotes) td.Body = new AirSyncBody { Type = BodyType.PlainText, Data = t.Notes };
+        if (t.HasNativeBodyType) td.NativeBodyType = (byte)t.NativeBodyType;
+
+        if (t.HasRecurrenceType)
+        {
+            td.Recurrence = new TaskRecurrence
+            {
+                Type = (byte?)t.RecurrenceType,
+                Start = t.RecurrenceStart != null ? t.RecurrenceStart.ToDateTime() : null,
+                Until = t.RecurrenceUntil != null ? t.RecurrenceUntil.ToDateTime() : null,
+                Occurrences = t.HasRecurrenceOccurrences ? (byte?)t.RecurrenceOccurrences : null,
+                Interval = t.HasRecurrenceInterval ? (ushort?)t.RecurrenceInterval : null,
+                DayOfWeek = t.HasRecurrenceDayOfWeek ? (byte?)t.RecurrenceDayOfWeek : null,
+                DayOfMonth = t.HasRecurrenceDayOfMonth ? (byte?)t.RecurrenceDayOfMonth : null,
+                WeekOfMonth = t.HasRecurrenceWeekOfMonth ? (byte?)t.RecurrenceWeekOfMonth : null,
+                MonthOfYear = t.HasRecurrenceMonthOfYear ? (byte?)t.RecurrenceMonthOfYear : null,
+                Regenerate = t.HasRecurrenceRegenerate ? (t.RecurrenceRegenerate ? (byte)1 : (byte)0) : null,
+                DeadOccur = t.HasRecurrenceDeadOccur ? (byte?)t.RecurrenceDeadOccur : null,
+                CalendarType = t.HasRecurrenceCalendarType ? (byte?)t.RecurrenceCalendarType : null,
+                IsLeapMonth = t.HasRecurrenceIsLeapMonth ? (t.RecurrenceIsLeapMonth ? (byte)1 : (byte)0) : null,
+                FirstDayOfWeek = t.HasRecurrenceFirstDayOfWeek ? (byte?)t.RecurrenceFirstDayOfWeek : null,
+            };
+        }
+        return DtoToApplicationData(td);
+    }
+
+    public static ApplicationData ToApplicationData(this NoteItem n)
+    {
+        var nd = new NoteData
+        {
+            Subject = n.HasSubject ? n.Subject : null,
+            MessageClass = n.HasMessageClass ? n.MessageClass : "IPM.StickyNote",
+            // required in a Sync response; backstop for rows written before it was stamped
+            LastModifiedDate = n.LastModifiedDate != null ? n.LastModifiedDate.ToDateTime() : DateTime.UtcNow,
+        };
+
+        if (n.HasBody)
+            nd.Body = new AirSyncBody { Type = BodyType.PlainText, Data = n.Body };
+        if (n.HasNativeBodyType)
+            nd.NativeBodyType = (byte)n.NativeBodyType;
+
+        if (n.Categories.Count > 0)
+            nd.Categories = new NoteCategories { Items = [.. n.Categories.Select(c => c.Category)] };
+
+        return DtoToApplicationData(nd);
     }
 
     public static ApplicationData ToApplicationData(this EmailItem e, BodyPreference? bodyPref = null)
@@ -160,9 +228,8 @@ internal static class ApplicationDataExtensions
         ed.LastVerbExecuted = e.HasLastVerbExecuted ? e.LastVerbExecuted : null;
         ed.LastVerbExecutionTime = e.LastVerbExecutionTime != null ? e.LastVerbExecutionTime.ToDateTime() : null;
 
-        // ConversationId/Index are required in server responses (MS-ASEMAIL §2.2.2.20/2.2.2.21).
-        // Use the stored value when present, otherwise derive a stable id from the thread so
-        // messages in the same thread group together.
+        // required in server responses; derive a stable id from the thread when not stored so
+        // messages in the same thread group together
         ed.ConversationId = e.HasConversationId ? e.ConversationId.ToByteArray() : DeriveConversationId(e);
         ed.ConversationIndex = e.HasConversationIndex
             ? e.ConversationIndex.ToByteArray()
@@ -176,14 +243,46 @@ internal static class ApplicationDataExtensions
         if (e.Flag is { } f)
             ed.Flag = ToFlagDto(f);
 
+        if (e.Attachments.Count > 0)
+            ed.Attachments = new AirSyncAttachments { Items = [.. e.Attachments.Select(ToAttachmentDto)] };
+
         return DtoToApplicationData(ed);
     }
 
-    // Applies the client's BodyPreference: selects the requested body type, truncates the data
-    // to TruncationSize, and reports EstimatedDataSize / Truncated per MS-ASAIRS §2.2.2.9.
+    private static AirSyncAttachment ToAttachmentDto(AttachmentItem a) => new()
+    {
+        DisplayName = a.HasDisplayName ? a.DisplayName : null,
+        FileReference = a.Id,
+        Method = a.HasMethod ? (byte)a.Method : (byte)1,
+        EstimatedDataSize = a.HasEstimatedDataSize ? a.EstimatedDataSize : 0,
+        ContentId = a.HasContentId ? a.ContentId : null,
+        ContentLocation = a.HasContentLocation ? a.ContentLocation : null,
+        IsInline = a.HasIsInline && a.IsInline,
+    };
+
+    // selects the requested body type, truncates to TruncationSize, and reports
+    // EstimatedDataSize/Truncated
     private static AirSyncBody? BuildBody(EmailItem e, BodyPreference? pref)
     {
-        if (!e.HasBody) return null;
+        // MIME fetch: return the raw RFC822 blob verbatim, no truncation.
+        // falls through to the stored body if absent
+        if (pref?.Type == BodyType.MIME && e.HasMimeRaw)
+        {
+            return new AirSyncBody
+            {
+                Type = BodyType.MIME,
+                EstimatedDataSize = e.MimeRaw.Length,
+                Data = e.MimeRaw,
+            };
+        }
+
+        // WP7 refuses an item with an unsolicited body, wedging the collection in a sync loop;
+        // client fetches the body on demand via ItemOperations instead
+        if (pref is null) return null;
+
+        // an email with no plaintext/HTML body syncs with no Body element rather than an
+        // empty <Data/> with EstimatedDataSize 0, which WP7 rejects
+        if (!e.HasBody || string.IsNullOrWhiteSpace(e.Body)) return null;
 
         var data = e.Body;
         var type = e.HasBodyType ? (BodyType)e.BodyType : BodyType.PlainText;
@@ -194,7 +293,6 @@ internal static class ApplicationDataExtensions
         {
             if (pref?.AllOrNone is 1)
             {
-                // Caller wants the whole body or nothing; return metadata only.
                 body.Data = null;
                 body.Truncated = 1;
                 return body;
@@ -213,8 +311,8 @@ internal static class ApplicationDataExtensions
         return body;
     }
 
-    // 16-byte conversation id. Derived from the normalised thread topic so replies/forwards
-    // (which share a topic) collapse into one conversation; falls back to the subject.
+    // derived from the normalised thread topic so replies/forwards (sharing a topic)
+    // collapse into one conversation; falls back to the subject
     private static byte[] DeriveConversationId(EmailItem e)
     {
         var key = NormaliseTopic(e.HasThreadTopic ? e.ThreadTopic : e.HasSubject ? e.Subject : null);
@@ -223,15 +321,14 @@ internal static class ApplicationDataExtensions
         return System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(key));
     }
 
-    // Minimal 22-byte ConversationIndex header (MS-OXOMSG §2.2.1.3): reserved 0x01, a 5-byte
-    // current FILETIME, then the 16-byte conversation id. Reply chains would append 5-byte
-    // child blocks; that is left for later.
+    // minimal header: reserved 0x01, 5-byte current FILETIME, then the conversation id.
+    // reply chains would append 5-byte child blocks; left for later
     private static byte[] BuildConversationIndex(byte[] conversationId, DateTime time)
     {
         var buf = new byte[22];
         buf[0] = 0x01;
         long fileTime = DateTime.SpecifyKind(time, DateTimeKind.Utc).ToFileTimeUtc();
-        // High 5 bytes of the 64-bit FILETIME, big-endian.
+        // high 5 bytes of the 64-bit FILETIME, big-endian
         for (int i = 0; i < 5; i++)
             buf[1 + i] = (byte)(fileTime >> (8 * (7 - i)));
         Array.Copy(conversationId, 0, buf, 6, 16);
@@ -242,7 +339,7 @@ internal static class ApplicationDataExtensions
     {
         if (string.IsNullOrWhiteSpace(topic)) return null;
         var s = topic.Trim();
-        // Strip leading RE:/FW:/FWD: prefixes (repeatedly), case-insensitively.
+        // strip leading RE:/FW:/FWD: prefixes, repeatedly, case-insensitively
         bool stripped;
         do
         {

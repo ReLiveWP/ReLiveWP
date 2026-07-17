@@ -11,7 +11,9 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
+using ReLiveWP.ServiceDefaults.Events;
 using ReLiveWP.Services.Grpc;
+using StackExchange.Redis;
 
 namespace ReLiveWP.Backend.Identity.Grpc;
 
@@ -20,6 +22,7 @@ public class AuthenticationService(
     LiveIdDeviceCertificateService deviceCertificateService,
     UserManager<LiveUser> userManager,
     LiveDbContext dbContext,
+    IConnectionMultiplexer redis,
     ILogger<AuthenticationService> logger) : Authentication.AuthenticationBase
 {
     private const string LegacyDaTokenTarget = "http://Passport.NET/tb";
@@ -51,6 +54,16 @@ public class AuthenticationService(
         if (!result.Succeeded)
         {
             throw new RpcException(new Status(StatusCode.FailedPrecondition, string.Join(", ", result.Errors.Select(s => s.Description))));
+        }
+
+        // best-effort: backends provision on this event, the mailbox reconciler backfills if it's lost
+        try
+        {
+            await redis.PublishCreatedAsync(new AccountCreatedEvent(user.Id.ToString(), user.Email!, user.UserName!));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "failed to publish account.created for {User}", user.Id);
         }
 
         return new RegisterResponse() { Code = S_OK, Id = user.Id.ToString(), Cid = cid, Puid = puid };
@@ -203,7 +216,10 @@ public class AuthenticationService(
             TokenType = tokenRequest.ServicePolicy
         };
 
-        if (tokenRequest.ServicePolicy.EndsWith("_KEY"))
+        // MBI_KEY and MBI_KEY_OLD both request a proof/session key (the "_KEY" family); the
+        // _OLD variant (used by messengerclear.live.com for MSNP SSO) still needs the BinarySecret,
+        // it just denotes the legacy derivation scheme. Match on the family, not the exact suffix.
+        if (tokenRequest.ServicePolicy.Contains("_KEY"))
             tokenResponse.ProofKey = ByteString.CopyFrom(RandomNumberGenerator.GetBytes(24));
 
         if (issueRefreshToken)

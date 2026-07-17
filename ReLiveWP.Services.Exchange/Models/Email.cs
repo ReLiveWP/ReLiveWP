@@ -10,13 +10,6 @@ public static partial class Constants
     public const string Tasks = "Tasks";
 }
 
-// Represents the content of an airsync:ApplicationData element for the Email class
-// (MS-ASEMAIL). Serialised with XmlSerializer; child elements are injected directly into
-// ApplicationData.Elements in Sync/ItemOperations responses.
-//
-// ConversationId/ConversationIndex (email2) are intentionally not serialised here: they are
-// opaque binary BLOBs that require WBXML OPAQUE encoding, which is a follow-up. They are still
-// persisted server-side.
 [XmlRoot("ApplicationData", Namespace = Constants.AirSync)]
 public class EmailData
 {
@@ -26,9 +19,7 @@ public class EmailData
     [XmlElement("Cc", Namespace = Constants.Email)]
     public string? Cc { get; set; }
 
-    // Note: Bcc is not part of the protocol 14.x Email class (it is Email2/16.x only), so it is
-    // deliberately not surfaced here even though the backend stores it.
-
+    // Bcc deliberately not surfaced: backend stores it but this class doesn't carry it
     [XmlElement("From", Namespace = Constants.Email)]
     public string? From { get; set; }
 
@@ -44,7 +35,6 @@ public class EmailData
     [XmlElement("Subject", Namespace = Constants.Email)]
     public string? Subject { get; set; }
 
-    // dateTime on the wire: yyyy-MM-ddTHH:mm:ss.fffZ
     [XmlIgnore]
     public DateTime? DateReceived { get; set; }
 
@@ -58,11 +48,10 @@ public class EmailData
     [XmlElement("ThreadTopic", Namespace = Constants.Email)]
     public string? ThreadTopic { get; set; }
 
-    // unsignedByte: 0 low, 1 normal, 2 high
+    // 0=low 1=normal 2=high
     [XmlElement("Importance", Namespace = Constants.Email)]
     public byte? Importance { get; set; }
 
-    // EAS boolean 0|1
     [XmlElement("Read", Namespace = Constants.Email)]
     public byte? Read { get; set; }
 
@@ -75,15 +64,14 @@ public class EmailData
     [XmlElement("ContentClass", Namespace = Constants.Email)]
     public string? ContentClass { get; set; }
 
-    // email2 conversation BLOBs. Serialised as base64 text; the WBXML encoder emits them as
-    // opaque binary (see ASWBXML.opaqueElements). The client treats these as opaque.
+    // serialised as base64 text; ASWBXML re-encodes these as opaque binary on the wire
     [XmlElement("ConversationId", Namespace = Constants.Email2)]
     public byte[]? ConversationId { get; set; }
 
     [XmlElement("ConversationIndex", Namespace = Constants.Email2)]
     public byte[]? ConversationIndex { get; set; }
 
-    // 0 none, 1 reply, 2 reply-all, 3 forward
+    // 0=none 1=reply 2=reply-all 3=forward
     [XmlElement("LastVerbExecuted", Namespace = Constants.Email2)]
     public int? LastVerbExecuted { get; set; }
 
@@ -100,23 +88,66 @@ public class EmailData
     [XmlElement("Flag", Namespace = Constants.Email)]
     public EmailFlag? Flag { get; set; }
 
-    // airsyncbase:Body is the canonical body element for protocol >= 12.0.
     [XmlElement("Body", Namespace = Constants.AirSyncBase)]
     public AirSyncBody? Body { get; set; }
 
-    // xs:unsignedByte: 1=PlainText, 2=HTML, 3=RTF, 4=MIME.
+    // 1=PlainText 2=HTML 3=RTF 4=MIME
     [XmlElement("NativeBodyType", Namespace = Constants.AirSyncBase)]
     public byte? NativeBodyType { get; set; }
+
+    [XmlElement("Attachments", Namespace = Constants.AirSyncBase)]
+    public AirSyncAttachments? Attachments { get; set; }
 }
 
-// <email:Flag> — follow-up flag (MS-ASEMAIL §2.2.2.34). Children span the email and tasks
-// namespaces. An empty Flag (all children null) round-trips as <Flag/> meaning "no flag".
+// MS-ASAIRS 2.2.2.8
+public class AirSyncAttachments
+{
+    [XmlElement("Attachment", Namespace = Constants.AirSyncBase)]
+    public List<AirSyncAttachment> Items { get; set; } = [];
+}
+
+// MS-ASAIRS 2.2.2.7 (command-response shape); FileReference doubles as the
+// server-assigned attachment id used by ItemOperations Fetch / GetAttachment
+public class AirSyncAttachment
+{
+    [XmlElement("DisplayName", Namespace = Constants.AirSyncBase)]
+    public string? DisplayName { get; set; }
+
+    [XmlElement("FileReference", Namespace = Constants.AirSyncBase)]
+    public string? FileReference { get; set; }
+
+    // 1=normal 5=embedded message 6=OLE; required by spec, always populated here
+    [XmlElement("Method", Namespace = Constants.AirSyncBase)]
+    public byte Method { get; set; } = 1;
+
+    [XmlElement("EstimatedDataSize", Namespace = Constants.AirSyncBase)]
+    public int EstimatedDataSize { get; set; }
+
+    [XmlElement("ContentId", Namespace = Constants.AirSyncBase)]
+    public string? ContentId { get; set; }
+
+    [XmlElement("ContentLocation", Namespace = Constants.AirSyncBase)]
+    public string? ContentLocation { get; set; }
+
+    // empty-tag element: presence means true, matching Sync's Partial/GetChanges pattern
+    [XmlIgnore]
+    public bool IsInline { get; set; }
+
+    [XmlElement("IsInline", Namespace = Constants.AirSyncBase)]
+    public string? IsInlineXml
+    {
+        get => IsInline ? string.Empty : null;
+        set => IsInline = value != null;
+    }
+}
+
+// an empty Flag (all children null) round-trips as <Flag/> meaning "no flag"
 public class EmailFlag
 {
     [XmlElement("Subject", Namespace = Constants.Tasks)]
     public string? Subject { get; set; }
 
-    // 0 clear, 1 active, 2 complete
+    // 0=clear 1=active 2=complete
     [XmlElement("Status", Namespace = Constants.Email)]
     public byte? Status { get; set; }
 
@@ -197,7 +228,6 @@ public class EmailFlag
     }
 }
 
-// MS-ASDTYPE §2.3 dateTime: yyyy-MM-ddTHH:mm:ss.fffZ (UTC, millisecond precision).
 internal static class EmailDateHelper
 {
     private const string Format = "yyyy-MM-ddTHH:mm:ss.fff'Z'";

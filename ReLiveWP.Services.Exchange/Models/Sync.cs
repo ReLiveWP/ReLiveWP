@@ -9,7 +9,6 @@ public static partial class Constants
     public const string AirSyncBase = "AirSyncBase";
 }
 
-// FilterType: used in Sync and GetItemEstimate Options
 public enum FilterType
 {
     NoFilter = 0,
@@ -20,7 +19,7 @@ public enum FilterType
     OneMonthBack = 5,
     ThreeMonthsBack = 6,
     SixMonthsBack = 7,
-    IncompleteTasksOnly = 8,  // Tasks class only
+    IncompleteTasksOnly = 8, // Tasks class only
 }
 
 public enum MIMESupport
@@ -36,7 +35,6 @@ public enum SyncConflict
     ServerWins = 1,
 }
 
-// BodyPreference/Body Type: used in AirSyncBase BodyPreference and Body elements
 public enum BodyType
 {
     PlainText = 1,
@@ -48,8 +46,7 @@ public enum BodyType
 [XmlRoot("Sync", Namespace = Constants.AirSync)]
 public class Sync
 {
-    // Top-level status, only present for command-level errors (e.g. 13, 14).
-    // Omit (null) on success — per-collection Status values are used instead.
+    // only present for command-level errors; null on success (per-collection Status is used instead)
     [XmlElement("Status", Namespace = Constants.AirSync)]
     public int? Status { get; set; }
     public bool ShouldSerializeStatus() => Status.HasValue;
@@ -57,7 +54,6 @@ public class Sync
     [XmlElement("Collections", Namespace = Constants.AirSync)]
     public SyncCollections? Collections { get; set; }
 
-    // Present in partial sync requests/responses; empty element, null = absent
     [XmlIgnore]
     public bool Partial { get; set; }
 
@@ -68,7 +64,7 @@ public class Sync
         set => Partial = value != null;
     }
 
-    // Client sends Wait (1–59 minutes) to hold the response open for changes
+    // client sends Wait (1-59 minutes) to hold the response open for changes
     [XmlElement("Wait", Namespace = Constants.AirSync)]
     public int? Wait { get; set; }
     public bool ShouldSerializeWait() => Wait.HasValue;
@@ -90,7 +86,6 @@ public class SyncCollections
 
 public class SyncCollection
 {
-    // Only sent in protocol 12.1 requests; implied by CollectionId in 14.0+
     [XmlElement("Class", Namespace = Constants.AirSync)]
     public string? Class { get; set; }
 
@@ -100,43 +95,43 @@ public class SyncCollection
     [XmlElement("CollectionId", Namespace = Constants.AirSync)]
     public string CollectionId { get; set; } = string.Empty;
 
-    // Request: move deleted items to Deleted Items folder instead of hard-deleting; 0|1
+    // move deleted items to Deleted Items instead of hard-deleting; 0|1
     [XmlElement("DeletesAsMoves", Namespace = Constants.AirSync)]
     public int? DeletesAsMoves { get; set; }
     public bool ShouldSerializeDeletesAsMoves() => DeletesAsMoves.HasValue;
 
+    // null = absent; empty element = true; "0" = false; anything else = true.
+    // absence is resolved against SyncKey by the caller (non-zero key => true)
     [XmlIgnore]
-    public bool GetChanges { get; set; }
+    public bool? GetChanges { get; set; }
 
     [XmlElement("GetChanges", Namespace = Constants.AirSync)]
     public string? GetChangesXml
     {
-        get => GetChanges ? string.Empty : null;
-        set => GetChanges = value != null;
+        get => GetChanges == true ? string.Empty : null;
+        set => GetChanges = value is null ? null : value != "0";
     }
 
-    // Request: max items to sync per response (1–512, default 100)
+    // max items to sync per response (1-512, default 100)
     [XmlElement("WindowSize", Namespace = Constants.AirSync)]
     public int? WindowSize { get; set; }
     public bool ShouldSerializeWindowSize() => WindowSize.HasValue;
 
-    // Request: group messages by conversation; 0|1
     [XmlElement("ConversationMode", Namespace = Constants.AirSync)]
     public int? ConversationMode { get; set; }
     public bool ShouldSerializeConversationMode() => ConversationMode.HasValue;
 
-    // Request: properties the client can store (tells server not to ghost them)
+    // properties the client can store (tells server not to ghost them)
     [XmlElement("Supported", Namespace = Constants.AirSync)]
     public SyncSupported? Supported { get; set; }
 
     [XmlElement("Options", Namespace = Constants.AirSync)]
     public SyncOptions? Options { get; set; }
 
-    // Status must precede Commands/Responses per MS-ASCMD §2.2.3.29.2
+    // declaration order is serialization order: must precede Commands/Responses
     [XmlElement("Status", Namespace = Constants.AirSync)]
     public int Status { get; set; }
 
-    // Empty element; present when server has more items to send
     [XmlIgnore]
     public bool MoreAvailable { get; set; }
 
@@ -147,13 +142,15 @@ public class SyncCollection
         set => MoreAvailable = value != null;
     }
 
-    // Client→server commands in requests; server→client commands in responses
-    [XmlElement("Commands", Namespace = Constants.AirSync)]
-    public SyncCommands? Commands { get; set; }
-
-    // Response: per-item status for client-originated Add/Change/Fetch
+    // must stay declared above Commands: XmlSerializer emits members in declaration order,
+    // and if Commands precedes Responses in the response, WP7 stops reading after Commands
+    // and never records the client Add's ClientId->ServerId, surfacing "could not be
+    // synchronised" even though the server returned Status 1
     [XmlElement("Responses", Namespace = Constants.AirSync)]
     public SyncResponses? Responses { get; set; }
+
+    [XmlElement("Commands", Namespace = Constants.AirSync)]
+    public SyncCommands? Commands { get; set; }
 }
 
 public class SyncOptions
@@ -188,24 +185,22 @@ public class SyncOptions
         set => MIMESupport = value.HasValue ? (MIMESupport)value.Value : null;
     }
 
-    // MIMETruncation: 0=No truncation, 1–7=truncate to 512/1024/2048/5120/10240/20480/51200 bytes, 8=truncate all
+    // 0=no truncation, 1-7=truncate to 512/1024/2048/5120/10240/20480/51200 bytes, 8=truncate all
     [XmlElement("MIMETruncation", Namespace = Constants.AirSync)]
     public int? MIMETruncation { get; set; }
 
-    // Sent in Options; may appear multiple times for different body types
     [XmlElement("BodyPreference", Namespace = Constants.AirSyncBase)]
     public List<BodyPreference> BodyPreference { get; set; } = [];
 
-    // BodyPartPreference: used for conversation-mode fetching of partial message bodies
+    // used for conversation-mode fetching of partial message bodies
     [XmlElement("BodyPartPreference", Namespace = Constants.AirSyncBase)]
     public List<BodyPreference> BodyPartPreference { get; set; } = [];
 
-    // Client annotation subscription — which Live annotation names to include per item
+    // which Live annotation names to include per item
     [XmlElement("Annotations", Namespace = Constants.WindowsLive)]
     public Annotations? Annotations { get; set; }
 }
 
-// Used in both Sync Options (request) and other commands that reference AirSyncBase
 public class BodyPreference
 {
     [XmlIgnore]
@@ -221,11 +216,11 @@ public class BodyPreference
     [XmlElement("TruncationSize", Namespace = Constants.AirSyncBase)]
     public int? TruncationSize { get; set; }
 
-    // Return full body or nothing at all; 0|1
+    // return full body or nothing at all; 0|1
     [XmlElement("AllOrNone", Namespace = Constants.AirSyncBase)]
     public int? AllOrNone { get; set; }
 
-    // Max length of preview text to include (≤255)
+    // max length of preview text to include (<=255)
     [XmlElement("Preview", Namespace = Constants.AirSyncBase)]
     public int? Preview { get; set; }
 }
@@ -244,15 +239,15 @@ public class SyncCommands
     [XmlElement("Fetch", Namespace = Constants.AirSync)]
     public List<SyncItemRef> Fetch { get; set; } = [];
 
-    // Server-only: soft-deleted item (moved to Deleted Items, not permanently removed)
+    // server-only: soft-deleted item (moved to Deleted Items, not permanently removed)
     [XmlElement("SoftDelete", Namespace = Constants.AirSync)]
     public List<SyncItemRef> SoftDelete { get; set; } = [];
 }
 
 public class SyncAdd
 {
-    // Client→server: new item to create; ServerId is null (assigned by server)
-    // Server→client: new item pushed to client; ClientId is null
+    // client->server: new item to create, ServerId is null (assigned by server)
+    // server->client: item pushed to client, ClientId is null
     [XmlElement("ClientId", Namespace = Constants.AirSync)]
     public string? ClientId { get; set; }
 
@@ -272,7 +267,6 @@ public class SyncChange
     public ApplicationData? ApplicationData { get; set; }
 }
 
-// Shared by Delete, Fetch, and SoftDelete (all are just a ServerId reference)
 public class SyncItemRef
 {
     [XmlElement("ServerId", Namespace = Constants.AirSync)]
@@ -281,15 +275,16 @@ public class SyncItemRef
 
 public class SyncResponses
 {
-    // Status per Add the client sent
     [XmlElement("Add", Namespace = Constants.AirSync)]
     public List<SyncResponseAdd> Add { get; set; } = [];
 
-    // Status per Change the client sent
     [XmlElement("Change", Namespace = Constants.AirSync)]
     public List<SyncResponseChange> Change { get; set; } = [];
 
-    // Response to a client Fetch: item data + status
+    // MS-ASCMD 2.2.3.42.2: failed deletions get their own Responses/Delete entry, not a Change
+    [XmlElement("Delete", Namespace = Constants.AirSync)]
+    public List<SyncResponseDelete> Delete { get; set; } = [];
+
     [XmlElement("Fetch", Namespace = Constants.AirSync)]
     public List<SyncResponseFetch> Fetch { get; set; } = [];
 }
@@ -299,7 +294,7 @@ public class SyncResponseAdd
     [XmlElement("ClientId", Namespace = Constants.AirSync)]
     public string ClientId { get; set; } = string.Empty;
 
-    // Present on success; null if server rejected the add
+    // present on success; null if server rejected the add
     [XmlElement("ServerId", Namespace = Constants.AirSync)]
     public string? ServerId { get; set; }
 
@@ -308,6 +303,15 @@ public class SyncResponseAdd
 }
 
 public class SyncResponseChange
+{
+    [XmlElement("ServerId", Namespace = Constants.AirSync)]
+    public string ServerId { get; set; } = string.Empty;
+
+    [XmlElement("Status", Namespace = Constants.AirSync)]
+    public int Status { get; set; }
+}
+
+public class SyncResponseDelete
 {
     [XmlElement("ServerId", Namespace = Constants.AirSync)]
     public string ServerId { get; set; } = string.Empty;
@@ -328,17 +332,12 @@ public class SyncResponseFetch
     public ApplicationData? ApplicationData { get; set; }
 }
 
-// Generic container for item properties. Actual content is from the collection's
-// class namespace (Email, Calendar, Contacts, Tasks) — use XmlAnyElement to
-// round-trip the elements until per-class DTOs are available.
 public class ApplicationData
 {
     [XmlAnyElement]
     public List<XmlElement> Elements { get; set; } = [];
 }
 
-// Tells the server which properties the client can store.
-// Content is class-specific property stubs from the collection's namespace.
 public class SyncSupported
 {
     [XmlAnyElement]

@@ -18,144 +18,144 @@ service FindMyPhone {
 }
 
 message RegisterDeviceRequest {
-	string userId = 1;
-	string deviceGuid = 2;
-	map<string, string> device_props = 3; 
+  string              userId       = 1;
+  string              deviceGuid   = 2;
+  map<string, string> device_props = 3;
 }
 
 message RegisterDeviceResponse {
-	int32 code = 1;
-	string message = 2;
-	bool enabled = 3;
+  int32  code    = 1;
+  string message = 2;
+  bool   enabled = 3;
 }
 
 message RegisterChannelRequest {
-	string userId = 1;
-	string deviceGuid = 2;
-	string notificationUri = 3;
+  string userId          = 1;
+  string deviceGuid      = 2;
+  string notificationUri = 3;
 }
 
 message RegisterChannelResponse {
-	int32 code = 1;
-	string message = 2;
-	bool enabled = 3;
+  int32  code    = 1;
+  string message = 2;
+  bool   enabled = 3;
 }
 
 message UpdateDeviceInfoRequest {
-	string userId = 1;
-	string deviceGuid = 2;
-	map<string, string> device_props = 3; 
+  string              userId       = 1;
+  string              deviceGuid   = 2;
+  map<string, string> device_props = 3;
 }
 
 message UpdateDeviceInfoResponse {
-	int32 code = 1;
-	string message = 2;
-	bool enabled = 3;
+  int32  code    = 1;
+  string message = 2;
+  bool   enabled = 3;
 }
 
 message GetDevicesForUserRequest {
-	string userId = 1;
+  string userId = 1;
 }
 
 message UserDevice {
-	optional string manufacturer = 1;
-	optional string model = 2;
-	optional string operator = 3;
-	optional string phone_number = 4;
+  optional string manufacturer = 1;
+  optional string model        = 2;
+  optional string operator     = 3;
+  optional string phone_number = 4;
 
-	string osVersion = 5;
-	string locale = 6;
-	string uniqueId = 7;
-	string friendlyName = 8;
+  string osVersion    = 5;
+  string locale       = 6;
+  string uniqueId     = 7;
+  string friendlyName = 8;
 
-	optional int32 colour_theme = 9;
-	optional string accent_colour = 10;
-	optional int32 lcid = 11;
-	optional string timezone = 12;
+  optional int32  colour_theme  = 9;
+  optional string accent_colour = 10;
+  optional int32  lcid          = 11;
+  optional string timezone      = 12;
 }
 
 message GetDeviceExtendedInfoRequest {
-	string userId = 1;
-	string deviceGuid = 2;
+  string userId     = 1;
+  string deviceGuid = 2;
 }
 
 message UserDeviceExtended {
-	string uniqueId = 1;
-	string manufacturer = 2;
-	string model = 3;
-	string operator = 4;
-	optional string phone_number = 5;
+  string          uniqueId     = 1;
+  string          manufacturer = 2;
+  string          model        = 3;
+  string          operator     = 4;
+  optional string phone_number = 5;
 
-	string osVersion = 6;
-	string friendlyName = 8;
+  string osVersion    = 6;
+  string friendlyName = 8;
 
-	optional int32 colour_theme = 9;
-	optional string accent_colour = 10;
-	optional int32 lcid = 11;
-	optional string timezone = 12;
+  optional int32  colour_theme  = 9;
+  optional string accent_colour = 10;
+  optional int32  lcid          = 11;
+  optional string timezone      = 12;
 
-	optional int32 battery_level = 13;
-	optional int64 storage_remaining = 14;
-	optional bool pin_locked = 15;
-	optional bool sim_locked = 16;
-	optional int32 working_set = 17;
-	optional google.protobuf.Timestamp last_seen = 18;
-	optional double last_seen_lat = 19;
-	optional double last_seen_long = 20;
+  optional int32                     battery_level     = 13;
+  optional int64                     storage_remaining = 14;
+  optional bool                      pin_locked        = 15;
+  optional bool                      sim_locked        = 16;
+  optional int32                     working_set       = 17;
+  optional google.protobuf.Timestamp last_seen         = 18;
+  optional double                    last_seen_lat     = 19;
+  optional double                    last_seen_long    = 20;
 }
 
 enum DeviceCommandRequestType {
-	COMMAND_RING = 0;
-	COMMAND_LOCATE = 1;
+  COMMAND_RING   = 0;
+  COMMAND_LOCATE = 1;
 }
 
 message DeviceCommandRequest {
-	string deviceGuid = 2;
-	string userId = 3;
-	DeviceCommandRequestType command = 1;
+  string                   deviceGuid = 2;
+  string                   userId     = 3;
+  DeviceCommandRequestType command    = 1;
 }
 
 message DeviceCommandResponse {
-	uint32 requestId = 1;
-	bool isQueued = 2;
+  uint32 requestId = 1;
+  bool   isQueued  = 2;
 }
 
 message ReportCommandStatusRequest {
-	string deviceGuid = 1;
-	uint32 requestId = 2;
-	uint32 result = 3;
-	bool final = 4;
-	string data = 5;
+  string deviceGuid = 1;
+  uint32 requestId  = 2;
+  uint32 result     = 3;
+  bool   final      = 4;
+  string data       = 5;
 }
 
 message ReportCommandStatusResponse {
-	int32 code = 1;
+  int32 code = 1;
 }
 
 message StreamCommandStatusRequest {
-	string userId = 1;
-	string deviceGuid = 2;
+  string userId     = 1;
+  string deviceGuid = 2;
 }
 
 message CommandStatusUpdate {
-	uint32 requestId = 1;
-	DeviceCommandRequestType action = 2;
-	uint32 result = 3;
-	bool final = 4;
-	string data = 5;
-	google.protobuf.Timestamp reported = 6;
-	optional double lat = 7;
-	optional double long = 8;
-	optional double accuracy = 9;
+  uint32                    requestId = 1;
+  DeviceCommandRequestType  action    = 2;
+  uint32                    result    = 3;
+  bool                      final     = 4;
+  string                    data      = 5;
+  google.protobuf.Timestamp reported  = 6;
+  optional double           lat       = 7;
+  optional double           long      = 8;
+  optional double           accuracy  = 9;
 }
 
 message ReportDeviceStatusRequest {
-	string deviceGuid = 1;
-	optional int32 batteryLevel = 2;
-	optional google.protobuf.Timestamp deviceTime = 3;
-	optional string clientVersion = 4;
+  string                             deviceGuid    = 1;
+  optional int32                     batteryLevel  = 2;
+  optional google.protobuf.Timestamp deviceTime    = 3;
+  optional string                    clientVersion = 4;
 }
 
 message ReportDeviceStatusResponse {
-	int32 code = 1;
+  int32 code = 1;
 }

@@ -5,7 +5,6 @@ using ReLiveWP.Services.Grpc;
 namespace ReLiveWP.Services.Activity.Services;
 
 public class ActivityProviderService(
-    IServiceProvider serviceProvider,
     IHttpContextAccessor httpContextAccessor, 
     IConfiguration configuration,
     ILoggerFactory loggerFactory,
