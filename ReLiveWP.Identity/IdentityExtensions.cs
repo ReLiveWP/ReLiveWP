@@ -15,7 +15,6 @@ public static class IdentityExtensions
     {
         public AddLiveIDAuthenticationOptions() { }
 
-        public Action<GrpcClientFactoryOptions>? IdentityGrpcConfiguration { internal get; set; }
         public Action<GrpcClientFactoryOptions>? ConnectedServicesGrpcConfiguration { internal get; set; }
         public Action<LiveIDAuthOptions>? LiveIDConfiguration { internal get; set; }
         public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
@@ -71,15 +70,8 @@ public static class IdentityExtensions
         var opts = new AddLiveIDAuthenticationOptions();
         options(opts);
 
-        if (opts.IdentityGrpcConfiguration != null)
-        {
-            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient", opts.IdentityGrpcConfiguration);
-        }
-        else
-        {
-            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient");;
-        }
-
+        // LiveID tokens are verified in-process against the shared ES256 public key (JWT:PublicKey),
+        // so no gRPC client to the Identity backend is needed here.
         if (opts.ConnectedServicesGrpcConfiguration != null)
         {
             collection.AddGrpcClient<ConnectedServices.ConnectedServicesClient>("Identity_OAuthClient", opts.ConnectedServicesGrpcConfiguration);

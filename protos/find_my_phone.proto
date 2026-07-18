@@ -11,6 +11,7 @@ service FindMyPhone {
   rpc UpdateDeviceInfo (UpdateDeviceInfoRequest) returns (UpdateDeviceInfoResponse);
   rpc GetDevicesForUser(GetDevicesForUserRequest) returns (stream UserDevice);
   rpc GetDeviceExtendedInfo(GetDeviceExtendedInfoRequest) returns (UserDeviceExtended);
+  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
   rpc SendDeviceCommand(DeviceCommandRequest) returns (DeviceCommandResponse);
   rpc ReportCommandStatus(ReportCommandStatusRequest) returns (ReportCommandStatusResponse);
   rpc StreamCommandStatus(StreamCommandStatusRequest) returns (stream CommandStatusUpdate);
@@ -102,6 +103,16 @@ message UserDeviceExtended {
   optional google.protobuf.Timestamp last_seen         = 18;
   optional double                    last_seen_lat     = 19;
   optional double                    last_seen_long    = 20;
+}
+
+message RemoveDeviceRequest {
+  string userId     = 1;
+  string deviceGuid = 2;
+}
+
+message RemoveDeviceResponse {
+  int32  code    = 1;
+  string message = 2;
 }
 
 enum DeviceCommandRequestType {

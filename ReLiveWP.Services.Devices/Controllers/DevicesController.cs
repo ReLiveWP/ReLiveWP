@@ -7,6 +7,7 @@ using PhoneNumbers;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Devices.Models;
 using ReLiveWP.Services.Devices.Services;
+using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.DeviceRegistration;
 using ReLiveWP.Services.Grpc.FindMyPhone;
 
@@ -19,7 +20,8 @@ public class DevicesController(
     ICarrierLookupService carrierLookupService,
     IWebHostEnvironment environment,
     FindMyPhone.FindMyPhoneClient skyboxClient,
-    DeviceRegistration.DeviceRegistrationClient deviceRegistrationClient) : ControllerBase
+    DeviceRegistration.DeviceRegistrationClient deviceRegistrationClient,
+    Authentication.AuthenticationClient authenticationClient) : ControllerBase
 {
     [HttpGet]
     [Authorize]
@@ -147,6 +149,35 @@ public class DevicesController(
         var response = await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandLocate }, cancellationToken: cancellationToken);
 
         return Accepted(new { requestId = response.RequestId });
+    }
+
+    [HttpDelete]
+    [Authorize]
+    [ActionName("remove")]
+    public async Task<IActionResult> RemoveDeviceAsync(string id, CancellationToken cancellationToken)
+    {
+        if (User == null)
+            return Unauthorized(); // should never happen
+
+        try
+        {
+            await skyboxClient.RemoveDeviceAsync(new RemoveDeviceRequest() { UserId = User.Id(), DeviceGuid = id }, cancellationToken: cancellationToken);
+        }
+        catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.NotFound)
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            await authenticationClient.RevokeDeviceTokensAsync(new RevokeDeviceTokensRequest() { DeviceId = id }, cancellationToken: cancellationToken);
+        }
+        catch (RpcException ex)
+        {
+            logger.LogError(ex, "Failed to revoke tokens for removed device {DeviceId}", id);
+        }
+
+        return NoContent();
     }
 
     [HttpGet]

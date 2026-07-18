@@ -385,4 +385,10 @@ public class AuthenticationService(
 
         return new Empty();
     }
+
+    public override async Task<RevokeDeviceTokensResponse> RevokeDeviceTokens(RevokeDeviceTokensRequest request, ServerCallContext context)
+    {
+        await tokenManager.RevokeTokensForDeviceAsync(request.DeviceId);
+        return new RevokeDeviceTokensResponse() { Code = 0 };
+    }
 }

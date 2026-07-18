@@ -4,7 +4,7 @@ import Link from "~/components/Link";
 import DeviceSpecRows from "~/components/DeviceSpecRows";
 
 
-export default function DeviceView({ device }: { device: Device }) {
+export default function DeviceView({ device, onRemove }: { device: Device; onRemove: (id: string) => void }) {
     const [deviceImage, _] = useDeviceImage(device.manufacturer, device.model);
 
     return (
@@ -26,6 +26,9 @@ export default function DeviceView({ device }: { device: Device }) {
                         timezone={device.timezone} />
                     <dt>
                         <Link href={`/my/device/${device.id}`} class="view-more text-accent">view more in my phone &gt;</Link>
+                    </dt>
+                    <dt>
+                        <a href="#" class="view-more error" onClick={() => onRemove(device.id)}>remove device</a>
                     </dt>
                 </dl>
             </div>

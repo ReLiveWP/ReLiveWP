@@ -86,6 +86,19 @@ public class SkyboxDeviceService(
         return new RegisterChannelResponse() { Code = 0, Enabled = true, Message = "OK" };
     }
 
+    public override async Task<RemoveDeviceResponse> RemoveDevice(RemoveDeviceRequest request, ServerCallContext context)
+    {
+        var ownerId = Guid.Parse(request.UserId);
+        var deviceGuid = request.DeviceGuid.ToLowerInvariant();
+        var device = await dbContext.Devices.FirstOrDefaultAsync(d => d.DeviceGuid == deviceGuid && d.OwnerId == ownerId)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Device not found!"));
+
+        dbContext.Devices.Remove(device);
+        await dbContext.SaveChangesAsync();
+
+        return new RemoveDeviceResponse() { Code = 0, Message = "OK" };
+    }
+
     public override async Task<UpdateDeviceInfoResponse> UpdateDeviceInfo(UpdateDeviceInfoRequest request, ServerCallContext context)
     {
         var deviceGuid = request.DeviceGuid.ToLowerInvariant();

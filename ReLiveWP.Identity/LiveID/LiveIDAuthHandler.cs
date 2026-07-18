@@ -2,17 +2,17 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Web;
-using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ReLiveWP.Services.Grpc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ReLiveWP.Identity.LiveID;
 
@@ -21,10 +21,9 @@ internal class LiveIDAuthHandler(
     ILogger<LiveIDAuthHandler> logger,
     IOptionsMonitor<LiveIDAuthOptions> options,
     UrlEncoder encoder,
-    GrpcClientFactory grpcClientFactory) : AuthenticationHandler<LiveIDAuthOptions>(options, loggerFactory, encoder)
+    IConfiguration configuration) : AuthenticationHandler<LiveIDAuthOptions>(options, loggerFactory, encoder)
 {
     public const string SchemeName = "LiveID";
-    private readonly Authentication.AuthenticationClient authenticationClient = grpcClientFactory.CreateClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
 
     public new LiveIDAuthEvents Events
     {
@@ -77,14 +76,25 @@ internal class LiveIDAuthHandler(
             }
         }
 
-        var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
-        foreach (var validService in Options.ValidServiceTargets)
-            request.ServiceTargets.Add(validService);
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = JwtKeyLoader.GetVerifyingKey(configuration, logger),
 
-        VerifyResponse reply;
+            ValidateIssuer = true,
+            ValidIssuer = JwtKeyLoader.Issuer,
+
+            ValidateAudience = true,
+            ValidAudiences = Options.ValidServiceTargets,
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5) // +- 5 mins is fine, these devices are Old
+        };
+
+        TokenValidationResult result;
         try
         {
-            reply = await authenticationClient.VerifySecurityTokenAsync(request);
+            result = await new JwtSecurityTokenHandler().ValidateTokenAsync(token, validationParameters);
         }
         catch (Exception ex)
         {
@@ -92,14 +102,13 @@ internal class LiveIDAuthHandler(
             return AuthenticateResult.Fail(ex);
         }
 
-        if (reply.Code > 0)
+        if (!result.IsValid)
         {
-            logger.LogError("Failed to validate with code {ErrorCode:X2}!", reply.Code);
-            return AuthenticateResult.Fail("Invalid token");
+            logger.LogWarning(result.Exception, "Invalid token");
+            return AuthenticateResult.Fail(result.Exception ?? new Exception("Invalid token"));
         }
 
-        var claims = reply.Claims.Select(c => new Claim(c.Type, c.Value));
-        var identity = new ClaimsIdentity(claims, SchemeName);
+        var identity = new ClaimsIdentity(result.ClaimsIdentity.Claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);
 
         var ticket = new AuthenticationTicket(principal, SchemeName);

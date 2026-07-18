@@ -20,6 +20,8 @@ service Authentication {
   rpc VerifySecurityToken (VerifyTokenRequest) returns (VerifyResponse);
   rpc VerifyPassword (VerifyPasswordRequest) returns (VerifyResponse);
   rpc VerifyDeviceCertificate (VerifyDeviceCertificateRequest) returns (VerifyDeviceCertificateResponse);
+
+  rpc RevokeDeviceTokens (RevokeDeviceTokensRequest) returns (RevokeDeviceTokensResponse);
 }
 
 message RegisterRequest {
@@ -148,4 +150,12 @@ message ChangePasswordRequest {
   optional string puid        = 2; // DeviceChangeCredental looks up bu puid
   string          oldPassword = 3;
   string          newPassword = 4;
+}
+
+message RevokeDeviceTokensRequest {
+  string deviceId = 1;
+}
+
+message RevokeDeviceTokensResponse {
+  int32 code = 1;
 }

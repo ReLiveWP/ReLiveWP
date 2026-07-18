@@ -10,7 +10,6 @@ builder.AddServiceEndpoints();
 
 builder.Services.AddLiveIDAuthentication(o =>
 {
-    o.IdentityGrpcConfiguration = (c) => c.Address = new Uri(builder.Configuration["Endpoints:Identity"]!);
     o.LiveIDConfiguration = (c) =>
     {
         c.HeaderNameOverride = "X-WM-Services-Token";

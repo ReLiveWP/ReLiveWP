@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity.Data;
+using ReLiveWP.Identity.LiveID;
 using ReLiveWP.Passport;
 using ReLiveWP.Services.Grpc;
 
@@ -131,6 +132,14 @@ public class TokenManager(
         return new RefreshTokenRedemption(user, token.ServiceTarget);
     }
 
+    public async Task RevokeTokensForDeviceAsync(string deviceId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        await dbContext.LiveRefreshTokens
+            .Where(t => t.DeviceId == deviceId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
+    }
+
     private static string GenerateRawToken()
         => "rt_" + Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
 
@@ -207,7 +216,7 @@ public class TokenManager(
         var validationParameters = new TokenValidationParameters()
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = GetVerifyingCredentials(configuration),
+            IssuerSigningKey = JwtKeyLoader.GetVerifyingKey(configuration, logger),
 
             ValidateIssuer = true,
             ValidIssuer = JwtIssuer,
@@ -248,28 +257,4 @@ public class TokenManager(
         }
     }
 
-    public static SecurityKey GetVerifyingCredentials(IConfiguration configuration)
-    {
-        var type = configuration["JWT:SignatureAlgorithm"] ?? "SHA256-HMAC";
-        if (type == "ES256")
-        {
-            var provider = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            var publicKeyB64 = configuration["JWT:PublicKey"];
-            if (publicKeyB64 != null)
-            {
-                provider.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKeyB64), out _);
-            }
-            else
-            {
-                // derive public key from the private key when no explicit public key is configured
-                provider.ImportECPrivateKey(Convert.FromBase64String(configuration["JWT:PrivateKey"]!), out _);
-            }
-
-            return new ECDsaSecurityKey(provider);
-        }
-        else
-        {
-            return new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:Secret"]!));
-        }
-    }
 }

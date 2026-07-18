@@ -25,5 +25,14 @@ else
     echo "  Written: deploy/secrets/jwt_private_key"
 fi
 
+# Derive the public key (SPKI DER, base64) so verifiers can validate tokens without the private
+# key. Not secret; distributed to every verifying service as JWT:PublicKey (docker secret / config).
+if [ ! -f "$SECRETS_DIR/jwt_public_key" ]; then
+    base64 -d "$SECRETS_DIR/jwt_private_key" \
+        | openssl ec -inform DER -pubout -outform DER 2>/dev/null \
+        | base64 > "$SECRETS_DIR/jwt_public_key"
+    echo "  Written: deploy/secrets/jwt_public_key"
+fi
+
 PRIVATE_KEY="$(cat "$SECRETS_DIR/jwt_private_key")"
 dotnet user-secrets --project "$IDENTITY_DIR" set "JWT:PrivateKey" "$PRIVATE_KEY"

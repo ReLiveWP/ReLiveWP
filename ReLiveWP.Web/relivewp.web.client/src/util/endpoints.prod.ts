@@ -9,6 +9,7 @@ export const ENDPOINT_REQUEST_TOKENS = "https://login.relivewp.net/auth/request_
     ENDPOINT_DEVICE_PING = "https://devices.relivewp.net/devices/ping/:deviceId",
     ENDPOINT_DEVICE_LOCATE = "https://devices.relivewp.net/devices/locate/:deviceId",
     ENDPOINT_DEVICE_EVENTS = "https://devices.relivewp.net/devices/events/:deviceId",
+    ENDPOINT_DEVICE_REMOVE = "https://devices.relivewp.net/devices/remove/:deviceId",
     ENDPOINT_DEVICE_IMAGE = "https://devices.relivewp.net/devices/image/:size/:device",
     ENDPOINT_AVAILABLE_LINKS = "https://login.relivewp.net/oauth/available-links",
     ENDPOINT_UPDATE_LINK = "https://login.relivewp.net/oauth/link";

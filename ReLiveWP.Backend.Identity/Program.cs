@@ -8,6 +8,7 @@ using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Grpc;
 using ReLiveWP.Backend.Identity.Services;
+using ReLiveWP.Identity.LiveID;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -40,6 +41,15 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<LiveDbContext>().Database.Migrate();
+}
+
+// Print the JWT public key on startup so it can be copied into JWT:PublicKey and distributed to
+// every verifying service (verifiers only ever see the public half).
+if (JwtKeyLoader.GetVerifyingKey(app.Configuration) is ECDsaSecurityKey publicKey)
+{
+    app.Services.GetRequiredService<ILogger<Program>>().LogInformation(
+        "JWT ES256 public key (JWT:PublicKey): {PublicKey}",
+        Convert.ToBase64String(publicKey.ECDsa.ExportSubjectPublicKeyInfo()));
 }
 
 app.MapGrpcService<AuthenticationService>();

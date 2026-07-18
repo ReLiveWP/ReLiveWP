@@ -55,5 +55,6 @@
     <Project Path="ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />
     <Project Path="ReLiveWP.Services.Messenger/ReLiveWP.Services.Messenger.csproj" />
   </Folder>
+  <Project Path="ReLiveWP.Identity.Tests/ReLiveWP.Identity.Tests.csproj" />
   <Project Path="ReLiveWP/ReLiveWP.csproj" />
 </Solution>
