@@ -82,9 +82,12 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
         _ => MailboxChangeKind.Update,
     };
 
+    private static long fallbackCommitId = ChangeEventCursor.CommitIdOffset;
+
     private static void EmitEvents(MailboxDbContext db)
     {
         var now = DateTime.UtcNow;
+        var commitId = db.Database.IsNpgsql() ? 0L : Interlocked.Increment(ref fallbackCommitId);
         var entries = db.ChangeTracker.Entries().ToList();
         var childItemServerIds = new HashSet<string>();
 
@@ -95,6 +98,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                 case DbItem item when entry.State == EntityState.Added:
                     db.ItemEvents.Add(new DbItemEvent
                     {
+                        CommitId = commitId,
                         UserId = item.UserId,
                         CollectionId = item.CollectionId,
                         EventType = DbChangeEventType.Add,
@@ -111,6 +115,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     {
                         db.ItemEvents.Add(new DbItemEvent
                         {
+                            CommitId = commitId,
                             UserId = item.UserId,
                             CollectionId = (string)collectionProp.OriginalValue!,
                             EventType = DbChangeEventType.Delete,
@@ -119,6 +124,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                         });
                         db.ItemEvents.Add(new DbItemEvent
                         {
+                            CommitId = commitId,
                             UserId = item.UserId,
                             CollectionId = (string)collectionProp.CurrentValue!,
                             EventType = DbChangeEventType.Add,
@@ -132,6 +138,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     {
                         db.ItemEvents.Add(new DbItemEvent
                         {
+                            CommitId = commitId,
                             UserId = item.UserId,
                             CollectionId = item.CollectionId,
                             EventType = DbChangeEventType.Delete,
@@ -144,6 +151,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                         // delete items that become invalid, add them back when fixed
                         db.ItemEvents.Add(new DbItemEvent
                         {
+                            CommitId = commitId,
                             UserId = item.UserId,
                             CollectionId = item.CollectionId,
                             EventType = becameFlagged ? DbChangeEventType.Delete : DbChangeEventType.Add,
@@ -155,6 +163,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     {
                         db.ItemEvents.Add(new DbItemEvent
                         {
+                            CommitId = commitId,
                             UserId = item.UserId,
                             CollectionId = item.CollectionId,
                             EventType = DbChangeEventType.Update,
@@ -167,6 +176,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                 case DbFolder folder when entry.State == EntityState.Added:
                     db.FolderEvents.Add(new DbFolderEvent
                     {
+                        CommitId = commitId,
                         UserId = folder.UserId,
                         EventType = DbChangeEventType.Add,
                         ServerId = folder.Id,
@@ -182,6 +192,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     {
                         db.FolderEvents.Add(new DbFolderEvent
                         {
+                            CommitId = commitId,
                             UserId = folder.UserId,
                             EventType = DbChangeEventType.Delete,
                             ServerId = folder.Id,
@@ -192,6 +203,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     {
                         db.FolderEvents.Add(new DbFolderEvent
                         {
+                            CommitId = commitId,
                             UserId = folder.UserId,
                             EventType = DbChangeEventType.Update,
                             ServerId = folder.Id,
@@ -247,6 +259,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
 
             db.ItemEvents.Add(new DbItemEvent
             {
+                CommitId = commitId,
                 UserId = item.UserId,
                 CollectionId = item.CollectionId,
                 EventType = DbChangeEventType.Update,

@@ -87,8 +87,18 @@ public class FolderSyncService(
         }
 
         var parentId = string.IsNullOrEmpty(request.ParentId) ? RootParentId : request.ParentId;
-        if (parentId != RootParentId && await GetFolderOrNullAsync(userId, parentId, ct) is null)
-            return new FolderCreateResponse { Status = StatusParentNotFound };
+        Folder? createParent = null;
+        if (parentId != RootParentId)
+        {
+            createParent = await GetFolderOrNullAsync(userId, parentId, ct);
+            if (createParent is null)
+                return new FolderCreateResponse { Status = StatusParentNotFound };
+        }
+
+        // MS-ASCMD 2.2.1.3: FolderCreate "cannot be used to create ... a subfolder of a
+        // recipient information cache"
+        if (createParent is not null && createParent.Type == ProtoFolderType.RecipientInformationCache)
+            return new FolderCreateResponse { Status = StatusSpecialFolder };
 
         if (await FindChildByNameAsync(userId, parentId, request.DisplayName!, null, ct) is not null)
             return new FolderCreateResponse { Status = StatusNameExistsOrSpecial };
@@ -133,8 +143,18 @@ public class FolderSyncService(
             return new FolderUpdateResponse { Status = StatusNameExistsOrSpecial };
 
         var parentId = string.IsNullOrEmpty(request.ParentId) ? RootParentId : request.ParentId;
-        if (parentId != RootParentId && await GetFolderOrNullAsync(userId, parentId, ct) is null)
-            return new FolderUpdateResponse { Status = StatusParentNotFound };
+        Folder? newParent = null;
+        if (parentId != RootParentId)
+        {
+            newParent = await GetFolderOrNullAsync(userId, parentId, ct);
+            if (newParent is null)
+                return new FolderUpdateResponse { Status = StatusParentNotFound };
+        }
+
+        // MS-ASCMD 2.2.1.6: FolderUpdate "cannot be used to move a folder under the recipient
+        // information cache", and must return Status 3 if asked to
+        if (newParent is not null && newParent.Type == ProtoFolderType.RecipientInformationCache)
+            return new FolderUpdateResponse { Status = StatusSpecialFolder };
 
         // reparenting a folder beneath itself would detach the whole subtree from the root
         if (parentId != RootParentId && await WouldCreateCycleAsync(userId, folder.Id, parentId, ct))
@@ -336,7 +356,7 @@ public class FolderSyncService(
 
         var events = new List<SyncEvent>();
         await foreach (var e in ReadFolderEventsAsync(userId, state.Watermark, ct))
-            events.Add(new SyncEvent(e.Id, e.ServerId, e.EventType));
+            events.Add(new SyncEvent(e.CommitId, e.Id, e.ServerId, e.EventType));
 
         if (events.Count == 0 && orphanIds.Count == 0)
         {

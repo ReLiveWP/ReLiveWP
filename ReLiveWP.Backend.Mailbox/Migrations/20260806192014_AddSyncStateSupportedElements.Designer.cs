@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ReLiveWP.Backend.Mailbox.Data;
@@ -11,9 +12,11 @@ using ReLiveWP.Backend.Mailbox.Data;
 namespace ReLiveWP.Backend.Mailbox.Migrations
 {
     [DbContext(typeof(MailboxDbContext))]
-    partial class MailboxDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260806192014_AddSyncStateSupportedElements")]
+    partial class AddSyncStateSupportedElements
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -457,11 +460,6 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<long>("CommitId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasDefaultValueSql("(pg_current_xact_id()::text::bigint + 1000000000)");
-
                     b.Property<string>("DisplayName")
                         .HasColumnType("text");
 
@@ -488,8 +486,6 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("UserId", "Id");
-
-                    b.HasIndex("UserId", "CommitId", "Id");
 
                     b.ToTable("FolderEvents");
                 });
@@ -531,12 +527,6 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Property<string>("ValidationReason")
                         .HasColumnType("text");
 
-                    b.Property<uint>("Version")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CollectionId");
@@ -571,11 +561,6 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<long>("CommitId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasDefaultValueSql("(pg_current_xact_id()::text::bigint + 1000000000)");
-
                     b.Property<int>("EventType")
                         .HasColumnType("integer");
 
@@ -593,8 +578,6 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("UserId", "CollectionId", "Id");
-
-                    b.HasIndex("UserId", "CollectionId", "CommitId", "Id");
 
                     b.ToTable("ItemEvents");
                 });

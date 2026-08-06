@@ -15,6 +15,9 @@ public class ItemSyncService(
 {
     private static readonly IReadOnlySet<string> EmptyServerIds = new HashSet<string>();
 
+    // bounded so a genuinely contended item still resolves to a conflict rather than spinning
+    private const int MaxChangeWriteAttempts = 3;
+
     // if we can't find a collection, the device is probably out of sync, reset it
     public async Task<bool> ResolveStaleHierarchyAsync(string userId,
                                                        string deviceId,
@@ -107,17 +110,17 @@ public class ItemSyncService(
 
         SyncCollection result;
         IReadOnlySet<string> serverChangedIds;
+        GhostingPolicy ghosting = GhostingPolicy.Parse(state?.SupportedElements);
         int windowSize = SyncEngine.ResolveWindowSize(request.WindowSize);
-        // MS-ASCMD 2.2.3.116: MoreAvailable is reported only if the client's request actually
-        // included a WindowSize element (a missing element still gets the 100-item default window,
-        // it just never advertises more content beyond it)
         bool windowSizeSent = request.WindowSize.HasValue;
 
         if (request.SyncKey == "0")
         {
             var annotationNames = request.Options?.Annotations?.RequestedNames();
-            result = await InitialSyncAsync(userId, deviceId, collectionId, state, annotationNames, ct);
+            var supported = GhostingPolicy.FromSupported(request.Supported);
+            result = await InitialSyncAsync(userId, deviceId, collectionId, state, annotationNames, supported, ct);
             serverChangedIds = EmptyServerIds;
+            if (!supported.IsPreserveAll) ghosting = supported;
         }
         else if (state is not null && request.SyncKey == state.PreviousSyncKey && request.SyncKey != state.SyncKey)
         {
@@ -132,13 +135,14 @@ public class ItemSyncService(
                 SyncKey = request.SyncKey,
                 Watermark = state.PreviousWatermark,
                 CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+                SupportedElements = state.SupportedElements ?? string.Empty,
                 PreviousSyncKey = state.PreviousSyncKey,
                 PreviousWatermark = state.PreviousWatermark,
             };
 
             var annotationNames = ParseCachedAnnotationNames(state.CachedAnnotationNames);
-            var bodyPref = SelectBodyPreference(request.Options);
-            (result, serverChangedIds) = await IncrementalSyncAsync(userId, collectionId, state, getChanges, hasClientCommands, annotationNames, bodyPref, windowSize, windowSizeSent, ct);
+            var bodyPrefs = SelectBodyPreference(request.Options);
+            (result, serverChangedIds) = await IncrementalSyncAsync(userId, collectionId, state, getChanges, hasClientCommands, annotationNames, bodyPrefs, windowSize, windowSizeSent, ct);
         }
         else if (state is null || state.SyncKey != request.SyncKey)
         {
@@ -152,6 +156,7 @@ public class ItemSyncService(
                     SyncKey = "0",
                     Watermark = 0,
                     CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+                    SupportedElements = state.SupportedElements ?? string.Empty,
                     PreviousSyncKey = "0",
                     PreviousWatermark = 0,
                 }, cancellationToken: ct);
@@ -161,22 +166,20 @@ public class ItemSyncService(
         else
         {
             var annotationNames = ParseCachedAnnotationNames(state.CachedAnnotationNames);
-            var bodyPref = SelectBodyPreference(request.Options);
-            (result, serverChangedIds) = await IncrementalSyncAsync(userId, collectionId, state, getChanges, hasClientCommands, annotationNames, bodyPref, windowSize, windowSizeSent, ct);
+            var bodyPrefs = SelectBodyPreference(request.Options);
+            (result, serverChangedIds) = await IncrementalSyncAsync(userId, collectionId, state, getChanges, hasClientCommands, annotationNames, bodyPrefs, windowSize, windowSizeSent, ct);
         }
 
         if (request.Commands is { } cmds &&
             (cmds.Add.Count > 0 || cmds.Change.Count > 0 || cmds.Delete.Count > 0 || cmds.Fetch.Count > 0))
         {
             var itemClass = await GetItemClassAsync(userId, collectionId, ct);
-            var bodyPref = SelectBodyPreference(request.Options);
+            var bodyPrefs = SelectBodyPreference(request.Options);
             var conflictPolicy = request.Options?.Conflict ?? SyncConflict.ServerWins;
-            var responses = await ProcessClientCommandsAsync(userId, collectionId, itemClass, cmds, bodyPref, serverChangedIds, conflictPolicy, ct);
+            var responses = await ProcessClientCommandsAsync(userId, collectionId, itemClass, cmds, bodyPrefs, serverChangedIds, conflictPolicy, ghosting, ct);
             if (responses is not null)
                 result.Responses = responses;
 
-            // never hand back a server Add/Change for an item the client just deleted: re-adding what
-            // it asked to remove wedges WP7 into resending the Delete forever
             SyncEngine.SuppressDeleted(result.Commands, cmds.Delete.Select(d => d.ServerId));
             if (result.Commands is { } rc &&
                 rc.Add.Count + rc.Change.Count + rc.Delete.Count + rc.SoftDelete.Count + rc.Fetch.Count == 0)
@@ -191,11 +194,16 @@ public class ItemSyncService(
                                                         string collectionId,
                                                         SyncState? state,
                                                         IReadOnlySet<string>? requestedAnnotations,
+                                                        GhostingPolicy supported,
                                                         CancellationToken ct)
     {
         var cached = requestedAnnotations is { Count: > 0 }
             ? string.Join(",", requestedAnnotations)
             : string.IsNullOrEmpty(state?.CachedAnnotationNames) ? null : state.CachedAnnotationNames;
+
+        var supportedElements = supported.IsPreserveAll
+            ? state?.SupportedElements ?? string.Empty
+            : supported.Serialize();
 
         await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
         {
@@ -205,6 +213,7 @@ public class ItemSyncService(
             SyncKey = "1",
             Watermark = -1,
             CachedAnnotationNames = cached ?? string.Empty,
+            SupportedElements = supportedElements,
             PreviousSyncKey = "0",
             PreviousWatermark = 0,
         }, cancellationToken: ct);
@@ -219,7 +228,7 @@ public class ItemSyncService(
         bool getChanges,
         bool hasClientCommands,
         IReadOnlySet<string>? requestedAnnotations,
-        BodyPreference? bodyPref,
+        IReadOnlyList<BodyPreference>? bodyPrefs,
         int windowSize,
         bool windowSizeSent,
         CancellationToken ct)
@@ -236,6 +245,7 @@ public class ItemSyncService(
                 SyncKey = newKey,
                 Watermark = newWatermark,
                 CachedAnnotationNames = state.CachedAnnotationNames ?? string.Empty,
+                SupportedElements = state.SupportedElements ?? string.Empty,
                 PreviousSyncKey = advanced ? state.SyncKey : state.PreviousSyncKey,
                 PreviousWatermark = advanced ? state.Watermark : state.PreviousWatermark,
             }, cancellationToken: ct).ResponseAsync;
@@ -245,16 +255,11 @@ public class ItemSyncService(
         // the same ItemEvent-log-driven path (and windowing) as every incremental sync
         long baseline = state.Watermark == -1 ? 0 : state.Watermark;
 
-        // commands must still advance the key or the client treats the batch as uncommitted and
-        // resends it. GetChanges=0 means don't surface content, but a client Change in the same
-        // request still needs the server-changed-id set for conflict detection, so events are
-        // still read here (unwindowed: nothing is being surfaced, so there's nothing to page),
-        // just without advancing the stored watermark past content the client was never shown.
         if (!getChanges)
         {
             var noContentEvents = new List<SyncEvent>();
             await foreach (var e in ReadItemEventsAsync(userId, collectionId, baseline, ct))
-                noContentEvents.Add(new SyncEvent(e.Id, e.ServerId, e.EventType));
+                noContentEvents.Add(new SyncEvent(e.CommitId, e.Id, e.ServerId, e.EventType));
             var noContentDelta = SyncEngine.Collapse(noContentEvents);
 
             var key = hasClientCommands ? SyncEngine.NextSyncKey(state.SyncKey) : state.SyncKey;
@@ -264,7 +269,7 @@ public class ItemSyncService(
 
         var events = new List<SyncEvent>();
         await foreach (var e in ReadItemEventsAsync(userId, collectionId, baseline, ct))
-            events.Add(new SyncEvent(e.Id, e.ServerId, e.EventType));
+            events.Add(new SyncEvent(e.CommitId, e.Id, e.ServerId, e.EventType));
 
         if (events.Count == 0)
         {
@@ -289,13 +294,13 @@ public class ItemSyncService(
         foreach (var id in delta.Added)
         {
             if (!itemMap.TryGetValue(id, out var item)) continue;
-            var data = TrySerialize(item, requestedAnnotations, bodyPref);
+            var data = TrySerialize(item, requestedAnnotations, bodyPrefs);
             if (data is not null) cmds.Add.Add(new SyncAdd { ServerId = id, ApplicationData = data });
         }
         foreach (var id in delta.Updated)
         {
             if (!itemMap.TryGetValue(id, out var item)) continue;
-            var data = TrySerialize(item, requestedAnnotations, bodyPref);
+            var data = TrySerialize(item, requestedAnnotations, bodyPrefs);
             if (data is not null) cmds.Change.Add(new SyncChange { ServerId = id, ApplicationData = data });
         }
 
@@ -318,9 +323,10 @@ public class ItemSyncService(
                                                                   string collectionId,
                                                                   string itemClass,
                                                                   SyncCommands cmds,
-                                                                  BodyPreference? bodyPref,
+                                                                  IReadOnlyList<BodyPreference>? bodyPrefs,
                                                                   IReadOnlySet<string> serverChangedIds,
                                                                   SyncConflict conflictPolicy,
+                                                                  GhostingPolicy ghosting,
                                                                   CancellationToken ct)
     {
         var responses = new SyncResponses();
@@ -338,7 +344,7 @@ public class ItemSyncService(
 
         foreach (var change in cmds.Change)
         {
-            int status = await HandleChangeAsync(userId, itemClass, change, serverChangedIds, conflictPolicy, ct);
+            int status = await HandleChangeAsync(userId, itemClass, change, serverChangedIds, conflictPolicy, ghosting, ct);
             if (status != 1)
                 responses.Change.Add(new SyncResponseChange { ServerId = change.ServerId, Status = status });
         }
@@ -353,7 +359,7 @@ public class ItemSyncService(
         }
 
         foreach (var fetch in cmds.Fetch)
-            responses.Fetch.Add(await HandleFetchAsync(userId, fetch.ServerId, bodyPref, ct));
+            responses.Fetch.Add(await HandleFetchAsync(userId, fetch.ServerId, bodyPrefs, ct));
 
         bool any = responses.Add.Count + responses.Change.Count + responses.Delete.Count + responses.Fetch.Count > 0;
         return any ? responses : null;
@@ -362,7 +368,7 @@ public class ItemSyncService(
     // some devices fetch message bodies with an embedded fetch
     private async Task<SyncResponseFetch> HandleFetchAsync(string userId,
                                                            string serverId,
-                                                           BodyPreference? bodyPref,
+                                                           IReadOnlyList<BodyPreference>? bodyPrefs,
                                                            CancellationToken ct)
     {
         Item item;
@@ -377,7 +383,7 @@ public class ItemSyncService(
             return new SyncResponseFetch { ServerId = serverId, Status = 8 }; // object not found
         }
 
-        var appData = TrySerialize(item, requestedAnnotations: null, bodyPref);
+        var appData = TrySerialize(item, requestedAnnotations: null, bodyPrefs);
         if (appData is null)
             return new SyncResponseFetch { ServerId = serverId, Status = 8 };
 
@@ -419,57 +425,68 @@ public class ItemSyncService(
         }
     }
 
-    private async Task<int> HandleChangeAsync(string userId,
+    internal async Task<int> HandleChangeAsync(string userId,
                                               string itemClass,
                                               SyncChange change,
                                               IReadOnlySet<string> serverChangedIds,
                                               SyncConflict conflictPolicy,
+                                              GhostingPolicy ghosting,
                                               CancellationToken ct)
     {
-        Item existing;
-        try
+        for (var attempt = 1; ; attempt++)
         {
-            existing = await mailbox.GetItemAsync(
-                new GetItemRequest { UserId = userId, ServerId = change.ServerId },
-                cancellationToken: ct);
-        }
-        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
-        {
-            return 8;
-        }
+            Item existing;
+            try
+            {
+                existing = await mailbox.GetItemAsync(
+                    new GetItemRequest { UserId = userId, ServerId = change.ServerId },
+                    cancellationToken: ct);
+            }
+            catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+            {
+                return 8;
+            }
+            
+            if (conflictPolicy == SyncConflict.ServerWins && serverChangedIds.Contains(change.ServerId))
+            {
+                logger.LogInformation(
+                    "Sync Change conflict for {ServerId}: server-wins, discarding client change", change.ServerId);
+                return 7;
+            }
 
-        // MS-ASCMD 2.2.3.34 Conflict: server-wins (default/Conflict=1) discards the client's
-        // change and reports Status 7 when the item also changed server-side since the
-        // client's last sync; Conflict=0 is client-wins and always applies the change below
-        if (conflictPolicy == SyncConflict.ServerWins && serverChangedIds.Contains(change.ServerId))
-        {
-            logger.LogInformation(
-                "Sync Change conflict for {ServerId}: server-wins, discarding client change", change.ServerId);
-            return 7;
-        }
+            UpdateItemRequest? req;
+            try
+            {
+                req = BuildUpdateRequest(userId, itemClass, change.ServerId, change.ApplicationData, existing, ghosting);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                logger.LogWarning(e, "Sync Change: unparseable {ItemClass} content for {ServerId}", itemClass, change.ServerId);
+                return 6;
+            }
 
-        UpdateItemRequest? req;
-        try
-        {
-            req = BuildUpdateRequest(userId, itemClass, change.ServerId, change.ApplicationData, existing);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            logger.LogWarning(e, "Sync Change: unparseable {ItemClass} content for {ServerId}", itemClass, change.ServerId);
-            return 6;
-        }
+            if (req is null) return 8;
+            req.ExpectedVersion = existing.Version;
 
-        if (req is null) return 8;
+            try
+            {
+                var result = await mailbox.UpdateItemAsync(req, cancellationToken: ct);
+                if (!result.Found) return 8;
+                if (!result.Conflict) return 1;
+            }
+            catch (RpcException e) when (e.StatusCode == StatusCode.InvalidArgument)
+            {
+                logger.LogWarning("Sync Change rejected for {ServerId}: {Detail}", change.ServerId, e.Status.Detail);
+                return 6;
+            }
 
-        try
-        {
-            var result = await mailbox.UpdateItemAsync(req, cancellationToken: ct);
-            return result.Found ? 1 : 8;
-        }
-        catch (RpcException e) when (e.StatusCode == StatusCode.InvalidArgument)
-        {
-            logger.LogWarning("Sync Change rejected for {ServerId}: {Detail}", change.ServerId, e.Status.Detail);
-            return 6;
+            if (attempt >= MaxChangeWriteAttempts)
+            {
+                logger.LogWarning(
+                    "Sync Change for {ServerId} lost the write race {Attempts} times, reporting conflict",
+                    change.ServerId, attempt);
+                return 7;
+            }
         }
     }
 
@@ -514,7 +531,8 @@ public class ItemSyncService(
                                                          string itemClass,
                                                          string serverId,
                                                          ApplicationData? appData,
-                                                         Item existing) =>
+                                                         Item existing,
+                                                         GhostingPolicy ghosting) =>
         itemClass switch
         {
             "Contact" when DeserializeAppData<ContactData>(appData) is { } cd =>
@@ -522,14 +540,14 @@ public class ItemSyncService(
                 {
                     UserId = userId,
                     ServerId = serverId,
-                    Contact = ApplyContactChange(existing.Contact, cd)
+                    Contact = ApplyContactChange(existing.Contact, cd, ghosting)
                 },
             "Calendar" when DeserializeAppData<CalendarData>(appData) is { } cal =>
                 new UpdateItemRequest
                 {
                     UserId = userId,
                     ServerId = serverId,
-                    Calendar = ApplyCalendarChange(existing.Calendar, cal)
+                    Calendar = ApplyCalendarChange(existing.Calendar, cal, ghosting)
                 },
             "Email" when DeserializeAppData<EmailData>(appData) is { } ed =>
                 new UpdateItemRequest
@@ -569,14 +587,95 @@ public class ItemSyncService(
         return e;
     }
 
-    private static BodyPreference? SelectBodyPreference(SyncOptions? options)
+    private static IReadOnlyList<BodyPreference>? SelectBodyPreference(SyncOptions? options)
     {
         var prefs = options?.BodyPreference;
-        if (prefs is null or { Count: 0 }) return null;
-        return prefs.FirstOrDefault(p => p.Type == BodyType.HTML) ?? prefs[0];
+        return prefs is null or { Count: 0 } ? null : prefs;
     }
 
-    private static ContactItem ApplyContactChange(ContactItem existing, ContactData cd)
+    internal static ContactItem ApplyContactChange(ContactItem existing, ContactData cd) =>
+        ApplyContactChange(existing, cd, GhostingPolicy.PreserveAll);
+
+    internal static ContactItem ApplyContactChange(ContactItem existing, ContactData cd, GhostingPolicy ghosting)
+    {
+        var merged = ApplyContactOverlay(existing, cd);
+        ClearOmittedContactElements(merged, cd, ghosting);
+        return merged;
+    }
+
+    private static void ClearOmittedContactElements(ContactItem c, ContactData cd, GhostingPolicy g)
+    {
+        if (g.IsPreserveAll) return;
+
+        void Clear(string name, object? sent, Action clear)
+        {
+            if (sent is null && g.ShouldClear(Constants.Contacts, name)) clear();
+        }
+
+        Clear(nameof(cd.FirstName), cd.FirstName, c.ClearFirstName);
+        Clear(nameof(cd.MiddleName), cd.MiddleName, c.ClearMiddleName);
+        Clear(nameof(cd.LastName), cd.LastName, c.ClearLastName);
+        Clear(nameof(cd.Title), cd.Title, c.ClearTitle);
+        Clear(nameof(cd.Suffix), cd.Suffix, c.ClearSuffix);
+        Clear(nameof(cd.FileAs), cd.FileAs, c.ClearFileAs);
+        Clear(nameof(cd.Alias), cd.Alias, c.ClearAlias);
+        Clear(nameof(cd.NickName), cd.NickName, c.ClearNickName);
+        Clear(nameof(cd.YomiFirstName), cd.YomiFirstName, c.ClearYomiFirstName);
+        Clear(nameof(cd.YomiLastName), cd.YomiLastName, c.ClearYomiLastName);
+        Clear(nameof(cd.YomiCompanyName), cd.YomiCompanyName, c.ClearYomiCompanyName);
+        Clear(nameof(cd.CompanyName), cd.CompanyName, c.ClearCompanyName);
+        Clear(nameof(cd.Department), cd.Department, c.ClearDepartment);
+        Clear(nameof(cd.JobTitle), cd.JobTitle, c.ClearJobTitle);
+        Clear(nameof(cd.OfficeLocation), cd.OfficeLocation, c.ClearOfficeLocation);
+        Clear(nameof(cd.AccountName), cd.AccountName, c.ClearAccountName);
+        Clear(nameof(cd.ManagerName), cd.ManagerName, c.ClearManagerName);
+        Clear(nameof(cd.CustomerId), cd.CustomerId, c.ClearCustomerId);
+        Clear(nameof(cd.GovernmentId), cd.GovernmentId, c.ClearGovernmentId);
+        Clear(nameof(cd.AssistantName), cd.AssistantName, c.ClearAssistantName);
+        Clear(nameof(cd.Email1Address), cd.Email1Address, c.ClearEmail1Address);
+        Clear(nameof(cd.Email2Address), cd.Email2Address, c.ClearEmail2Address);
+        Clear(nameof(cd.Email3Address), cd.Email3Address, c.ClearEmail3Address);
+        Clear(nameof(cd.BusinessPhoneNumber), cd.BusinessPhoneNumber, c.ClearBusinessPhoneNumber);
+        Clear(nameof(cd.Business2PhoneNumber), cd.Business2PhoneNumber, c.ClearBusiness2PhoneNumber);
+        Clear(nameof(cd.BusinessFaxNumber), cd.BusinessFaxNumber, c.ClearBusinessFaxNumber);
+        Clear(nameof(cd.HomePhoneNumber), cd.HomePhoneNumber, c.ClearHomePhoneNumber);
+        Clear(nameof(cd.Home2PhoneNumber), cd.Home2PhoneNumber, c.ClearHome2PhoneNumber);
+        Clear(nameof(cd.HomeFaxNumber), cd.HomeFaxNumber, c.ClearHomeFaxNumber);
+        Clear(nameof(cd.MobilePhoneNumber), cd.MobilePhoneNumber, c.ClearMobilePhoneNumber);
+        Clear(nameof(cd.CarPhoneNumber), cd.CarPhoneNumber, c.ClearCarPhoneNumber);
+        Clear(nameof(cd.PagerNumber), cd.PagerNumber, c.ClearPagerNumber);
+        Clear(nameof(cd.RadioPhoneNumber), cd.RadioPhoneNumber, c.ClearRadioPhoneNumber);
+        Clear(nameof(cd.AssistantPhoneNumber), cd.AssistantPhoneNumber, c.ClearAssistantPhoneNumber);
+        Clear(nameof(cd.CompanyMainPhone), cd.CompanyMainPhone, c.ClearCompanyMainPhone);
+        Clear(nameof(cd.MMS), cd.MMS, c.ClearMms);
+        Clear(nameof(cd.IMAddress), cd.IMAddress, c.ClearImAddress);
+        Clear(nameof(cd.IMAddress2), cd.IMAddress2, c.ClearImAddress2);
+        Clear(nameof(cd.IMAddress3), cd.IMAddress3, c.ClearImAddress3);
+        Clear(nameof(cd.BusinessAddressStreet), cd.BusinessAddressStreet, c.ClearBusinessAddressStreet);
+        Clear(nameof(cd.BusinessAddressCity), cd.BusinessAddressCity, c.ClearBusinessAddressCity);
+        Clear(nameof(cd.BusinessAddressState), cd.BusinessAddressState, c.ClearBusinessAddressState);
+        Clear(nameof(cd.BusinessAddressPostalCode), cd.BusinessAddressPostalCode, c.ClearBusinessAddressPostalCode);
+        Clear(nameof(cd.BusinessAddressCountry), cd.BusinessAddressCountry, c.ClearBusinessAddressCountry);
+        Clear(nameof(cd.HomeAddressStreet), cd.HomeAddressStreet, c.ClearHomeAddressStreet);
+        Clear(nameof(cd.HomeAddressCity), cd.HomeAddressCity, c.ClearHomeAddressCity);
+        Clear(nameof(cd.HomeAddressState), cd.HomeAddressState, c.ClearHomeAddressState);
+        Clear(nameof(cd.HomeAddressPostalCode), cd.HomeAddressPostalCode, c.ClearHomeAddressPostalCode);
+        Clear(nameof(cd.HomeAddressCountry), cd.HomeAddressCountry, c.ClearHomeAddressCountry);
+        Clear(nameof(cd.OtherAddressStreet), cd.OtherAddressStreet, c.ClearOtherAddressStreet);
+        Clear(nameof(cd.OtherAddressCity), cd.OtherAddressCity, c.ClearOtherAddressCity);
+        Clear(nameof(cd.OtherAddressState), cd.OtherAddressState, c.ClearOtherAddressState);
+        Clear(nameof(cd.OtherAddressPostalCode), cd.OtherAddressPostalCode, c.ClearOtherAddressPostalCode);
+        Clear(nameof(cd.OtherAddressCountry), cd.OtherAddressCountry, c.ClearOtherAddressCountry);
+        Clear(nameof(cd.Spouse), cd.Spouse, c.ClearSpouse);
+        Clear(nameof(cd.WebPage), cd.WebPage, c.ClearWebPage);
+        Clear(nameof(cd.Picture), cd.Picture, c.ClearPicture);
+        Clear(nameof(cd.Birthday), cd.Birthday, () => c.Birthday = null);
+        Clear(nameof(cd.Anniversary), cd.Anniversary, () => c.Anniversary = null);
+        Clear(nameof(cd.Categories), cd.Categories, c.Categories.Clear);
+        Clear(nameof(cd.Children), cd.Children, c.Children.Clear);
+    }
+
+    private static ContactItem ApplyContactOverlay(ContactItem existing, ContactData cd)
     {
         var c = existing.Clone();
         if (cd.FirstName is not null) c.FirstName = cd.FirstName;
@@ -644,10 +743,88 @@ public class ItemSyncService(
         var notes = cd.Body?.Data ?? cd.BodyLegacy;
         if (notes is not null) c.Notes = notes;
 
+        // a present container replaces wholesale; an absent one leaves the stored set alone,
+        // matching how the scalar fields above treat omission
+        if (cd.Categories is not null)
+        {
+            c.Categories.Clear();
+            c.Categories.AddRange(cd.Categories.Items.Select(n => new ContactCategory
+            { Id = Guid.NewGuid().ToString("N"), Name = n }));
+        }
+
+        if (cd.Children is not null)
+        {
+            c.Children.Clear();
+            c.Children.AddRange(cd.Children.Items.Select(n => new ContactChild
+            { Id = Guid.NewGuid().ToString("N"), Name = n }));
+        }
+
         return c;
     }
 
-    private static CalendarItem ApplyCalendarChange(CalendarItem existing, CalendarData cd)
+    internal static CalendarItem ApplyCalendarChange(CalendarItem existing, CalendarData cd) =>
+        ApplyCalendarChange(existing, cd, GhostingPolicy.PreserveAll);
+
+    internal static CalendarItem ApplyCalendarChange(CalendarItem existing, CalendarData cd, GhostingPolicy ghosting)
+    {
+        var merged = ApplyCalendarOverlay(existing, cd);
+        ClearOmittedCalendarElements(merged, cd, ghosting);
+        return merged;
+    }
+
+    // MS-ASCMD 2.2.3.179 fixes which Calendar elements may appear in Supported: fourteen are
+    // required whenever the client uses it for this class, plus six optional ones. Anything outside
+    // that set stays ghosted no matter what the client sent.
+    private static void ClearOmittedCalendarElements(CalendarItem cal, CalendarData cd, GhostingPolicy g)
+    {
+        if (g.IsPreserveAll) return;
+
+        void Clear(string name, object? sent, Action clear)
+        {
+            if (sent is null && g.ShouldClear(Constants.Calendar, name)) clear();
+        }
+
+        // the fourteen required entries
+        Clear(nameof(cd.DtStamp), cd.DtStamp, () => cal.DtStamp = null);
+        Clear(nameof(cd.Categories), cd.Categories, cal.Categories.Clear);
+        Clear(nameof(cd.Sensitivity), cd.Sensitivity, cal.ClearSensitivity);
+        Clear(nameof(cd.BusyStatus), cd.BusyStatus, cal.ClearBusyStatus);
+        Clear("UID", cd.Uid, cal.ClearUid);
+        Clear(nameof(cd.Timezone), cd.Timezone, cal.ClearTimezone);
+        Clear(nameof(cd.StartTime), cd.StartTime, () => cal.StartTime = null);
+        Clear(nameof(cd.Subject), cd.Subject, cal.ClearSubject);
+        Clear(nameof(cd.Location), cd.Location, cal.ClearLocation);
+        Clear(nameof(cd.EndTime), cd.EndTime, () => cal.EndTime = null);
+        Clear(nameof(cd.Recurrence), cd.Recurrence, ClearRecurrence);
+        Clear(nameof(cd.AllDayEvent), cd.AllDayEvent, cal.ClearAllDayEvent);
+        Clear(nameof(cd.Reminder), cd.Reminder, cal.ClearReminder);
+        Clear(nameof(cd.Exceptions), cd.Exceptions, cal.Exceptions.Clear);
+
+        // the six optional ones
+        Clear(nameof(cd.Attendees), cd.Attendees, cal.Attendees.Clear);
+        Clear(nameof(cd.OrganizerName), cd.OrganizerName, cal.ClearOrganizerName);
+        Clear(nameof(cd.OrganizerEmail), cd.OrganizerEmail, cal.ClearOrganizerEmail);
+        Clear(nameof(cd.MeetingStatus), cd.MeetingStatus, cal.ClearMeetingStatus);
+        Clear(nameof(cd.ResponseRequested), cd.ResponseRequested, cal.ClearResponseRequested);
+        Clear(nameof(cd.DisallowNewTimeProposal), cd.DisallowNewTimeProposal, cal.ClearDisallowNewTimeProposal);
+
+        void ClearRecurrence()
+        {
+            cal.ClearRecurrenceType();
+            cal.ClearRecurrenceOccurrences();
+            cal.ClearRecurrenceInterval();
+            cal.ClearRecurrenceWeekOfMonth();
+            cal.ClearRecurrenceDayOfWeek();
+            cal.ClearRecurrenceMonthOfYear();
+            cal.ClearRecurrenceDayOfMonth();
+            cal.ClearRecurrenceCalendarType();
+            cal.ClearRecurrenceIsLeapMonth();
+            cal.ClearRecurrenceFirstDayOfWeek();
+            cal.RecurrenceUntil = null;
+        }
+    }
+
+    private static CalendarItem ApplyCalendarOverlay(CalendarItem existing, CalendarData cd)
     {
         var cal = existing.Clone();
         if (cd.Timezone is not null) cal.Timezone = cd.Timezone;
@@ -683,6 +860,26 @@ public class ItemSyncService(
             if (r.IsLeapMonth.HasValue) cal.RecurrenceIsLeapMonth = r.IsLeapMonth != 0;
             if (r.FirstDayOfWeek.HasValue) cal.RecurrenceFirstDayOfWeek = r.FirstDayOfWeek.Value;
         }
+
+        // as with contacts: present container replaces, absent container preserves
+        if (cd.Attendees is not null)
+        {
+            cal.Attendees.Clear();
+            cal.Attendees.AddRange(ProtoExtensions.ToProtoAttendees(cd.Attendees));
+        }
+
+        if (cd.Categories is not null)
+        {
+            cal.Categories.Clear();
+            cal.Categories.AddRange(ProtoExtensions.ToProtoCategories(cd.Categories));
+        }
+
+        if (cd.Exceptions is not null)
+        {
+            cal.Exceptions.Clear();
+            cal.Exceptions.AddRange(ProtoExtensions.ToProtoExceptions(cd.Exceptions));
+        }
+
         return cal;
     }
 
@@ -743,11 +940,11 @@ public class ItemSyncService(
     // Serialize, but never let a single malformed stored item throw out of the sync batch.
     private ApplicationData? TrySerialize(Item item,
                                           IReadOnlySet<string>? requestedAnnotations = null,
-                                          BodyPreference? bodyPref = null)
+                                          IReadOnlyList<BodyPreference>? bodyPrefs = null)
     {
         try
         {
-            return Serialize(item, requestedAnnotations, bodyPref);
+            return Serialize(item, requestedAnnotations, bodyPrefs);
         }
         catch (Exception e)
         {
@@ -758,14 +955,14 @@ public class ItemSyncService(
 
     private static ApplicationData? Serialize(Item item,
                                               IReadOnlySet<string>? requestedAnnotations = null,
-                                              BodyPreference? bodyPref = null)
+                                              IReadOnlyList<BodyPreference>? bodyPrefs = null)
     {
         var appData = item.BodyCase switch
         {
             Item.BodyOneofCase.Contact => item.Contact.ToApplicationData(),
             Item.BodyOneofCase.Calendar => item.Calendar.ToApplicationData(),
             Item.BodyOneofCase.Task => item.Task.ToApplicationData(),
-            Item.BodyOneofCase.Email => item.Email.ToApplicationData(bodyPref),
+            Item.BodyOneofCase.Email => item.Email.ToApplicationData(bodyPrefs),
             Item.BodyOneofCase.Note => item.Note.ToApplicationData(),
             _ => null,
         };

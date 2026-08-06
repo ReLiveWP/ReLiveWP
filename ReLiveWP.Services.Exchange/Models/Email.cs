@@ -129,15 +129,14 @@ public class AirSyncAttachment
     [XmlElement("ContentLocation", Namespace = Constants.AirSyncBase)]
     public string? ContentLocation { get; set; }
 
-    // empty-tag element: presence means true, matching Sync's Partial/GetChanges pattern
     [XmlIgnore]
     public bool IsInline { get; set; }
 
     [XmlElement("IsInline", Namespace = Constants.AirSyncBase)]
     public string? IsInlineXml
     {
-        get => IsInline ? string.Empty : null;
-        set => IsInline = value != null;
+        get => IsInline ? "1" : null;
+        set => IsInline = value is "1";
     }
 }
 

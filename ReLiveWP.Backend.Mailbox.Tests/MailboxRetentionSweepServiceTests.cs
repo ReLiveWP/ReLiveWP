@@ -100,6 +100,7 @@ public class MailboxRetentionSweepServiceTests : IDisposable
             for (var i = 1; i <= 15; i++)
                 db.ItemEvents.Add(new DbItemEvent
                 {
+                    CommitId = i,
                     UserId = UserId, CollectionId = FolderId, ServerId = $"item-{i}",
                     EventType = DbChangeEventType.Add, OccurredAt = DateTime.UtcNow,
                 });
@@ -136,6 +137,7 @@ public class MailboxRetentionSweepServiceTests : IDisposable
             for (var i = 1; i <= 10; i++)
                 db.ItemEvents.Add(new DbItemEvent
                 {
+                    CommitId = i,
                     UserId = UserId, CollectionId = FolderId, ServerId = $"item-{i}",
                     EventType = DbChangeEventType.Add, OccurredAt = DateTime.UtcNow,
                 });
@@ -160,6 +162,7 @@ public class MailboxRetentionSweepServiceTests : IDisposable
             for (var i = 1; i <= 5; i++)
                 db.ItemEvents.Add(new DbItemEvent
                 {
+                    CommitId = i,
                     UserId = UserId, CollectionId = FolderId, ServerId = $"item-{i}",
                     EventType = DbChangeEventType.Add, OccurredAt = DateTime.UtcNow,
                 });
@@ -189,6 +192,7 @@ public class MailboxRetentionSweepServiceTests : IDisposable
             for (var i = 1; i <= 8; i++)
                 db.FolderEvents.Add(new DbFolderEvent
                 {
+                    CommitId = i,
                     UserId = UserId, ServerId = $"folder-{i}",
                     EventType = DbChangeEventType.Add, OccurredAt = DateTime.UtcNow,
                 });

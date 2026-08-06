@@ -45,7 +45,8 @@ public class ASWBXMLCodePage
         return 0xFF;
     }
 
-    public string GetTag(byte token)
+    // null when the token isn't in this page's table; callers substitute a placeholder tag name
+    public string? GetTag(byte token)
     {
         if (tokenLookup.ContainsKey(token))
             return tokenLookup[token];

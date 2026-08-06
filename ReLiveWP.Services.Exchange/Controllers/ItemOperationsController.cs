@@ -156,18 +156,21 @@ public class ItemOperationsController(
             return result;
         }
 
-        var prefs = fetch.Options?.BodyPreference;
-        var wantsMime = fetch.Options?.MIMESupport > 0
-            || (prefs?.Any(p => p.Type == BodyType.MIME) ?? false);
-        var bodyPref = wantsMime
-            ? new BodyPreference { Type = BodyType.MIME }
-            : prefs is { Count: > 0 }
-                ? prefs.FirstOrDefault(p => p.Type == BodyType.HTML) ?? prefs[0]
-                : null;
+        // pass the client's own preferences through rather than substituting a bare MIME one -
+        // the substitute dropped TruncationSize/AllOrNone and always returned the whole blob
+        List<BodyPreference>? bodyPrefs =
+            fetch.Options?.BodyPreference is { Count: > 0 } p ? [.. p] : null;
+
+        // MIMESupport asks for MIME without necessarily offering a BodyPreference for it
+        if (fetch.Options?.MIMESupport > 0 && bodyPrefs?.Any(x => x.Type == BodyType.MIME) != true)
+        {
+            bodyPrefs ??= [];
+            bodyPrefs.Insert(0, new BodyPreference { Type = BodyType.MIME });
+        }
 
         var (appData, itemClass) = item.BodyCase switch
         {
-            Item.BodyOneofCase.Email => (item.Email.ToApplicationData(bodyPref), "Email"),
+            Item.BodyOneofCase.Email => (item.Email.ToApplicationData(bodyPrefs), "Email"),
             Item.BodyOneofCase.Contact => (item.Contact.ToApplicationData(), "Contacts"),
             Item.BodyOneofCase.Calendar => (item.Calendar.ToApplicationData(), "Calendar"),
             Item.BodyOneofCase.Task => (item.Task.ToApplicationData(), "Tasks"),

@@ -244,6 +244,9 @@ public class MailboxStoreService(
         if (entity is null || entity.DeletedAt is not null)
             return new MutationResult { Found = false };
 
+        if (request.HasExpectedVersion && db.Database.IsNpgsql())
+            db.Entry(entity).Property(i => i.Version).OriginalValue = request.ExpectedVersion;
+
         switch (request.BodyCase)
         {
             case UpdateItemRequest.BodyOneofCase.Contact when entity is DbContactItem c:
@@ -279,6 +282,11 @@ public class MailboxStoreService(
         catch (ItemValidationException e)
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, e.Message));
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            db.Entry(entity).State = EntityState.Detached;
+            return new MutationResult { Found = true, Conflict = true };
         }
         return new MutationResult { Found = true };
     }
@@ -451,12 +459,34 @@ public class MailboxStoreService(
         return new CountResult { Count = count };
     }
 
+    private async Task<long> SafeCommitHorizonAsync(CancellationToken ct)
+    {
+        if (!db.Database.IsNpgsql()) return long.MaxValue;
+
+        await using var cmd = db.Database.GetDbConnection().CreateCommand();
+        cmd.CommandText = $"SELECT {ChangeEventCursor.SafeHorizonSql}";
+
+        await db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            var value = await cmd.ExecuteScalarAsync(ct);
+            return value is long l ? l : long.MaxValue;
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
+
     public override async Task GetFolderEvents(
         GetFolderEventsRequest request, IServerStreamWriter<FolderEvent> stream, ServerCallContext context)
     {
+        var horizon = await SafeCommitHorizonAsync(context.CancellationToken);
+
         await foreach (var e in db.FolderEvents.AsNoTracking()
-            .Where(e => e.UserId == request.UserId && e.Id > request.AfterWatermark)
-            .OrderBy(e => e.Id)
+            .Where(e => e.UserId == request.UserId
+                     && e.CommitId > request.AfterWatermark && e.CommitId < horizon)
+            .OrderBy(e => e.CommitId).ThenBy(e => e.Id)
             .AsAsyncEnumerable()
             .WithCancellation(context.CancellationToken))
         {
@@ -467,11 +497,13 @@ public class MailboxStoreService(
     public override async Task GetItemEvents(
         GetItemEventsRequest request, IServerStreamWriter<ItemEvent> stream, ServerCallContext context)
     {
+        var horizon = await SafeCommitHorizonAsync(context.CancellationToken);
+
         await foreach (var e in db.ItemEvents.AsNoTracking()
             .Where(e => e.UserId == request.UserId
                      && e.CollectionId == request.CollectionId
-                     && e.Id > request.AfterWatermark)
-            .OrderBy(e => e.Id)
+                     && e.CommitId > request.AfterWatermark && e.CommitId < horizon)
+            .OrderBy(e => e.CommitId).ThenBy(e => e.Id)
             .AsAsyncEnumerable()
             .WithCancellation(context.CancellationToken))
         {
@@ -481,17 +513,21 @@ public class MailboxStoreService(
 
     public override async Task<Watermark> GetFolderEventTip(FolderEventTipRequest request, ServerCallContext context)
     {
+        // a tip is a watermark, so it has to be on the same scale the reads cursor by
+        var horizon = await SafeCommitHorizonAsync(context.CancellationToken);
         var tip = await db.FolderEvents
-            .Where(e => e.UserId == request.UserId)
-            .MaxAsync(e => (long?)e.Id, context.CancellationToken) ?? 0;
+            .Where(e => e.UserId == request.UserId && e.CommitId < horizon)
+            .MaxAsync(e => (long?)e.CommitId, context.CancellationToken) ?? 0;
         return new Watermark { Value = tip };
     }
 
     public override async Task<Watermark> GetItemEventTip(ItemEventTipRequest request, ServerCallContext context)
     {
+        var horizon = await SafeCommitHorizonAsync(context.CancellationToken);
         var tip = await db.ItemEvents
-            .Where(e => e.UserId == request.UserId && e.CollectionId == request.CollectionId)
-            .MaxAsync(e => (long?)e.Id, context.CancellationToken) ?? 0;
+            .Where(e => e.UserId == request.UserId && e.CollectionId == request.CollectionId
+                     && e.CommitId < horizon)
+            .MaxAsync(e => (long?)e.CommitId, context.CancellationToken) ?? 0;
         return new Watermark { Value = tip };
     }
 
@@ -538,6 +574,7 @@ public class MailboxStoreService(
             state.Watermark = request.Watermark;
             state.LastSeenAt = DateTime.UtcNow;
             state.CachedAnnotationNames = request.HasCachedAnnotationNames ? request.CachedAnnotationNames : null;
+            state.SupportedElements = request.HasSupportedElements ? request.SupportedElements : null;
             state.PreviousSyncKey = request.PreviousSyncKey;
             state.PreviousWatermark = request.PreviousWatermark;
 

@@ -16,6 +16,9 @@ public abstract class DbItem
     // set when an item fails validation and can't be auto-corrected; withheld from sync until fixed
     public DateTime? ValidationFlaggedAt { get; set; }
     public string? ValidationReason { get; set; }
+
+    // maps onto the Postgres xmin system column, used for version tracking
+    public uint Version { get; set; }
 }
 
 public class DbTask : DbItem
@@ -75,6 +78,7 @@ public class DbNoteCategory
 public class DbItemEvent : IDbChangeEvent
 {
     public long Id { get; set; }
+    public long CommitId { get; set; }
     public string UserId { get; set; } = null!;
     public string CollectionId { get; set; } = null!;
     public DbChangeEventType EventType { get; set; }

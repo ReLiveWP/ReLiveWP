@@ -24,11 +24,12 @@ public class OutboundMailService(
         if (sentFolderId is null)
             return;
 
-        var email = ParseMime(mime, fromAddress);
+        var mimeBytes = DecodeMime(mime);
+        var email = ParseMime(mimeBytes, fromAddress);
 
         // CreateItem's ClientId is store-deduped (unique per user+folder), so a retried SendMail
         // depositing the same MIME doesn't leave a second copy in Sent Items
-        var clientId = "sentmail:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(mime)));
+        var clientId = "sentmail:" + Convert.ToHexString(SHA256.HashData(mimeBytes));
         await mailbox.CreateItemAsync(
             new CreateItemRequest { UserId = userId, CollectionId = sentFolderId, Email = email, ClientId = clientId },
             cancellationToken: ct);
@@ -75,19 +76,33 @@ public class OutboundMailService(
         return null;
     }
 
-    private EmailItem ParseMime(string mime, string fromAddress)
+    private static byte[] DecodeMime(string wire)
+    {
+        try
+        {
+            return Convert.FromBase64String(wire);
+        }
+        catch (FormatException)
+        {
+            return Encoding.Latin1.GetBytes(wire);
+        }
+    }
+
+    private EmailItem ParseMime(byte[] mimeBytes, string fromAddress)
     {
         var email = new EmailItem
         {
             MessageClass = "IPM.Note",
-            Read = true, // items the user sent are already read
-            MimeRaw = mime,
+            Read = true, 
+            // Latin1 is a byte-for-byte mapping, so the stored string round-trips the original
+            // octets even for 8-bit content that UTF-8 would re-encode
+            MimeRaw = Encoding.Latin1.GetString(mimeBytes),
             DateReceived = Timestamp.FromDateTime(DateTime.UtcNow),
         };
 
         try
         {
-            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(mime));
+            using var stream = new MemoryStream(mimeBytes);
             var msg = MimeMessage.Load(stream);
 
             // the server-side address is authoritative for From

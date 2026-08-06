@@ -10,38 +10,39 @@ public record SyncDelta(
     long Watermark,
     bool MoreAvailable,
     IReadOnlySet<string> AllUpdatedServerIds);
-public record struct SyncEvent(long Id, string ServerId, ChangeEventType EventType);
+    
+public record struct SyncEvent(long CommitId, long Id, string ServerId, ChangeEventType EventType);
 
 public static class SyncEngine
 {
     public const int DefaultWindowSize = 100;
     public const int MaxWindowSize = 512;
 
-    // WindowSize (MS-ASCMD 2.2.3.199): absent or <= 0 -> 100 default, > 512 -> clamp to 512, else pass-through
     public static int ResolveWindowSize(int? requested) => requested switch
     {
         null => DefaultWindowSize,
-        <= 0 => DefaultWindowSize,
+        < 0 => DefaultWindowSize,
+        0 => MaxWindowSize,
         > MaxWindowSize => MaxWindowSize,
         _ => requested.Value,
     };
 
     public static SyncDelta Collapse(IReadOnlyList<SyncEvent> events, int? windowSize = null)
     {
-        var groups = new List<(string ServerId, ChangeEventType First, ChangeEventType Last, long MinId, long MaxId)>();
+        var groups = new List<(string ServerId, ChangeEventType First, ChangeEventType Last, long MinCommit, long MaxCommit)>();
 
         foreach (var group in events.GroupBy(e => e.ServerId))
         {
-            var ordered = group.OrderBy(e => e.Id).ToList();
+            var ordered = group.OrderBy(e => e.CommitId).ThenBy(e => e.Id).ToList();
             var first = ordered[0].EventType;
             var last  = ordered[^1].EventType;
-            var minId = ordered[0].Id;
-            var maxId = ordered[^1].Id;
+            var minCommit = ordered[0].CommitId;
+            var maxCommit = ordered[^1].CommitId;
 
             if (first == ChangeEventType.Add && last == ChangeEventType.Delete)
                 continue;
 
-            groups.Add((group.Key, first, last, minId, maxId));
+            groups.Add((group.Key, first, last, minCommit, maxCommit));
         }
 
         // full unwindowed Updated set, computed before any windowing cut
@@ -50,7 +51,7 @@ public static class SyncEngine
             .Select(g => g.ServerId)
             .ToHashSet(StringComparer.Ordinal);
 
-        groups.Sort((a, b) => a.MaxId.CompareTo(b.MaxId));
+        groups.Sort((a, b) => a.MaxCommit.CompareTo(b.MaxCommit));
 
         bool moreAvailable = windowSize is { } w && groups.Count > w;
         var windowed = moreAvailable ? groups.Take(windowSize!.Value).ToList() : groups;
@@ -74,26 +75,16 @@ public static class SyncEngine
         long watermark;
         if (moreAvailable)
         {
-            // truncated: normally advance to the last included group's MaxId, so the remainder
-            // is re-fetched (not skipped) on the follow-up sync with the new SyncKey. But event
-            // ids interleave across items (one item's Add can be older than another item's later
-            // Update), so an excluded group's earliest event can still sit below that cut point.
-            // If we advanced there anyway, the next sync would read that group AfterWatermark and
-            // see only its tail event(s) - misclassifying a never-delivered item as a Change. Clamp
-            // to just below the smallest event id among the excluded groups so any straddling group
-            // is left whole for next time (and re-read there in full, as an Add).
-            long lastIncludedMaxId = windowed[^1].MaxId;
-            long minExcludedId = groups.Skip(windowSize!.Value).Min(g => g.MinId);
-            watermark = Math.Min(lastIncludedMaxId, minExcludedId - 1);
+            // truncated
+            long lastIncludedMaxCommit = windowed[^1].MaxCommit;
+            long minExcludedCommit = groups.Skip(windowSize!.Value).Min(g => g.MinCommit);
+            watermark = Math.Min(lastIncludedMaxCommit, minExcludedCommit - 1);
         }
         else
         {
-            // unwindowed (or everything fit): advance past every event seen this fetch,
-            // including no-op groups (e.g. Add+Delete within the same window), or the next
-            // sync re-reads them forever
             watermark = 0;
             foreach (var e in events)
-                if (e.Id > watermark) watermark = e.Id;
+                if (e.CommitId > watermark) watermark = e.CommitId;
         }
 
         return new SyncDelta(added, updated, deleted, watermark, moreAvailable, allUpdated);
@@ -102,7 +93,7 @@ public static class SyncEngine
     public static string NextSyncKey(string current) =>
         long.TryParse(current, out var n) ? (n + 1).ToString() : "1";
 
-    // the client's delete wins: re-sending an item it just asked to remove wedges strict clients (WP7)
+
     public static void SuppressDeleted(SyncCommands? commands, IEnumerable<string> deletedServerIds)
     {
         if (commands is null) return;

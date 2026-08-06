@@ -181,8 +181,8 @@ public class ItemOperationsSerializationTests
         Assert.Contains("<DisplayName>photo.jpg</DisplayName>", xml);
         Assert.Contains("<Method>1</Method>", xml);
         Assert.Contains("<EstimatedDataSize>12345</EstimatedDataSize>", xml);
-        // IsInline is an empty-tag element: presence (in any self-closed spelling) means true
-        Assert.Matches("<IsInline\\s*/>", xml);
+        // on Attachment, IsInline is a boolean, not the empty-tag form (MS-ASAIRS 2.2.2.26.2)
+        Assert.Contains("<IsInline>1</IsInline>", xml);
     }
 
     [Fact]

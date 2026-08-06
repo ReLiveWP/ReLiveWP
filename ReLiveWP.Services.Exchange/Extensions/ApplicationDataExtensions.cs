@@ -75,6 +75,12 @@ internal static class ApplicationDataExtensions
         if (c.HasNotes)
             cd.Body = new AirSyncBody { Type = BodyType.PlainText, Data = c.Notes };
 
+        if (c.Categories.Count > 0)
+            cd.Categories = new ContactCategories { Items = [.. c.Categories.Select(x => x.Name)] };
+
+        if (c.Children.Count > 0)
+            cd.Children = new ContactChildren { Items = [.. c.Children.Select(x => x.Name)] };
+
         return DtoToApplicationData(cd);
     }
 
@@ -117,8 +123,9 @@ internal static class ApplicationDataExtensions
         if (cal.HasNotes)
             cd.Body = new AirSyncBody { Type = BodyType.PlainText, Data = cal.Notes };
 
-        if (cal.HasBodyTruncated)
-            cd.BodyTruncated = cal.BodyTruncated ? 1 : 0;
+        // calendar:BodyTruncated is 2.5-only (MS-ASCAL 2.2.2.8) and has no token on code page 4,
+        // so emitting it produced an undecodable stream. 12.0+ reports truncation on
+        // airsyncbase:Body/Truncated instead.
 
         if (cal.HasRecurrenceType)
         {
@@ -137,7 +144,68 @@ internal static class ApplicationDataExtensions
                 Until = cal.RecurrenceUntil != null ? EasDateHelper.FromDateTimeCompact(cal.RecurrenceUntil.ToDateTime()) : null,
             };
         }
+
+        if (cal.Attendees.Count > 0)
+            cd.Attendees = new CalendarAttendees { Items = [.. cal.Attendees.Select(ToAttendeeData)] };
+
+        if (cal.Categories.Count > 0)
+            cd.Categories = new CalendarCategories { Items = [.. cal.Categories.Select(x => x.Category)] };
+
+        if (cal.Exceptions.Count > 0)
+            cd.Exceptions = new CalendarExceptions { Items = [.. cal.Exceptions.Select(ToExceptionData)] };
+
         return DtoToApplicationData(cd);
+    }
+
+    private static CalendarAttendeeData ToAttendeeData(CalendarAttendee a) => new()
+    {
+        Email = a.Email,
+        Name = a.Name,
+        AttendeeStatus = a.HasAttendeeStatus ? (byte?)a.AttendeeStatus : null,
+        AttendeeType = a.HasAttendeeType ? (byte?)a.AttendeeType : null,
+    };
+
+    private static CalendarExceptionData ToExceptionData(CalendarException ex)
+    {
+        var data = new CalendarExceptionData
+        {
+            // required on every Exception (MS-ASCAL 2.2.2.23); already stored in compact form
+            ExceptionStartTime = ex.HasExceptionStartTime ? ex.ExceptionStartTime : null,
+            Subject = ex.HasSubject ? ex.Subject : null,
+            StartTime = ex.StartTime?.ToDateTime(),
+            EndTime = ex.EndTime?.ToDateTime(),
+            Location = ex.HasLocation ? ex.Location : null,
+            DtStamp = ex.DtStamp?.ToDateTime(),
+            AppointmentReplyTime = ex.AppointmentReplyTime?.ToDateTime(),
+        };
+
+        if (ex.HasDeleted) data.Deleted = ex.Deleted ? (byte)1 : (byte)0;
+        if (ex.HasSensitivity) data.Sensitivity = (byte)ex.Sensitivity;
+        if (ex.HasBusyStatus) data.BusyStatus = (byte)ex.BusyStatus;
+        if (ex.HasAllDayEvent) data.AllDayEvent = ex.AllDayEvent ? (byte)1 : (byte)0;
+        if (ex.HasReminder) data.Reminder = ex.Reminder;
+        if (ex.HasMeetingStatus) data.MeetingStatus = (byte)ex.MeetingStatus;
+        if (ex.HasResponseType) data.ResponseType = ex.ResponseType;
+        if (ex.HasOnlineMeetingConfLink) data.OnlineMeetingConfLink = ex.OnlineMeetingConfLink;
+        if (ex.HasOnlineMeetingExternalLink) data.OnlineMeetingExternalLink = ex.OnlineMeetingExternalLink;
+        if (ex.HasNotes) data.Body = new AirSyncBody { Type = BodyType.PlainText, Data = ex.Notes };
+
+        if (ex.Attendees.Count > 0)
+            data.Attendees = new CalendarAttendees
+            {
+                Items = [.. ex.Attendees.Select(a => new CalendarAttendeeData
+                {
+                    Email = a.Email,
+                    Name = a.Name,
+                    AttendeeStatus = a.HasAttendeeStatus ? (byte?)a.AttendeeStatus : null,
+                    AttendeeType = a.HasAttendeeType ? (byte?)a.AttendeeType : null,
+                })],
+            };
+
+        if (ex.Categories.Count > 0)
+            data.Categories = new CalendarCategories { Items = [.. ex.Categories.Select(c => c.Category)] };
+
+        return data;
     }
 
     public static ApplicationData ToApplicationData(this TaskItem t)
@@ -208,7 +276,7 @@ internal static class ApplicationDataExtensions
         return DtoToApplicationData(nd);
     }
 
-    public static ApplicationData ToApplicationData(this EmailItem e, BodyPreference? bodyPref = null)
+    public static ApplicationData ToApplicationData(this EmailItem e, IReadOnlyList<BodyPreference>? bodyPrefs = null)
     {
         var ed = new EmailData();
         ed.To = e.HasTo ? e.To : null;
@@ -238,7 +306,7 @@ internal static class ApplicationDataExtensions
         if (e.HasNativeBodyType)
             ed.NativeBodyType = (byte)e.NativeBodyType;
 
-        ed.Body = BuildBody(e, bodyPref);
+        ed.Body = BuildBody(e, bodyPrefs);
 
         if (e.Flag is { } f)
             ed.Flag = ToFlagDto(f);
@@ -260,44 +328,97 @@ internal static class ApplicationDataExtensions
         IsInline = a.HasIsInline && a.IsInline,
     };
 
-    // selects the requested body type, truncates to TruncationSize, and reports
-    // EstimatedDataSize/Truncated
-    private static AirSyncBody? BuildBody(EmailItem e, BodyPreference? pref)
-    {
-        // MIME fetch: return the raw RFC822 blob verbatim, no truncation.
-        // falls through to the stored body if absent
-        if (pref?.Type == BodyType.MIME && e.HasMimeRaw)
-        {
-            return new AirSyncBody
-            {
-                Type = BodyType.MIME,
-                EstimatedDataSize = e.MimeRaw.Length,
-                Data = e.MimeRaw,
-            };
-        }
+    // The native storage format of the stored body. NativeBodyType is authoritative when set,
+    // otherwise fall back to the type the body was written as.
+    private static BodyType NativeType(EmailItem e) =>
+        e.HasNativeBodyType ? (BodyType)e.NativeBodyType
+        : e.HasBodyType ? (BodyType)e.BodyType
+        : BodyType.PlainText;
 
+    // MS-ASAIRS 2.2.2.9: "the server returns the data ... for the Type element that matches the
+    // native storage format". If the client didn't offer the native type it still gets an answer,
+    // converted to the first type it did offer, and the response Type says which one that is.
+    private static BodyPreference? SelectPreference(IReadOnlyList<BodyPreference> prefs, EmailItem e)
+    {
+        var native = NativeType(e);
+
+        // MIME can always be served when it's stored, regardless of the native body format
+        var mime = prefs.FirstOrDefault(p => p.Type == BodyType.MIME);
+        if (mime is not null && e.HasMimeRaw) return mime;
+
+        var exact = prefs.FirstOrDefault(p => p.Type == native);
+        if (exact is not null && !SuppressedByAllOrNone(exact, e, native)) return exact;
+
+        // AllOrNone on the native type means "don't send me a partial one of these" - fall through
+        // to whichever remaining preference yields the most text (MS-ASAIRS 2.2.2.3.2)
+        return prefs.Where(p => p != exact && p.Type != BodyType.MIME)
+                    .OrderByDescending(p => p.TruncationSize ?? int.MaxValue)
+                    .FirstOrDefault()
+               ?? exact
+               ?? prefs.FirstOrDefault();
+    }
+
+    private static bool SuppressedByAllOrNone(BodyPreference pref, EmailItem e, BodyType native) =>
+        pref.AllOrNone is 1
+        && pref.TruncationSize is { } size
+        && BodyConverter.ByteLength(Convert(e, native, pref.Type)) > size;
+
+    private static string Convert(EmailItem e, BodyType native, BodyType target)
+    {
+        if (target == BodyType.MIME) return e.HasMimeRaw ? e.MimeRaw : string.Empty;
+
+        var data = e.HasBody ? e.Body : string.Empty;
+        if (target == native) return data;
+
+        return (native, target) switch
+        {
+            (BodyType.HTML, BodyType.PlainText) => BodyConverter.HtmlToPlainText(data),
+            (BodyType.PlainText, BodyType.HTML) => BodyConverter.PlainTextToHtml(data),
+            // RTF in either direction isn't supported; hand back what we have rather than nothing
+            _ => data,
+        };
+    }
+
+    // selects the body type the client asked for, converting when the item isn't stored that way,
+    // truncates to TruncationSize (a byte count), and reports EstimatedDataSize/Truncated
+    private static AirSyncBody? BuildBody(EmailItem e, IReadOnlyList<BodyPreference>? prefs)
+    {
         // WP7 refuses an item with an unsolicited body, wedging the collection in a sync loop;
         // client fetches the body on demand via ItemOperations instead
+        if (prefs is null or { Count: 0 }) return null;
+
+        var pref = SelectPreference(prefs, e);
         if (pref is null) return null;
 
-        // an email with no plaintext/HTML body syncs with no Body element rather than an
-        // empty <Data/> with EstimatedDataSize 0, which WP7 rejects
-        if (!e.HasBody || string.IsNullOrWhiteSpace(e.Body)) return null;
+        var native = NativeType(e);
+        var target = pref.Type;
 
-        var data = e.Body;
-        var type = e.HasBodyType ? (BodyType)e.BodyType : BodyType.PlainText;
-        var body = new AirSyncBody { Type = type, EstimatedDataSize = data.Length };
-
-        int? truncationSize = pref?.TruncationSize;
-        if (truncationSize is { } size && data.Length > size)
+        // MIME was asked for but nothing is stored: fall back to the body in its native form
+        if (target == BodyType.MIME && !e.HasMimeRaw)
         {
-            if (pref?.AllOrNone is 1)
+            target = native;
+            pref = prefs.FirstOrDefault(p => p.Type == native) ?? pref;
+        }
+
+        var data = Convert(e, native, target);
+
+        // an item with no body syncs with no Body element rather than an empty <Data/> with
+        // EstimatedDataSize 0, which WP7 rejects
+        if (string.IsNullOrWhiteSpace(data)) return null;
+
+        // the type actually produced, which is not necessarily the native one
+        var body = new AirSyncBody { Type = target, EstimatedDataSize = BodyConverter.ByteLength(data) };
+
+        if (pref.TruncationSize is { } size && BodyConverter.ByteLength(data) > size)
+        {
+            if (pref.AllOrNone is 1)
             {
                 body.Data = null;
                 body.Truncated = 1;
                 return body;
             }
-            body.Data = data[..size];
+
+            body.Data = BodyConverter.TruncateToBytes(data, size);
             body.Truncated = 1;
         }
         else
@@ -305,8 +426,9 @@ internal static class ApplicationDataExtensions
             body.Data = data;
         }
 
-        if (pref?.Preview is { } previewLen and > 0)
-            body.Preview = data.Length <= previewLen ? data : data[..previewLen];
+        // MS-ASAIRS 2.2.2.35.1: Preview is not returned for an untruncated plain-text body
+        if (pref.Preview is { } previewLen and > 0 && !(target == BodyType.PlainText && body.Truncated is null))
+            body.Preview = BodyConverter.TruncateToBytes(data, previewLen);
 
         return body;
     }

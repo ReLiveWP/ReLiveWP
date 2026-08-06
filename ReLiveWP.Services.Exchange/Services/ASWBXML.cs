@@ -40,13 +40,14 @@ class ASWBXML
     private XmlDocument xmlDoc = new XmlDocument();
     private Dictionary<int, ASWBXMLCodePage> codePages;
     private int currentCodePage = 0;
-    private int defaultCodePage = -1;
 
     // base64 on the XML side, emitted as an opaque binary blob on the wire
     private static readonly HashSet<(string Namespace, string LocalName)> opaqueElements =
     [
         ("Email2", "ConversationId"),
         ("Email2", "ConversationIndex"),
+        // MS-ASCMD 2.2.3.109: "transferred as an opaque BLOB within the WBXML tags"
+        ("ComposeMail", "Mime"),
     ];
 
     public ASWBXML()
@@ -103,6 +104,11 @@ class ASWBXML
         codePages[1].AddToken(0x06, "AssistantName");
         codePages[1].AddToken(0x07, "AssistantPhoneNumber");
         codePages[1].AddToken(0x08, "Birthday");
+        // 2.5-only; superseded by airsyncbase:Body from 12.0. Tokenized so the legacy model
+        // properties can't encode to the unknown-token sentinel.
+        codePages[1].AddToken(0x09, "Body");
+        codePages[1].AddToken(0x0A, "BodySize");
+        codePages[1].AddToken(0x0B, "BodyTruncated");
         codePages[1].AddToken(0x0C, "Business2PhoneNumber");
         codePages[1].AddToken(0x0D, "BusinessAddressCity");
         codePages[1].AddToken(0x0E, "BusinessAddressCountry");
@@ -208,9 +214,12 @@ class ASWBXML
         #endregion
 
         #region AirNotify Code Page
+        // no tokens: the page is allocated but unused. It must still carry its real namespace -
+        // an empty one would make GetCodePageByNamespace route every element with a missing
+        // namespace here, where every lookup silently yields the 0xFF sentinel.
         codePages[3] = new ASWBXMLCodePage();
-        codePages[3].Namespace = "";
-        codePages[3].Xmlns = "";
+        codePages[3].Namespace = "AirNotify";
+        codePages[3].Xmlns = "airnotify";
         #endregion
 
         #region Calendar Code Page
@@ -218,12 +227,16 @@ class ASWBXML
         codePages[4].Namespace = "Calendar";
         codePages[4].Xmlns = "calendar";
 
-        codePages[4].AddToken(0x05, "TimeZone");
+        // lower-case 'z' - the Email page's 0x33 TimeZone (MeetingRequest) is the capitalised one
+        codePages[4].AddToken(0x05, "Timezone");
         codePages[4].AddToken(0x06, "AllDayEvent");
         codePages[4].AddToken(0x07, "Attendees");
         codePages[4].AddToken(0x08, "Attendee");
         codePages[4].AddToken(0x09, "Email");
         codePages[4].AddToken(0x0A, "Name");
+        // 2.5-only, as on the Contacts page above
+        codePages[4].AddToken(0x0B, "Body");
+        codePages[4].AddToken(0x0C, "BodyTruncated");
         codePages[4].AddToken(0x0D, "BusyStatus");
         codePages[4].AddToken(0x0E, "Categories");
         codePages[4].AddToken(0x0F, "Category");
@@ -262,6 +275,7 @@ class ASWBXML
         codePages[4].AddToken(0x39, "FirstDayOfWeek");
         codePages[4].AddToken(0x3A, "OnlineMeetingConfLink");
         codePages[4].AddToken(0x3B, "OnlineMeetingExternalLink");
+        codePages[4].AddToken(0x3C, "ClientUid"); // 16.0+
         #endregion
 
         #region Move Code Page
@@ -592,6 +606,25 @@ class ASWBXML
         codePages[17].AddToken(0x19, "BodyPartPreference");
         codePages[17].AddToken(0x1A, "BodyPart");
         codePages[17].AddToken(0x1B, "Status");
+        // 16.0+ structured-location subtree; modelled but not populated on 12.1/14.x
+        codePages[17].AddToken(0x1C, "Add");
+        codePages[17].AddToken(0x1D, "Delete");
+        codePages[17].AddToken(0x1E, "ClientId");
+        codePages[17].AddToken(0x1F, "Content");
+        codePages[17].AddToken(0x20, "Location");
+        codePages[17].AddToken(0x21, "Annotation");
+        codePages[17].AddToken(0x22, "Street");
+        codePages[17].AddToken(0x23, "City");
+        codePages[17].AddToken(0x24, "State");
+        codePages[17].AddToken(0x25, "Country");
+        codePages[17].AddToken(0x26, "PostalCode");
+        codePages[17].AddToken(0x27, "Latitude");
+        codePages[17].AddToken(0x28, "Longitude");
+        codePages[17].AddToken(0x29, "Accuracy");
+        codePages[17].AddToken(0x2A, "Altitude");
+        codePages[17].AddToken(0x2B, "AltitudeAccuracy");
+        codePages[17].AddToken(0x2C, "LocationUri");
+        codePages[17].AddToken(0x2D, "InstanceId");
         #endregion
 
         #region Settings Code Page
@@ -761,7 +794,7 @@ class ASWBXML
         codePages[24].AddToken(0x15, "TemplateName");
         codePages[24].AddToken(0x16, "TemplateDescription");
         codePages[24].AddToken(0x17, "ContentOwner");
-        codePages[24].AddToken(0x18, "RemoveRightsManagementDistribution");
+        codePages[24].AddToken(0x18, "RemoveRightsManagementProtection");
         #endregion
 
         #region Windows Live Code Page
@@ -959,6 +992,14 @@ class ASWBXML
 
                 byte token = codePages[currentCodePage].GetToken(node.LocalName);
 
+                // 0xFF is GetToken's "no such tag" sentinel and is not a valid token in any code
+                // page. Emitting it produces a stream no client can decode, and because the failure
+                // is silent it looks like a data problem rather than a table problem - fail loudly.
+                if (token == 0xFF)
+                    throw new InvalidDataException(
+                        $"No WBXML token for element '{node.LocalName}' in code page {currentCodePage} " +
+                        $"('{codePages[currentCodePage].Namespace}'); check the code page table.");
+
                 bool isOpaque = node.HasChildNodes
                     && opaqueElements.Contains((node.NamespaceURI, node.LocalName));
 
@@ -990,30 +1031,17 @@ class ASWBXML
                 break;
             case XmlNodeType.Text:
                 byteList.Add((byte)GlobalTokens.STR_I);
-                byteList.AddRange(EncodeString(node.Value));
+                byteList.AddRange(EncodeString(node.Value ?? string.Empty));
                 break;
             case XmlNodeType.CDATA:
                 byteList.Add((byte)GlobalTokens.OPAQUE);
-                byteList.AddRange(EncodeOpaque(node.Value));
+                byteList.AddRange(EncodeOpaque(node.Value ?? string.Empty));
                 break;
             default:
                 break;
         }
 
         return [.. byteList];
-    }
-
-    private int GetCodePageByXmlns(string xmlns)
-    {
-        foreach (var cp in codePages)
-        {
-            if (cp.Value.Xmlns.ToUpper() == xmlns.ToUpper())
-            {
-                return cp.Key;
-            }
-        }
-
-        return -1;
     }
 
     private int GetCodePageByNamespace(string nameSpace)
@@ -1027,58 +1055,6 @@ class ASWBXML
         }
 
         return -1;
-    }
-
-    private bool SetCodePageByXmlns(string xmlns)
-    {
-        if (xmlns == null || xmlns == "")
-        {
-            if (currentCodePage != defaultCodePage)
-            {
-                currentCodePage = defaultCodePage;
-                return true;
-            }
-
-            return false;
-        }
-
-        if (codePages[currentCodePage].Xmlns.ToUpper() == xmlns.ToUpper())
-        {
-            return false;
-        }
-
-        foreach (var cp in codePages)
-        {
-            if (cp.Value.Xmlns.ToUpper() == xmlns.ToUpper())
-            {
-                currentCodePage = cp.Key;
-                return true;
-            }
-        }
-
-        throw new InvalidDataException(string.Format("Unknown Xmlns: {0}.", xmlns));
-    }
-
-    private void ParseXmlnsAttributes(XmlNode node)
-    {
-        foreach (XmlAttribute attribute in node.Attributes)
-        {
-            if (attribute.Value == "http://www.w3.org/2001/XMLSchema-instance")
-                continue;
-            if (attribute.Value == "http://www.w3.org/2001/XMLSchema")
-                continue;
-
-            int codePage = GetCodePageByNamespace(attribute.Value);
-
-            if (attribute.Name.ToUpper() == "XMLNS")
-            {
-                defaultCodePage = codePage;
-            }
-            else if (attribute.Prefix.ToUpper() == "XMLNS")
-            {
-                codePages[codePage].Xmlns = attribute.LocalName;
-            }
-        }
     }
 
     private byte[] EncodeString(string value)

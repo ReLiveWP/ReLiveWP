@@ -17,15 +17,13 @@ public class NoteData
     [XmlElement("MessageClass", Namespace = Constants.Notes)]
     public string? MessageClass { get; set; }
 
-    // server-stamped, client value ignored; uses EasDateHelper's extended form, not compact,
-    // matching every other server->client date this client accepts
     [XmlIgnore]
     public DateTime? LastModifiedDate { get; set; }
 
     [XmlElement("LastModifiedDate", Namespace = Constants.Notes)]
     public string? LastModifiedDateXml
     {
-        get => EasDateHelper.FromDateTime(LastModifiedDate);
+        get => EasDateHelper.FromDateTimeCompact(LastModifiedDate);
         set => LastModifiedDate = EasDateHelper.ToDateTime(value);
     }
 

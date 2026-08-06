@@ -58,6 +58,7 @@ public static class MailboxMapper
         var p = new FolderEvent
         {
             Id = e.Id,
+            CommitId = e.CommitId,
             UserId = e.UserId,
             EventType = ToProto(e.EventType),
             ServerId = e.ServerId,
@@ -73,6 +74,7 @@ public static class MailboxMapper
     public static ItemEvent ToProto(DbItemEvent e) => new()
     {
         Id = e.Id,
+        CommitId = e.CommitId,
         UserId = e.UserId,
         CollectionId = e.CollectionId,
         EventType = ToProto(e.EventType),
@@ -95,6 +97,7 @@ public static class MailboxMapper
         };
 
         if (s.CachedAnnotationNames is not null) p.CachedAnnotationNames = s.CachedAnnotationNames;
+        if (s.SupportedElements is not null) p.SupportedElements = s.SupportedElements;
         return p;
     }
 
@@ -129,6 +132,7 @@ public static class MailboxMapper
             ServerId = item.ServerId,
             CreatedAt = ToProtoTs(item.CreatedAt),
             DeletedAt = ToProtoTs(item.DeletedAt),
+            Version = item.Version,
         };
         if (item.ClientId is not null) p.ClientId = item.ClientId;
 

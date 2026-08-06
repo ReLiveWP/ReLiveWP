@@ -266,6 +266,39 @@ public class ItemValidationRulesTests
         Assert.True(Rejected(issues, "calendar-recurrence-required"));
     }
 
+    // Type is what the serializer gates the whole Recurrence block on, so a recurrence carrying
+    // any other field but no Type would silently serialize as a one-off event.
+    [Theory]
+    [InlineData(nameof(DbCalendarItem.RecurrenceInterval))]
+    [InlineData(nameof(DbCalendarItem.RecurrenceDayOfWeek))]
+    [InlineData(nameof(DbCalendarItem.RecurrenceOccurrences))]
+    [InlineData(nameof(DbCalendarItem.RecurrenceDayOfMonth))]
+    public void Calendar_recurrence_without_a_type_is_rejected(string field)
+    {
+        var cal = new DbCalendarItem();
+        switch (field)
+        {
+            case nameof(DbCalendarItem.RecurrenceInterval): cal.RecurrenceInterval = 2; break;
+            case nameof(DbCalendarItem.RecurrenceDayOfWeek): cal.RecurrenceDayOfWeek = 2; break;
+            case nameof(DbCalendarItem.RecurrenceOccurrences): cal.RecurrenceOccurrences = 5; break;
+            case nameof(DbCalendarItem.RecurrenceDayOfMonth): cal.RecurrenceDayOfMonth = 3; break;
+        }
+
+        var issues = ItemValidationRules.ValidateAndCorrect(cal, DbFolderType.CalendarDefault);
+
+        Assert.True(Rejected(issues, "calendar-recurrence-type-required"));
+    }
+
+    [Fact]
+    public void Calendar_without_any_recurrence_is_not_flagged()
+    {
+        var cal = new DbCalendarItem();
+
+        var issues = ItemValidationRules.ValidateAndCorrect(cal, DbFolderType.CalendarDefault);
+
+        Assert.False(Rejected(issues, "calendar-recurrence-type-required"));
+    }
+
     [Fact]
     public void Weekly_recurrence_defaults_first_day_of_week()
     {

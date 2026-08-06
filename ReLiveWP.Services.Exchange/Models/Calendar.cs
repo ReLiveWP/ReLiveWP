@@ -144,10 +144,10 @@ public class CalendarAttendees
 public class CalendarAttendeeData
 {
     [XmlElement("Email", Namespace = Constants.Calendar)]
-    public string Email { get; set; } = null!;
+    public string? Email { get; set; }
 
     [XmlElement("Name", Namespace = Constants.Calendar)]
-    public string Name { get; set; } = null!;
+    public string? Name { get; set; }
 
     // 0=Unknown 2=Tentative 3=Accept 4=Decline 5=NotResponded
     [XmlElement("AttendeeStatus", Namespace = Constants.Calendar)]

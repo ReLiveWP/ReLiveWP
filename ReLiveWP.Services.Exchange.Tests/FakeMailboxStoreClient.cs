@@ -11,6 +11,22 @@ public class FakeMailboxStoreClient : MailboxStore.MailboxStoreClient
     public Func<EmptyFolderRequest, EmptyFolderResult>? OnEmptyFolder { get; set; }
     public Func<GetAttachmentContentRequest, AttachmentContent>? OnGetAttachmentContent { get; set; }
     public Func<MoveConversationRequest, MoveConversationResult>? OnMoveConversation { get; set; }
+    public Func<UpdateItemRequest, MutationResult>? OnUpdateItem { get; set; }
+    public Func<GetFolderRequest, Folder>? OnGetFolder { get; set; }
+
+    public override AsyncUnaryCall<MutationResult> UpdateItemAsync(UpdateItemRequest request, CallOptions options)
+    {
+        if (OnUpdateItem is null)
+            throw new InvalidOperationException($"{nameof(OnUpdateItem)} not configured");
+        return Unary(() => OnUpdateItem(request));
+    }
+
+    public override AsyncUnaryCall<Folder> GetFolderAsync(GetFolderRequest request, CallOptions options)
+    {
+        if (OnGetFolder is null)
+            throw new InvalidOperationException($"{nameof(OnGetFolder)} not configured");
+        return Unary(() => OnGetFolder(request));
+    }
 
     public override AsyncUnaryCall<Item> GetItemAsync(GetItemRequest request, CallOptions options)
     {

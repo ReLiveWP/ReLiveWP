@@ -42,6 +42,7 @@ public class DbFolder
 public class DbFolderEvent : IDbChangeEvent
 {
     public long Id { get; set; }
+    public long CommitId { get; set; }
     public string UserId { get; set; } = null!;
     public DbChangeEventType EventType { get; set; }
     public string ServerId { get; set; } = null!;

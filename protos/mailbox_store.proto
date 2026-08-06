@@ -82,6 +82,7 @@ enum ChangeEventType {
 
 message MutationResult {
   bool found = 1;
+  bool conflict = 2;
 }
 
 message CountResult {
@@ -149,7 +150,9 @@ message Item {
   string                             server_id     = 4;
   optional google.protobuf.Timestamp created_at    = 5;
   optional google.protobuf.Timestamp deleted_at    = 6;
-  optional string                    client_id     = 7;  // EAS Add ClientId, when client-originated
+  optional string                    client_id     = 7;  
+  
+  uint32                             version       = 8;
 
   oneof body {
     ContactItem  contact  = 10;
@@ -450,8 +453,7 @@ message EmailItem {
 
   optional EmailFlag flag = 30;
 
-  // content is write-only: settable on create/deliver to seed storage, bytes
-  // are otherwise fetched separately via GetAttachmentContent
+
   repeated AttachmentItem attachments = 40;
 }
 
@@ -510,6 +512,7 @@ message UpdateItemRequest {
     NoteItem     note     = 14;
   }
   optional ContactAnnotation annotation = 20;
+  optional uint32 expected_version = 21;
 }
 
 message DeleteItemRequest {
@@ -537,8 +540,6 @@ enum MoveItemStatus {
   MOVE_INVALID_CLASS   = 4; // dst folder holds a different item class than the item
 }
 
-// moves every email sharing conversation_id into dst_collection_id; conversations are
-// email-only here, so MOVE_INVALID_CLASS never fires for this RPC
 message MoveConversationRequest {
   string user_id           = 1;
   bytes  conversation_id   = 2;
@@ -609,6 +610,7 @@ message FolderEvent {
   optional string           display_name     = 6;
   optional FolderType       folder_type      = 7;
   google.protobuf.Timestamp occurred_at      = 8;
+  int64                     commit_id        = 9;  // see ItemEvent.commit_id
 }
 
 message ItemEvent {
@@ -618,6 +620,7 @@ message ItemEvent {
   ChangeEventType           event_type    = 4;
   string                    server_id     = 5;
   google.protobuf.Timestamp occurred_at   = 6;
+  int64                     commit_id     = 7;
 }
 
 message GetFolderEventsRequest {
@@ -651,6 +654,7 @@ message SyncState {
 
   string                    previous_sync_key       = 8;  // lets us roll back one sync key if a device rejects the update
   int64                     previous_watermark      = 9;
+  optional string           supported_elements      = 10;
 }
 
 message GetSyncStateRequest {
@@ -668,6 +672,7 @@ message UpsertSyncStateRequest {
   optional string cached_annotation_names = 6;
   string          previous_sync_key       = 7;
   int64           previous_watermark      = 8;
+  optional string supported_elements      = 9;
 }
 
 message ListSyncStatesRequest {
@@ -803,7 +808,6 @@ message GetContactProfilesResponse {
   repeated ContactProfile profiles = 1;
 }
 
-// hard-deletes every row for a user (GDPR-style account deletion); irreversible.
 message DeleteMailboxRequest {
   string user_id = 1;
 }

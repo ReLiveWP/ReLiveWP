@@ -6,9 +6,14 @@ namespace ReLiveWP.Services.Exchange.Tests;
 
 public class SyncEngineTests
 {
-    private static SyncEvent Add(long id, string serverId = "a") => new(id, serverId, ChangeEventType.Add);
-    private static SyncEvent Update(long id, string serverId = "a") => new(id, serverId, ChangeEventType.Update);
-    private static SyncEvent Delete(long id, string serverId = "a") => new(id, serverId, ChangeEventType.Delete);
+    // one event per transaction, which is the ordinary case: a watermark is a commit id, so these
+    // give each event its own. In(commit, ...) builds events that shared a transaction.
+    private static SyncEvent Add(long id, string serverId = "a") => new(id, id, serverId, ChangeEventType.Add);
+    private static SyncEvent Update(long id, string serverId = "a") => new(id, id, serverId, ChangeEventType.Update);
+    private static SyncEvent Delete(long id, string serverId = "a") => new(id, id, serverId, ChangeEventType.Delete);
+
+    private static SyncEvent In(long commitId, long id, string serverId, ChangeEventType type) =>
+        new(commitId, id, serverId, type);
 
     [Fact]
     public void Add_then_Delete_collapses_to_nothing()
@@ -225,6 +230,72 @@ public class SyncEngineTests
         Assert.Equal(0, delta.Watermark);
     }
 
+    // The reason the cursor is a commit id and not the row id: a sequence allocates outside the
+    // transaction, so a transaction can take a low id and commit after one that took a higher id.
+    // Cursoring on the row id lets a reader advance past the higher id and never see the lower one.
+    [Fact]
+    public void Watermark_follows_commit_order_not_row_id_order()
+    {
+        // row ids say b(1) then a(2); commit order says a(10) then b(20)
+        var delta = SyncEngine.Collapse(
+        [
+            In(20, 1, "b", ChangeEventType.Add),
+            In(10, 2, "a", ChangeEventType.Add),
+        ]);
+
+        Assert.Equal(20, delta.Watermark);
+        Assert.Equal(["a", "b"], delta.Added);
+    }
+
+    [Fact]
+    public void Events_sharing_a_transaction_order_by_row_id_within_it()
+    {
+        // one transaction wrote both: the Add must be seen before the Update or the item would
+        // classify as a Change for something never delivered
+        var delta = SyncEngine.Collapse(
+        [
+            In(10, 2, "a", ChangeEventType.Update),
+            In(10, 1, "a", ChangeEventType.Add),
+        ]);
+
+        Assert.Equal(["a"], delta.Added);
+        Assert.Empty(delta.Updated);
+    }
+
+    [Fact]
+    public void A_windowed_cut_never_lands_inside_a_transaction()
+    {
+        // three items written by one transaction (commit 10), a fourth by a later one (commit 20)
+        var delta = SyncEngine.Collapse(
+        [
+            In(10, 1, "a", ChangeEventType.Add),
+            In(10, 2, "b", ChangeEventType.Add),
+            In(10, 3, "c", ChangeEventType.Add),
+            In(20, 4, "d", ChangeEventType.Add),
+        ], windowSize: 2);
+
+        Assert.True(delta.MoreAvailable);
+        // whatever the cut, the resulting watermark is a commit id or one below one, so the
+        // follow-up read takes transaction 10 whole or skips it whole - never half of it
+        Assert.True(delta.Watermark == 9 || delta.Watermark == 10,
+            $"watermark {delta.Watermark} fell inside transaction 10");
+    }
+
+    [Fact]
+    public void A_transaction_larger_than_the_window_still_makes_progress()
+    {
+        // one transaction wrote more items than the window; the watermark must still advance or
+        // the collection can never drain
+        var delta = SyncEngine.Collapse(
+        [
+            In(10, 1, "a", ChangeEventType.Add),
+            In(10, 2, "b", ChangeEventType.Add),
+            In(10, 3, "c", ChangeEventType.Add),
+        ], windowSize: 2);
+
+        Assert.True(delta.Watermark > 0, "watermark must advance or the collection stalls");
+    }
+
     [Fact]
     public void Collapse_AllUpdatedServerIds_includes_ids_truncated_out_of_the_window()
     {
@@ -249,9 +320,9 @@ public class SyncEngineTests
     }
 
     [Theory]
-    [InlineData(null, 100)]
-    [InlineData(0, 100)]
-    [InlineData(-1, 100)]
+    [InlineData(null, 100)]   // absent -> default
+    [InlineData(0, 512)]      // "interprets the value 0 (zero) ... as 512" (MS-ASCMD 2.2.3.199)
+    [InlineData(-1, 100)]     // can't occur on the wire (unsignedInt); treated as absent
     [InlineData(513, 512)]
     [InlineData(512, 512)]
     [InlineData(1, 1)]

@@ -141,7 +141,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         int devIdLen = span[pos++];
         if (devIdLen > 0 && pos + devIdLen <= span.Length)
         {
-            ctx.DeviceId = Convert.ToHexString(span.Slice(pos, devIdLen));
+            ctx.DeviceId = System.Text.Encoding.UTF8.GetString(span.Slice(pos, devIdLen));
             pos += devIdLen;
         }
 
@@ -180,6 +180,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
             switch (tag)
             {
                 case 0: ctx.AttachmentName = value; break;
+                case 1: ctx.CollectionId = value; break;
                 case 3: ctx.ItemId = value; break;
                 case 4: ctx.LongId = value; break;
                 case 6: ctx.Occurrence = value; break;

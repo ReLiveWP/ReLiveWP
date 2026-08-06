@@ -145,6 +145,16 @@ public static class ItemValidationRules
             issues.Add(ValidationIssue.Rejected("calendar-sensitivity", nameof(c.Sensitivity),
                 $"Sensitivity {sn} out of range 0..3"));
 
+        bool recurrencePresent = c.RecurrenceType.HasValue || c.RecurrenceUntil.HasValue
+            || c.RecurrenceOccurrences.HasValue || c.RecurrenceInterval.HasValue
+            || c.RecurrenceDayOfWeek.HasValue || c.RecurrenceDayOfMonth.HasValue
+            || c.RecurrenceWeekOfMonth.HasValue || c.RecurrenceMonthOfYear.HasValue
+            || c.RecurrenceCalendarType.HasValue || c.RecurrenceIsLeapMonth.HasValue
+            || c.RecurrenceFirstDayOfWeek.HasValue;
+        if (recurrencePresent && c.RecurrenceType is null)
+            issues.Add(ValidationIssue.Rejected("calendar-recurrence-type-required", "Recurrence",
+                "calendar recurrence requires Type"));
+
         if (c.RecurrenceType is { } rt)
             ValidateCalendarRecurrence(c, rt, issues);
 

@@ -75,9 +75,10 @@ public static class ProtoExtensions
         var notes = cd.Body?.Data ?? cd.BodyLegacy;
         if (notes is not null) p.Notes = notes;
 
-        p.Categories.AddRange(cd.Categories?.Items.Select(n => new ContactCategory
+        // an empty <Category/> deserializes to null, which the protobuf string setter rejects
+        p.Categories.AddRange(cd.Categories?.Items.Where(n => n is not null).Select(n => new ContactCategory
         { Id = Guid.NewGuid().ToString("N"), Name = n }) ?? []);
-        p.Children.AddRange(cd.Children?.Items.Select(n => new ContactChild
+        p.Children.AddRange(cd.Children?.Items.Where(n => n is not null).Select(n => new ContactChild
         { Id = Guid.NewGuid().ToString("N"), Name = n }) ?? []);
 
         return p;
@@ -130,27 +131,50 @@ public static class ProtoExtensions
             p.RecurrenceUntil = Ts(EasDateHelper.ToDateTime(r.Until));
         }
 
-        p.Attendees.AddRange(cd.Attendees?.Items.Select(a => new CalendarAttendee
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            Email = a.Email,
-            Name = a.Name,
-        }) ?? []);
-        p.Categories.AddRange(cd.Categories?.Items.Select(c => new CalendarCategory { Id = Guid.NewGuid().ToString("N"), Category = c }) ?? []);
-        p.Exceptions.AddRange(cd.Exceptions?.Items.Select(ex =>
+        p.Attendees.AddRange(ToProtoAttendees(cd.Attendees));
+        p.Categories.AddRange(ToProtoCategories(cd.Categories));
+        p.Exceptions.AddRange(ToProtoExceptions(cd.Exceptions));
+
+        return p;
+    }
+
+    // Email is required; an attendee without one is dropped rather than allowed to throw on the
+    // protobuf null assignment and cost the whole item. Name falls back to the address.
+    internal static IEnumerable<CalendarAttendee> ToProtoAttendees(CalendarAttendees? attendees) =>
+        attendees?.Items
+            .Where(a => !string.IsNullOrEmpty(a.Email))
+            .Select(a =>
+            {
+                var at = new CalendarAttendee
+                {
+                    Id = Guid.NewGuid().ToString("N"),
+                    Email = a.Email,
+                    Name = a.Name ?? a.Email,
+                };
+                if (a.AttendeeStatus.HasValue) at.AttendeeStatus = a.AttendeeStatus.Value;
+                if (a.AttendeeType.HasValue) at.AttendeeType = a.AttendeeType.Value;
+                return at;
+            }) ?? [];
+
+    internal static IEnumerable<CalendarCategory> ToProtoCategories(CalendarCategories? categories) =>
+        categories?.Items.Where(c => c is not null).Select(c => new CalendarCategory
+        { Id = Guid.NewGuid().ToString("N"), Category = c }) ?? [];
+
+    internal static IEnumerable<CalendarException> ToProtoExceptions(CalendarExceptions? exceptions) =>
+        exceptions?.Items.Select(ex =>
         {
             var exId = Guid.NewGuid().ToString("N");
             var dbEx = new CalendarException
             {
                 Id = exId,
-                ExceptionStartTime = ex.ExceptionStartTime,
-                InstanceId = ex.InstanceId,
-                Subject = ex.Subject,
                 StartTime = Ts(ex.StartTime),
                 EndTime = Ts(ex.EndTime),
-                Location = ex.Location,
                 DtStamp = Ts(ex.DtStamp),
             };
+            if (ex.ExceptionStartTime is not null) dbEx.ExceptionStartTime = ex.ExceptionStartTime;
+            if (ex.InstanceId is not null) dbEx.InstanceId = ex.InstanceId;
+            if (ex.Subject is not null) dbEx.Subject = ex.Subject;
+            if (ex.Location is not null) dbEx.Location = ex.Location;
             // server-owned on an exception too, see ToProtoCalendar above
             if (ex.Deleted.HasValue) dbEx.Deleted = ex.Deleted != 0;
             if (ex.Sensitivity.HasValue) dbEx.Sensitivity = ex.Sensitivity.Value;
@@ -161,20 +185,25 @@ public static class ProtoExtensions
             var exNotes = ex.Body?.Data ?? ex.BodyLegacy;
             if (exNotes is not null) dbEx.Notes = exNotes;
             if (ex.BodyLegacy is not null) dbEx.BodyLegacy = ex.BodyLegacy;
-            dbEx.Attendees.AddRange(ex.Attendees?.Items.Select(a => new CalendarExceptionAttendee
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                CalendarExceptionId = exId,
-                Email = a.Email,
-                Name = a.Name,
-            }) ?? []);
-            dbEx.Categories.AddRange(ex.Categories?.Items.Select(c => new CalendarExceptionCategory
+            dbEx.Attendees.AddRange(ex.Attendees?.Items
+                .Where(a => !string.IsNullOrEmpty(a.Email))
+                .Select(a =>
+                {
+                    var at = new CalendarExceptionAttendee
+                    {
+                        Id = Guid.NewGuid().ToString("N"),
+                        CalendarExceptionId = exId,
+                        Email = a.Email,
+                        Name = a.Name ?? a.Email,
+                    };
+                    if (a.AttendeeStatus.HasValue) at.AttendeeStatus = a.AttendeeStatus.Value;
+                    if (a.AttendeeType.HasValue) at.AttendeeType = a.AttendeeType.Value;
+                    return at;
+                }) ?? []);
+            dbEx.Categories.AddRange(ex.Categories?.Items.Where(c => c is not null).Select(c => new CalendarExceptionCategory
             { Id = Guid.NewGuid().ToString("N"), CalendarExceptionId = exId, Category = c }) ?? []);
             return dbEx;
-        }) ?? []);
-
-        return p;
-    }
+        }) ?? [];
 
     public static TaskItem ToProtoTask(this TaskData td)
     {

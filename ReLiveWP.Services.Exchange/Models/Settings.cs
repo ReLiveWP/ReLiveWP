@@ -66,6 +66,9 @@ public class UserInformationRequestGet { }
 [XmlRoot("Settings", Namespace = Constants.Settings)]
 public class SettingsResponse
 {
+    [XmlElement("Status", Namespace = Constants.Settings)]
+    public int Status { get; set; } = 1;
+
     [XmlElement("DeviceInformation", Namespace = Constants.Settings)]
     public SettingsDeviceInformationResponse? DeviceInformation { get; set; }
 

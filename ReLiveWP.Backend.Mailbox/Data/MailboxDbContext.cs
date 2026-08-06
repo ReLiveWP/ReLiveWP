@@ -72,16 +72,15 @@ public class MailboxDbContext : DbContext
         modelBuilder.Entity<DbFolderEvent>(e =>
         {
             e.HasIndex(ev => new { ev.UserId, ev.Id });
+            // reads cursor on CommitId and tie-break on Id, so the index has to lead with it
+            e.HasIndex(ev => new { ev.UserId, ev.CommitId, ev.Id });
+            if (Database.IsNpgsql())
+                e.Property(ev => ev.CommitId).HasDefaultValueSql(ChangeEventCursor.CommitIdDefaultSql);
         });
 
         modelBuilder.Entity<DbSyncState>(e =>
         {
             e.HasIndex(d => new { d.UserId, d.DeviceId, d.CollectionId }).IsUnique();
-
-            // SyncState is the most contended row (every Sync request touches it). xmin is a
-            // Postgres system column that already changes on every update, so mapping a shadow
-            // property onto it (the documented Npgsql pattern) needs no migration and no
-            // app-managed rowversion column.
             if (Database.IsNpgsql())
             {
                 e.Property<uint>("xmin")
@@ -99,10 +98,24 @@ public class MailboxDbContext : DbContext
             // supports GetItem/UpdateItem/DeleteItem/MoveItem/GetItems lookups by (UserId, ServerId)
             // alone; the composite unique index above leads with CollectionId so can't serve these
             e.HasIndex(i => new { i.UserId, i.ServerId });
-            // idempotency guard for client Adds: one live row per (user, collection, client_id)
             e.HasIndex(i => new { i.UserId, i.CollectionId, i.ClientId })
                 .IsUnique()
                 .HasFilter("\"ClientId\" IS NOT NULL AND \"DeletedAt\" IS NULL");
+                
+            if (Database.IsNpgsql())
+            {
+                e.Property(i => i.Version)
+                    .HasColumnName("xmin")
+                    .HasColumnType("xid")
+                    .ValueGeneratedOnAddOrUpdate()
+                    .IsConcurrencyToken();
+            }
+            else
+            {
+                // no xmin outside Postgres; don't invent a real column for it
+                e.Ignore(i => i.Version);
+            }
+
             e.HasDiscriminator<string>("ItemClass")
                 .HasValue<DbContactItem>("Contact")
                 .HasValue<DbCalendarItem>("Calendar")
@@ -157,6 +170,9 @@ public class MailboxDbContext : DbContext
         modelBuilder.Entity<DbItemEvent>(e =>
         {
             e.HasIndex(ev => new { ev.UserId, ev.CollectionId, ev.Id });
+            e.HasIndex(ev => new { ev.UserId, ev.CollectionId, ev.CommitId, ev.Id });
+            if (Database.IsNpgsql())
+                e.Property(ev => ev.CommitId).HasDefaultValueSql(ChangeEventCursor.CommitIdDefaultSql);
         });
 
         modelBuilder.Entity<DbContactCategory>(e =>

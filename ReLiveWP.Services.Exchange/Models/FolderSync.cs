@@ -49,19 +49,20 @@ public class FolderSync
     public Changes? Changes { get; set; }
 }
 
+// child order is Count, Update, Delete, Add (MS-ASCMD 6.15); XmlSerializer emits in declaration order
 public class Changes
 {
     [XmlElement("Count", Namespace = Constants.FolderHierarchy)]
     public int Count { get; set; }
-
-    [XmlElement("Add", Namespace = Constants.FolderHierarchy)]
-    public List<FolderChange> Add { get; set; } = [];
 
     [XmlElement("Update", Namespace = Constants.FolderHierarchy)]
     public List<FolderChange> Update { get; set; } = [];
 
     [XmlElement("Delete", Namespace = Constants.FolderHierarchy)]
     public List<FolderChange> Delete { get; set; } = [];
+
+    [XmlElement("Add", Namespace = Constants.FolderHierarchy)]
+    public List<FolderChange> Add { get; set; } = [];
 }
 
 public class FolderChange

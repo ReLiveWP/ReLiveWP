@@ -40,7 +40,7 @@ public class MailboxRetentionSweepService(MailboxDbContext db)
         var itemEventsDeleted = 0;
         foreach (var f in itemFloors)
             itemEventsDeleted += await db.ItemEvents
-                .Where(e => e.CollectionId == f.CollectionId && e.Id < f.Floor)
+                .Where(e => e.CollectionId == f.CollectionId && e.CommitId < f.Floor)
                 .ExecuteDeleteAsync(ct);
 
         var folderFloors = await db.SyncStates
@@ -56,7 +56,7 @@ public class MailboxRetentionSweepService(MailboxDbContext db)
         var folderEventsDeleted = 0;
         foreach (var f in folderFloors)
             folderEventsDeleted += await db.FolderEvents
-                .Where(e => e.UserId == f.UserId && e.Id < f.Floor)
+                .Where(e => e.UserId == f.UserId && e.CommitId < f.Floor)
                 .ExecuteDeleteAsync(ct);
 
         return (itemEventsDeleted, folderEventsDeleted);

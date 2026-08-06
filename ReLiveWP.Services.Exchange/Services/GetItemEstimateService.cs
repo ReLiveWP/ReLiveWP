@@ -7,6 +7,11 @@ namespace ReLiveWP.Services.Exchange.Services;
 
 public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, OrphanFolderTracker orphans)
 {
+    public const int StatusSuccess = 1;
+    public const int StatusInvalidCollection = 2;
+    public const int StatusNotPrimed = 3;
+    public const int StatusInvalidSyncKey = 4;
+
     public async Task<GetItemEstimateResponse> EstimateAsync(string userId,
                                                              string deviceId,
                                                              GetItemEstimateRequest request,
@@ -30,7 +35,8 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
     {
         var collectionId = req.CollectionId;
 
-        // a stale/unknown collection is reported gone (status 8) and recorded for the next FolderSync delete
+        // a stale/unknown collection is status 2 (invalid collection) and recorded for the next
+        // FolderSync delete. GetItemEstimate only defines 1-4; 8 is a Sync status and isn't valid here.
         Folder folder;
         try
         {
@@ -41,7 +47,7 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
         catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
         {
             orphans.Record(deviceId, collectionId);
-            return MakeError(collectionId, 8);
+            return MakeError(collectionId, StatusInvalidCollection);
         }
 
         SyncState? state;
@@ -53,7 +59,7 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
         }
         catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
         {
-            return MakeError(collectionId, 3);
+            return MakeError(collectionId, StatusNotPrimed);
         }
 
         var itemClass = folder.Type switch
@@ -76,7 +82,7 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
         }
         else
         {
-            return MakeError(collectionId, 4);
+            return MakeError(collectionId, StatusInvalidSyncKey);
         }
 
         int estimate;
@@ -90,13 +96,13 @@ public class GetItemEstimateService(MailboxStore.MailboxStoreClient mailbox, Orp
         else
         {
             var events = await ReadAllItemEventsAsync(userId, collectionId, estimateWatermark, ct);
-            var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.Id, e.ServerId, e.EventType)).ToList());
+            var delta = SyncEngine.Collapse(events.Select(e => new SyncEvent(e.CommitId, e.Id, e.ServerId, e.EventType)).ToList());
             estimate = delta.Added.Count + delta.Updated.Count + delta.Deleted.Count;
         }
 
         return new GieResponse
         {
-            Status = 1,
+            Status = StatusSuccess,
             Collection = new GieResponseCollection
             {
                 CollectionId = collectionId,
