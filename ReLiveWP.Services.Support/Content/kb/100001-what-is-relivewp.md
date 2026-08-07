@@ -15,9 +15,9 @@ see_also: [100002]
 ---
 
 ## Summary
-When Windows Phone 7 launched in 2010, it heavily relied on Microsoft's Windows Live services for core functionality. Everything from the Marketplace to Push Notifications to the People Hub to Find my Phone all depend on a functional Windows Live login. In the years since however, Microsoft has slowly discontinued these services, seriously limiting what these devices can do. With no sync, no Marketplace, and no way to sign in to Windows Live, these smartphones have turned pretty dumb. 
+When Windows Phone 7 launched in 2010, it heavily relied on Microsoft's Windows Live services for core functionality. Everything from the Marketplace to Push&nbsp;Notifications to the People Hub to Find my Phone all depend on a functional Windows Live login. In the years since however, Microsoft has slowly discontinued these services, seriously limiting what these devices can do. With no sync, no Marketplace, and no way to sign in to Windows Live, these smartphones have turned pretty dumb. 
 
-ReLiveWP changes that. It is an open-source reimplementation of the Windows Live services used by Windows Phone 7, with the explicit goal of making these devices sing again. Instead of talking to Microsoft servers, your phone talks to ReLiveWP, and the parts of the operating system that depended on Windows Live light up like it's 2011 all over again.
+ReLiveWP changes that. It is an open-source reimplementation of the Windows Live services used by Windows Phone 7, with the explicit goal of making these devices sing again. Instead of talking to Microsoft servers, your phone talks to ReLiveWP, and the parts of the operating system that depended on Windows Live light up [like it's 2011 all over again](https://www.youtube.com/watch?v=KQ6zr6kCPj8).
 
 ## More information
 
