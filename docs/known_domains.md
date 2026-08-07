@@ -84,11 +84,16 @@ Windows Live Location Inference service, provides location information for the u
 
 ## `*.bing.net`
 ### `appserver.m.bing.net`, `api.m.bing.net`
-Bing Mobile specific services, appears completely non-functional (NXDOMAIN). Windows Phone 7 tries to access it when searching in the Bing app.
+Bing Mobile specific services (NXDOMAIN upstream). Windows Phone 7 tries to access these when searching in the Bing app.
 
-- `api.m.bing.net/SearchService/Search.svc`: Appears to be the main endpoint for Bing Mobile. Called with JSON data detailing search queries, culture, user parameters, etc.
-- `appserver.m.bing.net/ConfigService/ConfigService.svc/restxml/GetRichClientConfigRestXml`: Called to retrieve configuration information for the Bing app, called with a bunch of query parameters including the device model, OS version, etc.
+`appserver.m.bing.net` is served by `ReLiveWP.Services.AppServer`. The client is `SearchMapsCM.dll`, loaded by `WEBSEARCH.EXE`; see [docs/bing/appserver.md](bing/appserver.md) for the reverse engineered wire formats.
+
+- `api.m.bing.net/SearchService/Search.svc`: Appears to be the main endpoint for Bing Mobile. Called with JSON data detailing search queries, culture, user parameters, etc. Not yet implemented.
+- `appserver.m.bing.net/ConfigService/ConfigService.svc/restxml/GetRichClientConfigRestXml`: Assigns the device its `BingUserId`, which it then persists to registry and never asks for again. Implemented.
     - `/ConfigService/ConfigService.svc/restxml/GetRichClientConfigRestXml?osName=windows+phone&firstRun=true&osVersion=7.10&culture=en-GB&deviceName=Lumia%20800&AppId=149E786F-EAF3-45a4-B817-9D2E4861D4F6`
+    - Response only needs `<Results><UserID Value="<guid>"/></Results>`.
+- `appserver.m.bing.net/layouts/wp/7.1/cfg/wp7tangoconfig.xml`: Per-locale feature flags, binglets and search categories. Conditional GET with `If-None-Match`, refreshed every 14 days on success or 12 hours after a failure. Implemented as a static file.
+- `appserver.m.bing.net/BackgroundImageService/TodayImageService.svc/...`: The daily Bing home image. Implemented.
 
 ## `*.bing.com`
 ### `api.bing.com`

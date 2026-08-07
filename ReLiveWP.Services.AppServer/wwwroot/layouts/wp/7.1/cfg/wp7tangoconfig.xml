@@ -1,0 +1,3325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Locale name="es-us">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Escanear códigos QR y Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="es-us" />
+    <Property name="AddressSearchCulture" value="es-us" />
+    <Property name="RoutingLanguage" value="es-us" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+  </Locale>
+  <Locale name="es-mx">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Escanear códigos QR y Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="es-mx" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="pt-pt">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Ler Códigos QR e Etiquetas Microsoft." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="pt-pt" />
+    <Property name="AddressSearchCulture" value="pt-pt" />
+    <Property name="RoutingLanguage" value="pt-pt" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="pt-br">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Verifica código de barras 2D e Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="pt-br" />
+    <Property name="AddressSearchCulture" value="pt-br" />
+    <Property name="RoutingLanguage" value="pt-br" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="ja-jp">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="QRコードやMicrosoft Tagにかざします" />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="RoutingLanguage" value="ja-jp" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="it-it">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Leggi codici a matrice e Microsoft Tag." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="it-it" />
+    <Property name="AddressSearchCulture" value="it-it" />
+    <Property name="RoutingLanguage" value="it-it" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="de-de">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scannen Sie QR-Codes und Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="de-de" />
+    <Property name="AddressSearchCulture" value="de-de" />
+    <Property name="RoutingLanguage" value="de-de" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="fr-fr">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Analyser les codes QR et Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="1" />
+    <Property name="Reviews" value="1" />
+    <Property name="FullMap" value="fr-fr" />
+    <Property name="AddressSearchCulture" value="fr-fr" />
+    <Property name="RoutingLanguage" value="fr-fr" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+  </Locale>
+  <Locale name="es-es">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Escanear códigos QR y Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="es-es" />
+    <Property name="AddressSearchCulture" value="es-es" />
+    <Property name="RoutingLanguage" value="es-es" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="fr-ch">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Analyser les codes QR et Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="fr-ch" />
+    <Property name="AddressSearchCulture" value="fr-ch" />
+    <Property name="RoutingLanguage" value="fr-ch" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="fr-be">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Analyser les codes QR et Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="fr-be" />
+    <Property name="AddressSearchCulture" value="fr-be" />
+    <Property name="RoutingLanguage" value="fr-be" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="fi-fi">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="Lue QR-koodeja ja Microsoft Tag -tunnisteita." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="fi-fi" />
+    <Property name="AddressSearchCulture" value="fi-fi" />
+    <Property name="RoutingLanguage" value="fi-fi" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="de-at">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scannen Sie QR-Codes und Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="de-at" />
+    <Property name="AddressSearchCulture" value="de-at" />
+    <Property name="RoutingLanguage" value="de-at" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+  </Locale>
+  <Locale name="en-za">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="0" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-za" />
+    <Property name="RoutingLanguage" value="en-za" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="ru-ru">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="Сканируйте коды QR и теги Microsoft Tag." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="0" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-ph">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="RoutingLanguage" value="en-ph" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="es-ar">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Escanear códigos QR y Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="es-ar" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-my">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-my" />
+    <Property name="RoutingLanguage" value="en-my" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-in">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-in" />
+    <Property name="RoutingLanguage" value="en-in" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-gb">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="1" />
+    <Property name="Reviews" value="1" />
+    <Property name="FullMap" value="en-gb" />
+    <Property name="AddressSearchCulture" value="en-gb" />
+    <Property name="RoutingLanguage" value="en-gb" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+  </Locale>
+  <Locale name="fr-ca">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Analyser les codes QR et Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="fr-ca" />
+    <Property name="AddressSearchCulture" value="fr-ca" />
+    <Property name="RoutingLanguage" value="fr-ca" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+  </Locale>
+  <Locale name="en-ca">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-ca" />
+    <Property name="AddressSearchCulture" value="en-ca" />
+    <Property name="RoutingLanguage" value="en-ca" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+  </Locale>
+  <Locale name="ko-kr">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="QR 코드 및 Microsoft Tag를 검색합니다." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-au">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="1" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-au" />
+    <Property name="AddressSearchCulture" value="en-au" />
+    <Property name="RoutingLanguage" value="en-au" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+  </Locale>
+  <Locale name="nl-be">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR-codes en Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="nl-be" />
+    <Property name="AddressSearchCulture" value="nl-be" />
+    <Property name="RoutingLanguage" value="nl-be" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-ie">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-ie" />
+    <Property name="RoutingLanguage" value="en-ie" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="sv-se">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="Skanna QR-koder och Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="sv-se" />
+    <Property name="AddressSearchCulture" value="sv-se" />
+    <Property name="RoutingLanguage" value="sv-se" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="da-dk">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="Scan QR-koder og Microsoft-tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="da-dk" />
+    <Property name="AddressSearchCulture" value="da-dk" />
+    <Property name="RoutingLanguage" value="da-dk" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="nl-nl">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR-codes en Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="nl-nl" />
+    <Property name="AddressSearchCulture" value="nl-nl" />
+    <Property name="RoutingLanguage" value="nl-nl" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="de-ch">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scannen Sie QR-Codes und Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="de-ch" />
+    <Property name="AddressSearchCulture" value="de-ch" />
+    <Property name="RoutingLanguage" value="de-ch" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="zh-hk">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="掃描 QR 碼與 Microsoft Tag。" />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="0" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="zh-hk" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="nb-no">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="Søk i QR-koder og Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="nb-no" />
+    <Property name="RoutingLanguage" value="nb-no" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="zh-tw">
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionDisplayText" value="掃描 QR 代碼與 Microsoft Tags。" />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="0" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="AddressSearchCulture" value="zh-tw" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="zh-cn">
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="0" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="AddressSearchCulture" value="zh-cn" />
+    <Property name="SpeechInRouting" value="0" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-sg">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-sg" />
+    <Property name="AddressSearchCulture" value="en-sg" />
+    <Property name="RoutingLanguage" value="en-sg" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="0" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <Locale name="en-us">
+    <Property name="VisionRecognizers" value="OCR,Product" />
+    <Property name="VisionBarcodes" value="UPC, QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan barcodes, QR Codes, Microsoft Tags, books, CDs, and DVDs." />
+    <Property name="AudioSearchMarkets" value="US,CA,AU,GB,FR,IT,DE,ES" />
+    <Property name="AudioRequestType" value="AudioFeatures16" />
+    <Property name="AudioSearchEnabled" value="1" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="AudioPeriod" value="3000" />
+    <Property name="AudioSampleCount" value="5" />
+    <Property name="AudioDurations" value="3000,6000,9000,12000,15000" />
+    <Property name="FinanceWebsite" value="http://mny.mobile.msn.com/en-us/quote.aspx?symbol={0}" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="1" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="1" />
+    <Property name="Neighborhood" value="1" />
+    <Property name="Reviews" value="1" />
+    <Property name="FullMap" value="en-us" />
+    <Property name="AddressSearchCulture" value="en-us" />
+    <Property name="RoutingLanguage" value="en-us" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="1" />
+    <Property name="ProductItemCard" value="1" />
+    <Property name="EventsItemCard" value="1" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+    <Binglet name="Bing_Binglet_1001" value="4568013a-72ca-df11-9eae-00237de2db9e" />
+    <Binglet name="Bing_Binglet_3001" value="44d7ca97-e8f1-df11-9264-00237de2db9e" />
+    <BingletAction name="Bing_Reserve_A_Table" value="10" />
+    <BingletAction name="Bing_Buy_Tickets" value="20" />
+    <BingletAction name="Bing_Order_Delivery" value="30" />
+    <BingletAction name="Bing_View_Menu" value="40" />
+    <EventFeed name="Event_Feed_001" value="30" />
+  </Locale>
+  <Locale name="en-nz">
+    <Property name="VisionRecognizers" value="OCR" />
+    <Property name="VisionBarcodes" value="QR, MSTAG" />
+    <Property name="VisionOCRLanguages" value="EN,ES,IT,DE,FR,NL,PT" />
+    <Property name="VisionDisplayText" value="Scan QR Codes and Microsoft Tags." />
+    <Property name="AudioSearchEnabled" value="0" />
+    <Property name="VisionServicesEnabled" value="1" />
+    <Property name="Web" value="1" />
+    <Property name="Local" value="0" />
+    <Property name="Image" value="1" />
+    <Property name="Traffic" value="0" />
+    <Property name="Neighborhood" value="0" />
+    <Property name="Reviews" value="0" />
+    <Property name="FullMap" value="en-nz" />
+    <Property name="AddressSearchCulture" value="en-nz" />
+    <Property name="RoutingLanguage" value="en-nz" />
+    <Property name="SpeechInRouting" value="1" />
+    <Property name="AutoSuggest" value="1" />
+    <Property name="MovieItemCard" value="0" />
+    <Property name="ProductItemCard" value="0" />
+    <Property name="EventsItemCard" value="0" />
+    <Property name="EditThisPlaceUrl" value="https://gazetteer.bingmobile.com/nearby/editplace.htm" />
+  </Locale>
+  <PlaceCategories>
+    <Category_Group name="Bing_Places_Sports_and_Recreation">
+      <Category id="262" />
+      <Category id="2451" />
+      <Category id="12640" />
+      <Category id="12645" />
+      <Category id="12650" />
+      <Category id="12653" />
+      <Category id="12654" />
+      <Category id="12670" />
+      <Category id="12676" />
+      <Category id="12690" />
+      <Category id="12695" />
+      <Category id="12698" />
+      <Category id="12706" />
+      <Category id="12713" />
+      <Category id="12719" />
+      <Category id="12722" />
+      <Category id="12726" />
+      <Category id="12731" />
+      <Category id="12733" />
+      <Category id="12737" />
+      <Category id="12742" />
+      <Category id="12750" />
+      <Category id="12755" />
+      <Category id="12767" />
+      <Category id="12781" />
+      <Category id="13571" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Business_to_Business">
+      <Category id="987" />
+      <Category id="10362" />
+      <Category id="10678" />
+      <Category id="10925" />
+      <Category id="12001" />
+      <Category id="13436" />
+      <Category id="13449" />
+      <Category id="13455" />
+      <Category id="13480" />
+      <Category id="13482" />
+      <Category id="13483" />
+      <Category id="13484" />
+      <Category id="13485" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Professionals_and_Services">
+      <Category id="12185" />
+      <Category id="12201" />
+      <Category id="12212" />
+      <Category id="12219" />
+      <Category id="12246" />
+      <Category id="12261" />
+      <Category id="12289" />
+      <Category id="12295" />
+      <Category id="12307" />
+      <Category id="12324" />
+      <Category id="12348" />
+      <Category id="12350" />
+      <Category id="13120" />
+      <Category id="13129" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Arts_and_Entertainment">
+      <Category id="984" />
+      <Category id="1785" />
+      <Category id="2699" />
+      <Category id="10002" />
+      <Category id="10004" />
+      <Category id="10012" />
+      <Category id="10028" />
+      <Category id="10033" />
+      <Category id="10036" />
+      <Category id="10046" />
+      <Category id="10051" />
+      <Category id="10056" />
+      <Category id="10064" />
+      <Category id="10073" />
+      <Category id="10100" />
+      <Category id="10122" />
+      <Category id="10129" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Automotive_and_Vehicles">
+      <Category id="2917" />
+      <Category id="10133" />
+      <Category id="10142" />
+      <Category id="10194" />
+      <Category id="10215" />
+      <Category id="10254" />
+      <Category id="10282" />
+      <Category id="10299" />
+      <Category id="10312" />
+      <Category id="10328" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Computers_and_Technology">
+      <Category id="26" />
+      <Category id="48" />
+      <Category id="234" />
+      <Category id="297" />
+      <Category id="1442" />
+      <Category id="2483" />
+      <Category id="10832" />
+      <Category id="10840" />
+      <Category id="10852" />
+      <Category id="10855" />
+      <Category id="10869" />
+      <Category id="10879" />
+      <Category id="10886" />
+      <Category id="10906" />
+      <Category id="10957" />
+      <Category id="10984" />
+      <Category id="10994" />
+      <Category id="11010" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Education">
+      <Category id="2354" />
+      <Category id="2360" />
+      <Category id="11015" />
+      <Category id="11017" />
+      <Category id="11020" />
+      <Category id="11023" />
+      <Category id="11033" />
+      <Category id="11035" />
+      <Category id="11040" />
+      <Category id="11043" />
+      <Category id="11051" />
+      <Category id="11062" />
+      <Category id="11065" />
+      <Category id="11593" />
+      <Category id="13632" />
+      <Category id="13636" />
+      <Category id="13637" />
+      <Category id="13638" />
+      <Category id="83163" />
+      <Category id="83164" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Food_and_Dining">
+      <Category id="11073" />
+      <Category id="11076" />
+      <Category id="11078" />
+      <Category id="11096" />
+      <Category id="11099" />
+      <Category id="11151" />
+      <Category id="11168" />
+      <Category id="11199" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Government_and_Community">
+      <Category id="1816" />
+      <Category id="11207" />
+      <Category id="11210" />
+      <Category id="11215" />
+      <Category id="11220" />
+      <Category id="11224" />
+      <Category id="11229" />
+      <Category id="11233" />
+      <Category id="11242" />
+      <Category id="11243" />
+      <Category id="11262" />
+      <Category id="11265" />
+      <Category id="11268" />
+      <Category id="11274" />
+      <Category id="11277" />
+      <Category id="11280" />
+      <Category id="11344" />
+      <Category id="11347" />
+      <Category id="11371" />
+      <Category id="11374" />
+      <Category id="11381" />
+      <Category id="13547" />
+      <Category id="13548" />
+      <Category id="13550" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Health_and_Beauty">
+      <Category id="660" />
+      <Category id="752" />
+      <Category id="1358" />
+      <Category id="1670" />
+      <Category id="11385" />
+      <Category id="11397" />
+      <Category id="11408" />
+      <Category id="11429" />
+      <Category id="11432" />
+      <Category id="11450" />
+      <Category id="11460" />
+      <Category id="11518" />
+      <Category id="11529" />
+      <Category id="11532" />
+      <Category id="11550" />
+      <Category id="11567" />
+      <Category id="11575" />
+      <Category id="11579" />
+      <Category id="11588" />
+      <Category id="11637" />
+      <Category id="11649" />
+      <Category id="11669" />
+      <Category id="11672" />
+      <Category id="11683" />
+      <Category id="11696" />
+      <Category id="11702" />
+      <Category id="11705" />
+      <Category id="11714" />
+      <Category id="13070" />
+      <Category id="13505" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Home_and_Family">
+      <Category id="1329" />
+      <Category id="11736" />
+      <Category id="11750" />
+      <Category id="11759" />
+      <Category id="11764" />
+      <Category id="11772" />
+      <Category id="11801" />
+      <Category id="11805" />
+      <Category id="11816" />
+      <Category id="11819" />
+      <Category id="11830" />
+      <Category id="11833" />
+      <Category id="11844" />
+      <Category id="11852" />
+      <Category id="11858" />
+      <Category id="11863" />
+      <Category id="11866" />
+      <Category id="11888" />
+      <Category id="11894" />
+      <Category id="11907" />
+      <Category id="11915" />
+      <Category id="11949" />
+      <Category id="11957" />
+      <Category id="12828" />
+      <Category id="12860" />
+      <Category id="13572" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Legal_and_Finance">
+      <Category id="102" />
+      <Category id="2596" />
+      <Category id="11974" />
+      <Category id="11981" />
+      <Category id="11983" />
+      <Category id="11985" />
+      <Category id="11987" />
+      <Category id="12039" />
+      <Category id="12042" />
+      <Category id="12046" />
+      <Category id="12051" />
+      <Category id="12053" />
+      <Category id="12056" />
+      <Category id="12058" />
+      <Category id="12087" />
+      <Category id="12101" />
+      <Category id="12146" />
+      <Category id="12152" />
+      <Category id="12225" />
+      <Category id="13479" />
+      <Category id="13526" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Real_Estate_and_Construction">
+      <Category id="1718" />
+      <Category id="2175" />
+      <Category id="2662" />
+      <Category id="2773" />
+      <Category id="12361" />
+      <Category id="12431" />
+      <Category id="12459" />
+      <Category id="12467" />
+      <Category id="12513" />
+      <Category id="12529" />
+      <Category id="12549" />
+      <Category id="12572" />
+      <Category id="13487" />
+      <Category id="13488" />
+      <Category id="13489" />
+      <Category id="13490" />
+      <Category id="13491" />
+      <Category id="13492" />
+      <Category id="13493" />
+      <Category id="13494" />
+      <Category id="13495" />
+      <Category id="13496" />
+      <Category id="13497" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Shopping">
+      <Category id="600" />
+      <Category id="1471" />
+      <Category id="2515" />
+      <Category id="12874" />
+      <Category id="12876" />
+      <Category id="12912" />
+      <Category id="12916" />
+      <Category id="12922" />
+      <Category id="12949" />
+      <Category id="12961" />
+      <Category id="12987" />
+      <Category id="13018" />
+    </Category_Group>
+    <Category_Group name="Bing_Places_Travel">
+      <Category id="58" />
+      <Category id="216" />
+      <Category id="1556" />
+      <Category id="2597" />
+      <Category id="2717" />
+      <Category id="2722" />
+      <Category id="13311" />
+      <Category id="13316" />
+      <Category id="13324" />
+      <Category id="13327" />
+      <Category id="13331" />
+      <Category id="13333" />
+      <Category id="13336" />
+      <Category id="13344" />
+      <Category id="13354" />
+      <Category id="13357" />
+      <Category id="13360" />
+      <Category id="13364" />
+      <Category id="13635" />
+    </Category_Group>
+  </PlaceCategories>
+  <ProductCategories>
+    <Category_Group name="Bing_Products_Flowers">
+      <Category id="4726" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Movies">
+      <Category id="5319" />
+      <Category id="5320" />
+      <Category id="5321" />
+      <Category id="5322" />
+      <Category id="5323" />
+      <Category id="5324" />
+      <Category id="5325" />
+      <Category id="5326" />
+      <Category id="5327" />
+      <Category id="5328" />
+      <Category id="5329" />
+      <Category id="5330" />
+      <Category id="5331" />
+      <Category id="5332" />
+      <Category id="5333" />
+      <Category id="5334" />
+      <Category id="5335" />
+      <Category id="5336" />
+      <Category id="5337" />
+      <Category id="5338" />
+      <Category id="5339" />
+      <Category id="5340" />
+      <Category id="6657" />
+      <Category id="6682" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Travel">
+      <Category id="6477" />
+      <Category id="6478" />
+      <Category id="6479" />
+      <Category id="6480" />
+      <Category id="6481" />
+      <Category id="6482" />
+      <Category id="6483" />
+      <Category id="6484" />
+      <Category id="6485" />
+      <Category id="6486" />
+      <Category id="6487" />
+      <Category id="6488" />
+      <Category id="6565" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Video_Games">
+      <Category id="6489" />
+      <Category id="6490" />
+      <Category id="6491" />
+      <Category id="7117" />
+      <Category id="7118" />
+      <Category id="7119" />
+      <Category id="7120" />
+      <Category id="7121" />
+      <Category id="7122" />
+      <Category id="7123" />
+      <Category id="7124" />
+      <Category id="7125" />
+      <Category id="7126" />
+      <Category id="7127" />
+      <Category id="7128" />
+      <Category id="7129" />
+      <Category id="7130" />
+      <Category id="7131" />
+      <Category id="7132" />
+      <Category id="7133" />
+      <Category id="7134" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Arts_and_Crafts">
+      <Category id="5457" />
+      <Category id="6440" />
+      <Category id="6443" />
+      <Category id="6847" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Baby_and_Nursery">
+      <Category id="4169" />
+      <Category id="4170" />
+      <Category id="4171" />
+      <Category id="4172" />
+      <Category id="4173" />
+      <Category id="4175" />
+      <Category id="4176" />
+      <Category id="4177" />
+      <Category id="4178" />
+      <Category id="4179" />
+      <Category id="4181" />
+      <Category id="4182" />
+      <Category id="4183" />
+      <Category id="4184" />
+      <Category id="4185" />
+      <Category id="4186" />
+      <Category id="4187" />
+      <Category id="4188" />
+      <Category id="4189" />
+      <Category id="4190" />
+      <Category id="4191" />
+      <Category id="4192" />
+      <Category id="4193" />
+      <Category id="4194" />
+      <Category id="4195" />
+      <Category id="4196" />
+      <Category id="4197" />
+      <Category id="4198" />
+      <Category id="4199" />
+      <Category id="4203" />
+      <Category id="4209" />
+      <Category id="4210" />
+      <Category id="4211" />
+      <Category id="4212" />
+      <Category id="4219" />
+      <Category id="4220" />
+      <Category id="4221" />
+      <Category id="4223" />
+      <Category id="4224" />
+      <Category id="4226" />
+      <Category id="4227" />
+      <Category id="4228" />
+      <Category id="4229" />
+      <Category id="4230" />
+      <Category id="4231" />
+      <Category id="4232" />
+      <Category id="4233" />
+      <Category id="6519" />
+      <Category id="6532" />
+      <Category id="6533" />
+      <Category id="6560" />
+      <Category id="6680" />
+      <Category id="6865" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Beauty_and_Fragrance">
+      <Category id="4234" />
+      <Category id="4235" />
+      <Category id="4236" />
+      <Category id="4238" />
+      <Category id="4239" />
+      <Category id="4240" />
+      <Category id="4242" />
+      <Category id="4243" />
+      <Category id="4245" />
+      <Category id="4246" />
+      <Category id="4247" />
+      <Category id="4248" />
+      <Category id="4249" />
+      <Category id="4250" />
+      <Category id="4251" />
+      <Category id="4252" />
+      <Category id="4253" />
+      <Category id="4254" />
+      <Category id="4255" />
+      <Category id="4256" />
+      <Category id="4258" />
+      <Category id="4259" />
+      <Category id="4260" />
+      <Category id="4262" />
+      <Category id="4264" />
+      <Category id="4265" />
+      <Category id="4266" />
+      <Category id="4267" />
+      <Category id="4268" />
+      <Category id="4269" />
+      <Category id="4270" />
+      <Category id="4271" />
+      <Category id="4272" />
+      <Category id="4273" />
+      <Category id="4274" />
+      <Category id="4275" />
+      <Category id="4276" />
+      <Category id="4277" />
+      <Category id="4278" />
+      <Category id="4279" />
+      <Category id="4281" />
+      <Category id="4282" />
+      <Category id="4285" />
+      <Category id="4286" />
+      <Category id="4287" />
+      <Category id="4288" />
+      <Category id="4289" />
+      <Category id="4290" />
+      <Category id="4291" />
+      <Category id="4299" />
+      <Category id="4300" />
+      <Category id="4301" />
+      <Category id="4302" />
+      <Category id="4303" />
+      <Category id="4304" />
+      <Category id="4305" />
+      <Category id="4306" />
+      <Category id="4307" />
+      <Category id="4308" />
+      <Category id="4309" />
+      <Category id="4311" />
+      <Category id="4317" />
+      <Category id="4318" />
+      <Category id="4320" />
+      <Category id="4321" />
+      <Category id="4322" />
+      <Category id="4325" />
+      <Category id="4327" />
+      <Category id="4328" />
+      <Category id="4332" />
+      <Category id="4333" />
+      <Category id="4334" />
+      <Category id="4337" />
+      <Category id="4341" />
+      <Category id="4342" />
+      <Category id="4343" />
+      <Category id="4344" />
+      <Category id="4345" />
+      <Category id="4346" />
+      <Category id="4347" />
+      <Category id="4348" />
+      <Category id="4826" />
+      <Category id="4827" />
+      <Category id="6494" />
+      <Category id="6495" />
+      <Category id="6500" />
+      <Category id="6632" />
+      <Category id="6637" />
+      <Category id="6674" />
+      <Category id="6702" />
+      <Category id="6825" />
+      <Category id="6826" />
+      <Category id="6872" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Books_and_Magazines">
+      <Category id="3" />
+      <Category id="4" />
+      <Category id="7" />
+      <Category id="8" />
+      <Category id="10" />
+      <Category id="11" />
+      <Category id="12" />
+      <Category id="14" />
+      <Category id="15" />
+      <Category id="17" />
+      <Category id="18" />
+      <Category id="19" />
+      <Category id="20" />
+      <Category id="21" />
+      <Category id="23" />
+      <Category id="27" />
+      <Category id="30" />
+      <Category id="31" />
+      <Category id="32" />
+      <Category id="33" />
+      <Category id="34" />
+      <Category id="35" />
+      <Category id="37" />
+      <Category id="41" />
+      <Category id="44" />
+      <Category id="46" />
+      <Category id="47" />
+      <Category id="50" />
+      <Category id="61" />
+      <Category id="66" />
+      <Category id="68" />
+      <Category id="70" />
+      <Category id="73" />
+      <Category id="76" />
+      <Category id="78" />
+      <Category id="84" />
+      <Category id="86" />
+      <Category id="89" />
+      <Category id="91" />
+      <Category id="94" />
+      <Category id="95" />
+      <Category id="96" />
+      <Category id="97" />
+      <Category id="98" />
+      <Category id="99" />
+      <Category id="100" />
+      <Category id="101" />
+      <Category id="102" />
+      <Category id="105" />
+      <Category id="106" />
+      <Category id="132" />
+      <Category id="136" />
+      <Category id="138" />
+      <Category id="140" />
+      <Category id="142" />
+      <Category id="144" />
+      <Category id="146" />
+      <Category id="148" />
+      <Category id="150" />
+      <Category id="152" />
+      <Category id="154" />
+      <Category id="156" />
+      <Category id="158" />
+      <Category id="160" />
+      <Category id="162" />
+      <Category id="164" />
+      <Category id="166" />
+      <Category id="168" />
+      <Category id="170" />
+      <Category id="172" />
+      <Category id="175" />
+      <Category id="177" />
+      <Category id="185" />
+      <Category id="194" />
+      <Category id="195" />
+      <Category id="197" />
+      <Category id="210" />
+      <Category id="2728" />
+      <Category id="4153" />
+      <Category id="4154" />
+      <Category id="4155" />
+      <Category id="4156" />
+      <Category id="4157" />
+      <Category id="4158" />
+      <Category id="4159" />
+      <Category id="4160" />
+      <Category id="4161" />
+      <Category id="4162" />
+      <Category id="4165" />
+      <Category id="4166" />
+      <Category id="4168" />
+      <Category id="6588" />
+      <Category id="6685" />
+      <Category id="6686" />
+      <Category id="6855" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Cameras_and_Optics">
+      <Category id="4349" />
+      <Category id="4350" />
+      <Category id="4351" />
+      <Category id="4352" />
+      <Category id="4353" />
+      <Category id="4354" />
+      <Category id="4355" />
+      <Category id="4356" />
+      <Category id="4357" />
+      <Category id="4358" />
+      <Category id="4359" />
+      <Category id="4360" />
+      <Category id="4361" />
+      <Category id="4362" />
+      <Category id="4364" />
+      <Category id="4365" />
+      <Category id="4369" />
+      <Category id="4370" />
+      <Category id="4371" />
+      <Category id="4372" />
+      <Category id="4373" />
+      <Category id="4374" />
+      <Category id="4375" />
+      <Category id="4376" />
+      <Category id="4377" />
+      <Category id="4378" />
+      <Category id="4380" />
+      <Category id="4381" />
+      <Category id="4382" />
+      <Category id="4383" />
+      <Category id="4384" />
+      <Category id="4385" />
+      <Category id="4386" />
+      <Category id="4721" />
+      <Category id="6502" />
+      <Category id="6503" />
+      <Category id="6504" />
+      <Category id="6505" />
+      <Category id="6506" />
+      <Category id="6507" />
+      <Category id="6508" />
+      <Category id="6509" />
+      <Category id="6510" />
+      <Category id="6511" />
+      <Category id="6586" />
+      <Category id="6614" />
+      <Category id="6615" />
+      <Category id="6808" />
+      <Category id="6809" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Car_and_Garage">
+      <Category id="4387" />
+      <Category id="4388" />
+      <Category id="4389" />
+      <Category id="4390" />
+      <Category id="4391" />
+      <Category id="4392" />
+      <Category id="4393" />
+      <Category id="4394" />
+      <Category id="4395" />
+      <Category id="4396" />
+      <Category id="4397" />
+      <Category id="4398" />
+      <Category id="4399" />
+      <Category id="4400" />
+      <Category id="4401" />
+      <Category id="4402" />
+      <Category id="4403" />
+      <Category id="4404" />
+      <Category id="4405" />
+      <Category id="4406" />
+      <Category id="4407" />
+      <Category id="4408" />
+      <Category id="4409" />
+      <Category id="4410" />
+      <Category id="4411" />
+      <Category id="4412" />
+      <Category id="4413" />
+      <Category id="4414" />
+      <Category id="4415" />
+      <Category id="4417" />
+      <Category id="4418" />
+      <Category id="4419" />
+      <Category id="4420" />
+      <Category id="4421" />
+      <Category id="4422" />
+      <Category id="4423" />
+      <Category id="4424" />
+      <Category id="4425" />
+      <Category id="4426" />
+      <Category id="4428" />
+      <Category id="4431" />
+      <Category id="4433" />
+      <Category id="4434" />
+      <Category id="4435" />
+      <Category id="4436" />
+      <Category id="4437" />
+      <Category id="4438" />
+      <Category id="4439" />
+      <Category id="4440" />
+      <Category id="4441" />
+      <Category id="4442" />
+      <Category id="4444" />
+      <Category id="6590" />
+      <Category id="6640" />
+      <Category id="6641" />
+      <Category id="6642" />
+      <Category id="6643" />
+      <Category id="6644" />
+      <Category id="6645" />
+      <Category id="6647" />
+      <Category id="6648" />
+      <Category id="6649" />
+      <Category id="6850" />
+      <Category id="6868" />
+      <Category id="6974" />
+      <Category id="6975" />
+      <Category id="6976" />
+      <Category id="6977" />
+      <Category id="6978" />
+      <Category id="6979" />
+      <Category id="6980" />
+      <Category id="6981" />
+      <Category id="6982" />
+      <Category id="6983" />
+      <Category id="6984" />
+      <Category id="6985" />
+      <Category id="6986" />
+      <Category id="6987" />
+      <Category id="6988" />
+      <Category id="6989" />
+      <Category id="6990" />
+      <Category id="6991" />
+      <Category id="6992" />
+      <Category id="6993" />
+      <Category id="6994" />
+      <Category id="6995" />
+      <Category id="6996" />
+      <Category id="6997" />
+      <Category id="6998" />
+      <Category id="6999" />
+      <Category id="7000" />
+      <Category id="7001" />
+      <Category id="7002" />
+      <Category id="7003" />
+      <Category id="7004" />
+      <Category id="7005" />
+      <Category id="7006" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Clothing_and_Shoes">
+      <Category id="4445" />
+      <Category id="4446" />
+      <Category id="4447" />
+      <Category id="4448" />
+      <Category id="4449" />
+      <Category id="4451" />
+      <Category id="4452" />
+      <Category id="4455" />
+      <Category id="4457" />
+      <Category id="4458" />
+      <Category id="4459" />
+      <Category id="4460" />
+      <Category id="4461" />
+      <Category id="4462" />
+      <Category id="4463" />
+      <Category id="4464" />
+      <Category id="4465" />
+      <Category id="4466" />
+      <Category id="4467" />
+      <Category id="4468" />
+      <Category id="4469" />
+      <Category id="4470" />
+      <Category id="4471" />
+      <Category id="4472" />
+      <Category id="4474" />
+      <Category id="4475" />
+      <Category id="4477" />
+      <Category id="4478" />
+      <Category id="4480" />
+      <Category id="4481" />
+      <Category id="4482" />
+      <Category id="4483" />
+      <Category id="4485" />
+      <Category id="4486" />
+      <Category id="4487" />
+      <Category id="4488" />
+      <Category id="4489" />
+      <Category id="4490" />
+      <Category id="4492" />
+      <Category id="4494" />
+      <Category id="4496" />
+      <Category id="4497" />
+      <Category id="4498" />
+      <Category id="4499" />
+      <Category id="4500" />
+      <Category id="4501" />
+      <Category id="4502" />
+      <Category id="4503" />
+      <Category id="4504" />
+      <Category id="4505" />
+      <Category id="5133" />
+      <Category id="6570" />
+      <Category id="6577" />
+      <Category id="6604" />
+      <Category id="6646" />
+      <Category id="6673" />
+      <Category id="7159" />
+      <Category id="7160" />
+      <Category id="7161" />
+      <Category id="7162" />
+      <Category id="7163" />
+      <Category id="7164" />
+      <Category id="7165" />
+      <Category id="7166" />
+      <Category id="7167" />
+      <Category id="7168" />
+      <Category id="7169" />
+      <Category id="7170" />
+      <Category id="7171" />
+      <Category id="7172" />
+      <Category id="7173" />
+      <Category id="7174" />
+      <Category id="7175" />
+      <Category id="7176" />
+      <Category id="7177" />
+      <Category id="7178" />
+      <Category id="7179" />
+      <Category id="7180" />
+      <Category id="7181" />
+      <Category id="7182" />
+      <Category id="7183" />
+      <Category id="7184" />
+      <Category id="7185" />
+      <Category id="7186" />
+      <Category id="7187" />
+      <Category id="7188" />
+      <Category id="7189" />
+      <Category id="7190" />
+      <Category id="7191" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Collectibles_and_Memorabilia">
+      <Category id="6571" />
+      <Category id="6572" />
+      <Category id="6594" />
+      <Category id="6687" />
+      <Category id="6688" />
+      <Category id="6703" />
+      <Category id="6704" />
+      <Category id="6705" />
+      <Category id="6706" />
+      <Category id="6707" />
+      <Category id="6708" />
+      <Category id="6709" />
+      <Category id="6710" />
+      <Category id="6711" />
+      <Category id="6712" />
+      <Category id="6713" />
+      <Category id="6714" />
+      <Category id="6715" />
+      <Category id="6716" />
+      <Category id="6717" />
+      <Category id="6718" />
+      <Category id="6719" />
+      <Category id="6720" />
+      <Category id="6721" />
+      <Category id="6722" />
+      <Category id="6723" />
+      <Category id="6724" />
+      <Category id="6725" />
+      <Category id="6726" />
+      <Category id="6727" />
+      <Category id="6728" />
+      <Category id="6729" />
+      <Category id="6854" />
+      <Category id="6862" />
+      <Category id="6863" />
+      <Category id="7027" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Computing">
+      <Category id="4506" />
+      <Category id="4507" />
+      <Category id="4508" />
+      <Category id="4509" />
+      <Category id="4510" />
+      <Category id="4511" />
+      <Category id="4512" />
+      <Category id="4514" />
+      <Category id="4515" />
+      <Category id="4516" />
+      <Category id="4517" />
+      <Category id="4518" />
+      <Category id="4519" />
+      <Category id="4520" />
+      <Category id="4521" />
+      <Category id="4522" />
+      <Category id="4523" />
+      <Category id="4524" />
+      <Category id="4530" />
+      <Category id="4531" />
+      <Category id="4532" />
+      <Category id="4533" />
+      <Category id="4534" />
+      <Category id="4535" />
+      <Category id="4536" />
+      <Category id="4537" />
+      <Category id="4538" />
+      <Category id="4539" />
+      <Category id="4540" />
+      <Category id="4541" />
+      <Category id="4542" />
+      <Category id="4543" />
+      <Category id="4544" />
+      <Category id="4545" />
+      <Category id="4546" />
+      <Category id="4547" />
+      <Category id="4548" />
+      <Category id="4549" />
+      <Category id="4550" />
+      <Category id="4551" />
+      <Category id="4552" />
+      <Category id="4553" />
+      <Category id="4554" />
+      <Category id="4555" />
+      <Category id="4556" />
+      <Category id="4557" />
+      <Category id="4558" />
+      <Category id="4560" />
+      <Category id="4562" />
+      <Category id="4563" />
+      <Category id="4564" />
+      <Category id="4565" />
+      <Category id="4566" />
+      <Category id="4567" />
+      <Category id="4568" />
+      <Category id="4569" />
+      <Category id="4570" />
+      <Category id="4571" />
+      <Category id="4572" />
+      <Category id="4573" />
+      <Category id="4574" />
+      <Category id="4575" />
+      <Category id="4576" />
+      <Category id="4577" />
+      <Category id="4578" />
+      <Category id="4579" />
+      <Category id="4580" />
+      <Category id="4581" />
+      <Category id="4582" />
+      <Category id="4584" />
+      <Category id="4585" />
+      <Category id="4586" />
+      <Category id="4587" />
+      <Category id="4588" />
+      <Category id="4589" />
+      <Category id="4590" />
+      <Category id="4591" />
+      <Category id="4592" />
+      <Category id="4594" />
+      <Category id="4595" />
+      <Category id="4597" />
+      <Category id="4599" />
+      <Category id="4608" />
+      <Category id="4612" />
+      <Category id="4613" />
+      <Category id="4614" />
+      <Category id="4615" />
+      <Category id="4616" />
+      <Category id="4617" />
+      <Category id="4618" />
+      <Category id="4620" />
+      <Category id="4621" />
+      <Category id="4622" />
+      <Category id="4623" />
+      <Category id="4625" />
+      <Category id="4626" />
+      <Category id="4627" />
+      <Category id="4628" />
+      <Category id="4629" />
+      <Category id="4630" />
+      <Category id="4632" />
+      <Category id="4633" />
+      <Category id="6513" />
+      <Category id="6514" />
+      <Category id="6515" />
+      <Category id="6516" />
+      <Category id="6517" />
+      <Category id="6518" />
+      <Category id="6529" />
+      <Category id="6531" />
+      <Category id="6569" />
+      <Category id="6654" />
+      <Category id="6835" />
+      <Category id="7136" />
+      <Category id="7144" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Electronics">
+      <Category id="4634" />
+      <Category id="4635" />
+      <Category id="4636" />
+      <Category id="4637" />
+      <Category id="4638" />
+      <Category id="4639" />
+      <Category id="4640" />
+      <Category id="4641" />
+      <Category id="4642" />
+      <Category id="4644" />
+      <Category id="4646" />
+      <Category id="4647" />
+      <Category id="4648" />
+      <Category id="4649" />
+      <Category id="4650" />
+      <Category id="4651" />
+      <Category id="4652" />
+      <Category id="4657" />
+      <Category id="4658" />
+      <Category id="4659" />
+      <Category id="4660" />
+      <Category id="4661" />
+      <Category id="4662" />
+      <Category id="4663" />
+      <Category id="4665" />
+      <Category id="4668" />
+      <Category id="4670" />
+      <Category id="4671" />
+      <Category id="4673" />
+      <Category id="4674" />
+      <Category id="4676" />
+      <Category id="4677" />
+      <Category id="4678" />
+      <Category id="4679" />
+      <Category id="4680" />
+      <Category id="4681" />
+      <Category id="4682" />
+      <Category id="4683" />
+      <Category id="4684" />
+      <Category id="4685" />
+      <Category id="4686" />
+      <Category id="4687" />
+      <Category id="4690" />
+      <Category id="4691" />
+      <Category id="4692" />
+      <Category id="4693" />
+      <Category id="4694" />
+      <Category id="4695" />
+      <Category id="4696" />
+      <Category id="4697" />
+      <Category id="4698" />
+      <Category id="4699" />
+      <Category id="4713" />
+      <Category id="4714" />
+      <Category id="4718" />
+      <Category id="4719" />
+      <Category id="4720" />
+      <Category id="4722" />
+      <Category id="4724" />
+      <Category id="4725" />
+      <Category id="6520" />
+      <Category id="6521" />
+      <Category id="6522" />
+      <Category id="6528" />
+      <Category id="6603" />
+      <Category id="6873" />
+      <Category id="7012" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Gourmet_Food_and_Chocolate">
+      <Category id="4727" />
+      <Category id="4728" />
+      <Category id="4729" />
+      <Category id="4734" />
+      <Category id="4735" />
+      <Category id="4736" />
+      <Category id="4737" />
+      <Category id="4738" />
+      <Category id="4739" />
+      <Category id="4740" />
+      <Category id="4741" />
+      <Category id="4743" />
+      <Category id="4744" />
+      <Category id="4745" />
+      <Category id="4746" />
+      <Category id="4747" />
+      <Category id="4748" />
+      <Category id="4749" />
+      <Category id="4750" />
+      <Category id="4751" />
+      <Category id="4752" />
+      <Category id="4753" />
+      <Category id="4754" />
+      <Category id="4755" />
+      <Category id="4756" />
+      <Category id="4757" />
+      <Category id="4758" />
+      <Category id="4759" />
+      <Category id="4760" />
+      <Category id="4761" />
+      <Category id="4762" />
+      <Category id="4763" />
+      <Category id="4765" />
+      <Category id="4766" />
+      <Category id="4767" />
+      <Category id="4768" />
+      <Category id="4769" />
+      <Category id="4770" />
+      <Category id="4771" />
+      <Category id="4772" />
+      <Category id="4773" />
+      <Category id="4774" />
+      <Category id="4775" />
+      <Category id="4776" />
+      <Category id="4777" />
+      <Category id="6579" />
+      <Category id="6580" />
+      <Category id="6581" />
+      <Category id="6679" />
+      <Category id="6816" />
+      <Category id="6822" />
+      <Category id="6823" />
+      <Category id="6851" />
+      <Category id="6869" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Health_and_Wellness">
+      <Category id="4778" />
+      <Category id="4779" />
+      <Category id="4780" />
+      <Category id="4781" />
+      <Category id="4782" />
+      <Category id="4783" />
+      <Category id="4784" />
+      <Category id="4785" />
+      <Category id="4786" />
+      <Category id="4787" />
+      <Category id="4788" />
+      <Category id="4789" />
+      <Category id="4791" />
+      <Category id="4792" />
+      <Category id="4793" />
+      <Category id="4795" />
+      <Category id="4796" />
+      <Category id="4797" />
+      <Category id="4798" />
+      <Category id="4799" />
+      <Category id="4800" />
+      <Category id="4801" />
+      <Category id="4802" />
+      <Category id="4803" />
+      <Category id="4804" />
+      <Category id="4805" />
+      <Category id="4806" />
+      <Category id="4807" />
+      <Category id="4808" />
+      <Category id="4809" />
+      <Category id="4810" />
+      <Category id="4811" />
+      <Category id="4812" />
+      <Category id="4813" />
+      <Category id="4814" />
+      <Category id="4815" />
+      <Category id="4816" />
+      <Category id="4817" />
+      <Category id="4818" />
+      <Category id="4819" />
+      <Category id="4820" />
+      <Category id="4821" />
+      <Category id="4822" />
+      <Category id="4823" />
+      <Category id="4824" />
+      <Category id="4825" />
+      <Category id="4828" />
+      <Category id="4829" />
+      <Category id="4830" />
+      <Category id="4831" />
+      <Category id="4832" />
+      <Category id="4833" />
+      <Category id="4834" />
+      <Category id="4835" />
+      <Category id="4836" />
+      <Category id="4837" />
+      <Category id="4838" />
+      <Category id="4839" />
+      <Category id="4840" />
+      <Category id="4841" />
+      <Category id="4842" />
+      <Category id="4843" />
+      <Category id="4845" />
+      <Category id="6499" />
+      <Category id="6652" />
+      <Category id="6672" />
+      <Category id="6820" />
+      <Category id="6821" />
+      <Category id="7140" />
+      <Category id="7142" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Home_Furnishings">
+      <Category id="4846" />
+      <Category id="4847" />
+      <Category id="4848" />
+      <Category id="4849" />
+      <Category id="4850" />
+      <Category id="4851" />
+      <Category id="4852" />
+      <Category id="4853" />
+      <Category id="4854" />
+      <Category id="4855" />
+      <Category id="4856" />
+      <Category id="4857" />
+      <Category id="4858" />
+      <Category id="4859" />
+      <Category id="4860" />
+      <Category id="4861" />
+      <Category id="4862" />
+      <Category id="4863" />
+      <Category id="4864" />
+      <Category id="4865" />
+      <Category id="4866" />
+      <Category id="4867" />
+      <Category id="4868" />
+      <Category id="4869" />
+      <Category id="4870" />
+      <Category id="4871" />
+      <Category id="4872" />
+      <Category id="4873" />
+      <Category id="4874" />
+      <Category id="4875" />
+      <Category id="4876" />
+      <Category id="4877" />
+      <Category id="4878" />
+      <Category id="4879" />
+      <Category id="4880" />
+      <Category id="4881" />
+      <Category id="4882" />
+      <Category id="4883" />
+      <Category id="4884" />
+      <Category id="4885" />
+      <Category id="4886" />
+      <Category id="4887" />
+      <Category id="4899" />
+      <Category id="4900" />
+      <Category id="4903" />
+      <Category id="4904" />
+      <Category id="4907" />
+      <Category id="4908" />
+      <Category id="4909" />
+      <Category id="4910" />
+      <Category id="4911" />
+      <Category id="4913" />
+      <Category id="4914" />
+      <Category id="4915" />
+      <Category id="4916" />
+      <Category id="4917" />
+      <Category id="4919" />
+      <Category id="4923" />
+      <Category id="4924" />
+      <Category id="4925" />
+      <Category id="4927" />
+      <Category id="4929" />
+      <Category id="4931" />
+      <Category id="4932" />
+      <Category id="4934" />
+      <Category id="4935" />
+      <Category id="4936" />
+      <Category id="4937" />
+      <Category id="4938" />
+      <Category id="4939" />
+      <Category id="4940" />
+      <Category id="4941" />
+      <Category id="4942" />
+      <Category id="4943" />
+      <Category id="4944" />
+      <Category id="4945" />
+      <Category id="4946" />
+      <Category id="4947" />
+      <Category id="4948" />
+      <Category id="4949" />
+      <Category id="4950" />
+      <Category id="4951" />
+      <Category id="4952" />
+      <Category id="4953" />
+      <Category id="4954" />
+      <Category id="4955" />
+      <Category id="4956" />
+      <Category id="4957" />
+      <Category id="4958" />
+      <Category id="4959" />
+      <Category id="4960" />
+      <Category id="4961" />
+      <Category id="4962" />
+      <Category id="4963" />
+      <Category id="4964" />
+      <Category id="4965" />
+      <Category id="4966" />
+      <Category id="4967" />
+      <Category id="4968" />
+      <Category id="4969" />
+      <Category id="4970" />
+      <Category id="4971" />
+      <Category id="4972" />
+      <Category id="4973" />
+      <Category id="4974" />
+      <Category id="4975" />
+      <Category id="4976" />
+      <Category id="4977" />
+      <Category id="4978" />
+      <Category id="4979" />
+      <Category id="4981" />
+      <Category id="4982" />
+      <Category id="4983" />
+      <Category id="4984" />
+      <Category id="4985" />
+      <Category id="4986" />
+      <Category id="4987" />
+      <Category id="4988" />
+      <Category id="4989" />
+      <Category id="4990" />
+      <Category id="4991" />
+      <Category id="4992" />
+      <Category id="4993" />
+      <Category id="4994" />
+      <Category id="4995" />
+      <Category id="4996" />
+      <Category id="4997" />
+      <Category id="4998" />
+      <Category id="4999" />
+      <Category id="5000" />
+      <Category id="5001" />
+      <Category id="5003" />
+      <Category id="5004" />
+      <Category id="5005" />
+      <Category id="5006" />
+      <Category id="5008" />
+      <Category id="5009" />
+      <Category id="5010" />
+      <Category id="5011" />
+      <Category id="5015" />
+      <Category id="5016" />
+      <Category id="5017" />
+      <Category id="5018" />
+      <Category id="5019" />
+      <Category id="5020" />
+      <Category id="5021" />
+      <Category id="5023" />
+      <Category id="5024" />
+      <Category id="5025" />
+      <Category id="5026" />
+      <Category id="5027" />
+      <Category id="5028" />
+      <Category id="5029" />
+      <Category id="5031" />
+      <Category id="5032" />
+      <Category id="5033" />
+      <Category id="5034" />
+      <Category id="5035" />
+      <Category id="5036" />
+      <Category id="5037" />
+      <Category id="5038" />
+      <Category id="5039" />
+      <Category id="5040" />
+      <Category id="5041" />
+      <Category id="5042" />
+      <Category id="5043" />
+      <Category id="5044" />
+      <Category id="5045" />
+      <Category id="5046" />
+      <Category id="5047" />
+      <Category id="5050" />
+      <Category id="5053" />
+      <Category id="5054" />
+      <Category id="5055" />
+      <Category id="5058" />
+      <Category id="5060" />
+      <Category id="5061" />
+      <Category id="5062" />
+      <Category id="5063" />
+      <Category id="5066" />
+      <Category id="5067" />
+      <Category id="5068" />
+      <Category id="5069" />
+      <Category id="5070" />
+      <Category id="5071" />
+      <Category id="5072" />
+      <Category id="5073" />
+      <Category id="5074" />
+      <Category id="5075" />
+      <Category id="5076" />
+      <Category id="5077" />
+      <Category id="5078" />
+      <Category id="5079" />
+      <Category id="5080" />
+      <Category id="5081" />
+      <Category id="5082" />
+      <Category id="5083" />
+      <Category id="5084" />
+      <Category id="5085" />
+      <Category id="5086" />
+      <Category id="5087" />
+      <Category id="5088" />
+      <Category id="5089" />
+      <Category id="5090" />
+      <Category id="5091" />
+      <Category id="5092" />
+      <Category id="5093" />
+      <Category id="5094" />
+      <Category id="5096" />
+      <Category id="5097" />
+      <Category id="5098" />
+      <Category id="5100" />
+      <Category id="5101" />
+      <Category id="5103" />
+      <Category id="5104" />
+      <Category id="5105" />
+      <Category id="5106" />
+      <Category id="5107" />
+      <Category id="5108" />
+      <Category id="5109" />
+      <Category id="5110" />
+      <Category id="5111" />
+      <Category id="5114" />
+      <Category id="5115" />
+      <Category id="5116" />
+      <Category id="5118" />
+      <Category id="6496" />
+      <Category id="6497" />
+      <Category id="6498" />
+      <Category id="6524" />
+      <Category id="6525" />
+      <Category id="6527" />
+      <Category id="6561" />
+      <Category id="6582" />
+      <Category id="6593" />
+      <Category id="6689" />
+      <Category id="6690" />
+      <Category id="6691" />
+      <Category id="6692" />
+      <Category id="6693" />
+      <Category id="6700" />
+      <Category id="6832" />
+      <Category id="6834" />
+      <Category id="7137" />
+      <Category id="7138" />
+      <Category id="7139" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Jewelry_and_Watches">
+      <Category id="5119" />
+      <Category id="5120" />
+      <Category id="5121" />
+      <Category id="5122" />
+      <Category id="5123" />
+      <Category id="5124" />
+      <Category id="5125" />
+      <Category id="5126" />
+      <Category id="5127" />
+      <Category id="5128" />
+      <Category id="5129" />
+      <Category id="5130" />
+      <Category id="5131" />
+      <Category id="5132" />
+      <Category id="5134" />
+      <Category id="5135" />
+      <Category id="5136" />
+      <Category id="5137" />
+      <Category id="5138" />
+      <Category id="5139" />
+      <Category id="5140" />
+      <Category id="5141" />
+      <Category id="5142" />
+      <Category id="5143" />
+      <Category id="6523" />
+      <Category id="6675" />
+      <Category id="7044" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Kitchen_and_Housewares">
+      <Category id="5144" />
+      <Category id="5145" />
+      <Category id="5146" />
+      <Category id="5147" />
+      <Category id="5148" />
+      <Category id="5149" />
+      <Category id="5150" />
+      <Category id="5151" />
+      <Category id="5152" />
+      <Category id="5153" />
+      <Category id="5154" />
+      <Category id="5155" />
+      <Category id="5156" />
+      <Category id="5157" />
+      <Category id="5158" />
+      <Category id="5159" />
+      <Category id="5160" />
+      <Category id="5161" />
+      <Category id="5162" />
+      <Category id="5163" />
+      <Category id="5164" />
+      <Category id="5165" />
+      <Category id="5166" />
+      <Category id="5167" />
+      <Category id="5168" />
+      <Category id="5169" />
+      <Category id="5170" />
+      <Category id="5171" />
+      <Category id="5172" />
+      <Category id="5173" />
+      <Category id="5174" />
+      <Category id="5175" />
+      <Category id="5176" />
+      <Category id="5177" />
+      <Category id="5178" />
+      <Category id="5179" />
+      <Category id="5180" />
+      <Category id="5181" />
+      <Category id="5182" />
+      <Category id="5183" />
+      <Category id="5184" />
+      <Category id="5185" />
+      <Category id="5186" />
+      <Category id="5187" />
+      <Category id="5188" />
+      <Category id="5189" />
+      <Category id="5190" />
+      <Category id="5191" />
+      <Category id="5192" />
+      <Category id="5193" />
+      <Category id="5194" />
+      <Category id="5195" />
+      <Category id="5196" />
+      <Category id="5197" />
+      <Category id="5198" />
+      <Category id="5199" />
+      <Category id="5200" />
+      <Category id="5201" />
+      <Category id="5202" />
+      <Category id="5203" />
+      <Category id="5204" />
+      <Category id="5205" />
+      <Category id="5206" />
+      <Category id="5207" />
+      <Category id="5208" />
+      <Category id="5209" />
+      <Category id="5210" />
+      <Category id="5211" />
+      <Category id="5212" />
+      <Category id="5213" />
+      <Category id="5214" />
+      <Category id="5215" />
+      <Category id="5216" />
+      <Category id="5217" />
+      <Category id="5218" />
+      <Category id="5219" />
+      <Category id="5220" />
+      <Category id="5221" />
+      <Category id="5222" />
+      <Category id="5223" />
+      <Category id="5224" />
+      <Category id="5225" />
+      <Category id="5226" />
+      <Category id="5227" />
+      <Category id="5228" />
+      <Category id="5229" />
+      <Category id="5230" />
+      <Category id="5231" />
+      <Category id="5232" />
+      <Category id="5233" />
+      <Category id="5234" />
+      <Category id="5235" />
+      <Category id="5236" />
+      <Category id="5237" />
+      <Category id="5238" />
+      <Category id="5239" />
+      <Category id="5240" />
+      <Category id="5241" />
+      <Category id="5242" />
+      <Category id="5243" />
+      <Category id="5244" />
+      <Category id="5245" />
+      <Category id="5246" />
+      <Category id="5247" />
+      <Category id="5248" />
+      <Category id="5249" />
+      <Category id="5250" />
+      <Category id="5251" />
+      <Category id="5252" />
+      <Category id="5253" />
+      <Category id="5254" />
+      <Category id="5255" />
+      <Category id="5257" />
+      <Category id="5258" />
+      <Category id="5259" />
+      <Category id="6393" />
+      <Category id="6526" />
+      <Category id="6567" />
+      <Category id="6584" />
+      <Category id="6585" />
+      <Category id="6677" />
+      <Category id="6683" />
+      <Category id="6848" />
+      <Category id="6849" />
+      <Category id="6852" />
+      <Category id="7011" />
+      <Category id="7043" />
+      <Category id="7143" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Lawn_and_Garden">
+      <Category id="5030" />
+      <Category id="5260" />
+      <Category id="5261" />
+      <Category id="5262" />
+      <Category id="5263" />
+      <Category id="5265" />
+      <Category id="5266" />
+      <Category id="5267" />
+      <Category id="5268" />
+      <Category id="5269" />
+      <Category id="5270" />
+      <Category id="5272" />
+      <Category id="5273" />
+      <Category id="5274" />
+      <Category id="5275" />
+      <Category id="5276" />
+      <Category id="5277" />
+      <Category id="5278" />
+      <Category id="5279" />
+      <Category id="5280" />
+      <Category id="5281" />
+      <Category id="5282" />
+      <Category id="5283" />
+      <Category id="5284" />
+      <Category id="5285" />
+      <Category id="5286" />
+      <Category id="5287" />
+      <Category id="5288" />
+      <Category id="5289" />
+      <Category id="5290" />
+      <Category id="5291" />
+      <Category id="5292" />
+      <Category id="5293" />
+      <Category id="5294" />
+      <Category id="5295" />
+      <Category id="5296" />
+      <Category id="5297" />
+      <Category id="5298" />
+      <Category id="5299" />
+      <Category id="5300" />
+      <Category id="5301" />
+      <Category id="5302" />
+      <Category id="5303" />
+      <Category id="5304" />
+      <Category id="5305" />
+      <Category id="5306" />
+      <Category id="5307" />
+      <Category id="5308" />
+      <Category id="5309" />
+      <Category id="5310" />
+      <Category id="5311" />
+      <Category id="5312" />
+      <Category id="5313" />
+      <Category id="5314" />
+      <Category id="5315" />
+      <Category id="5316" />
+      <Category id="5317" />
+      <Category id="6287" />
+      <Category id="6288" />
+      <Category id="6289" />
+      <Category id="6291" />
+      <Category id="6540" />
+      <Category id="6553" />
+      <Category id="6557" />
+      <Category id="6616" />
+      <Category id="6676" />
+      <Category id="6827" />
+      <Category id="6830" />
+      <Category id="6846" />
+      <Category id="6860" />
+      <Category id="7029" />
+      <Category id="7141" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Miscellaneous">
+      <Category id="5318" />
+      <Category id="7013" />
+      <Category id="7135" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Music">
+      <Category id="5341" />
+      <Category id="5342" />
+      <Category id="5343" />
+      <Category id="5344" />
+      <Category id="5345" />
+      <Category id="5346" />
+      <Category id="5347" />
+      <Category id="5348" />
+      <Category id="5349" />
+      <Category id="5350" />
+      <Category id="5351" />
+      <Category id="5352" />
+      <Category id="5353" />
+      <Category id="5354" />
+      <Category id="5355" />
+      <Category id="5356" />
+      <Category id="5357" />
+      <Category id="5358" />
+      <Category id="5359" />
+      <Category id="5360" />
+      <Category id="5361" />
+      <Category id="5362" />
+      <Category id="5363" />
+      <Category id="5364" />
+      <Category id="5365" />
+      <Category id="5366" />
+      <Category id="5367" />
+      <Category id="5368" />
+      <Category id="5369" />
+      <Category id="5370" />
+      <Category id="5371" />
+      <Category id="5373" />
+      <Category id="5374" />
+      <Category id="5375" />
+      <Category id="5376" />
+      <Category id="5377" />
+      <Category id="6639" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Musical_Instruments">
+      <Category id="5378" />
+      <Category id="5379" />
+      <Category id="5381" />
+      <Category id="5383" />
+      <Category id="5392" />
+      <Category id="5395" />
+      <Category id="5396" />
+      <Category id="5397" />
+      <Category id="5398" />
+      <Category id="5399" />
+      <Category id="5400" />
+      <Category id="5401" />
+      <Category id="5402" />
+      <Category id="5403" />
+      <Category id="5404" />
+      <Category id="5405" />
+      <Category id="5406" />
+      <Category id="5407" />
+      <Category id="5408" />
+      <Category id="5409" />
+      <Category id="5410" />
+      <Category id="5411" />
+      <Category id="5412" />
+      <Category id="5413" />
+      <Category id="5414" />
+      <Category id="5415" />
+      <Category id="5416" />
+      <Category id="5417" />
+      <Category id="5418" />
+      <Category id="5419" />
+      <Category id="5420" />
+      <Category id="5421" />
+      <Category id="5422" />
+      <Category id="5425" />
+      <Category id="5426" />
+      <Category id="5428" />
+      <Category id="5429" />
+      <Category id="6573" />
+      <Category id="6845" />
+      <Category id="7021" />
+      <Category id="7022" />
+      <Category id="7023" />
+      <Category id="7024" />
+      <Category id="7025" />
+      <Category id="7026" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Office_Products">
+      <Category id="4700" />
+      <Category id="4701" />
+      <Category id="4702" />
+      <Category id="4703" />
+      <Category id="4704" />
+      <Category id="4705" />
+      <Category id="4706" />
+      <Category id="4707" />
+      <Category id="4708" />
+      <Category id="4709" />
+      <Category id="5022" />
+      <Category id="5431" />
+      <Category id="5432" />
+      <Category id="5433" />
+      <Category id="5434" />
+      <Category id="5435" />
+      <Category id="5436" />
+      <Category id="5437" />
+      <Category id="5438" />
+      <Category id="5439" />
+      <Category id="5440" />
+      <Category id="5441" />
+      <Category id="5442" />
+      <Category id="5443" />
+      <Category id="5444" />
+      <Category id="5445" />
+      <Category id="5446" />
+      <Category id="5447" />
+      <Category id="5448" />
+      <Category id="5449" />
+      <Category id="5450" />
+      <Category id="5451" />
+      <Category id="5452" />
+      <Category id="5454" />
+      <Category id="5455" />
+      <Category id="5456" />
+      <Category id="5458" />
+      <Category id="5459" />
+      <Category id="5460" />
+      <Category id="5461" />
+      <Category id="5464" />
+      <Category id="5465" />
+      <Category id="5468" />
+      <Category id="5469" />
+      <Category id="5470" />
+      <Category id="5471" />
+      <Category id="5472" />
+      <Category id="5474" />
+      <Category id="5475" />
+      <Category id="5476" />
+      <Category id="5477" />
+      <Category id="5478" />
+      <Category id="5479" />
+      <Category id="5480" />
+      <Category id="5481" />
+      <Category id="5482" />
+      <Category id="5483" />
+      <Category id="5484" />
+      <Category id="5485" />
+      <Category id="5486" />
+      <Category id="5487" />
+      <Category id="5488" />
+      <Category id="5489" />
+      <Category id="5490" />
+      <Category id="5491" />
+      <Category id="5492" />
+      <Category id="5493" />
+      <Category id="5494" />
+      <Category id="5495" />
+      <Category id="5496" />
+      <Category id="5497" />
+      <Category id="5498" />
+      <Category id="5499" />
+      <Category id="5500" />
+      <Category id="5501" />
+      <Category id="5502" />
+      <Category id="5503" />
+      <Category id="5504" />
+      <Category id="5505" />
+      <Category id="5506" />
+      <Category id="5507" />
+      <Category id="5508" />
+      <Category id="5509" />
+      <Category id="5510" />
+      <Category id="5511" />
+      <Category id="5512" />
+      <Category id="5513" />
+      <Category id="5514" />
+      <Category id="5515" />
+      <Category id="5516" />
+      <Category id="5517" />
+      <Category id="5518" />
+      <Category id="5519" />
+      <Category id="5520" />
+      <Category id="5521" />
+      <Category id="5522" />
+      <Category id="5523" />
+      <Category id="5524" />
+      <Category id="5525" />
+      <Category id="5526" />
+      <Category id="5527" />
+      <Category id="5528" />
+      <Category id="5529" />
+      <Category id="5530" />
+      <Category id="5531" />
+      <Category id="6589" />
+      <Category id="6655" />
+      <Category id="6658" />
+      <Category id="6681" />
+      <Category id="6833" />
+      <Category id="7007" />
+      <Category id="7008" />
+      <Category id="7009" />
+      <Category id="7010" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Pet_Supplies">
+      <Category id="5532" />
+      <Category id="5533" />
+      <Category id="5534" />
+      <Category id="5535" />
+      <Category id="5536" />
+      <Category id="5537" />
+      <Category id="5538" />
+      <Category id="5539" />
+      <Category id="5540" />
+      <Category id="5541" />
+      <Category id="5542" />
+      <Category id="5543" />
+      <Category id="5544" />
+      <Category id="5545" />
+      <Category id="5546" />
+      <Category id="5547" />
+      <Category id="5548" />
+      <Category id="5549" />
+      <Category id="5550" />
+      <Category id="5551" />
+      <Category id="5552" />
+      <Category id="5553" />
+      <Category id="5555" />
+      <Category id="6535" />
+      <Category id="6538" />
+      <Category id="6539" />
+      <Category id="6541" />
+      <Category id="6542" />
+      <Category id="6568" />
+      <Category id="6617" />
+      <Category id="6814" />
+      <Category id="6815" />
+      <Category id="6864" />
+      <Category id="6866" />
+      <Category id="6874" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Software">
+      <Category id="5556" />
+      <Category id="5557" />
+      <Category id="5558" />
+      <Category id="5559" />
+      <Category id="5560" />
+      <Category id="5561" />
+      <Category id="5562" />
+      <Category id="5563" />
+      <Category id="5564" />
+      <Category id="5565" />
+      <Category id="5566" />
+      <Category id="5567" />
+      <Category id="5569" />
+      <Category id="5571" />
+      <Category id="5572" />
+      <Category id="5573" />
+      <Category id="5574" />
+      <Category id="5575" />
+      <Category id="5576" />
+      <Category id="5577" />
+      <Category id="5578" />
+      <Category id="5579" />
+      <Category id="5580" />
+      <Category id="5581" />
+      <Category id="5582" />
+      <Category id="5583" />
+      <Category id="5584" />
+      <Category id="5585" />
+      <Category id="5587" />
+      <Category id="5588" />
+      <Category id="5589" />
+      <Category id="6554" />
+      <Category id="6633" />
+      <Category id="6634" />
+      <Category id="6635" />
+      <Category id="6819" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Sports_and_Outdoors">
+      <Category id="5590" />
+      <Category id="5591" />
+      <Category id="5592" />
+      <Category id="5593" />
+      <Category id="5594" />
+      <Category id="5600" />
+      <Category id="5601" />
+      <Category id="5613" />
+      <Category id="5618" />
+      <Category id="5619" />
+      <Category id="5620" />
+      <Category id="5622" />
+      <Category id="5623" />
+      <Category id="5625" />
+      <Category id="5626" />
+      <Category id="5627" />
+      <Category id="5628" />
+      <Category id="5629" />
+      <Category id="5630" />
+      <Category id="5631" />
+      <Category id="5632" />
+      <Category id="5633" />
+      <Category id="5634" />
+      <Category id="5635" />
+      <Category id="5636" />
+      <Category id="5637" />
+      <Category id="5638" />
+      <Category id="5639" />
+      <Category id="5640" />
+      <Category id="5641" />
+      <Category id="5649" />
+      <Category id="5650" />
+      <Category id="5651" />
+      <Category id="5652" />
+      <Category id="5654" />
+      <Category id="5655" />
+      <Category id="5661" />
+      <Category id="5662" />
+      <Category id="5663" />
+      <Category id="5668" />
+      <Category id="5670" />
+      <Category id="5671" />
+      <Category id="5672" />
+      <Category id="5673" />
+      <Category id="5674" />
+      <Category id="5675" />
+      <Category id="5676" />
+      <Category id="5677" />
+      <Category id="5678" />
+      <Category id="5679" />
+      <Category id="5680" />
+      <Category id="5683" />
+      <Category id="5684" />
+      <Category id="5688" />
+      <Category id="5690" />
+      <Category id="5692" />
+      <Category id="5696" />
+      <Category id="5697" />
+      <Category id="5698" />
+      <Category id="5699" />
+      <Category id="5700" />
+      <Category id="5701" />
+      <Category id="5702" />
+      <Category id="5703" />
+      <Category id="5704" />
+      <Category id="5705" />
+      <Category id="5706" />
+      <Category id="5707" />
+      <Category id="5708" />
+      <Category id="5709" />
+      <Category id="5718" />
+      <Category id="5719" />
+      <Category id="5720" />
+      <Category id="5721" />
+      <Category id="5722" />
+      <Category id="5725" />
+      <Category id="5727" />
+      <Category id="5728" />
+      <Category id="5729" />
+      <Category id="5732" />
+      <Category id="5733" />
+      <Category id="5734" />
+      <Category id="5735" />
+      <Category id="5736" />
+      <Category id="5737" />
+      <Category id="5738" />
+      <Category id="5739" />
+      <Category id="5740" />
+      <Category id="5741" />
+      <Category id="5742" />
+      <Category id="5743" />
+      <Category id="5744" />
+      <Category id="5745" />
+      <Category id="5746" />
+      <Category id="5747" />
+      <Category id="5748" />
+      <Category id="5749" />
+      <Category id="5750" />
+      <Category id="5752" />
+      <Category id="5753" />
+      <Category id="5754" />
+      <Category id="5755" />
+      <Category id="5756" />
+      <Category id="5757" />
+      <Category id="5758" />
+      <Category id="5760" />
+      <Category id="5761" />
+      <Category id="5762" />
+      <Category id="5764" />
+      <Category id="5765" />
+      <Category id="5766" />
+      <Category id="5767" />
+      <Category id="5768" />
+      <Category id="5769" />
+      <Category id="5770" />
+      <Category id="5771" />
+      <Category id="5772" />
+      <Category id="5775" />
+      <Category id="5776" />
+      <Category id="5778" />
+      <Category id="5779" />
+      <Category id="5782" />
+      <Category id="5783" />
+      <Category id="5785" />
+      <Category id="5786" />
+      <Category id="5787" />
+      <Category id="5789" />
+      <Category id="5790" />
+      <Category id="5791" />
+      <Category id="5792" />
+      <Category id="5793" />
+      <Category id="5794" />
+      <Category id="5795" />
+      <Category id="5796" />
+      <Category id="5865" />
+      <Category id="5912" />
+      <Category id="5978" />
+      <Category id="6075" />
+      <Category id="6112" />
+      <Category id="6159" />
+      <Category id="6160" />
+      <Category id="6175" />
+      <Category id="6220" />
+      <Category id="6221" />
+      <Category id="6222" />
+      <Category id="6223" />
+      <Category id="6224" />
+      <Category id="6225" />
+      <Category id="6226" />
+      <Category id="6228" />
+      <Category id="6229" />
+      <Category id="6235" />
+      <Category id="6236" />
+      <Category id="6237" />
+      <Category id="6238" />
+      <Category id="6245" />
+      <Category id="6247" />
+      <Category id="6248" />
+      <Category id="6249" />
+      <Category id="6253" />
+      <Category id="6254" />
+      <Category id="6255" />
+      <Category id="6256" />
+      <Category id="6257" />
+      <Category id="6261" />
+      <Category id="6262" />
+      <Category id="6263" />
+      <Category id="6264" />
+      <Category id="6265" />
+      <Category id="6266" />
+      <Category id="6267" />
+      <Category id="6268" />
+      <Category id="6269" />
+      <Category id="6270" />
+      <Category id="6271" />
+      <Category id="6272" />
+      <Category id="6273" />
+      <Category id="6274" />
+      <Category id="6276" />
+      <Category id="6277" />
+      <Category id="6278" />
+      <Category id="6279" />
+      <Category id="6280" />
+      <Category id="6281" />
+      <Category id="6282" />
+      <Category id="6283" />
+      <Category id="6284" />
+      <Category id="6285" />
+      <Category id="6286" />
+      <Category id="6292" />
+      <Category id="6293" />
+      <Category id="6294" />
+      <Category id="6295" />
+      <Category id="6296" />
+      <Category id="6298" />
+      <Category id="6299" />
+      <Category id="6300" />
+      <Category id="6301" />
+      <Category id="6302" />
+      <Category id="6303" />
+      <Category id="6304" />
+      <Category id="6305" />
+      <Category id="6306" />
+      <Category id="6307" />
+      <Category id="6548" />
+      <Category id="6549" />
+      <Category id="6587" />
+      <Category id="6591" />
+      <Category id="6595" />
+      <Category id="6596" />
+      <Category id="6597" />
+      <Category id="6600" />
+      <Category id="6601" />
+      <Category id="6602" />
+      <Category id="6650" />
+      <Category id="6651" />
+      <Category id="6656" />
+      <Category id="6838" />
+      <Category id="6853" />
+      <Category id="7116" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Tools_and_Hardware">
+      <Category id="4895" />
+      <Category id="4896" />
+      <Category id="4897" />
+      <Category id="4898" />
+      <Category id="6312" />
+      <Category id="6313" />
+      <Category id="6314" />
+      <Category id="6315" />
+      <Category id="6316" />
+      <Category id="6317" />
+      <Category id="6318" />
+      <Category id="6319" />
+      <Category id="6320" />
+      <Category id="6321" />
+      <Category id="6322" />
+      <Category id="6323" />
+      <Category id="6324" />
+      <Category id="6325" />
+      <Category id="6326" />
+      <Category id="6327" />
+      <Category id="6328" />
+      <Category id="6329" />
+      <Category id="6330" />
+      <Category id="6331" />
+      <Category id="6332" />
+      <Category id="6333" />
+      <Category id="6334" />
+      <Category id="6335" />
+      <Category id="6336" />
+      <Category id="6340" />
+      <Category id="6341" />
+      <Category id="6342" />
+      <Category id="6343" />
+      <Category id="6344" />
+      <Category id="6345" />
+      <Category id="6346" />
+      <Category id="6347" />
+      <Category id="6348" />
+      <Category id="6349" />
+      <Category id="6350" />
+      <Category id="6351" />
+      <Category id="6352" />
+      <Category id="6353" />
+      <Category id="6354" />
+      <Category id="6355" />
+      <Category id="6356" />
+      <Category id="6357" />
+      <Category id="6358" />
+      <Category id="6359" />
+      <Category id="6360" />
+      <Category id="6361" />
+      <Category id="6362" />
+      <Category id="6363" />
+      <Category id="6364" />
+      <Category id="6365" />
+      <Category id="6366" />
+      <Category id="6367" />
+      <Category id="6368" />
+      <Category id="6369" />
+      <Category id="6370" />
+      <Category id="6371" />
+      <Category id="6372" />
+      <Category id="6373" />
+      <Category id="6374" />
+      <Category id="6375" />
+      <Category id="6376" />
+      <Category id="6377" />
+      <Category id="6378" />
+      <Category id="6379" />
+      <Category id="6380" />
+      <Category id="6381" />
+      <Category id="6382" />
+      <Category id="6383" />
+      <Category id="6384" />
+      <Category id="6385" />
+      <Category id="6386" />
+      <Category id="6387" />
+      <Category id="6394" />
+      <Category id="6395" />
+      <Category id="6396" />
+      <Category id="6397" />
+      <Category id="6399" />
+      <Category id="6400" />
+      <Category id="6402" />
+      <Category id="6403" />
+      <Category id="6404" />
+      <Category id="6405" />
+      <Category id="6406" />
+      <Category id="6407" />
+      <Category id="6408" />
+      <Category id="6409" />
+      <Category id="6410" />
+      <Category id="6411" />
+      <Category id="6412" />
+      <Category id="6413" />
+      <Category id="6414" />
+      <Category id="6415" />
+      <Category id="6416" />
+      <Category id="6417" />
+      <Category id="6418" />
+      <Category id="6419" />
+      <Category id="6420" />
+      <Category id="6421" />
+      <Category id="6422" />
+      <Category id="6423" />
+      <Category id="6424" />
+      <Category id="6425" />
+      <Category id="6426" />
+      <Category id="6427" />
+      <Category id="6428" />
+      <Category id="6429" />
+      <Category id="6430" />
+      <Category id="6431" />
+      <Category id="6432" />
+      <Category id="6433" />
+      <Category id="6434" />
+      <Category id="6435" />
+      <Category id="6559" />
+      <Category id="6623" />
+      <Category id="6624" />
+      <Category id="6625" />
+      <Category id="6626" />
+      <Category id="6627" />
+      <Category id="6628" />
+      <Category id="6629" />
+      <Category id="6630" />
+      <Category id="6638" />
+      <Category id="6678" />
+      <Category id="6828" />
+      <Category id="6829" />
+      <Category id="6861" />
+      <Category id="7014" />
+      <Category id="7015" />
+      <Category id="7016" />
+      <Category id="7017" />
+      <Category id="7018" />
+      <Category id="7019" />
+      <Category id="7020" />
+      <Category id="7041" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Toys">
+      <Category id="6436" />
+      <Category id="6437" />
+      <Category id="6442" />
+      <Category id="6444" />
+      <Category id="6445" />
+      <Category id="6446" />
+      <Category id="6447" />
+      <Category id="6448" />
+      <Category id="6449" />
+      <Category id="6450" />
+      <Category id="6451" />
+      <Category id="6452" />
+      <Category id="6453" />
+      <Category id="6456" />
+      <Category id="6457" />
+      <Category id="6458" />
+      <Category id="6459" />
+      <Category id="6460" />
+      <Category id="6461" />
+      <Category id="6462" />
+      <Category id="6463" />
+      <Category id="6464" />
+      <Category id="6465" />
+      <Category id="6466" />
+      <Category id="6467" />
+      <Category id="6468" />
+      <Category id="6469" />
+      <Category id="6470" />
+      <Category id="6471" />
+      <Category id="6472" />
+      <Category id="6473" />
+      <Category id="6474" />
+      <Category id="6475" />
+      <Category id="6476" />
+    </Category_Group>
+    <Category_Group name="Bing_Products_Vehicles">
+      <Category id="7070" />
+      <Category id="7071" />
+      <Category id="7072" />
+      <Category id="7073" />
+      <Category id="7074" />
+      <Category id="7075" />
+      <Category id="7076" />
+      <Category id="7077" />
+      <Category id="7078" />
+      <Category id="7079" />
+      <Category id="7080" />
+      <Category id="7081" />
+      <Category id="7082" />
+      <Category id="7083" />
+      <Category id="7084" />
+      <Category id="7085" />
+      <Category id="7086" />
+      <Category id="7087" />
+      <Category id="7088" />
+      <Category id="7089" />
+      <Category id="7090" />
+      <Category id="7091" />
+      <Category id="7092" />
+      <Category id="7093" />
+      <Category id="7094" />
+      <Category id="7095" />
+    </Category_Group>
+  </ProductCategories>
+</Configuration>

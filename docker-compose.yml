@@ -467,6 +467,21 @@ services:
       - source: jwt_public_key
         target: JWT__PublicKey
 
+  appserver:
+    image: relive/appserver
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10017/health"]
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 10017:10017
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.AppServer.ini:/app/ReLiveWP.Services.AppServer.ini:ro
+
   orion:
     image: relive/orion
     healthcheck:

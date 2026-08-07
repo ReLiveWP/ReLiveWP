@@ -124,6 +124,13 @@ services:
       args:
         PROJECT: ReLiveWP.Services.FindMyPhone
 
+  appserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.AppServer
+
   orion:
     build:
       context: .

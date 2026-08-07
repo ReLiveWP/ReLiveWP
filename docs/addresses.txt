@@ -13,3 +13,4 @@ Activity = http://localhost:10007
 Exchange = http://localhost:10008
 Devices = http://localhost:10011
 FindMyPhone = http://localhost:10012
+AppServer = http://localhost:10017

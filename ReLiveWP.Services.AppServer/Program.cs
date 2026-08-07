@@ -1,12 +1,9 @@
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
+builder.AddServiceEndpoints();
 
 builder.Services.AddControllers();
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
 
 app.UseAuthorization();
 
@@ -23,5 +20,7 @@ app.MapControllerRoute(
   name: "areas_with_format",
   pattern: "{area:exists}Service/{controller}Service.svc/{format?}/{action=Index}/{id?}"
 );
+
+app.MapDefaultEndpoints();
 
 app.Run();
