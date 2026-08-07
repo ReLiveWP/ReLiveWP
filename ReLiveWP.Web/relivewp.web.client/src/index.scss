@@ -1,150 +1,50 @@
+@use "sass:map";
+@use "sass:meta";
+@use "tokens" as t;
+@use "base";
+
 :root {
-  --accent-colour-red: #e60c00;
-  --accent-colour-red-bg-1: #ffe1e0;
-  --accent-colour-red-bg-2: #fff0f0;
-  --accent-colour-red-bg-3: #ffffff;
+  @each $name, $shades in t.$accents {
+    --accent-colour-#{$name}: #{map.get($shades, base)};
+    --accent-colour-#{$name}-bg-1: #{map.get($shades, bg-1)};
+    --accent-colour-#{$name}-bg-2: #{map.get($shades, bg-2)};
+    --accent-colour-#{$name}-bg-3: #{map.get($shades, bg-3)};
+  }
 
-  --accent-colour-teal: #00ABA9;
-  --accent-colour-teal-bg-1: #e0fffe;
-  --accent-colour-teal-bg-2: #f0fffe;
-  --accent-colour-teal-bg-3: #fcffff;
+  --accent-colour-zune1: #{t.$accent-zune-1};
+  --accent-colour-zune1-bg-1: #{map.get(t.$accent-zune-shades, bg-1)};
+  --accent-colour-zune1-bg-2: #{map.get(t.$accent-zune-shades, bg-2)};
+  --accent-colour-zune1-bg-3: #{map.get(t.$accent-zune-shades, bg-3)};
 
-  --accent-colour-purple: #A200FF;
-  --accent-colour-purple-bg-1: #f4e0ff;
-  --accent-colour-purple-bg-2: #faf0ff;
-  --accent-colour-purple-bg-3: #fefcff;
+  --accent-colour-zune2: #{t.$accent-zune-2};
 
-  --accent-colour-pink: #E671B8;
-  --accent-colour-pink-bg-1: #ffe0f3;
-  --accent-colour-pink-bg-2: #fff0f9;
-  --accent-colour-pink-bg-3: #fffcfe;
+  @each $name, $shades in t.$accents {
+    --accent-gradient-#{$name}: #{t.accent-gradient($shades)};
+  }
 
-  --accent-colour-green: #339933;
-  --accent-colour-green-bg-1: #e0ffe0;
-  --accent-colour-green-bg-2: #f0fff0;
-  --accent-colour-green-bg-3: #fcfffc;
+  --accent-gradient-zune: #{t.accent-gradient(t.$accent-zune-shades)};
 
-  --accent-colour-yellow: #F09609;
-  --accent-colour-yellow-bg-1: #fff3e0;
-  --accent-colour-yellow-bg-2: #fff9f0;
-  --accent-colour-yellow-bg-3: #fffefc;
-
-  --accent-colour-blue: #1BA1E2;
-  --accent-colour-blue-bg-1: #e0f5ff;
-  --accent-colour-blue-bg-2: #f0faff;
-  --accent-colour-blue-bg-3: #fafdff;
-
-  --accent-colour-magenta: #D80073;
-  --accent-colour-magenta-bg-1: #ffe0f1;
-  --accent-colour-magenta-bg-2: #fff0f8;
-  --accent-colour-magenta-bg-3: #fffcfe;
-
-  --accent-colour-zune1: #f10da1;
-  --accent-colour-zune1-bg-1: #ffe9e0;
-  --accent-colour-zune1-bg-2: #fff4f0;
-  --accent-colour-zune1-bg-3: #fffdfc;
-
-  --accent-colour-zune2: #e95214;
-
-  --accent-gradient-red: linear-gradient(to bottom, #ffe1e0, #fff0f0 80px, #ffffff 200px);
-  --accent-gradient-teal: linear-gradient(to bottom, #e0fffe, #f0fffe 80px, #fcffff 200px);
-  --accent-gradient-purple: linear-gradient(to bottom, #f4e0ff, #faf0ff 80px, #fefcff 200px);
-  --accent-gradient-pink: linear-gradient(to bottom, #ffe0f3, #fff0f9 80px, #fffcfe 200px);
-  --accent-gradient-green: linear-gradient(to bottom, #e0ffe0, #f0fff0 80px, #fcfffc 200px);
-  --accent-gradient-yellow: linear-gradient(to bottom, #fff3e0, #fff9f0 80px, #fffefc 200px);
-  --accent-gradient-blue: linear-gradient(to bottom, #e0f5ff, #f0faff 80px, #fafdff 200px);
-  --accent-gradient-magenta: linear-gradient(to bottom, #ffe0f1, #fff0f8 80px, #fffcfe 200px);
-  --accent-gradient-zune: linear-gradient(to bottom, #ffe9e0, #fff4f0 80px, #fffdfc 200px);
-
-  --font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
-  --font-family-monospace: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  // inspect() rather than plain interpolation: the latter strips the quotes from "Courier New"
+  --font-family: #{meta.inspect(t.$font-family)};
+  --font-family-monospace: #{meta.inspect(t.$font-family-monospace)};
 }
 
 body {
-  color: #333;
-
-  font-family: var(--font-family);
-  font-size: 10.5pt;
-
-  margin: 0;
   min-height: 100vh;
-
-  background-repeat: no-repeat;
 
   display: flex;
   flex-direction: column;
 }
 
-.accent-red {
-  --accent-colour: var(--accent-colour-red);
-  --accent-colour-bg-1: var(--accent-colour-red-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-red-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-red-bg-3);
-  accent-color: var(--accent-colour-red);
-  background: var(--accent-gradient-red);
-}
-
-.accent-teal {
-  --accent-colour: var(--accent-colour-teal);
-  --accent-colour-bg-1: var(--accent-colour-teal-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-teal-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-teal-bg-3);
-  accent-color: var(--accent-colour-teal);
-  background: var(--accent-gradient-teal);
-}
-
-.accent-purple {
-  --accent-colour: var(--accent-colour-purple);
-  --accent-colour-bg-1: var(--accent-colour-purple-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-purple-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-purple-bg-3);
-  accent-color: var(--accent-colour-purple);
-  background: var(--accent-gradient-purple);
-}
-
-.accent-pink {
-  --accent-colour: var(--accent-colour-pink);
-  --accent-colour-bg-1: var(--accent-colour-pink-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-pink-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-pink-bg-3);
-  accent-color: var(--accent-colour-pink);
-  background: var(--accent-gradient-pink);
-}
-
-.accent-green {
-  --accent-colour: var(--accent-colour-green);
-  --accent-colour-bg-1: var(--accent-colour-green-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-green-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-green-bg-3);
-  accent-color: var(--accent-colour-green);
-  background: var(--accent-gradient-green);
-}
-
-.accent-yellow {
-  --accent-colour: var(--accent-colour-yellow);
-  --accent-colour-bg-1: var(--accent-colour-yellow-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-yellow-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-yellow-bg-3);
-  accent-color: var(--accent-colour-yellow);
-  background: var(--accent-gradient-yellow);
-}
-
-.accent-blue {
-  --accent-colour: var(--accent-colour-blue);
-  --accent-colour-bg-1: var(--accent-colour-blue-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-blue-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-blue-bg-3);
-  accent-color: var(--accent-colour-blue);
-  background: var(--accent-gradient-blue);
-}
-
-.accent-magenta {
-  --accent-colour: var(--accent-colour-magenta);
-  --accent-colour-bg-1: var(--accent-colour-magenta-bg-1);
-  --accent-colour-bg-2: var(--accent-colour-magenta-bg-2);
-  --accent-colour-bg-3: var(--accent-colour-magenta-bg-3);
-  accent-color: var(--accent-colour-magenta);
-  background: var(--accent-gradient-magenta);
+@each $name, $shades in t.$accents {
+  .accent-#{$name} {
+    --accent-colour: var(--accent-colour-#{$name});
+    --accent-colour-bg-1: var(--accent-colour-#{$name}-bg-1);
+    --accent-colour-bg-2: var(--accent-colour-#{$name}-bg-2);
+    --accent-colour-bg-3: var(--accent-colour-#{$name}-bg-3);
+    accent-color: var(--accent-colour-#{$name});
+    background: var(--accent-gradient-#{$name});
+  }
 }
 
 .accent-zune {
@@ -174,16 +74,6 @@ body {
   background: var(--accent-colour);
 }
 
-
-input,
-button {
-  font-family: var(--font-family);
-}
-
-code {
-  font-family: var(--font-family-monospace);
-}
-
 app {
   display: flex;
   flex-direction: column;
@@ -193,11 +83,11 @@ app {
 header,
 main,
 footer {
-  max-width: 1024px;
+  max-width: t.$column-width;
   width: 100%;
-  width: calc(100% - 48px);
+  width: calc(100% - #{t.$column-gutter * 2});
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 t.$column-gutter;
 }
 
 main {
@@ -214,15 +104,8 @@ footer {
   color: #aaa;
 }
 
-h1,
-h2,
-h3 {
-  font-weight: 200;
-}
-
 a {
-  text-decoration: none;
-  color: #888;
+  color: t.$ink-soft;
 }
 
 button,
@@ -242,7 +125,7 @@ input[type="submit"] {
   padding: 0 !important;
   margin: 0 !important;
   font: inherit;
-  font-size: 10.5pt;
+  font-size: t.$font-size-base;
   font-weight: 500;
   font-variant: small-caps;
   color: var(--accent-colour);
@@ -263,4 +146,13 @@ input[type="submit"] {
     margin-right: 2px;
     display: inline-block;
   }
+}
+
+.block {
+  display: block !important;
+}
+
+
+.error {
+  color: t.accent("red");
 }

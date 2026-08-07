@@ -1,0 +1,15 @@
+@model int
+@{
+    ViewData["Title"] = $"KB{Model} not found";
+    ViewData["Robots"] = "noindex";
+}
+
+<h1>We couldn't find that article</h1>
+<p class="article-summary">There is no knowledge base article with ID @Model.</p>
+
+<div class="callout">
+    <p>
+        The article may have been retired, or the number may have been mistyped. Try
+        <a href="/kb">browsing all articles</a> or searching above.
+    </p>
+</div>

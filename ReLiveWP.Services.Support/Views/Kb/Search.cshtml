@@ -1,0 +1,38 @@
+@model KbSearchViewModel
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Query) ? "Search" : $"Search: {Model.Query}";
+    ViewData["Query"] = Model.Query;
+    ViewData["Canonical"] = "/search";
+    // result pages are not worth indexing, and an embed of one tells the reader nothing
+    ViewData["Robots"] = "noindex, follow";
+}
+
+<h1>Search</h1>
+
+@if (string.IsNullOrEmpty(Model.Query))
+{
+    <p class="article-summary">Enter a word, a phrase, or an error code.</p>
+}
+else if (Model.Results.Count == 0)
+{
+    <p class="article-summary">No articles match &ldquo;@Model.Query&rdquo;.</p>
+}
+else
+{
+    <p class="article-summary">
+        @Model.Results.Count result@(Model.Results.Count == 1 ? "" : "s") for &ldquo;@Model.Query&rdquo;.
+    </p>
+    <ul class="articles">
+        @foreach (var article in Model.Results)
+        {
+            <li>
+                <span class="id mono">KB@(article.Id)</span>
+                <a href="@article.Url">@article.Title</a>
+                @if (!string.IsNullOrEmpty(article.Summary))
+                {
+                    <span class="summary">@article.Summary</span>
+                }
+            </li>
+        }
+    </ul>
+}

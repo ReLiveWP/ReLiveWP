@@ -19,6 +19,6 @@ public class SkyDbContext : DbContext
         base.OnConfiguring(optionsBuilder);
 
         if (!optionsBuilder.IsConfigured)
-            optionsBuilder.UseSqlite("Data Source=sky.db");
+            optionsBuilder.UseNpgsql("Host=localhost;Database=relive_skybox;Username=relive;Password=relive");
     }
 }

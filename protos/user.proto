@@ -6,15 +6,25 @@ package identity;
 
 service User {
   rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+  rpc ListUsers(ListUsersRequest) returns (stream UserSummary);
 }
 
 message GetUserInfoRequest {
-	string userId = 1;
+  string userId = 1;
 }
 
 message GetUserInfoResponse {
-  int64 puid = 1;
-  string cid = 2;
-  string username = 3;
+  int64  puid         = 1;
+  string cid          = 2;
+  string username     = 3;
   string emailAddress = 4;
+}
+
+message ListUsersRequest {
+}
+
+message UserSummary {
+  string id           = 1;
+  string username     = 2;
+  string emailAddress = 3;
 }

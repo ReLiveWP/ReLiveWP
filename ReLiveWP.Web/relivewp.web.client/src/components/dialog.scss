@@ -42,13 +42,17 @@ dialog {
         }
     }
 
-    .error {
-        color: #e60c00;
-    }
-
     label,
     input {
         display: block;
+
+        &[type="checkbox"] {    
+            display: inline-block;
+            margin: 0px 6px 0 0;
+            width: 14px;
+            height: 14px;
+            vertical-align: middle;
+        }
     }
 
     label {
@@ -58,6 +62,11 @@ dialog {
         font-size: 10.5pt;
         margin-top: 16px;
         margin-bottom: 2px;
+
+        &.checkbox {
+            margin-top: 0;
+            margin-bottom: 4px;
+        }
     }
 
     .textbox {

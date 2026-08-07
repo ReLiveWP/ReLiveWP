@@ -20,6 +20,6 @@ public class DevicesDbContext : DbContext
         base.OnConfiguring(optionsBuilder);
 
         if (!optionsBuilder.IsConfigured)
-            optionsBuilder.UseSqlite("Data Source=devices.db");
+            optionsBuilder.UseNpgsql("Host=localhost;Database=relive_deviceregistration;Username=relive;Password=relive");
     }
 }

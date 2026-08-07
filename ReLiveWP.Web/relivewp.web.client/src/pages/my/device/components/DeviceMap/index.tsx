@@ -3,7 +3,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./device-map.scss";
 
-import Placeholder from "~/static/devices/RM-801.png"
 import { useMemo } from "preact/hooks";
 import useDeviceImage from "~/util/device-image";
 

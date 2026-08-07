@@ -1,35 +1,31 @@
-﻿
+
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Encodings.Web;
-using Grpc.Net.ClientFactory;
+using System.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ReLiveWP.Services.Grpc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ReLiveWP.Identity.LiveID;
 
-internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
+internal class LiveIDAuthHandler(
+    ILoggerFactory loggerFactory,
+    ILogger<LiveIDAuthHandler> logger,
+    IOptionsMonitor<LiveIDAuthOptions> options,
+    UrlEncoder encoder,
+    IConfiguration configuration) : AuthenticationHandler<LiveIDAuthOptions>(options, loggerFactory, encoder)
 {
     public const string SchemeName = "LiveID";
-    private readonly Authentication.AuthenticationClient authenticationClient;
-    private readonly ILogger<LiveIDAuthHandler> logger;
 
-    public LiveIDAuthHandler(
-        ILoggerFactory loggerFactory,
-        ILogger<LiveIDAuthHandler> logger,
-        GrpcClientFactory grpcClientFactory,
-        IOptionsMonitor<LiveIDAuthOptions> options,
-        UrlEncoder encoder) : base(options, loggerFactory, encoder)
-    {
-        this.logger = logger;
-        this.authenticationClient = grpcClientFactory.CreateClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
-    }
+    private const string TokenExpiredBody = "15:Unauthorized";
 
     public new LiveIDAuthEvents Events
     {
@@ -51,74 +47,85 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
     }
 
-    /// <summary>
-    /// Searches the 'Authorization' header for a 'Bearer' token. If the 'Bearer' token is found, it is validated via the gRPC authentication service.
-    /// </summary>
-    /// <returns></returns>
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue(Options.HeaderNameOverride ?? "Authorization", out var value))
+        string? token;
+        if (Request.Headers.TryGetValue(Options.HeaderNameOverride ?? "Authorization", out var value))
+        {
+            if (AuthenticationHeaderValue.TryParse(value.ToString(), out var header) && !string.IsNullOrWhiteSpace(header?.Parameter))
+                token = header.Parameter!;
+            else
+                token = value.ToString().Trim();
+        }
+        else if (Options.CookieNameFallback is { Length: > 0 } cookieName &&
+                 Request.Cookies.TryGetValue(cookieName, out var cookieValue))
+        {
+            token = cookieValue;
+        }
+        else
         {
             logger.LogInformation("No authorization header found!");
             return AuthenticateResult.NoResult();
         }
 
-        var authHeader = value.ToString();
-        string token;
+        if (string.IsNullOrWhiteSpace(token))
+            return AuthenticateResult.Fail("Missing token");
 
-        if (Options.AcceptBasicAuth && authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        if (PassportToken.TryUnwrap(token, out var wrapped))
+            token = wrapped;
+
+        if (token.StartsWith("t="))
         {
-            // EAS Basic auth: Authorization: Basic base64(username:access_token)
-            // The password field carries the access token; username is ignored for verification.
-            var encoded = authHeader["Basic ".Length..].Trim();
-            string decoded;
-            try { decoded = Encoding.UTF8.GetString(Convert.FromBase64String(encoded)); }
-            catch { return AuthenticateResult.Fail("Malformed Basic auth header"); }
-
-            var colon = decoded.IndexOf(':');
-            if (colon < 0)
-                return AuthenticateResult.Fail("Malformed Basic auth header: missing colon");
-
-            token = decoded[(colon + 1)..];
-        }
-        else if (authHeader.StartsWith("Bearer", StringComparison.OrdinalIgnoreCase))
-            token = authHeader["Bearer".Length..].Trim();
-        else if (authHeader.StartsWith("WLID1.0", StringComparison.OrdinalIgnoreCase))
-            token = authHeader["WLID1.0".Length..].Trim();
-        else
-            token = authHeader;
-
-        var request = new VerifyTokenRequest { Token = token, TokenType = "JWT" };
-        foreach (var validService in Options.ValidServiceTargets)
-        {
-            request.ServiceTargets.Add(validService);
+            try
+            {
+                var query = HttpUtility.ParseQueryString(token);
+                token = query["t"]!.Trim();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to parse query string formatted WLID token!");
+                return AuthenticateResult.Fail(ex);
+            }
         }
 
-        VerifyTokenResponse reply;
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = JwtKeyLoader.GetVerifyingKey(configuration, logger),
+
+            ValidateIssuer = true,
+            ValidIssuer = JwtKeyLoader.Issuer,
+
+            ValidateAudience = true,
+            ValidAudiences = Options.ValidServiceTargets,
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5) // +- 5 mins is fine, these devices are Old
+        };
+
+        TokenValidationResult result;
         try
         {
-            reply = await authenticationClient.VerifySecurityTokenAsync(request);
+            result = await new JwtSecurityTokenHandler().ValidateTokenAsync(token, validationParameters);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to validate token!");
-            return AuthenticateResult.Fail($"Auth service error: {ex.Message}");
+            return AuthenticateResult.Fail(ex);
         }
 
-        if (reply.Code > 0)
+        if (!result.IsValid)
         {
-            logger.LogError("Failed to validate with code {ErrorCode:X2}!", reply.Code);
-            return AuthenticateResult.Fail("Invalid token");
+            logger.LogWarning(result.Exception, "Invalid token");
+            return AuthenticateResult.Fail(result.Exception ?? new Exception("Invalid token"));
         }
 
-        var claims = reply.Claims.Select(c => new Claim(c.Type, c.Value));
-        var identity = new ClaimsIdentity(claims, SchemeName);
+        var identity = new ClaimsIdentity(result.ClaimsIdentity.Claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);
 
         var ticket = new AuthenticationTicket(principal, SchemeName);
         return AuthenticateResult.Success(ticket);
     }
-
 
     /// <inheritdoc />
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -136,9 +143,7 @@ internal class LiveIDAuthHandler : AuthenticationHandler<LiveIDAuthOptions>
         }
 
         Response.StatusCode = 401;
-        if (Options.AcceptBasicAuth)
-            Response.Headers.WWWAuthenticate = $"Basic realm=\"{Options.BasicAuthRealm}\"";
-        await Response.WriteAsync("Unauthorized");
+        await Response.WriteAsync(TokenExpiredBody);
     }
 
     /// <inheritdoc />

@@ -1,29 +1,17 @@
-import { useAuthenticatedFetch } from "~/state/app-state";
 import "./devices.scss"
 import { useSignal } from "@preact/signals";
-import { useCallback, useEffect } from "preact/hooks";
 import { ENDPOINT_GET_DEVICES } from "~/util/endpoints";
 import DeviceView from "./components/DeviceView";
+import RemoveDeviceDialog from "./components/RemoveDeviceDialog";
 import { Devices } from "~/util/device-types";
+import { useFetchSignal } from "~/util/use-fetch";
 
 
 export default function Devices() {
-    const fetch = useAuthenticatedFetch()
-    const devices = useSignal<Devices>(null!)
+    const { data: devices, refresh } = useFetchSignal<Devices>(ENDPOINT_GET_DEVICES);
+    const pendingRemoval = useSignal<string | null>(null);
 
-    const doRefresh = useCallback(async () => {
-        const response = await fetch(ENDPOINT_GET_DEVICES, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) return;
-        devices.value = await response.json();
-    }, [])
-
-    useEffect(() => {
-        doRefresh();
-    }, []);
+    const deviceToRemove = devices.value?.find(d => d.id === pendingRemoval.value);
 
     return (
         <div class="devices">
@@ -32,9 +20,16 @@ export default function Devices() {
                 (
                     <dl>
                         {devices.value
-                            .map(device => <DeviceView device={device} />)}
+                            .map(device => <DeviceView device={device} onRemove={id => pendingRemoval.value = id} />)}
                     </dl>
                 )}
+
+            {deviceToRemove && (
+                <RemoveDeviceDialog
+                    device={deviceToRemove}
+                    onClose={() => pendingRemoval.value = null}
+                    onRemoved={() => refresh()} />
+            )}
         </div>
     );
 }

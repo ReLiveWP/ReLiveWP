@@ -17,6 +17,8 @@ public class Startup(IConfiguration configuration)
     {
         services.AddControllers();
 
+        services.AddDefaultHealthChecks();
+
         services.AddGrpcClient<DeviceRegistration.DeviceRegistrationClient>(
             o => o.Address = new Uri(Configuration["Endpoints:DeviceRegistration"]!));
         services.AddGrpcClient<ClientProvisioning.ClientProvisioningClient>(
@@ -39,6 +41,7 @@ public class Startup(IConfiguration configuration)
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
+            endpoints.MapDefaultHealthCheckEndpoints();
         });
     }
 }

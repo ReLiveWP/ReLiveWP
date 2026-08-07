@@ -5,11 +5,14 @@ using ReLiveWP.Services.Push.Nsp;
 
 namespace ReLiveWP.Services.Push.Controllers;
 
-[Route("/{controller}/{id?}")]
 [ApiController]
+[Route("/{controller}/{id?}")]
 public class ChannelController(
     ChannelStore channelStore,
     PushPresence pushPresence,
+    PresenceDirectory presence,
+    PushRouter router,
+    PushInstance instance,
     NotificationQueue notificationQueue,
     ILogger<ChannelController> logger) : ControllerBase
 {
@@ -35,7 +38,7 @@ public class ChannelController(
         var payload = BuildMessage(Request, ms.ToArray());
         var notificationClass = ParseClass(Request.Headers["X-NotificationClass"]);
 
-        // straight down the wire if the device is connected right now, queued if it's not
+        // connected to this instance right now? straight down the wire
         if (pushPresence.TryGet(channel.DeviceId, out var session)
             && session.TrySend((uint)channel.ChannelId, notificationClass, payload))
         {
@@ -45,6 +48,20 @@ public class ChannelController(
             return Ok();
         }
 
+        // connected to another instance? publish to the instance that holds the socket
+        var owner = await presence.GetOwnerAsync(channel.DeviceId);
+        if (owner != null && owner != instance.Id)
+        {
+            await router.PublishAsync(owner, new RoutedNotification(
+                channel.DeviceId, (uint)channel.ChannelId, (uint)notificationClass, payload));
+
+            logger.LogInformation("routed {Class} ({Len}B) to {DeviceId} on {Owner} channel {Id}",
+                notificationClass, payload.Length, channel.DeviceId, owner, channel.ChannelId);
+
+            return Accepted();
+        }
+
+        // nobody holds it, queue until the device reconnects
         logger.LogInformation("{DeviceId} offline, queued {Class} ({Len}B) for channel {Id}",
             channel.DeviceId, notificationClass, payload.Length, channel.ChannelId);
 

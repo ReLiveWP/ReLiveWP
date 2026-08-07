@@ -2,17 +2,20 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.Identity.Certificates;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Grpc;
 using ReLiveWP.Backend.Identity.Services;
+using ReLiveWP.Identity.LiveID;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<LiveDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<LiveDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
@@ -24,27 +27,6 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 })
 .AddEntityFrameworkStores<LiveDbContext>()
 .AddDefaultTokenProviders();
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false;
-    options.TokenValidationParameters = new TokenValidationParameters()
-    {
-        ValidateIssuer = true,
-        ValidIssuers = ["https://relivewp.net/"],
-        ValidateAudience = true,
-        ValidAudiences = ["http://Passport.NET/tb", "relivewp.net", "spaces.int.relivewp.net", "spaces.relivewp.net"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]!))
-    };
-});
-
-builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<TokenManager>();
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();
@@ -61,10 +43,18 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<LiveDbContext>().Database.Migrate();
 }
 
-app.UseAuthentication();
-app.UseAuthorization();
+// Print the JWT public key on startup so it can be copied into JWT:PublicKey and distributed to
+// every verifying service (verifiers only ever see the public half).
+if (JwtKeyLoader.GetVerifyingKey(app.Configuration) is ECDsaSecurityKey publicKey)
+{
+    app.Services.GetRequiredService<ILogger<Program>>().LogInformation(
+        "JWT ES256 public key (JWT:PublicKey): {PublicKey}",
+        Convert.ToBase64String(publicKey.ECDsa.ExportSubjectPublicKeyInfo()));
+}
 
 app.MapGrpcService<AuthenticationService>();
 app.MapGrpcService<UserService>();
+
+app.MapDefaultEndpoints();
 
 app.Run();

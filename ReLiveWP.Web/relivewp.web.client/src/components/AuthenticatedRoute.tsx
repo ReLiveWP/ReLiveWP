@@ -5,13 +5,13 @@ import { useSignalEffect } from "@preact/signals";
 
 export default function AuthenticatedRoute<Props>({ requiredAuthState, ...props }: RouteProps<Props> & Partial<Props> & { requiredAuthState: boolean }) {
     const { isAuthenticated } = useAppState();
-    const router = useLocation();
+    const { route } = useLocation();
 
     useSignalEffect(() => {
         if (requiredAuthState && !isAuthenticated.value)
-            router.route('/auth/login', true);
+            route('/auth/login', true);
         if (!requiredAuthState && isAuthenticated.value)
-            router.route('/', true);
+            route('/', true);
     });
 
     return <Route {...props} />

@@ -14,7 +14,14 @@ export function Dialogs({ children }: { children: ComponentChildren }) {
         if (!activeDialog) return null;
         switch (activeDialog.dialog) {
             case 'link':
-                return <LinkAccountDialog service={activeDialog.service} onClose={closeDialog} />;
+                return (
+                    <LinkAccountDialog 
+                        service={activeDialog.service} 
+                        initialCaps={activeDialog.initialCaps} 
+                        existingConnectionId={activeDialog.existingConnectionId} 
+                        currentEnabledCaps={activeDialog.currentEnabledCaps} 
+                        onClose={closeDialog} />
+                );
             case 'relink':
                 return <RelinkAccountDialog id={activeDialog.id} onClose={closeDialog} />;
             case 'unlink':

@@ -22,7 +22,6 @@ export const AccountLinkInfo = ({ type, accountInfo }: { type: AccountType, acco
 
 export const AccountLinkEntry = ({ type }: { type: AccountType; }) => {
     const { linkedAccounts } = useLinkedAccounts();
-    console.log(linkedAccounts.value);
     const { name, icon: Icon, allowsMany } = AccountTypes[type];
     const accountInfo = linkedAccounts.value.connections?.[type];
     const accounts = accountInfo

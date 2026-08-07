@@ -2,9 +2,9 @@ import { useEffect } from "preact/hooks";
 import { useLocation } from "preact-iso";
 
 const GoHome = () => {
-    const location = useLocation();
+    const { route } = useLocation();
     useEffect(() => {
-        location.route("/");
+        route("/");
     })
 
     return <p>redirecting...</p>

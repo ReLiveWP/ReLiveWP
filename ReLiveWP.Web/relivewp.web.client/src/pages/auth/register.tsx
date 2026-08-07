@@ -1,4 +1,3 @@
-import { useEffect } from "preact/hooks"
 import { useTitle } from "~/util/effects";
 
 export default function Register() {

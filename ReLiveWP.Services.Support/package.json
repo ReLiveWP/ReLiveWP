@@ -1,0 +1,13 @@
+{
+  "name": "relivewp.services.support",
+  "private": true,
+  "description": "Stylesheet toolchain for the support site. Invoked by the csproj, not by hand.",
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "styles": "sass --no-source-map --load-path=../styles Styles/support.scss wwwroot/support.css",
+    "styles:watch": "sass --watch --no-source-map --load-path=../styles Styles/support.scss wwwroot/support.css"
+  },
+  "devDependencies": {
+    "sass": "^1.90.0"
+  }
+}

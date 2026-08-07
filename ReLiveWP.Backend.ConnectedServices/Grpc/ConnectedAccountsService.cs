@@ -7,11 +7,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Services.Grpc;
+
 namespace ReLiveWP.Backend.ConnectedServices.Grpc;
 
 public class ConnectedAccountsService(IServiceProvider serviceProvider,
                                       IConnectedServicesContainer connectedServices,
+                                      PendingOAuthStore pendingOAuths,
                                       ConnectedServicesDbContext dbContext) : ReLiveWP.Services.Grpc.ConnectedServices.ConnectedServicesBase
 {
     #region Account Linking
@@ -30,8 +33,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         {
             var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
             var data = await handler.BeginAccountLinkAsync(userId, request.Identifer);
-            await dbContext.PendingOAuths.AddAsync(data);
-            await dbContext.SaveChangesAsync();
+            await pendingOAuths.SetAsync(data);
 
             return new BeginAccountLinkingResponse() { RedirectUri = data.RedirectUri };
         }
@@ -43,18 +45,18 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
     public override async Task<FinaliseAccountLinkingResponse> FinaliseAccountLinkingForService(FinaliseAccountLinkingRequest request, ServerCallContext context)
     {
-        var pendingOauth = await dbContext.PendingOAuths.FirstOrDefaultAsync(s => s.State == request.State);
+        var pendingOauth = await pendingOAuths.GetAsync(request.State);
         if (pendingOauth == null || pendingOauth.ExpiresAt <= DateTimeOffset.Now)
             throw new RpcException(new Status(StatusCode.Unauthenticated, "This ticket has expired."));
 
         if (!connectedServices.TryGetValue(pendingOauth.Service, out var serviceDescription))
             throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
 
-        dbContext.PendingOAuths.Remove(pendingOauth);
-
         using var scope = serviceProvider.CreateScope();
+
         var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
 
+        Guid? serviceId;
         if (pendingOauth.ExistingConnectionId is Guid existingId)
         {
             var existing = await dbContext.ConnectedServices.FindAsync(existingId)
@@ -63,8 +65,11 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             if (existing.UserId != pendingOauth.UserId)
                 throw new RpcException(new Status(StatusCode.PermissionDenied, "Connection does not belong to this user."));
 
-            await handler.FinalizeAccountLinkAsync(existing, pendingOauth, request.Code);
+            // technically this should mutate what is in `existing` but it's nice to be explicit about it
+            existing = await handler.FinalizeAccountLinkAsync(existing, pendingOauth, request.Code, [.. request.Scopes]);
             dbContext.ConnectedServices.Update(existing);
+
+            serviceId = existing.Id;
         }
         else
         {
@@ -77,16 +82,21 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
                 RefreshToken = default!,
                 ExpiresAt = default!,
                 Flags = LiveConnectedServiceFlags.None,
-                EnabledCapabilities = serviceDescription.ServiceCapabilities,
+                AvailableCapabilities = serviceDescription.ServiceCapabilities,
+                EnabledCapabilities = 0
             };
 
-            service = await handler.FinalizeAccountLinkAsync(service, pendingOauth, request.Code);
+            // ditto for `service`
+            service = await handler.FinalizeAccountLinkAsync(service, pendingOauth, request.Code, [.. request.Scopes]);
             await dbContext.ConnectedServices.AddAsync(service);
+
+            serviceId = service.Id;
         }
 
         await dbContext.SaveChangesAsync();
+        await pendingOAuths.RemoveAsync(pendingOauth.State); // consume the one-shot ticket on success
 
-        return new FinaliseAccountLinkingResponse();
+        return new FinaliseAccountLinkingResponse() { ConnectionId = serviceId.Value.ToString() };
     }
 
     [Authorize]
@@ -106,7 +116,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         if (!connectedServices.TryGetValue(existing.Service, out var serviceDescription))
             throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
 
-        // Use the stored handle (strip leading @) so handle→PDS resolution runs the same as initial link.
+        // use the stored handle (strip leading @) so handle->PDS resolution runs the same as initial link.
         var identifier = existing.ServiceProfile.Username?.TrimStart('@')
             ?? existing.ServiceProfile.UserId;
 
@@ -115,8 +125,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         var data = await handler.BeginAccountLinkAsync(userId, identifier);
         data.ExistingConnectionId = connectionId;
 
-        await dbContext.PendingOAuths.AddAsync(data);
-        await dbContext.SaveChangesAsync();
+        await pendingOAuths.SetAsync(data);
 
         return new BeginAccountLinkingResponse() { RedirectUri = data.RedirectUri };
     }
@@ -132,9 +141,10 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             {
                 Service = connection.ServiceId,
                 DisplayName = connection.DisplayName,
-                Capabilities = (ulong)connection.ServiceCapabilities
+                Capabilities = (uint)connection.ServiceCapabilities
             });
         }
+
         return Task.FromResult(response);
     }
 
@@ -156,7 +166,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
                 Id = item.Id.ToString(),
                 Service = item.Service,
                 ServiceUrl = item.ServiceUrl,
-                Capabilities = (ulong)item.EnabledCapabilities,
+                Capabilities = (uint)item.EnabledCapabilities,
                 Flags = (ulong)item.Flags,
                 UserId = item.ServiceProfile.UserId,
                 UserName = item.ServiceProfile.Username,
@@ -168,16 +178,62 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
     {
         var userId = GetUserId(context);
         var connId = Guid.Parse(request.ConnectionId);
-        var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId);
-        if (connection == null)
-        {
-            throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
-        }
+
+        var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
 
         dbContext.ConnectedServices.Remove(connection);
         await dbContext.SaveChangesAsync();
 
         return new DeleteConnectionResponse();
+    }
+
+    public override async Task<Empty> UpdateCapabilities(UpdateCapabilitiesRequest request, ServerCallContext context)
+    {
+        var userId = GetUserId(context);
+        var connId = Guid.Parse(request.ConnectionId);
+
+        var connection = await dbContext.ConnectedServices.AsTracking().FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
+
+        // Heal rows created before the AvailableCapabilities column existed (migration default was 0)
+        if (connection.AvailableCapabilities == LiveConnectedServiceCapabilities.None &&
+            connectedServices.TryGetValue(connection.Service, out var serviceDescription))
+        {
+            connection.AvailableCapabilities = serviceDescription.ServiceCapabilities;
+        }
+
+        connection.EnabledCapabilities = (LiveConnectedServiceCapabilities)request.Capabilities
+            & connection.AvailableCapabilities
+            & LiveConnectedServiceCapabilities.All;
+
+        // TODO: some capabilities can only support one enabled service, so we need to verfiy that
+        // TODO: move this somewhere that isn't here, it should be validated Everywhere
+        LiveConnectedServiceCapabilities[] singleCaps = [
+            LiveConnectedServiceCapabilities.PhotoSync,
+            LiveConnectedServiceCapabilities.Xbox,
+            LiveConnectedServiceCapabilities.Zune
+        ];
+
+        await foreach (var otherConnection in dbContext.ConnectedServices
+            .AsTracking()
+            .Where(c => c.UserId == userId && c.Id != connId)
+            .AsAsyncEnumerable())
+        {
+            foreach (var cap in singleCaps)
+            {
+                if ((connection.EnabledCapabilities & cap) == 0)
+                    continue;
+
+                // TODO: is it worth reporting these back?
+                if ((otherConnection.EnabledCapabilities & cap) == cap)
+                    otherConnection.EnabledCapabilities &= ~cap;
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        return new Empty();
     }
 
     #region Keys
@@ -210,6 +266,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
     {
         var sub = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid user."));
+
         return Guid.Parse(sub);
     }
 }

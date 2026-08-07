@@ -1,0 +1,161 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+option csharp_namespace = "ReLiveWP.Services.Grpc";
+
+package skydrive;
+
+service SkyDrive {
+  rpc GetLibrary (GetLibraryRequest) returns (LibraryReply);
+  rpc ListLibraries (ListLibrariesRequest) returns (ListLibrariesReply);
+  rpc ListPhotos (ListPhotosRequest) returns (ListPhotosReply);
+  rpc GetPhotoContent (GetPhotoContentRequest) returns (GetPhotoContentReply);
+  rpc CreateOrUpdateLibrary (CreateOrUpdateLibraryRequest) returns (LibraryReply);
+  rpc ProvisionUser (ProvisionUserRequest) returns (google.protobuf.Empty);
+  rpc SetAlbumPermissions (SetAlbumPermissionsRequest) returns (google.protobuf.Empty);
+  rpc BeginPhotoUpload (BeginPhotoUploadRequest) returns (BeginPhotoUploadReply);
+  rpc CompletePhotoUpload (CompletePhotoUploadRequest) returns (PhotoReply);
+}
+
+message Library {
+  string id            = 1;
+  string type          = 2;
+  string category      = 3;
+  string sharing_level = 4;
+  string title         = 5;
+  string summary       = 6;
+  string email_keyword = 7;
+}
+
+message GetLibraryRequest {
+  string userId   = 1;
+  string category = 2;
+}
+
+message LibraryReply {
+  bool    exists  = 1;
+  Library library = 2;
+}
+
+message ListLibrariesRequest {
+  string userId = 1;
+}
+
+message ListLibrariesReply {
+  repeated Library libraries = 1;
+}
+
+message CreateOrUpdateLibraryRequest {
+  string userId        = 1;
+  string type          = 2;
+  string category      = 3;
+  string sharing_level = 4;
+  string title         = 5;
+  string summary       = 6;
+  string email_keyword = 7;
+}
+
+message ProvisionUserRequest {
+  string userId = 1;
+}
+
+message SetAlbumPermissionsRequest {
+  string userId        = 1;
+  string category      = 2;
+  string sharing_level = 3;
+}
+
+message ProviderItem {
+  string service = 1;
+  string item_id = 2;
+  string url     = 3;
+}
+
+message PhotoUploadMetadata {
+  string user_id               = 1;
+  string category              = 2;
+  string file_name             = 3;
+  string content_type          = 4;
+  string summary               = 5;
+  string media_type            = 6;
+  bool   resolve_name_conflict = 7;
+  bool   suppress_notification = 8;
+}
+
+message ListPhotosRequest {
+  string userId = 1;
+  oneof album {
+    string library_id = 2;
+    string category   = 3;
+  }
+}
+
+message PhotoItem {
+  string resource_ref = 1;
+  string file_name    = 2;
+  string content_type = 3;
+  string summary      = 4;
+  string media_type   = 5;
+  int64  created_unix = 6;
+  int32  width        = 7;
+  int32  height       = 8;
+}
+
+message ListPhotosReply {
+  bool              exists  = 1;
+  Library           library = 2;
+  repeated PhotoItem photos = 3;
+}
+
+message GetPhotoContentRequest {
+  string userId       = 1;
+  string resource_ref = 2;
+  int32  max_size     = 3;
+  bool   refresh      = 4;
+}
+
+message GetPhotoContentReply {
+  bool                exists       = 1;
+  string              url          = 2;
+  map<string, string> headers      = 3;
+  string              content_type = 4;
+  int64               size         = 5;
+  string              etag         = 6;
+}
+
+message UploadTarget {
+  string              service       = 1;
+  string              connection_id = 2;
+  string              method        = 3;
+  string              url           = 4;
+  map<string, string> headers       = 5;
+  int64               fragment_size = 6;
+}
+
+message BeginPhotoUploadRequest {
+  PhotoUploadMetadata metadata       = 1;
+  int64               content_length = 2;
+}
+
+message BeginPhotoUploadReply {
+  repeated UploadTarget targets = 1;
+}
+
+message UploadOutcome {
+  string service       = 1;
+  string connection_id = 2;
+  int32  status_code   = 3;
+  string response_body = 4;
+}
+
+message CompletePhotoUploadRequest {
+  PhotoUploadMetadata    metadata = 1;
+  repeated UploadOutcome outcomes = 2;
+}
+
+message PhotoReply {
+  string                resource_ref   = 1;
+  repeated ProviderItem provider_items = 2;
+  string                file_name      = 3;
+  string                media_type     = 4;
+}

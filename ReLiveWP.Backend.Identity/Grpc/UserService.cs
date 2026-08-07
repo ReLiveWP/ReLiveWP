@@ -1,5 +1,6 @@
 ﻿using Grpc.Core;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Services.Grpc;
 
@@ -21,5 +22,19 @@ public class UserService(UserManager<LiveUser> userManager) : User.UserBase
         };
 
         return response;
+    }
+
+    public override async Task ListUsers(ListUsersRequest request, IServerStreamWriter<UserSummary> stream, ServerCallContext context)
+    {
+        var query = userManager.Users.Where(u => u.Type == LiveUserType.User);
+        await foreach (var user in query.AsAsyncEnumerable().WithCancellation(context.CancellationToken))
+        {
+            await stream.WriteAsync(new UserSummary
+            {
+                Id = user.Id.ToString(),
+                Username = user.UserName ?? "",
+                EmailAddress = user.Email ?? "",
+            });
+        }
     }
 }

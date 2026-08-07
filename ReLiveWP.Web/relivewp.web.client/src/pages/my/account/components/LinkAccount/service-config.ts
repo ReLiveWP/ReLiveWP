@@ -1,4 +1,4 @@
-export type Stage = 'handle' | 'loading' | 'redirect' | 'done' | 'error';
+export type Stage = 'handle' | 'loading' | 'redirect' | 'configure' | 'applying' | 'done' | 'error';
 
 type ServiceConfig = {
     title: string;

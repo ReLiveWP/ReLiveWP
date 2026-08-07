@@ -1,5 +1,6 @@
 ﻿using System.ServiceModel;
 using System.Xml.Serialization;
+using ReLiveWP.Services.AddressBook.Models;
 
 namespace ReLiveWP.Services.AddressBook.Services;
 
@@ -22,6 +23,7 @@ public class ViewABNetworks
     public ABAuthHeader ABAuthHeader { get; set; } = null!;
 }
 
+[XmlRoot(Namespace = "http://www.msn.com/webservices/AddressBook")]
 public class ServiceHeader
 {
     [XmlElement("Version", Namespace = "http://www.msn.com/webservices/AddressBook")]
@@ -32,10 +34,10 @@ public class ServiceHeader
 public class Annotation
 {
     [XmlElement("Name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     [XmlElement("Value")]
-    public string Value { get; set; }
+    public string Value { get; set; } = null!;
 }
 
 
@@ -51,19 +53,19 @@ public class NetworkInfo
     // can be 7, 8, 22	
 
     [XmlElement("SourceId")]
-    public string SourceId { get; set; }
+    public string SourceId { get; set; } = null!;
 
     [XmlElement("DomainId")]
     public int DomainId { get; set; }
 
     [XmlElement("DomainTag")]
-    public string DomainTag { get; set; }
+    public string DomainTag { get; set; } = null!;
 
     [XmlElement("UserTileUrl")]
-    public string UserTileUrl { get; set; }
+    public string UserTileUrl { get; set; } = null!;
 
     [XmlElement("DisplayName")]
-    public string DisplayName { get; set; }
+    public string DisplayName { get; set; } = null!;
 }
 
 [MessageContract]
@@ -90,6 +92,7 @@ public class AddressBookService : IAddressBookService
 {
     public ViewABNetworksResponse ViewABNetworks(ViewABNetworks message)
     {
+        var now = DateTime.UtcNow;
         return new ViewABNetworksResponse()
         {
             ViewABNetworksResult =
@@ -98,16 +101,21 @@ public class AddressBookService : IAddressBookService
                 {
                     DomainId = 22,
                     SourceId = "TWITR",
-                    DomainTag = "WL",
+                    DomainTag = "TWITR",
                     DisplayName = "Wam",
-                    //ProfileUrl = "https://bsky.app/profile/wamwoowam.co.uk",
-                    UserTileUrl = "https://cdn.bsky.app/img/avatar/plain/did:plc:7rfssi44thh6f4ywcl3u5nvt/bafkreihkzoksalhxgsivjew4xbftdnsa27bcc5xcl5vf5opaou2eswtsda@jpeg",
-                    //CreateDate = DateTime.Today,
-                    //LastChanged = DateTime.Now,
-                    //RelationshipType = 0,
-                    //RelationshipState = 0,
-                    //RelationshipRole = 0,
-                    //RelationshipStateDate = DateTime.Today,
+                    // ProfileURL = "https://bsky.app/profile/wamwoowam.co.uk",
+                    // UserTileURL = "https://cdn.bsky.app/img/avatar/plain/did:plc:7rfssi44thh6f4ywcl3u5nvt/bafkreihkzoksalhxgsivjew4xbftdnsa27bcc5xcl5vf5opaou2eswtsda@jpeg",
+                    // CreateDate = now,
+                    // LastChanged = now,
+                    // RelationshipStateDate = now,
+                    Annotations =
+                    [
+                        new() { Name = "Live.Network.PSAState", Value = "Accept" },
+                        // TODO: this parses with LOCALE_SYSTEM_DEFAULT on device, which feels like the footgun of all time
+                        new() { Name = "Live.Network.LastSync", Value = DateTime.Now.ToString() },
+                        // Capability bitmask, TODO: figure out what this means
+                        new() { Name = "Live.Network.Offers", Value = "2129" }
+                    ]
                 }
             }
         };

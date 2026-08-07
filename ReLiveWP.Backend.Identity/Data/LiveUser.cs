@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,4 +19,14 @@ public class LiveUser : IdentityUser<Guid>
     public long Puid { get; set; }
     public LiveUserType Type { get; set; }
     public string? DeviceId { get; set; }
+    public ICollection<LiveUserCertificate> Certificates { get; set; } = [];
+}
+
+[Owned]
+public class LiveUserCertificate
+{
+    public Guid UserId { get; set; }
+
+    [Key]
+    public string Fingerprint { get; set; } = default!;
 }

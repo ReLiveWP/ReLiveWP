@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>ReLiveWP.Integration</PackageId>
+    <Version>1.0.3</Version>
+    <Authors>WamWooWam, ReLiveWP Authors</Authors>
+    <Company>Wan Kerr Co. Ltd.</Company>
+    <Description>gRPC service clients, identity and service defaults plumbing for consumption by other ReLiveWP projects.</Description>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)../packages</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- The bundled assemblies are packed as loose lib/ files, so their package dependencies don't
+       flow automatically. Mirror them here or consumers fail to resolve them at runtime. -->
+  <ItemGroup>
+    <!-- ReLiveWP.Grpc.Services -->
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Net.ClientFactory" />
+    <!-- ReLiveWP.Identity -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <!-- ReLiveWP.ServiceDefaults -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.Grpc.Services\ReLiveWP.Grpc.Services.csproj" PrivateAssets="All" />
+    <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" PrivateAssets="All" />
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" PrivateAssets="All" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+
+  <!-- ProjectReferences are PrivateAssets=All so they don't become package deps; pull their
+       assemblies into lib/ manually instead. -->
+  <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')->WithMetadataValue('PrivateAssets', 'All'))" />
+      <BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

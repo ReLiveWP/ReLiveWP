@@ -1,0 +1,183 @@
+---
+name: relivewp
+
+x-dev-env:
+  &dev-env
+  ASPNETCORE_ENVIRONMENT: Development
+  NODE_ENV: development
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+  DOTNET_SYSTEM_NET_DISABLEIPV6: 1
+
+# Allow Visual Studio's vsdbg to ptrace/attach to the dotnet process. The
+# default Docker seccomp profile blocks ptrace, so debugging fails without this.
+x-debug:
+  &debug
+  cap_add:
+    - SYS_PTRACE
+  security_opt:
+    - seccomp:unconfined
+
+services:
+  postgres:
+    ports:
+      - 15432:5432
+
+  redis:
+    ports:
+      - 6379:6379
+
+  identity:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  connectedservices:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  deviceregistration:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  skybox:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  skydrive:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  mailbox:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  activation:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  login:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  web:
+    build:
+      args:
+        CLIENT_BUILD_SCRIPT: build:local
+    environment: *dev-env
+
+  push:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  activity:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  docs:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  exchange:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  addressbook:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  devices:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  findmyphone:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  orion:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  profile:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    container_name: aspire-dashboard
+    restart: unless-stopped
+    ports:
+      - "18888:18888"   # dashboard UI
+      - "4317:18889"    # OTLP gRPC
+      - "4318:18890"    # OTLP HTTP (optional, add if you want it)
+    environment:
+      # Skip the login token nonsense for local/dev use
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+    networks:
+      - relive
+
+  # dnsmasq:
+  #   image: alpine:latest
+  #   command: >
+  #     sh -c "apk add --no-cache dnsmasq &&
+  #            dnsmasq --no-daemon --conf-file=/etc/dnsmasq.conf"
+  #   networks:
+  #     - relive
+  #   ports:
+  #     - "127.0.0.1:5354:5354/udp"
+  #   volumes:
+  #     - ./deploy/dnsmasq.conf:/etc/dnsmasq.conf:ro
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "0.0.0.0:8086:80"

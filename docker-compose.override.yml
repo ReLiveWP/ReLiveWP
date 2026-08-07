@@ -1,0 +1,144 @@
+---
+name: relivewp
+
+services:
+  identity:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.Identity
+
+  connectedservices:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.ConnectedServices
+
+  deviceregistration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.DeviceRegistration
+
+  skybox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.Skybox
+
+  skydrive:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.SkyDrive
+
+  mailbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.Mailbox
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 0o01777
+
+  activation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Activation
+
+  login:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Login
+
+  web:
+    build:
+      context: .
+      dockerfile: ReLiveWP.Web/Dockerfile
+
+  push:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Push
+
+  activity:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Activity
+
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Docs
+
+  exchange:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Exchange
+
+  addressbook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.AddressBook
+
+  profile:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Profile
+
+  devices:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Devices
+
+  findmyphone:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.FindMyPhone
+
+  orion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Orion
+
+  messenger:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Messenger
+
+  support:
+    build:
+      context: .
+      dockerfile: ReLiveWP.Services.Support/Dockerfile

@@ -1,0 +1,56 @@
+@use "sass:color";
+@use "sass:map";
+@use "sass:string";
+
+$accents: (
+    "red": (base: #e60c00, bg-1: #ffe1e0, bg-2: #fff0f0, bg-3: #ffffff),
+    "teal": (base: #00ABA9, bg-1: #e0fffe, bg-2: #f0fffe, bg-3: #fcffff),
+    "purple": (base: #A200FF, bg-1: #f4e0ff, bg-2: #faf0ff, bg-3: #fefcff),
+    "pink": (base: #E671B8, bg-1: #ffe0f3, bg-2: #fff0f9, bg-3: #fffcfe),
+    "green": (base: #339933, bg-1: #e0ffe0, bg-2: #f0fff0, bg-3: #fcfffc),
+    "yellow": (base: #F09609, bg-1: #fff3e0, bg-2: #fff9f0, bg-3: #fffefc),
+    "blue": (base: #1BA1E2, bg-1: #e0f5ff, bg-2: #f0faff, bg-3: #fafdff),
+    "magenta": (base: #D80073, bg-1: #ffe0f1, bg-2: #fff0f8, bg-3: #fffcfe),
+);
+
+$accent-zune-1: #f10da1;
+$accent-zune-2: #e95214;
+$accent-zune-shades: (bg-1: #ffe9e0, bg-2: #fff4f0, bg-3: #fffdfc);
+
+$ink: #333333;
+$ink-strong: #1a1a1a;
+$ink-muted: #767676;
+$ink-soft: #888888;
+$rule: #DEDEDE;
+
+$font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
+$font-family-monospace: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+$font-size-base: 10.5pt;
+$font-weight-display: 200;
+
+$column-width: 1024px;
+$column-gutter: 24px;
+$breakpoint-narrow: 600px;
+
+@function accent($name, $shade: base) {
+    @return map.get(map.get($accents, $name), $shade);
+}
+
+@function accent-gradient($shades) {
+    @return linear-gradient(to bottom,
+        map.get($shades, bg-1),
+        map.get($shades, bg-2) 80px,
+        map.get($shades, bg-3) 200px);
+}
+
+@function svg-hex($colour) {
+    @return "%23" + string.slice(color.ie-hex-str($colour), 4);
+}
+
+@function accent-gradient-svg($shades) {
+    $top: svg-hex(map.get($shades, bg-1));
+    $mid: svg-hex(map.get($shades, bg-2));
+    $end: svg-hex(map.get($shades, bg-3));
+
+    @return url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='200' viewBox='0 0 1 200' preserveAspectRatio='none'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='#{$top}'/%3E%3Cstop offset='.4' stop-color='#{$mid}'/%3E%3Cstop offset='1' stop-color='#{$end}'/%3E%3C/linearGradient%3E%3Crect width='1' height='200' fill='url(%23g)'/%3E%3C/svg%3E");
+}

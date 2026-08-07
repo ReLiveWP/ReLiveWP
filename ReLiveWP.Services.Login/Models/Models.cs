@@ -1,6 +1,6 @@
 ﻿namespace ReLiveWP.Services.Login.Models;
 
-public record class ErrorModel(uint ErrorCode);
+public record class ErrorModel(uint ErrorCode, string? HelpUrl = null);
 
 public record CreateAccountModel(
     string Username,
@@ -26,10 +26,11 @@ public record ProvisionDeviceRequestModel(string Csr);
 public record ProvisionDeviceResponseModel(string DeviceCert);
 
 public record ConnectionModel(
-    string Id, 
-    string Url, 
-    string Name, 
-    bool NeedsRelink);
+    string Id,
+    string Url,
+    string Name,
+    bool NeedsRelink,
+    uint EnabledCapabilities);
 
 public record ConnectionModels(Dictionary<string, List<ConnectionModel>> Connections);
 
@@ -49,3 +50,13 @@ public record ConnectedDeviceModel(
     string? PhoneNumber, 
     string OSVersion,
     string Locale);
+
+public record AvailableConnectedService(
+    string Service,
+    string DisplayName,
+    uint Capabilities
+);
+
+public record UpdateConnectedServiceModel(
+    uint EnabledCapabilities
+);

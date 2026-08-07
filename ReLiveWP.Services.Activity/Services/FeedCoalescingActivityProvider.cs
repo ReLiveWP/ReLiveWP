@@ -73,8 +73,39 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> 
         }
     }
 
+    public override async IAsyncEnumerable<EntryModel> GetRepliesAsync(string providerId, string activityId, int count)
+    {
+        // providers are expected to ignore IDs they don't understand
+        foreach (var provider in providers)
+        {
+            await foreach (var item in provider.GetRepliesAsync(providerId, activityId, count))
+                yield return item;
+        }
+    }
+
+    public override async IAsyncEnumerable<EntryModel> GetAuthorEntriesAsync(string providerToken, string externalId, int count)
+    {
+        // providers ignore identities they don't own (provider-token mismatch)
+        foreach (var provider in providers)
+        {
+            await foreach (var item in provider.GetAuthorEntriesAsync(providerToken, externalId, count))
+                yield return item;
+        }
+    }
+
     public override async Task CreatePostAsync(string text)
     {
         await Task.WhenAll(providers.Select(s => s.CreatePostAsync(text)));
+    }
+
+    public override async Task<bool> CreateReplyAsync(string providerId, string activityId, string text)
+    {
+        foreach (var provider in providers)
+        {
+            if (await provider.CreateReplyAsync(providerId, activityId, text))
+                return true;
+        }
+
+        return false;
     }
 }

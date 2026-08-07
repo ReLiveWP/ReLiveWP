@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,7 @@ public class Identifier
 public class ActivitiesController(
     ILogger<ActivitiesController> logger,
     User.UserClient userClient,
+    FeedRenderer feeds,
     ActivityProviderService activityProvider) : Controller
 {
     [HttpPost]
@@ -63,13 +65,20 @@ public class ActivitiesController(
         if (provider == null)
             return feed;
 
-        await foreach (var item in provider.GetEntriesAsync(ActivitiesContext.My, count))
-        {
-            var liveEntry = CreatePostEntry(item, author);
-            if (liveEntry == null)
-                continue;
+        // The device selects whose feed via the ObjectId: the owner's own CID -> the owner's feed;
+        // any other CID is a contact card asking for that contact's feed (its linked accounts).
+        var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var requested = requestedId != null ? long.Parse(requestedId, CultureInfo.InvariantCulture) : (long?)null;
 
-            feed.Entries.Add(liveEntry);
+        if (requested is { } contactCid && contactCid != ownerCid)
+        {
+            feed.Entries.AddRange(
+                await feeds.RenderContactFeedAsync(Url, provider, contactCid, count, User.Id()!));
+        }
+        else
+        {
+            feed.Entries.AddRange(
+                await feeds.RenderFeedAsync(Url, provider, ActivitiesContext.My, count, author, User.Id()!));
         }
 
         return feed;
@@ -105,21 +114,16 @@ public class ActivitiesController(
         if (provider == null)
             return feed;
 
-        await foreach (var item in provider.GetEntriesAsync(type == "media" ? ActivitiesContext.Media : ActivitiesContext.Contacts, count))
-        {
-            var liveEntry = CreatePostEntry(item, author);
-            if (liveEntry == null)
-                continue;
-
-            feed.Entries.Add(liveEntry);
-        }
+        var ctx = type == "media" ? ActivitiesContext.Media : ActivitiesContext.Contacts;
+        feed.Entries.AddRange(
+            await feeds.RenderFeedAsync(Url, provider, ctx, count, author, User.Id()!));
 
         return feed;
     }
 
     [HttpGet]
     [Produces("application/atom+xml")]
-    [Route("/Activity({provider}:{id})", Name = "activity")]
+    [Route("/Activity({id})", Name = "activity")]
     public Task<ActionResult<LiveFeed>> Activity(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
@@ -132,112 +136,96 @@ public class ActivitiesController(
 
     [HttpGet]
     [Produces("application/atom+xml")]
-    [Route("/Activity({provider}:{id})/Replies", Name = "activity_replies")]
-    public Task<ActionResult<LiveFeed>> ActivityReplies(
+    [Route("/Activity({id})/Replies", Name = "activity_replies")]
+    public async Task<ActionResult<LiveCommentsFeed>> ActivityReplies(
+        [FromRoute] string id,
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Source")] string source = "WL",
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
         [FromQuery(Name = "$xslt")] string? xslt = null)
     {
-        return Task.FromResult<ActionResult<LiveFeed>>(NoContent());
-    }
+        Response.Headers.Append("X-QueriedServices", "WL");
 
-    // TODO: move this to an adapter class
-    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, string? requestedPuid = null)
-    {
-        if (requestedPuid != null && userInfo.Puid.ToString() != requestedPuid)
-            logger.LogError("Requested PUID and User PUID do not match!! {RequestedPuid} != {UserPuid}", requestedPuid, userInfo.Puid);
+        var providerId = id[..id.IndexOf(':')];
+        var stringId = id[(id.IndexOf(':') + 1)..];
 
-        return new LiveAuthor()
+        var activityInfo = new { id };
+        var feed = new LiveCommentsFeed()
         {
-            Id = $"{(requestedPuid ?? userInfo.Puid.ToString())}",
-            Name = userInfo.Username,
-            Url = this.Url.Link("activities_route_for_user", new { id = userInfo.Puid, provider = "WL" }),
-            Links = []
-        };
-    }
-
-    private LiveEntry? CreatePostEntry(EntryModel entryModel, LiveAuthor meAuthor)
-    {
-        var entryAuthor = entryModel.Author;
-        var author = entryAuthor.IsMe ? meAuthor : new LiveAuthor()
-        {
-            Id = entryAuthor.IsMe ? meAuthor.Id : null, // TODO: this will eventually do some funky "Windows Live" mapping
-            Name = entryAuthor.DisplayName,
-            ScreenName = entryAuthor.ScreenName,
-            Url = entryAuthor.CanonicalUrl,
+            Title = "Replies",
+            Id = this.Url.Link("activity_replies", activityInfo),
+            Updated = DateTime.UtcNow,
             Links =
             [
-                new Link(entryAuthor.AvatarUrl, "preview", "image/jpeg")
+                new Link(this.Url.Link("activity_replies", activityInfo)),
             ]
         };
 
-        var activityInfo = new { provider = entryModel.ProviderId, id = entryModel.Id };
-        var id = this.Url.Link("activity", activityInfo)!;
+        var activityProviderInstance = await activityProvider.GetActivityProviderAsync();
+        if (activityProviderInstance == null)
+            return feed;
 
-        var postEntry = new LiveEntry()
+        await foreach (var item in activityProviderInstance.GetRepliesAsync(providerId, stringId, Math.Min(count, 49)))
         {
-            Id = id,
-            Title = entryModel.Title,
-            Summary = entryModel.Content,
-            Published = entryModel.Published.UtcDateTime,
-            Updated = entryModel.Published.UtcDateTime,
-            Author = entryAuthor.IsMe ? meAuthor : author,
-            Links =
-            [
-                new Link(this.Url.Link("activity_replies", activityInfo), "replies", "application/atom+xml")
+            feed.Entries.Add(new LiveComment()
+            {
+                CommentId = $"{item.ProviderId}:{item.Id}",
+                Title = null,
+                Content = item.Content,
+                Updated = item.Published.UtcDateTime,
+                Author = new LiveCommentAuthor()
                 {
-                    Count = entryModel.ReplyCount?.ToString() ?? ""
-                },
-                new Link(entryModel.CanonicalUrl, "alternate", "text/html"),
-            ],
-            Categories = [.. entryModel.Categories.Select(c => new LiveCategory(c))],
-            Generator = entryModel.Generator,
-
-            ActivityVerb = entryModel.EntryType switch
-            {
-                EntryType.Article => "http://activitystrea.ms/schema/1.0/article",
-                _ => "http://activitystrea.ms/schema/1.0/post",
-            },
-            Activities = [],
-
-            ActivityId = entryModel.Id,
-            AppId = "6262816084389410",
-            ChangeType = "0",
-            SourceId = "WL",
-            ServiceActivityId = entryModel.Id,
-            Reactions = []
-        };
-
-        if (entryModel.EntryType == EntryType.Post)
-        {
-            postEntry.Activities.Add(new()
-            {
-                ObjectType = "http://activitystrea.ms/schema/1.0/status",
-                Id = id,
-                Title = entryModel.Title,
-                Content = entryModel.Content,
+                    Name = item.Author.DisplayName,
+                    Cid = Cids.SynthesiseAuthorCid(item.Author.Provider, item.Author.Id).ToString(CultureInfo.InvariantCulture),
+                }
             });
         }
 
-        foreach (var item in entryModel.AdditionalActivities)
-        {
-            if (item is PhotoActivityModel photo)
-            {
-                postEntry.Activities.Add(new LiveActivityObject()
-                {
-                    ObjectType = "http://activitystrea.ms/schema/1.0/photo",
-                    Id = photo.CanonicalUrl,
-                    Links =
-                    [
-                        new Link(photo.ThumbnailUrl, "preview", photo.MimeType),
-                        new Link(photo.FullSizeUrl, "alternate", photo.MimeType)
-                    ]
-                });
-            }
-        }
+        return feed;
+    }
 
-        return postEntry;
+    [HttpPost]
+    [Consumes("text/plain")]
+    [Produces("application/atom+xml")]
+    [Route("/Activity({id})/Replies", Name = "activity_replies")]
+    public async Task<ActionResult> ActivityReplies(
+       [FromRoute] string id)
+    {
+        using var reader = new StreamReader(Request.Body);
+        var text = await reader.ReadToEndAsync();
+        if (text == null)
+            return BadRequest();
+
+        Response.Headers.Append("X-QueriedServices", "WL");
+
+        var providerId = id[..id.IndexOf(':')];
+        var stringId = id[(id.IndexOf(':') + 1)..];
+
+        var activityProviderInstance = await activityProvider.GetActivityProviderAsync();
+        if (activityProviderInstance == null)
+            return NoContent();
+
+        await activityProviderInstance.CreateReplyAsync(providerId, stringId, text);
+
+        return NoContent();
+    }
+
+    // TODO: move this to an adapter class
+    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, string? requestedCid = null)
+    {
+        var userId = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var requestedId = requestedCid != null ? long.Parse(requestedCid, CultureInfo.InvariantCulture) : (long?)null;
+        // A differing id is a contact-feed request (the ObjectId names the contact), not an error.
+        if (requestedId != null && userId != requestedId)
+            logger.LogDebug("Feed requested for contact CID {RequestedCid} (owner {OwnerCid})", requestedId, userId);
+
+        return new LiveAuthor()
+        {
+            Id = $"{(requestedId ?? userId)}",
+            Name = userInfo.Username,
+            Url = this.Url.Link("activities_route_for_user", new { id = (requestedId ?? userId).ToString(), provider = "WL" }),
+            Links = []
+        };
     }
 }

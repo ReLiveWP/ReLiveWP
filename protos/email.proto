@@ -1,0 +1,16 @@
+syntax = "proto3";
+option csharp_namespace = "ReLiveWP.Services.Grpc.Email";
+package email;
+import "google/protobuf/empty.proto";
+
+service Email {
+  // sends a system email to a user, used to notify of events pertaining to their account
+  rpc SendSystemEmail (SendSystemEmailRequest) returns (google.protobuf.Empty);
+}
+
+message SendSystemEmailRequest {
+  string userId      = 1;
+  string serviceName = 2;
+  string subject     = 3;
+  string body        = 4;
+}

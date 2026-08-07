@@ -34,6 +34,11 @@
         font-size: 9pt;
     }
 
+    .help-link {
+        color: inherit;
+        text-decoration: underline;
+    }
+
     input[type="checkbox"]>span {
         display: inline-block;
         position: relative;

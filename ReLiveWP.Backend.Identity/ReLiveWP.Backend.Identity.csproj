@@ -10,7 +10,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Portable.BouncyCastle" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Passport\ReLiveWP.Passport.csproj" />
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
   </ItemGroup>
 

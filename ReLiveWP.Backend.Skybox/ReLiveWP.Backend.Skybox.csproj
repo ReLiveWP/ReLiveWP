@@ -4,6 +4,9 @@
     <Protobuf Include="../protos/find_my_phone.proto">
       <Link>Protos\find_my_phone.proto</Link>
     </Protobuf>
+    <Protobuf Include="../protos/email.proto" GrpcServices="Client">
+      <Link>Protos\email.proto</Link>
+    </Protobuf>
   </ItemGroup>
 
   <ItemGroup>
@@ -13,13 +16,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="Portable.BouncyCastle" />
+    <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
 
   <ItemGroup>

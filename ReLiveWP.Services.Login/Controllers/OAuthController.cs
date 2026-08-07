@@ -1,5 +1,4 @@
 ﻿using Google.Protobuf.WellKnownTypes;
-using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Services.Grpc;
@@ -9,21 +8,27 @@ namespace ReLiveWP.Services.Login.Controllers;
 
 [ApiController]
 [Route("oauth/[action]/{service?}")]
-public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClient, IConfiguration configuration) : Controller
+public class OAuthController(ConnectedServices.ConnectedServicesClient connectedServicesClient, IConfiguration configuration) : Controller
 {
+    [HttpGet]
+    [Authorize]
+    [ActionName("available-links")]
+    public async IAsyncEnumerable<AvailableConnectedService> GetAvailableLinksAsync()
+    {
+        var available = await connectedServicesClient.GetSupportedConnectionsAsync(new Empty());
+        foreach (var service in available.AvailableConnections)
+        {
+            yield return new AvailableConnectedService(service.Service, service.DisplayName, (uint)service.Capabilities);
+        }
+    }
+
     [HttpPost]
     [Authorize]
     [ActionName("begin-account-link")]
     public async Task<ActionResult<BeginAccountLinkResponse>> BeginAccountLink([FromBody] BeginAcountLinkModel model)
     {
-        var headers = new Metadata
-        {
-            { "Authorization", Request.Headers.Authorization.ToString() }
-        };
-
-        var response = await oAuthClient.BeginAccountLinkingForServiceAsync(
-            new() { Service = model.Service, Identifer = model.Identifier },
-            headers);
+        var response = await connectedServicesClient.BeginAccountLinkingForServiceAsync(
+            new() { Service = model.Service, Identifer = model.Identifier });
 
         return new BeginAccountLinkResponse(response.RedirectUri);
     }
@@ -33,16 +38,24 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
     [ActionName("begin-relink")]
     public async Task<ActionResult<BeginAccountLinkResponse>> BeginRelink([FromBody] BeginRelinkModel model)
     {
-        var headers = new Metadata
-        {
-            { "Authorization", Request.Headers.Authorization.ToString() }
-        };
-
-        var response = await oAuthClient.BeginRelinkForConnectionAsync(
-            new() { ConnectionId = model.ConnectionId },
-            headers);
+        var response = await connectedServicesClient.BeginRelinkForConnectionAsync(
+            new() { ConnectionId = model.ConnectionId });
 
         return new BeginAccountLinkResponse(response.RedirectUri);
+    }
+
+    [HttpPatch]
+    [Authorize]
+    [ActionName("link")]
+    public async Task<IActionResult> UpdateLink(string connectionId, [FromBody] UpdateConnectedServiceModel model)
+    {
+        await connectedServicesClient.UpdateCapabilitiesAsync(new UpdateCapabilitiesRequest()
+        {
+            ConnectionId = connectionId,
+            Capabilities = model.EnabledCapabilities
+        });
+
+        return Accepted();
     }
 
     [HttpDelete]
@@ -50,14 +63,8 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
     [ActionName("link")]
     public async Task<ActionResult> DeleteLink(string connectionId)
     {
-        var headers = new Metadata
-        {
-            { "Authorization", Request.Headers.Authorization.ToString() }
-        };
-
-        await oAuthClient.DeleteConnectionAsync(
-            new() { ConnectionId = connectionId },
-            headers);
+        await connectedServicesClient.DeleteConnectionAsync(
+            new() { ConnectionId = connectionId });
 
         return NoContent();
     }
@@ -70,7 +77,8 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
         string issuer = "",
         string? code = null,
         string? error = null,
-        string? error_description = null)
+        string? error_description = null,
+        string? scope = null)
     {
         if (code == null)
         {
@@ -83,19 +91,22 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient oAuthClie
             Service = service,
             State = state,
             Issuer = issuer,
-            Code = code
+            Code = code,
         };
 
-        await oAuthClient.FinaliseAccountLinkingForServiceAsync(request);
+        if (!string.IsNullOrWhiteSpace(scope))
+            request.Scopes.AddRange(scope.Split(' '));
 
-        return Redirect(configuration["OAuth:LoginCompleteUrl"]!);
+        var result = await connectedServicesClient.FinaliseAccountLinkingForServiceAsync(request);
+
+        return Redirect($"{configuration["OAuth:LoginCompleteUrl"]!}?connectionId={Uri.EscapeDataString(result.ConnectionId)}");
     }
 
     [AllowAnonymous]
     [ActionName("jwks")]
     public async Task<ActionResult> GetPubKeys()
     {
-        var response = await oAuthClient.GetJsonWebKeysAsync(new Empty());
+        var response = await connectedServicesClient.GetJsonWebKeysAsync(new Empty());
         return Content(response.Keys, "application/json");
     }
 }

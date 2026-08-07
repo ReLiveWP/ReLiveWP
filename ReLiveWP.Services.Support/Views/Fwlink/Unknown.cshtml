@@ -1,0 +1,25 @@
+@model int?
+@{
+    ViewData["Title"] = "Link not available";
+    ViewData["Robots"] = "noindex";
+}
+
+<h1>This link isn't available</h1>
+
+@if (Model is { } id)
+{
+    <p class="article-summary">Link ID @id has not been allocated, or has been retired.</p>
+}
+else
+{
+    <p class="article-summary">No link ID was supplied.</p>
+}
+
+<div class="callout">
+    <p>
+        Forwarding links look like
+        <span class="mono">go.relivewp.net/fwlink/p/?LinkID=1042</span>.
+        If you arrived here from an error message on your phone, please
+        <a href="/kb">search the knowledge base</a> for the error code it showed.
+    </p>
+</div>

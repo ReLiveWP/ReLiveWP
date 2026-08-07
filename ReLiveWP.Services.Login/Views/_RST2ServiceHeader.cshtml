@@ -1,0 +1,43 @@
+@model ReLiveWP.Services.Login.Models.RST2.RST2Model
+<psf:pp xmlns:psf="http://schemas.microsoft.com/Passport/SoapServices/SOAPFault">
+    <psf:serverVersion>1</psf:serverVersion>
+    <psf:PUID>@Model.PUIDHex</psf:PUID>
+    <psf:configVersion>9.000.13347.00</psf:configVersion>
+    <psf:uiVersion>3.100.2179.0</psf:uiVersion>
+    <psf:mobileConfigVersion>9.000.13347.0</psf:mobileConfigVersion>
+    <psf:appDataVersion>1</psf:appDataVersion>
+    <psf:authstate>0x48803</psf:authstate>
+    <psf:reqstatus>0x0</psf:reqstatus>
+    <psf:authreq>0x0</psf:authreq>
+    <psf:serverInfo Path="Live1" RollingUpgradeState="ExclusiveNew" LocVersion="0"
+                    ServerTime="@Model.TimeZ">XYZPPLOGN1A23 2017.09.28.12.44.07</psf:serverInfo>
+    <psf:cookies />
+    <psf:BrowserCookies>
+        @foreach (var cookie in Model.BrowserCookies)
+        {
+            <psf:browserCookie Name="@cookie.Name" URL="@cookie.Url">@cookie.Value</psf:browserCookie>
+        }
+    </psf:BrowserCookies>
+    <psf:credProperties>
+        <psf:credProperty Name="MainBrandID">MSFT</psf:credProperty>
+        <psf:credProperty Name="BrandIDList"></psf:credProperty>
+        <psf:credProperty Name="IsWinLiveUser">true</psf:credProperty>
+        <psf:credProperty Name="CID">@Model.CID</psf:credProperty>
+        <psf:credProperty Name="AuthMembername">@Model.Email</psf:credProperty>
+        <psf:credProperty Name="Country">US</psf:credProperty>
+        <psf:credProperty Name="Language">1033</psf:credProperty>
+        <psf:credProperty Name="FirstName">@Model.FirstName</psf:credProperty>
+        <psf:credProperty Name="LastName">@Model.LastName</psf:credProperty>
+        <psf:credProperty Name="ChildFlags">00000001</psf:credProperty>
+        <psf:credProperty Name="Flags">40100643</psf:credProperty>
+        <psf:credProperty Name="FlagsV2">00000000</psf:credProperty>
+        <psf:credProperty Name="IP">@Model.IP</psf:credProperty>
+        <psf:credProperty Name="AssociatedForStrongAuth">0</psf:credProperty>
+    </psf:credProperties>
+    <psf:extProperties>
+        <psf:extProperty Name="LastUsedCredType">1</psf:extProperty>
+        <psf:extProperty Name="WebCredType">1</psf:extProperty>
+        <psf:extProperty Name="CID">@Model.CID</psf:extProperty>
+    </psf:extProperties>
+    <psf:response />
+</psf:pp>

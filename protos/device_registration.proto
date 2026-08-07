@@ -14,46 +14,46 @@ service DeviceRegistration {
 message DeviceRegistrationRequest {
   string certificateSubject = 1;
 
-  string osVersion = 2;
-  string locale = 3;
+  string osVersion      = 2;
+  string locale         = 3;
   string activationCode = 4;
-  string uniqueId = 5;
+  string uniqueId       = 5;
 
   optional string deviceManufacturer = 6;
-  optional string deviceModel = 7;
-  optional string deviceOperator = 8;
-  optional string deviceIMEI = 9;
+  optional string deviceModel        = 7;
+  optional string deviceOperator     = 8;
+  optional string deviceIMEI         = 9;
 }
 
 message DeviceRegistrationResponse {
-  bool succeeded = 1;
+  bool succeeded            = 1;
   bool wasAlreadyRegistered = 2;
 }
 
 message DeviceAssociationRequest {
-	string deviceId = 1;
-	string userId = 2;
+  string deviceId = 1;
+  string userId   = 2;
 }
 
 message DeviceAssociationResponse {
-	bool succeeded = 1;
+  bool succeeded = 1;
 }
 
 message DevicesForUserRequest {
-	string userId = 1;
+  string userId = 1;
 }
 
 message DeviceByIdRequest {
-	string deviceId = 1;
+  string deviceId = 1;
 }
 
 message Device {
-	optional string manufacturer = 1;
-	optional string model = 2;
-	optional string operator = 3;
-	optional string imei = 4;
+  optional string manufacturer = 1;
+  optional string model        = 2;
+  optional string operator     = 3;
+  optional string imei         = 4;
 
-	string osVersion = 5;
-	string locale = 6;
-	string uniqueId = 7;
+  string osVersion = 5;
+  string locale    = 6;
+  string uniqueId  = 7;
 }

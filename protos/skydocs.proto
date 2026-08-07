@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReLiveWP.Services.Grpc.SkyDocs";
+
+package skydocs;
+
+service SkyDocs {
+  rpc ListLibraries (ListDocLibrariesRequest) returns (ListDocLibrariesReply);
+  rpc GetItem (GetDocItemRequest) returns (GetDocItemReply);
+  rpc ListItems (ListDocItemsRequest) returns (ListDocItemsReply);
+  rpc GetChanges (GetDocChangesRequest) returns (GetDocChangesReply);
+  rpc GetContentLocation (GetDocContentLocationRequest) returns (GetDocContentLocationReply);
+}
+
+enum DocAccessLevel {
+  DOC_ACCESS_LEVEL_NONE       = 0;
+  DOC_ACCESS_LEVEL_READ       = 1;
+  DOC_ACCESS_LEVEL_READ_WRITE = 2;
+}
+
+enum DocSharingLevel {
+  DOC_SHARING_LEVEL_PRIVATE         = 0;
+  DOC_SHARING_LEVEL_PUBLIC          = 1;
+  DOC_SHARING_LEVEL_SHARED          = 2;
+  DOC_SHARING_LEVEL_PUBLIC_UNLISTED = 3;
+}
+
+message DocLibrary {
+  string          path           = 1;
+  string          display_name   = 2;
+  string          resource_id    = 3;
+  DocAccessLevel  access_level   = 4;
+  DocSharingLevel sharing_level  = 5;
+  int64           modified_unix  = 6;
+  string          owner          = 7;
+}
+
+message DocItem {
+  string name          = 1;
+  string path          = 2;
+  bool   is_folder     = 3;
+  int64  size          = 4;
+  int64  created_unix  = 5;
+  int64  modified_unix = 6;
+  string content_type  = 7;
+  string etag          = 8;
+  bool   read_only     = 9;
+  string resource_id   = 10;
+  string prog_id       = 11;
+}
+
+message ListDocLibrariesRequest {
+  string user_id = 1;
+}
+
+message ListDocLibrariesReply {
+  repeated DocLibrary libraries      = 1;
+  string              account_title  = 2;
+  string              signed_in_user = 3;
+}
+
+message GetDocItemRequest {
+  string user_id = 1;
+  string path    = 2;
+}
+
+message GetDocItemReply {
+  bool    exists = 1;
+  DocItem item   = 2;
+}
+
+message ListDocItemsRequest {
+  string user_id   = 1;
+  string path      = 2;
+  bool   recursive = 3;
+}
+
+message ListDocItemsReply {
+  bool             exists = 1;
+  repeated DocItem items  = 2;
+}
+
+message GetDocChangesRequest {
+  string user_id    = 1;
+  string path       = 2;
+  string sync_token = 3;
+}
+
+message GetDocChangesReply {
+  repeated DocItem changed       = 1;
+  repeated string  deleted_paths = 2;
+  string           sync_token    = 3;
+}
+
+message GetDocContentLocationRequest {
+  string user_id = 1;
+  string path    = 2;
+}
+
+message GetDocContentLocationReply {
+  bool                exists       = 1;
+  string              url          = 2;
+  map<string, string> headers      = 3;
+  string              content_type = 4;
+  int64               size         = 5;
+  string              etag         = 6;
+}

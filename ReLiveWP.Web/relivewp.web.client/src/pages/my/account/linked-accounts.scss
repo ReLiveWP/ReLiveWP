@@ -27,4 +27,31 @@
     img.attention {
         vertical-align: middle;
     }
+
+    .inactive-account {
+        opacity: 0.5;
+    }
+
+    .inactive-label {
+        margin-left: 6px;
+        font-size: 0.85em;
+        color: #999;
+    }
+
+    .cap-badges {
+        margin-left: 6px;
+    }
+
+    .cap-badge {
+        display: inline-block;
+        font-size: 0.75em;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background: #eee;
+        color: #555;
+        margin-right: 3px;
+        vertical-align: middle;
+        text-transform: lowercase;
+        font-variant: small-caps;
+    }
 }

@@ -1,0 +1,53 @@
+@model ReLiveWP.Services.Login.Models.RST2.RST2Token
+<wst:RequestSecurityTokenResponse>
+    @if (Model.Type == "MBI_X509_DID")
+    {
+        <wst:TokenType>wsse:X509V3</wst:TokenType>
+    }
+    else
+    {
+        <wst:TokenType>urn:passport:compact</wst:TokenType>
+    }
+    <wsp:AppliesTo xmlns:wsa="http://www.w3.org/2005/08/addressing">
+        <wsa:EndpointReference>
+            @if (Model.Type == "MBI_X509_DID")
+            {
+                <wsa:ServiceName>@Model.Domain</wsa:ServiceName>
+            }
+            else
+            {
+                <wsa:Address>@Model.Domain</wsa:Address>
+            }
+        </wsa:EndpointReference>
+    </wsp:AppliesTo>
+    <wst:Lifetime>
+        <wsu:Created>@Model.CreatedZ</wsu:Created>
+        <wsu:Expires>@Model.ExpiresZ</wsu:Expires>
+    </wst:Lifetime>
+    <wst:RequestedSecurityToken>
+        @if (Model.Type == "MBI_X509_DID")
+        {
+            <wsse:BinarySecurityToken ValueType="wsse:X509v3" EncodingType="wsse:Base64Binary" Id="@Model.Id">@Model.Token</wsse:BinarySecurityToken>
+        }
+        else
+        {
+            <wsse:BinarySecurityToken Id="@Model.Id">t=@(Model.Token)&amp;p=</wsse:BinarySecurityToken>
+        }
+    </wst:RequestedSecurityToken>
+    <wst:RequestedAttachedReference>
+        <wsse:SecurityTokenReference>
+            <wsse:Reference URI="@Model.Reference"></wsse:Reference>
+        </wsse:SecurityTokenReference>
+    </wst:RequestedAttachedReference>
+    <wst:RequestedUnattachedReference>
+        <wsse:SecurityTokenReference>
+            <wsse:Reference URI="@Model.Reference"></wsse:Reference>
+        </wsse:SecurityTokenReference>
+    </wst:RequestedUnattachedReference>
+    @if (!string.IsNullOrWhiteSpace(Model.ProofToken))
+    {
+        <wst:RequestedProofToken>
+            <wst:BinarySecret>@Model.ProofToken</wst:BinarySecret>
+        </wst:RequestedProofToken>
+    }
+</wst:RequestSecurityTokenResponse>

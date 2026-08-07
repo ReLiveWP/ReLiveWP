@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ReLiveWP.Services.Push.Data;
 
 #nullable disable
@@ -14,55 +15,40 @@ namespace ReLiveWP.Services.Push.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "9.0.16")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            modelBuilder.Entity("ReLiveWP.Services.Push.Data.DeviceSession", b =>
-                {
-                    b.Property<string>("Token")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("CreatedAt")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("DeviceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("LastSeenAt")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Token");
-
-                    b.HasIndex("DeviceId");
-
-                    b.ToTable("Sessions");
-                });
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("ReLiveWP.Services.Push.Data.PushChannel", b =>
                 {
                     b.Property<long>("ChannelId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ChannelId"));
 
                     b.Property<string>("ChannelName")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<long>("CreatedAt")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("bigint");
 
                     b.Property<string>("DeviceId")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("Identifier")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("ServiceName")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("Token")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<string>("Version")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.HasKey("ChannelId");
 
@@ -72,56 +58,6 @@ namespace ReLiveWP.Services.Push.Migrations
                         .IsUnique();
 
                     b.ToTable("Channels");
-                });
-
-            modelBuilder.Entity("ReLiveWP.Services.Push.Data.QueuedNotification", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("ChannelId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("CreatedAt")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("DeviceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long?>("ExpiresAt")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LastError")
-                        .HasColumnType("TEXT");
-
-                    b.Property<long?>("LeaseExpiresAt")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LeaseOwner")
-                        .HasColumnType("TEXT");
-
-                    b.Property<uint>("NotificationClass")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte[]>("Payload")
-                        .HasColumnType("BLOB");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("DeviceId", "Status");
-
-                    b.HasIndex("Status", "LeaseExpiresAt");
-
-                    b.ToTable("Notifications");
                 });
 #pragma warning restore 612, 618
         }

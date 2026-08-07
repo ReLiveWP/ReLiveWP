@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -8,6 +9,7 @@ using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Push.Data;
 using ReLiveWP.Services.Push.Pdu;
 using ReLiveWP.Services.Push.Pdu.Headers;
+using StackExchange.Redis;
 namespace ReLiveWP.Services.Push.Session;
 
 public class PushSession
@@ -20,8 +22,9 @@ public class PushSession
     private byte[] sessionToken;
     private PushSessionStateType state = PushSessionStateType.Connecting;
 
-    private uint sendSequence = 0;
+    private uint sendSequence = 0; // pre-auth fallback only; real traffic uses the per-device Redis counter
     private uint lastReceivedDataSeq = 0;
+    private DeviceSequence deviceSequence;
 
     private byte[] recvBuffer = new byte[8192];
     private int recvLen = 0;
@@ -31,10 +34,15 @@ public class PushSession
     private readonly ILogger<PushSession> logger;
     private readonly Authentication.AuthenticationClient authenticationClient;
     private readonly SessionStore sessions;
+    private readonly IConnectionMultiplexer redis;
 
     private readonly Channel<PDU> pduIncomingChannel = Channel.CreateUnbounded<PDU>();
     private readonly Channel<PDU> pduOutgoingChannel = Channel.CreateUnbounded<PDU>();
     private readonly Channel<PushDataPacket> pduInboundChannel = Channel.CreateUnbounded<PushDataPacket>();
+
+    private readonly ConcurrentDictionary<uint, string> sentTags = new();
+    private readonly Channel<string> acknowledgedChannel = Channel.CreateUnbounded<string>();
+    public ChannelReader<string> Acknowledged => acknowledgedChannel.Reader;
 
     public PushSession(
         TcpClient client,
@@ -42,13 +50,15 @@ public class PushSession
         IConfiguration configuration,
         ILogger<PushSession> logger,
         Authentication.AuthenticationClient authenticationClient,
-        SessionStore sessions)
+        SessionStore sessions,
+        IConnectionMultiplexer redis)
     {
         this.client = client;
         this.sslStream = sslStream;
         this.logger = logger;
         this.authenticationClient = authenticationClient;
         this.sessions = sessions;
+        this.redis = redis;
 
         this.serverCert = X509CertificateLoader.LoadPkcs12FromFile(configuration["Push:ServerCertPath"], configuration["Push:ServerCertPassword"]);
     }
@@ -65,10 +75,15 @@ public class PushSession
 
     public X509Certificate2 Certificate { get; private set; }
 
-    public bool TrySendData(byte[] payload)
+    public bool TrySendData(byte[] payload, string tag = null)
     {
-        return pduOutgoingChannel.Writer.TryWrite(new PDU(PDUCommand.Data, NextSendSequence(),
-            [new SequenceHeader { SequenceNumber = lastReceivedDataSeq }], payload));
+        var pdu = new PDU(PDUCommand.Data, 0,
+            [new SequenceHeader { SequenceNumber = lastReceivedDataSeq }], payload)
+        {
+            Tag = tag,
+        };
+
+        return pduOutgoingChannel.Writer.TryWrite(pdu);
     }
 
     public async Task RunLoop(CancellationToken ct = default)
@@ -106,7 +121,8 @@ public class PushSession
             pduOutgoingChannel.Writer.TryComplete();
             try { await Task.WhenAll(receive, handle, send); } catch { /* shutting down, dont care */ }
             client.Close();
-            connectedTcs.TrySetCanceled(); // unblock anyone awaiting a connect that never happened
+            connectedTcs.TrySetCanceled(); 
+            acknowledgedChannel.Writer.TryComplete();
         }
     }
 
@@ -159,7 +175,6 @@ public class PushSession
             return true;
         }
 
-        // the device echoes back the token we previously handed it in SessionInfo
         var presentedToken = pdu.Headers.OfType<SessionInfoHeader>().FirstOrDefault()?.Blob;
         var authHeader = pdu.Headers.OfType<AuthenticateHeader>().FirstOrDefault();
 
@@ -188,7 +203,7 @@ public class PushSession
             logger.LogWarning("Unknown reconnect token; rejecting (0x4101) to force re-Connect");
             await writer.WriteAsync(BuildReconnectRejection(pdu), ct);
             state = PushSessionStateType.Connecting;
-            return false;
+            return true;
         }
 
         sessionToken = presentedToken;
@@ -226,8 +241,12 @@ public class PushSession
                 }
 
             case PDUCommand.Ack:
-                // the device acknowledging our data :D
-                break;
+                {
+                    var ackedSeq = pdu.Headers.OfType<SequenceHeader>().FirstOrDefault()?.SequenceNumber;
+                    if (ackedSeq is uint seq)
+                        EmitAckedTags(seq);
+                    break;
+                }
 
             case PDUCommand.Disconnect:
                 await writer.WriteAsync(BuildDisconnectResponse(pdu), ct);
@@ -354,6 +373,11 @@ public class PushSession
         {
             await foreach (var pdu in pduOutgoingChannel.Reader.ReadAllAsync(ct))
             {
+                pdu.SequenceNumber = await NextSendSequenceAsync();
+
+                if (pdu.Tag != null)
+                    sentTags[pdu.SequenceNumber] = pdu.Tag;
+
                 logger.LogInformation("Sending PDU {Command} (seq {Seq})", pdu.Command, pdu.SequenceNumber);
                 var data = pdu.Serialize();
                 logger.LogDebug("Outgoing PDU data: {Outgoing}", Convert.ToHexString(data));
@@ -405,7 +429,7 @@ public class PushSession
             new TransportSessionConfigHeader { TransportConfig = 0 },
         };
 
-        return new PDU(PDUCommand.ConnectResponse, NextSendSequence(), headers, []);
+        return new PDU(PDUCommand.ConnectResponse, 0, headers, []);
     }
 
     private PDU BuildReconnectResponse(PDU reconnect)
@@ -416,36 +440,36 @@ public class PushSession
             new TransportSessionConfigHeader { TransportConfig = 0 },
         };
 
-        return new PDU(PDUCommand.ReconnectResponse, NextSendSequence(), headers, []);
+        return new PDU(PDUCommand.ReconnectResponse, 0, headers, []);
     }
 
     private PDU BuildReconnectRejection(PDU reconnect)
     {
-        return new(PDUCommand.Error, NextSendSequence(),
+        return new(PDUCommand.Error, 0,
             [new ErrorHeader { ErrorCode = ErrorSessionInvalid, ReferencedSequence = reconnect.SequenceNumber }], []);
     }
 
     private PDU BuildDisconnectResponse(PDU disconnect)
     {
-        return new(PDUCommand.DisconnectResponse, NextSendSequence(),
+        return new(PDUCommand.DisconnectResponse, 0,
                 [new SequenceHeader { SequenceNumber = disconnect.SequenceNumber }], []);
     }
 
     private PDU BuildKeepAliveResponse(PDU keepAlive)
     {
-        return new(PDUCommand.KeepAliveResponse, NextSendSequence(),
+        return new(PDUCommand.KeepAliveResponse, 0,
             [new SequenceHeader { SequenceNumber = keepAlive.SequenceNumber }], []);
     }
 
     private PDU BuildAck()
     {
-        return new(PDUCommand.Ack, NextSendSequence(),
+        return new(PDUCommand.Ack, 0,
                 [new SequenceHeader { SequenceNumber = lastReceivedDataSeq }], []);
     }
 
     private async Task<bool> ValidateCertificateAsync()
     {
-        var resp = await authenticationClient.ValidateDeviceCertificateAsync(new ValidateDeviceCertificateRequest()
+        var resp = await authenticationClient.VerifyDeviceCertificateAsync(new VerifyDeviceCertificateRequest()
         {
             Certificate = ByteString.CopyFrom(Certificate.Export(X509ContentType.Cert))
         });
@@ -463,8 +487,21 @@ public class PushSession
         pduOutgoingChannel.Writer.TryComplete();
     }
 
-    private uint NextSendSequence()
+    // the device's ack is cumulative, so a single ack can settle several in-flight notifications
+    private void EmitAckedTags(uint sequence)
     {
-        return Interlocked.Increment(ref sendSequence);
+        foreach (var (seq, _) in sentTags)
+            if (seq <= sequence && sentTags.TryRemove(seq, out var tag))
+                acknowledgedChannel.Writer.TryWrite(tag);
+    }
+
+    private ValueTask<uint> NextSendSequenceAsync()
+    {
+        var deviceId = Context.DeviceId;
+        if (deviceId == null)
+            return ValueTask.FromResult(Interlocked.Increment(ref sendSequence));
+
+        deviceSequence ??= new DeviceSequence(redis, deviceId);
+        return deviceSequence.NextAsync();
     }
 }

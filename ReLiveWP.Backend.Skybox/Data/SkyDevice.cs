@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 
 namespace ReLiveWP.Backend.Skybox.Data;
@@ -39,6 +40,9 @@ public class SkyDevice
     public string? NotificationChannelUrl { get; set; } = null!;
 
     public SkyDeviceLocation? LastLocation { get; set; }
+
+    // last time the device checked in (from the X-WM-DeviceTime header on any SkyTrigger request).
+    public DateTimeOffset? LastSeen { get; set; }
 }
 
 [Owned]
@@ -48,5 +52,16 @@ public class SkyDeviceLocation
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public double Altitude { get; set; }
-
+    public static SkyDeviceLocation Parse(string value)
+    {
+        var paren = value.IndexOf(')');
+        var parts = value[(paren + 2)..].Split(',');
+        return new SkyDeviceLocation
+        {
+            Reported = DateTimeOffset.Parse(value[1..paren], null, DateTimeStyles.RoundtripKind),
+            Latitude = double.Parse(parts[0], CultureInfo.InvariantCulture),
+            Longitude = double.Parse(parts[1], CultureInfo.InvariantCulture),
+            Altitude = double.Parse(parts[2], CultureInfo.InvariantCulture),
+        };
+    }
 }

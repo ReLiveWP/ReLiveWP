@@ -8,31 +8,49 @@
     <PackageVersion Include="Duende.IdentityModel.OidcClient" Version="6.0.1" />
     <PackageVersion Include="Duende.IdentityModel.OidcClient.Extensions" Version="6.0.1" />
     <PackageVersion Include="FishyFlip" Version="4.1.0-alpha.2" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
+    <PackageVersion Include="Google.Apis.Oauth2.v2" Version="1.74.0.1869" />
     <PackageVersion Include="Google.Protobuf" Version="3.35.0" />
     <PackageVersion Include="Grpc.AspNetCore" Version="2.80.0" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.80.0" />
     <PackageVersion Include="Grpc.Net.ClientFactory" Version="2.80.0" />
     <PackageVersion Include="Grpc.Tools" Version="2.81.0" />
     <PackageVersion Include="libphonenumber-csharp" Version="9.0.31" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.16" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.16" />
-    <PackageVersion Include="Microsoft.AspNetCore.SpaProxy" Version="8.*-*" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.16" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.16" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.16" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.16" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
+    <PackageVersion Include="Markdig" Version="0.44.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.SpaProxy" Version="10.*-*" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.7.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
-    <PackageVersion Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
+    <PackageVersion Include="MimeKit" Version="4.17.0" />
     <PackageVersion Include="MisskeySharp" Version="0.23.9.309" />
+    <PackageVersion Include="OpenTelemetry" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.16.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.16.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
     <PackageVersion Include="Portable.BouncyCastle" Version="1.9.0" />
     <PackageVersion Include="Razor.Templating.Core" Version="2.1.0" />
+    <PackageVersion Include="RedLock.net" Version="2.3.2" />
     <PackageVersion Include="SoapCore" Version="1.2.1.13" />
+    <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
-    <PackageVersion Include="System.Linq.Async" Version="6.0.3" />
-    <PackageVersion Include="System.Xml.ReaderWriter" Version="4.3.1" />
-    <PackageVersion Include="System.Xml.XmlDocument" Version="4.3.0" />
-    <PackageVersion Include="System.Xml.XmlSerializer" Version="4.3.0" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.*" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 </Project>
