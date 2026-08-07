@@ -22,8 +22,12 @@
             <psf:authreq>0x0</psf:authreq>
             <psf:serverInfo Path="Live1" RollingUpgradeState="ExclusiveNew" LocVersion="0" ServerTime="@Model.TimeZ">XYZPPLOGN1A23 2017.09.28.12.44.07</psf:serverInfo>
             <psf:cookies />
-            <psf:browserCookies>
-            </psf:browserCookies>
+            <psf:BrowserCookies>
+                @foreach (var cookie in Model.BrowserCookies)
+                {
+                    <psf:browserCookie Name="@cookie.Name" URL="@cookie.Url">@cookie.Value</psf:browserCookie>
+                }
+            </psf:BrowserCookies>
             <psf:credProperties>
                 <psf:credProperty Name="MainBrandID">MSFT</psf:credProperty>
                 <psf:credProperty Name="BrandIDList"></psf:credProperty>

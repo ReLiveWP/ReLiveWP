@@ -34,8 +34,8 @@
     <Protobuf Include="../protos/oauth.proto" GrpcServices="Client">
       <Link>Protos\oauth.proto</Link>
     </Protobuf>
-    <Protobuf Include="../protos/skydrive.proto" GrpcServices="Client">
-      <Link>Protos\skydrive.proto</Link>
+    <Protobuf Include="../protos/skyphotos.proto" GrpcServices="Client">
+      <Link>Protos\skyphotos.proto</Link>
     </Protobuf>
     <Protobuf Include="../protos/mailbox_store.proto" GrpcServices="Client">
       <Link>Protos\mailbox_store.proto</Link>

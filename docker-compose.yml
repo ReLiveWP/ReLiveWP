@@ -184,6 +184,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -327,6 +329,35 @@ services:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Activity.ini:/app/ReLiveWP.Services.Activity.ini:ro
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 0o01777
+    secrets:
+      - source: jwt_public_key
+        target: JWT__PublicKey
+
+  docs:
+    image: relive/docs
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10016/health"]
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      identity:
+        condition: service_healthy
+      connectedservices:
+        condition: service_healthy
+      skydrive:
+        condition: service_healthy
+    ports:
+      - 10016:10016
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Docs.ini:/app/ReLiveWP.Services.Docs.ini:ro
     secrets:
       - source: jwt_public_key
         target: JWT__PublicKey
@@ -472,6 +503,7 @@ services:
 
 networks:
   relive:
+    name: relive
     driver: bridge
 
 volumes:

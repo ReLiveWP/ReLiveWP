@@ -73,8 +73,6 @@ public class MicrosoftOAuthProvider(IConnectedServicesContainer connectedService
 
     public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService service, LivePendingOAuth state, string code, string[] scopes)
     {
-        var caps = GetCapabilitiesFromScopes(scopes);
-
         using var client = httpClientFactory.CreateClient();
         var tokenResult = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
         {
@@ -89,6 +87,12 @@ public class MicrosoftOAuthProvider(IConnectedServicesContainer connectedService
 
         if (tokenResult.IsError)
             throw new RpcException(new Status(StatusCode.Internal, $"{tokenResult.Error} ({tokenResult.ErrorDescription})"));
+
+        // microsoft doesn't echo `scope` back on the authorize redirect the way google does, so the
+        // caller's list is empty on a normal link and the granted scopes have to come off the token.
+        var caps = GetCapabilitiesFromScopes(scopes.Length > 0
+            ? scopes
+            : (tokenResult.Scope ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         service.Service = SERVICE_NAME;
         service.ServiceUrl = state.Endpoint!;
@@ -124,6 +128,7 @@ public class MicrosoftOAuthProvider(IConnectedServicesContainer connectedService
 
             service.AccessToken = result.AccessToken!;
             service.RefreshToken = result.RefreshToken ?? service.RefreshToken;
+            service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(result.ExpiresIn);
 
             await FetchUserInfoForService(service);
 

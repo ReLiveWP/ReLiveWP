@@ -7,8 +7,6 @@ using ReLiveWP.Identity.LiveID;
 
 namespace ReLiveWP.Identity.Tests;
 
-// Verifies the shared verify-key loader accepts tokens signed by the ES256 private key using only the
-// distributed public key — the mechanism that lets every service validate JWTs locally.
 public class JwtKeyLoaderTests
 {
     private const string Audience = "relivewp.net";

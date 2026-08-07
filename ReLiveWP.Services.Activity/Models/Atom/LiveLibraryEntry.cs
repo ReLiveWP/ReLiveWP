@@ -12,15 +12,14 @@ public class LiveLibraryEntry : Entry
     [XmlElement(ElementName = "type", Namespace = Constants.Live_Namespace)]
     public string Type { get; set; } = default!;
 
-    // WLPGetAlbumInfoParser (WLProv.dll) reads <live:resourceId> (tag 0x3e) into the WLAlbum and
-    // the album is only valid/addressable once it's set; without it a GET wmphotos feed parses to
-    // an empty/invalid library and the background auto-upload agent loops the GET (mirrors the
-    // LivePhotoEntry.ResourceId requirement on the upload response). Left unset on the PUT request.
     [XmlElement(ElementName = "resourceId", Namespace = Constants.Live_Namespace)]
     public string ResourceId { get; set; } = default!;
 
     [XmlElement(ElementName = "category", Namespace = Constants.Live_Namespace)]
     public string Category { get; set; } = default!;
+
+    [XmlElement(ElementName = "canonicalName", Namespace = Constants.Live_Namespace)]
+    public string CanonicalName { get; set; } = default!;
 
     [XmlElement(ElementName = "sharinglevel", Namespace = Constants.Live_Namespace)]
     public string SharingLevel { get; set; } = default!;

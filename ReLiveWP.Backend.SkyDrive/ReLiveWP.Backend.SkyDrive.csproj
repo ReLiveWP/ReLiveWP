@@ -1,8 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <Protobuf Include="../protos/skydrive.proto" GrpcServices="Server">
-      <Link>Protos\skydrive.proto</Link>
+    <Protobuf Include="../protos/skyphotos.proto" GrpcServices="Server">
+      <Link>Protos\skyphotos.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/skydocs.proto" GrpcServices="Server">
+      <Link>Protos\skydocs.proto</Link>
     </Protobuf>
     <Protobuf Include="../protos/oauth.proto" GrpcServices="Client">
       <Link>Protos\oauth.proto</Link>

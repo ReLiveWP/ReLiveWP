@@ -159,6 +159,7 @@ public class RST2Controller(
     {
         var created = legacyToken.Created.ToDateTimeOffset();
         var expires = legacyToken.Expires.ToDateTimeOffset();
+        var serviceTokens = ServiceTokens(response);
 
         var model = new RST2Model()
         {
@@ -175,7 +176,8 @@ public class RST2Controller(
             DaTokenReference = GenerateReferenceForBlob(legacyToken.Token),
 
             // any non-tb targets return compact service tokens; none are present in the tb bootstrap.
-            Tokens = ServiceTokens(response),
+            Tokens = serviceTokens,
+            BrowserCookies = BrowserCookies(serviceTokens),
 
             Username = response.Username,
             Email = response.EmailAddress,
@@ -202,6 +204,7 @@ public class RST2Controller(
             TomorrowZ = FormatZ(expires),
             Time5MZ = FormatZ(created.AddMinutes(5)),
             Tokens = tokens,
+            BrowserCookies = BrowserCookies(tokens),
 
             Username = response.Username,
             Email = response.EmailAddress,
@@ -213,6 +216,29 @@ public class RST2Controller(
         // RST2ServiceClear.cshtml pulls in the psf:pp header and the RSTR body as partials.
         return await razorTemplateEngine.RenderAsync("~/Views/RST2ServiceClear.cshtml", model);
     }
+
+    public const string BrowserCookieName = "RPSTAuth";
+
+    private static readonly HashSet<string> BrowserCookieTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "docs.relivewp.net",
+        "docs.int.relivewp.net",
+    };
+
+    private static RST2BrowserCookie[] BrowserCookies(RST2Token[] tokens) =>
+    [
+        .. tokens
+            .Where(t => BrowserCookieTargets.Contains(t.Domain))
+            .Select(t => new RST2BrowserCookie()
+            {
+                Name = BrowserCookieName,
+                Url = $"http://{t.Domain}",
+                Value = $"{t.Token}; path=/; expires={FormatCookieExpiry(t.Expires)}",
+            })
+    ];
+
+    private static string FormatCookieExpiry(DateTimeOffset value)
+        => value.UtcDateTime.ToString("ddd, dd-MMM-yyyy HH:mm:ss 'GMT'", CultureInfo.InvariantCulture);
 
     private static RST2Token[] ServiceTokens(SecurityTokensResponse response) =>
     [

@@ -14,12 +14,7 @@ public class LivePhotoEntry : Entry
 
     [XmlElement(ElementName = "category", Namespace = Constants.Live_Namespace)]
     public string Category { get; set; } = "photos";
-
-    // WLPUploadParser::_Parse (WLProv.dll @1003da44) requires the upload response <entry> to
-    // carry BOTH a non-empty atom <id> and a non-empty <live:resourceId>; either being empty
-    // makes WLParserBase::Parse return E_FAIL (0x80004005), which the device treats as an upload
-    // failure and retries indefinitely. The device keys subsequent files('<id>') operations off
-    // this resourceId.
+    
     [XmlElement(ElementName = "resourceId", Namespace = Constants.Live_Namespace)]
     public string ResourceId { get; set; } = default!;
 }

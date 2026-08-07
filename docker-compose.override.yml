@@ -82,6 +82,13 @@ services:
       args:
         PROJECT: ReLiveWP.Services.Activity
 
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Docs
+
   exchange:
     build:
       context: .

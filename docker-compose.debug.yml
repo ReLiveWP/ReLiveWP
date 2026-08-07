@@ -102,6 +102,13 @@ services:
         CONFIGURATION: Debug
     environment: *dev-env
 
+  docs:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
   exchange:
     <<: *debug
     build:

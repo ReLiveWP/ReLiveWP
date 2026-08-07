@@ -25,6 +25,17 @@ public class RST2Model
     public string DaTokenReference { get; set; } = "";
 
     public RST2Token[] Tokens { get; set; } = [];
+
+    public RST2BrowserCookie[] BrowserCookies { get; set; } = [];
+}
+
+public class RST2BrowserCookie
+{
+    public string Name { get; set; } = "";
+
+    public string Url { get; set; } = "";
+
+    public string Value { get; set; } = "";
 }
 
 public class RST2Token

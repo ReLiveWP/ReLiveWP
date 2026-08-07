@@ -12,4 +12,5 @@ public class LiveIDAuthOptions : AuthenticationSchemeOptions
     public string? HeaderNameOverride { get; set; }
     public IReadOnlyList<string> ValidServiceTargets { internal get; set; } = [];
     public bool AcceptBasicAuth { get; set; }
+    public string? CookieNameFallback { get; set; }
 }

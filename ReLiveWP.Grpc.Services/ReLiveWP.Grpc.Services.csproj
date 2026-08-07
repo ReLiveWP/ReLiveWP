@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Net.ClientFactory" />
+    <PackageReference Include="Grpc.Tools">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="../protos/authentication.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\authentication.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/client_provisioning.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\client_provisioning.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/device_registration.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\device_registration.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/email.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\email.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/find_my_phone.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\find_my_phone.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/mailbox_store.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\mailbox_store.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/oauth.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\oauth.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/skydocs.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\skydocs.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/skyphotos.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\skyphotos.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/user.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\user.proto</Link>
+    </Protobuf>
+  </ItemGroup>
+
+</Project>

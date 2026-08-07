@@ -16,11 +16,18 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<AuthForwardingInterceptor>();
 
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
 builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!))
     .AddInterceptor<AuthForwardingInterceptor>();
 
 builder.Services.AddScoped<IPhotoSyncProxyClient, GooglePhotosProxyClient>();
+builder.Services.AddScoped<IPhotoSyncProxyClient, OneDrivePhotoSyncProxyClient>();
+
+builder.Services.AddScoped<IFileSyncProxyClient, OneDriveFileSyncProxyClient>();
+
+builder.Services.AddRedis(builder.Configuration);
+builder.Services.AddSingleton<SyncCursorStore>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<SkyDriveDbContext>(options => options.UseNpgsql(connectionString));
@@ -33,6 +40,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGrpcService<SkyDriveService>();
+app.MapGrpcService<SkyDocsService>();
 
 app.MapDefaultEndpoints();
 

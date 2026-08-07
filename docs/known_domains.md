@@ -64,12 +64,18 @@ Windows Live API service, provides access to various Windows Live services.
 At time of writing, these APIs return 200 OK but with no content.
 
 ### `docs.live.net`
-OneDrive service. Still functional, but we'll need to reimplement it to support our own authentication system for our own services.
+SkyDrive documents, what the Office Hub uses for Word/Excel/PowerPoint/OneNote. Not the same thing as the photo sync in `wmphotos`. See `docs/skydrive-docs.md` for the full protocol.
 
-- `POST /SkyDocsService.svc`: Appears to be the main endpoint for OneDrive. Called with SOAP envelopes containing requests.
+- `POST /SkyDocsService.svc`: the control plane. This is [MS-STWEB], which is publicly documented, namespace `http://schemas.microsoft.com/clouddocuments`. Operations used by WP7 are `GetWebAccountInfo`, `GetChangesSinceToken`, `GetProductInfo` and `ResolveWebUrl`. SOAPAction is a bare unquoted token, unlike the SharePoint calls in the same binaries.
+
+The host is configurable on device via `HKLM\Software\Microsoft\Office Mobile\SkyDrive\SkyDriveServer`, which is how we redirect it. It is only used to build this SOAP URL.
 
 ### `d.docs.live.net`
-OneDrive again, appears to implement WEBDAV access to OneDrive files. Windows Phone 7 repeatedly tries to access `^.Documents` and update a proeprty on it, then requests a file listing from `SkyDocsService.svc` again. Not really sure why.
+The WebDAV data plane. Reading only needs `PROPFIND` and `GET`. PROPFIND arrives with no request body, so the server has to return the full property set unprompted, and the property vocabulary is Microsoft's Exchange era one (`D:isFolder`, `D:isreadonly`, `Repl:repl-uid`, `progid`) rather than RFC 4918's.
+
+The repeated `^.Documents` property update is the write path going through `SPSyncCore.dll`, and the following `SkyDocsService.svc` listing is `GetChangesSinceToken`, whose `SyncData` element carries a `D:multistatus` parsed by the same code as a PROPFIND response. That is also where deletions come from, as `HTTP/1.1 404` entries.
+
+This hostname is not fixed. The client takes the DAV host from `RootDavUrl` and the per item `DavUrl` in our own SOAP responses, so we choose it.
 
 ### `inference.location.live.net`
 Windows Live Location Inference service, provides location information for the user's device, Seems to work sometimes? Usually returns a 403 Forbidden response.

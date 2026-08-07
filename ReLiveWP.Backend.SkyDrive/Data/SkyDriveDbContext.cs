@@ -13,7 +13,8 @@ public class SkyDriveDbContext : DbContext
     }
 
     public DbSet<SkyLibrary> Libraries { get; set; }
-    public DbSet<SkyPhoto> Photos { get; set; }
+    public DbSet<SkyAlbumItem> AlbumItems { get; set; }
+    public DbSet<SkyProviderAlbum> ProviderAlbums { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -31,7 +32,13 @@ public class SkyDriveDbContext : DbContext
             .HasIndex(l => new { l.OwnerId, l.Category })
             .IsUnique();
 
-        modelBuilder.Entity<SkyPhoto>()
-            .HasIndex(p => new { p.OwnerId, p.Category });
+        modelBuilder.Entity<SkyAlbumItem>(b =>
+        {
+            b.HasKey(i => new { i.OwnerId, i.Provider, i.ProviderItemId });
+            b.HasIndex(i => new { i.OwnerId, i.Album });
+        });
+
+        modelBuilder.Entity<SkyProviderAlbum>()
+            .HasKey(a => new { a.OwnerId, a.Album, a.Provider });
     }
 }

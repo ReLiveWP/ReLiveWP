@@ -1,4 +1,4 @@
-﻿
+
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -25,6 +25,8 @@ internal class LiveIDAuthHandler(
 {
     public const string SchemeName = "LiveID";
 
+    private const string TokenExpiredBody = "15:Unauthorized";
+
     public new LiveIDAuthEvents Events
     {
         get => (LiveIDAuthEvents)base.Events!;
@@ -47,20 +49,30 @@ internal class LiveIDAuthHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue(Options.HeaderNameOverride ?? "Authorization", out var value))
+        string? token;
+        if (Request.Headers.TryGetValue(Options.HeaderNameOverride ?? "Authorization", out var value))
+        {
+            if (AuthenticationHeaderValue.TryParse(value.ToString(), out var header) && !string.IsNullOrWhiteSpace(header?.Parameter))
+                token = header.Parameter!;
+            else
+                token = value.ToString().Trim();
+        }
+        else if (Options.CookieNameFallback is { Length: > 0 } cookieName &&
+                 Request.Cookies.TryGetValue(cookieName, out var cookieValue))
+        {
+            token = cookieValue;
+        }
+        else
         {
             logger.LogInformation("No authorization header found!");
             return AuthenticateResult.NoResult();
         }
 
-        string? token;
-        if (AuthenticationHeaderValue.TryParse(value.ToString(), out var header) && !string.IsNullOrWhiteSpace(header?.Parameter))
-            token = header.Parameter!;
-        else
-            token = value.ToString().Trim();
-
         if (string.IsNullOrWhiteSpace(token))
             return AuthenticateResult.Fail("Missing token");
+
+        if (PassportToken.TryUnwrap(token, out var wrapped))
+            token = wrapped;
 
         if (token.StartsWith("t="))
         {
@@ -115,7 +127,6 @@ internal class LiveIDAuthHandler(
         return AuthenticateResult.Success(ticket);
     }
 
-
     /// <inheritdoc />
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
@@ -132,7 +143,7 @@ internal class LiveIDAuthHandler(
         }
 
         Response.StatusCode = 401;
-        await Response.WriteAsync("Unauthorized");
+        await Response.WriteAsync(TokenExpiredBody);
     }
 
     /// <inheritdoc />

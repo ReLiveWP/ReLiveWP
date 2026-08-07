@@ -53,6 +53,9 @@ builder.Services.AddGrpcClient<SkyDrive.SkyDriveClient>(
     .AddInterceptor<AuthForwardingInterceptor>();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<SocialAlbumProvider>();
 builder.Services.AddScoped<ActivityProviderService>();
 builder.Services.AddScoped<FeedRenderer>();
 

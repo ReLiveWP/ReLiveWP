@@ -44,6 +44,7 @@ builder.Services.AddScoped<MicrosoftOAuthProvider>();
 
 builder.Services.AddScoped<IConnectedServiceProxy, AtProtoServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, GoogleServiceProxy>();
+builder.Services.AddScoped<IConnectedServiceProxy, MicrosoftServiceProxy>();
 
 builder.Services.AddConnectedServices()
     .AddConnectedService(s => new()
@@ -72,7 +73,8 @@ builder.Services.AddConnectedServices()
             // "https://www.googleapis.com/auth/drive ",
             // "https://www.googleapis.com/auth/gmail.modify ",
             "https://www.googleapis.com/auth/photoslibrary.appendonly ",
-            "https://www.googleapis.com/auth/photoslibrary.edit.appcreateddata "),
+            "https://www.googleapis.com/auth/photoslibrary.edit.appcreateddata ",
+            "https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata "),
         ServiceCapabilities = 
             // ServiceCaps.Email | 
             // ServiceCaps.Contacts | 
@@ -88,12 +90,10 @@ builder.Services.AddConnectedServices()
         ClientId = builder.Configuration["ConnectedServices:Microsoft:ClientId"]!,
         ClientSecret = builder.Configuration["ConnectedServices:Microsoft:ClientSecret"]!,
         RedirectUri = builder.Configuration["ConnectedServices:Microsoft:RedirectUrl"]!,
-        Scopes = "openid profile email offline_access  https://graph.microsoft.com/User.Read https://graph.microsoft.com/Files.ReadWrite.AppFolder",
+        Scopes = "openid profile email offline_access https://graph.microsoft.com/User.Read https://graph.microsoft.com/Files.ReadWrite",
         ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MicrosoftOAuthProvider>())
     });
-
-
 
 builder.Services.AddGrpc();
 builder.Services.AddHostedService<TokenRefreshService>();

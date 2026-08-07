@@ -6,7 +6,9 @@
   </Configurations>
   <Folder Name="/! Libraries/">
     <Project Path="Libraries/Atom/Atom.csproj" />
+    <Project Path="ReLiveWP.Grpc.Services/ReLiveWP.Grpc.Services.csproj" />
     <Project Path="ReLiveWP.Identity/ReLiveWP.Identity.csproj" />
+    <Project Path="ReLiveWP.Integration/ReLiveWP.Integration.csproj" />
     <Project Path="ReLiveWP.Passport/ReLiveWP.Passport.csproj" />
     <Project Path="ReLiveWP.ServiceDefaults/ReLiveWP.ServiceDefaults.csproj" />
   </Folder>
@@ -35,10 +37,8 @@
     <Project Path="ReLiveWP.Backend.DeviceUpdate/ReLiveWP.Backend.DeviceUpdate.csproj" />
   </Folder>
   <Folder Name="/Exchange/">
-    <Project Path="ReLiveWP.Backend.Mailbox.Tests/ReLiveWP.Backend.Mailbox.Tests.csproj" />
     <Project Path="ReLiveWP.Backend.Mailbox/ReLiveWP.Backend.Mailbox.csproj" />
     <Project Path="ReLiveWP.Services.AddressBook/ReLiveWP.Services.AddressBook.csproj" />
-    <Project Path="ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />
     <Project Path="ReLiveWP.Services.Exchange/ReLiveWP.Services.Exchange.csproj" />
   </Folder>
   <Folder Name="/Push/">
@@ -47,11 +47,17 @@
   <Folder Name="/Services/">
     <Project Path="ReLiveWP.Services.Devices/ReLiveWP.Services.Devices.csproj" />
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="ReLiveWP.Services.Docs.Tests/ReLiveWP.Services.Docs.Tests.csproj" />
+    <Project Path="ReLiveWP.Backend.Mailbox.Tests/ReLiveWP.Backend.Mailbox.Tests.csproj" />
+    <Project Path="ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />
+  </Folder>
   <Folder Name="/Windows Live/">
     <Project Path="ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />
     <Project Path="ReLiveWP.Services.Profile/ReLiveWP.Services.Profile.csproj" />
     <Project Path="ReLiveWP.Backend.SkyDrive/ReLiveWP.Backend.SkyDrive.csproj" />
     <Project Path="ReLiveWP.Services.Activity/ReLiveWP.Services.Activity.csproj" />
+    <Project Path="ReLiveWP.Services.Docs/ReLiveWP.Services.Docs.csproj" />
     <Project Path="ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />
     <Project Path="ReLiveWP.Services.Messenger/ReLiveWP.Services.Messenger.csproj" />
   </Folder>

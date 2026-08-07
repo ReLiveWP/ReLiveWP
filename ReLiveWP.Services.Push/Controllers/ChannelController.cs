@@ -5,8 +5,8 @@ using ReLiveWP.Services.Push.Nsp;
 
 namespace ReLiveWP.Services.Push.Controllers;
 
-[Route("/{controller}/{id?}")]
 [ApiController]
+[Route("/{controller}/{id?}")]
 public class ChannelController(
     ChannelStore channelStore,
     PushPresence pushPresence,
