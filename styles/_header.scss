@@ -1,0 +1,110 @@
+@use "tokens" as t;
+
+header {
+    max-width: t.$column-width;
+    margin: 0 auto;
+    padding: 0 t.$column-gutter;
+}
+
+.brand-container {
+    padding-top: 16px;
+    line-height: normal;
+
+    a {
+        text-decoration: none !important;
+    }
+
+    .brand-logo {
+        display: inline-block;
+        width: 36px;
+        margin-top: 6px;
+        vertical-align: top;
+    }
+
+    .header-container {
+        display: inline-block;
+        margin-left: 8px;
+    }
+
+    .header-title,
+    .header-subtitle {
+        font-weight: 100;
+        margin: 0;
+    }
+
+    .header-title {
+        font-size: 24pt;
+    }
+
+    .header-subtitle {
+        margin-left: 1px;
+        margin-top: -2px;
+        font-size: 10.5pt;
+    }
+}
+
+.header-nav {
+    clear: both;
+
+    @media screen and (max-width: t.$breakpoint-narrow) {
+        margin-top: 8px;
+    }
+
+    .header-items {
+        list-style: none;
+        padding: 0;
+
+        &.leading {
+            float: left;
+            margin-left: -8px;
+
+            @media screen and (max-width: t.$breakpoint-narrow) {
+                display: contents;
+
+                &>li:first-child {
+                    padding-left: 0;
+                }
+            }
+        }
+
+        &.trailing {
+            float: right;
+            margin-right: -8px;
+
+            @media screen and (max-width: t.$breakpoint-narrow) {
+                display: contents;
+
+                &>li:last-child {
+                    padding-right: 0;
+                }
+            }
+        }
+
+        li {
+            display: inline;
+            padding: 0 8px;
+
+            &>a {
+                font-size: 18px;
+                line-height: 24px;
+                text-decoration: none;
+
+                &:not(.text-accent) {
+                    color: t.$ink;
+                }
+            }
+        }
+    }
+}
+
+.header-splitter {
+    clear: both;
+    border: none;
+    border-bottom: 1px solid t.$rule;
+}
+
+.home-link:visited,
+.home-link:active,
+.home-link:hover {
+    color: t.$ink;
+}

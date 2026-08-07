@@ -13,6 +13,8 @@ COPY ReLiveWP.Web/relivewp.web.client/package.json \
 RUN --mount=type=cache,id=pnpm,target=/tmp/pnpm-store \
     pnpm install --frozen-lockfile --store-dir=/tmp/pnpm-store
 
+COPY styles/ /styles/
+
 COPY ReLiveWP.Web/relivewp.web.client/ .
 
 ARG CLIENT_BUILD_SCRIPT=build
