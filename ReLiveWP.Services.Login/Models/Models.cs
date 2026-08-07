@@ -1,6 +1,6 @@
 ﻿namespace ReLiveWP.Services.Login.Models;
 
-public record class ErrorModel(uint ErrorCode);
+public record class ErrorModel(uint ErrorCode, string? HelpUrl = null);
 
 public record CreateAccountModel(
     string Username,

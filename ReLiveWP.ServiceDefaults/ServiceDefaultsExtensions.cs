@@ -33,6 +33,10 @@ public static class ServiceDefaultsExtensions
             http.AddStandardResilienceHandler();
         });
 
+        builder.Services.Configure<ReLiveWP.ServiceDefaults.SupportOptions>(
+            builder.Configuration.GetSection(ReLiveWP.ServiceDefaults.SupportOptions.SectionName));
+        builder.Services.AddSingleton<ReLiveWP.ServiceDefaults.SupportLinks>();
+
         return builder;
     }
 

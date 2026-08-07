@@ -67,6 +67,8 @@ services:
         condition: service_healthy
       push:
         condition: service_healthy
+      support:
+        condition: service_healthy
 
   identity:
     image: relive/identity
@@ -469,6 +471,21 @@ services:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Messenger.ini:/app/ReLiveWP.Services.Messenger.ini:ro
+
+  support:
+    image: relive/support
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10017/alive"]
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 10017:10017
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Support.ini:/app/ReLiveWP.Services.Support.ini:ro
 
 networks:
   relive:

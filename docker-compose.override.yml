@@ -130,3 +130,8 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Messenger
+
+  support:
+    build:
+      context: .
+      dockerfile: ReLiveWP.Services.Support/Dockerfile

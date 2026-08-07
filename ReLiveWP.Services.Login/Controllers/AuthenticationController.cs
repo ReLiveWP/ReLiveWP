@@ -3,6 +3,7 @@ using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
+using ReLiveWP.ServiceDefaults;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Login.Models;
 
@@ -13,7 +14,8 @@ namespace ReLiveWP.Services.Login.Controllers;
 public class AuthenticationController(
     User.UserClient userClient,
     Authentication.AuthenticationClient authenticationClient,
-    ConnectedServices.ConnectedServicesClient connectedServicesClient) : ControllerBase
+    ConnectedServices.ConnectedServicesClient connectedServicesClient,
+    SupportLinks supportLinks) : ControllerBase
 {
     [Authorize]
     [ActionName("user")]
@@ -108,7 +110,7 @@ public class AuthenticationController(
         // note: the SPA deliberately does not opt into refresh tokens (IssueRefreshToken stays false)
         var response = await authenticationClient.GetSecurityTokensAsync(grpcRequest, cancellationToken: cancellationToken);
         if (((int)response.Code) < 0)
-            return Unauthorized(new ErrorModel(response.Code));
+            return Unauthorized(new ErrorModel(response.Code, supportLinks.ForErrorCode(response.Code)));
 
         return Ok(ToModel(response));
     }
@@ -124,7 +126,7 @@ public class AuthenticationController(
         var response = await authenticationClient.RefreshSecurityTokensAsync(
             grpcRequest, cancellationToken: cancellationToken);
         if (((int)response.Code) < 0)
-            return Unauthorized(new ErrorModel(response.Code));
+            return Unauthorized(new ErrorModel(response.Code, supportLinks.ForErrorCode(response.Code)));
 
         return Ok(ToModel(response));
     }

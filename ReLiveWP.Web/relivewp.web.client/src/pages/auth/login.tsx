@@ -15,6 +15,7 @@ export default function Login() {
     const rememberMe = useSignal(true);
     const isDisabled = useSignal(false);
     const error = useSignal<string | null>(null)
+    const helpUrl = useSignal<string | null>(null)
 
     const appState = useAppState();
     const location = useLocation();
@@ -23,6 +24,8 @@ export default function Login() {
         e.preventDefault();
 
         isDisabled.value = true;
+        error.value = null;
+        helpUrl.value = null;
         try {
             const payload = {
                 identity: username.value,
@@ -46,9 +49,10 @@ export default function Login() {
             });
 
             if (!response.ok) {
-                const { error_code }: { error_code: number } = await response.json();
+                const { error_code, help_url }: { error_code: number, help_url?: string } = await response.json();
                 error.value = toString(error_code);
-                return; // todo: show errors
+                helpUrl.value = help_url ?? null;
+                return;
             }
 
             const { security_tokens } = await response.json();
@@ -97,7 +101,12 @@ export default function Login() {
                     <span class="remember-me-text">Remember me</span>
                 </label>
 
-                {error.value && <p class="error">{error.value}</p>}
+                {error.value && (
+                    <p class="error">
+                        {error.value}
+                        {helpUrl.value && <> <a href={helpUrl.value} class="help-link">Learn more</a></>}
+                    </p>
+                )}
 
                 <input type="submit" class="submit" value="Sign in" disabled={isDisabled} />
             </form>

@@ -1,0 +1,40 @@
+@model KbIndexViewModel
+@{
+    ViewData["Title"] = "Support";
+    ViewData["Description"] = "Help articles for ReLive for Windows Phone. Search, browse by area, or look up an error code.";
+    ViewData["Canonical"] = "/";
+}
+
+<h1>ReLiveWP Support</h1>
+<p class="article-summary">
+    Lost? We've got your back. Search for help articles above, or browse by area. You can also search for an error code directly.
+</p>
+
+<h2>Browse by area</h2>
+<ul class="articles">
+    @foreach (var area in Model.Areas)
+    {
+        <li>
+            <a href="/kb#area-@area.Key">@area.Name</a>
+            <span class="summary">@area.Articles.Count article@(area.Articles.Count == 1 ? "" : "s")</span>
+        </li>
+    }
+</ul>
+
+@if (Model.RecentlyReviewed.Count > 0)
+{
+    <h2>Recently reviewed</h2>
+    <ul class="articles">
+        @foreach (var article in Model.RecentlyReviewed)
+        {
+            <li>
+                <span class="id mono">KB@(article.Id)</span>
+                <a href="@article.Url">@article.Title</a>
+                @if (!string.IsNullOrEmpty(article.Summary))
+                {
+                    <span class="summary">@article.Summary</span>
+                }
+            </li>
+        }
+    </ul>
+}

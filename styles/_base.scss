@@ -1,0 +1,30 @@
+@use "tokens" as t;
+
+body {
+    margin: 0;
+    color: t.$ink;
+
+    font-family: t.$font-family;
+    font-size: t.$font-size-base;
+
+    background-repeat: no-repeat;
+}
+
+h1,
+h2,
+h3 {
+    font-weight: t.$font-weight-display;
+}
+
+a {
+    text-decoration: none;
+}
+
+input,
+button {
+    font-family: t.$font-family;
+}
+
+code {
+    font-family: t.$font-family-monospace;
+}

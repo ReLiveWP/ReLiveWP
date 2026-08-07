@@ -19,6 +19,7 @@ export const {
     ENDPOINT_DEVICE_IMAGE,
     ENDPOINT_AVAILABLE_LINKS,
     ENDPOINT_UPDATE_LINK,
+    ENDPOINT_SUPPORT,
 } = endpoints;
 
 function populateEndpoint(endpoint: string, params: Record<string, string>) {

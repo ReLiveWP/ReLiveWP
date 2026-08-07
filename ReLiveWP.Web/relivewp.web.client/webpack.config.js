@@ -32,7 +32,14 @@ module.exports = [
                     use: [
                         MiniCssExtractPlugin.loader,
                         { loader: 'css-loader', options: { importLoaders: 1 } },
-                        "sass-loader",
+                        {
+                            loader: "sass-loader",
+                            options: {
+                                sassOptions: {
+                                    loadPaths: [path.resolve(__dirname, '../../styles')]
+                                }
+                            }
+                        },
                     ],
                 },
                 {

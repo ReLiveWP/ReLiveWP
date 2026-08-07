@@ -1,0 +1,16 @@
+# Article IDs are six digits and the leading two identify the subsystem, so KB300141 sits in
+# area 30
+
+areas:
+  10: Getting started
+  20: Activation and provisioning
+  30: Windows Live ID and sign-in
+  40: Mail, contacts and calendar sync
+  50: Pictures and SkyDrive
+  60: People hub and social
+  70: Push notifications
+  80: Marketplace and Zune
+  90: Error code reference
+
+# heading used for an article whose area has no entry above
+fallback: Other

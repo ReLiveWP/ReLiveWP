@@ -12,4 +12,5 @@ export const ENDPOINT_REQUEST_TOKENS = "https://login.int.relivewp.net/auth/requ
     ENDPOINT_DEVICE_REMOVE = "https://devices.int.relivewp.net/devices/remove/:deviceId",
     ENDPOINT_DEVICE_IMAGE = "https://devices.int.relivewp.net/devices/image/:size/:device",
     ENDPOINT_AVAILABLE_LINKS = "https://login.int.relivewp.net/oauth/available-links",
-    ENDPOINT_UPDATE_LINK = "https://login.int.relivewp.net/oauth/link";
+    ENDPOINT_UPDATE_LINK = "https://login.int.relivewp.net/oauth/link",
+    ENDPOINT_SUPPORT = "https://support.int.relivewp.net/";

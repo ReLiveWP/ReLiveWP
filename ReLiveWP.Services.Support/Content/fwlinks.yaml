@@ -1,0 +1,20 @@
+links:
+  1100:
+    target: https://relivewp.net/my/account/linked-accounts
+    added: 2026-08-07
+    note: linked accounts page in the web portal
+  
+  1101:
+    target: https://relivewp.net/my/account
+    added: 2026-08-07
+    note: my account page in the web portal
+
+  1102:
+    target: /kb
+    added: 2026-08-07
+    note: generic "get help" entry point
+
+  1200:
+    target: https://github.com/wamwoowam/ReLiveWP
+    added: 2026-08-07
+    note: project source
