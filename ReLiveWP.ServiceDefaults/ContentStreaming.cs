@@ -14,14 +14,15 @@ public static class ContentStreaming
     public static async Task<HttpResponseMessage> FetchAsync(this HttpClient client,
                                                              ContentLocation location,
                                                              HttpContext context,
-                                                             CancellationToken ct = default)
+                                                             CancellationToken ct = default,
+                                                             bool forwardRange = true)
     {
         using var upstream = new HttpRequestMessage(HttpMethod.Get, location.Url);
 
         foreach (var (name, value) in location.Headers)
             upstream.Headers.TryAddWithoutValidation(name, value);
 
-        if (context.Request.Headers.TryGetValue(HeaderNames.Range, out var range))
+        if (forwardRange && context.Request.Headers.TryGetValue(HeaderNames.Range, out var range))
             upstream.Headers.TryAddWithoutValidation(HeaderNames.Range, range.ToString());
 
         return await client.SendAsync(upstream, HttpCompletionOption.ResponseHeadersRead, ct);

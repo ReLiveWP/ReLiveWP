@@ -220,6 +220,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
                     ContentType = location.ContentType,
                     Size = location.Size,
                     Etag = location.ETag ?? "",
+                    ResizeTo = location.ResizeTo,
                 };
 
                 foreach (var (name, value) in location.Headers)

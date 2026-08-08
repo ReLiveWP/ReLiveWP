@@ -33,7 +33,7 @@ const AccountEntry = ({ type, account, group }: { type: AccountType; account: Ac
             </dd>
             <dd>
                 <button onClick={() => openDialog({ dialog: 'link', service: type, existingConnectionId: account.id, currentEnabledCaps: account.enabled_capabilities ?? 0 })}>options</button>
-                {account.needs_relink && <button onClick={() => openDialog({ dialog: 'relink', id: account.id })}>fix account</button>}
+                {account.needs_relink && <button onClick={() => openDialog({ dialog: 'relink', service: type, id: account.id })}>fix account</button>}
                 <button onClick={() => openDialog({ dialog: 'unlink', id: account.id, service: type })}>unlink account</button>
             </dd>
         </>

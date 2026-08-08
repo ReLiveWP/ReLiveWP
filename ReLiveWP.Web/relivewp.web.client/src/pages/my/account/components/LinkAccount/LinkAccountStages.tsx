@@ -1,9 +1,9 @@
 import { useCallback, useEffect } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 
-import { ENDPOINT_BEGIN_ACCOUNT_LINKING, ENDPOINT_UPDATE_LINK } from "~/util/endpoints";
+import { ENDPOINT_BEGIN_ACCOUNT_LINKING, ENDPOINT_LINK_CREDENTIALS, ENDPOINT_UPDATE_LINK } from "~/util/endpoints";
 import { useAuthenticatedFetch } from "~/state/app-state";
-import { getServiceConfig, requiresHandle } from "./service-config";
+import { getCredentialServiceConfig, getServiceConfig, requiresHandle } from "./service-config";
 import { useLinkAccount } from "./link-account-context";
 import { useLinkedAccounts } from "../../state/linked-accounts";
 import { ServiceCaps, ServiceCapNames } from "~/util/service-caps";
@@ -33,6 +33,110 @@ export function HandleStage() {
             {error.value && <p class="error">{error}</p>}
             <div class="buttons">
                 <input type="submit" class="submit" value="sign in" />
+                <button onClick={() => onClose()}>cancel</button>
+            </div>
+        </form>
+    );
+}
+
+export function CredentialsStage() {
+    const fetch = useAuthenticatedFetch();
+    const { error, service, stage, connectionId, isRelink, onClose } = useLinkAccount();
+    const config = getCredentialServiceConfig(service);
+
+    const serviceUrl = useSignal("");
+    const username = useSignal("");
+    const secret = useSignal("");
+    const label = useSignal("");
+    const busy = useSignal(false);
+
+    if (!config) return null;
+
+    const onSubmit = async (e: SubmitEvent) => {
+        e.preventDefault();
+        if (busy.value) return;
+
+        busy.value = true;
+        error.value = null;
+
+        try {
+            const response = await fetch(ENDPOINT_LINK_CREDENTIALS, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    service,
+                    service_url: serviceUrl.value,
+                    username: username.value,
+                    secret: secret.value,
+                    label: label.value,
+                    connection_id: connectionId.value || null,
+                }),
+            });
+
+            if (!response.ok) {
+                const detail = await response.text();
+                error.value = detail?.trim() || "We couldn't connect to that server.";
+                return;
+            }
+
+            const { connection_id } = await response.json();
+            connectionId.value = connection_id;
+
+            stage.value = isRelink ? 'done' : 'configure';
+        } catch {
+            error.value = "We couldn't connect to that server.";
+        } finally {
+            busy.value = false;
+        }
+    };
+
+    return (
+        <form onSubmit={onSubmit}>
+            <h1>where is it?</h1>
+            {isRelink && <p>Please re-enter your username and password.</p>}
+            <label htmlFor="serviceUrl">{config.urlTitle}</label>
+            <input
+                id="serviceUrl"
+                type="text"
+                class="textbox"
+                placeholder={config.urlPlaceholder}
+                value={serviceUrl}
+                onChange={(e) => { serviceUrl.value = e.currentTarget.value; }}
+            />
+            <label htmlFor="username">{config.usernameTitle}</label>
+            <input
+                id="username"
+                type="text"
+                class="textbox"
+                autocomplete="off"
+                value={username}
+                onChange={(e) => { username.value = e.currentTarget.value; }}
+            />
+            <label htmlFor="secret">{config.secretTitle}</label>
+            <input
+                id="secret"
+                type="password"
+                class="textbox"
+                autocomplete="off"
+                value={secret}
+                onChange={(e) => { secret.value = e.currentTarget.value; }}
+            />
+            <label htmlFor="label">{config.labelTitle}</label>
+            <input
+                id="label"
+                type="text"
+                class="textbox"
+                placeholder={config.labelPlaceholder}
+                value={label}
+                onChange={(e) => { label.value = e.currentTarget.value; }}
+            />
+            <p>Your server must be accessible to the open internet via HTTPS.</p>
+            {error.value && <p class="error">{error}</p>}
+            <div class="buttons">
+                <input type="submit" class="submit" value={busy.value ? "connecting..." : "connect"} disabled={busy.value} />
                 <button onClick={() => onClose()}>cancel</button>
             </div>
         </form>

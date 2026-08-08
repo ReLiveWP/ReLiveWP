@@ -40,6 +40,16 @@ public record BeginRelinkModel(string ConnectionId);
 
 public record BeginAccountLinkResponse(string RedirectUri);
 
+public record CredentialLinkModel(
+    string Service,
+    string ServiceUrl,
+    string Username,
+    string Secret,
+    string? ConnectionId = null,
+    string? Label = null);
+
+public record CredentialLinkResponse(string ConnectionId);
+
 public record DeleteLinkModel(string ConnectionId);
 
 public record ConnectedDeviceModel(

@@ -36,15 +36,24 @@ builder.Services.AddSingleton(sp =>
 
 builder.Services.AddSingleton<ServiceTokenLocks>();
 builder.Services.AddSingleton<PendingOAuthStore>();
+builder.Services.AddSingleton<ConnectionSecretProtector>();
+builder.Services.AddSingleton<IOutboundAddressPolicy, PublicOnlyAddressPolicy>();
+
+builder.Services.AddHttpClient(OutboundAddressPolicyExtensions.GuardedClientName)
+    .ConfigurePrimaryHttpMessageHandler(s =>
+        OutboundAddressPolicyExtensions.CreateGuardedHandler(s.GetRequiredService<IOutboundAddressPolicy>()));
+
 builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
 builder.Services.AddScoped<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
 builder.Services.AddScoped<GoogleOAuthProvider>();
 builder.Services.AddScoped<MicrosoftOAuthProvider>();
+builder.Services.AddScoped<WebDavCredentialProvider>();
 
 builder.Services.AddScoped<IConnectedServiceProxy, AtProtoServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, GoogleServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, MicrosoftServiceProxy>();
+builder.Services.AddScoped<IConnectedServiceProxy, WebDavServiceProxy>();
 
 builder.Services.AddConnectedServices()
     .AddConnectedService(s => new()
@@ -93,12 +102,22 @@ builder.Services.AddConnectedServices()
         Scopes = "openid profile email offline_access https://graph.microsoft.com/User.Read https://graph.microsoft.com/Files.ReadWrite",
         ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MicrosoftOAuthProvider>())
+    })
+    .AddConnectedService(s => new()
+    {
+        ServiceId = WebDav.SERVICE_NAME,
+        DisplayName = "WebDAV",
+        LinkMode = ServiceLinkMode.Credentials,
+        ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
+        CredentialHandler = s => Task.FromResult<ICredentialLinkProvider>(s.GetRequiredService<WebDavCredentialProvider>())
     });
 
 builder.Services.AddGrpc();
 builder.Services.AddHostedService<TokenRefreshService>();
 
 var app = builder.Build();
+
+RequireSecretKeyForCredentialServices(app);
 
 ApplyMigrations(app);
 
@@ -112,6 +131,19 @@ app.MapConnectedServicesProxy();
 app.MapDefaultEndpoints();
 
 app.Run();
+
+static void RequireSecretKeyForCredentialServices(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+
+    var services = scope.ServiceProvider.GetRequiredService<IConnectedServicesContainer>();
+    if (!services.Values.Any(s => s.LinkMode == ServiceLinkMode.Credentials))
+        return;
+
+    if (!scope.ServiceProvider.GetRequiredService<ConnectionSecretProtector>().IsConfigured)
+        throw new InvalidOperationException(
+            $"{ConnectionSecretProtector.KeyConfigPath} must be set when a credential-linked service is registered.");
+}
 
 static void ApplyMigrations(WebApplication app)
 {

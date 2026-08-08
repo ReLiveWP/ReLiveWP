@@ -14,6 +14,8 @@ service ConnectedServices {
 
   rpc BeginRelinkForConnection(BeginRelinkRequest) returns (BeginAccountLinkingResponse);
 
+  rpc LinkServiceWithCredentials(CredentialLinkRequest) returns (FinaliseAccountLinkingResponse);
+
   rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse);
 
   rpc GetSupportedConnections(google.protobuf.Empty) returns (SupportedConnectionsResponse);
@@ -51,6 +53,15 @@ message FinaliseAccountLinkingResponse {
   string connectionId = 1;
 }
 
+message CredentialLinkRequest {
+  string          service      = 1;
+  string          serviceUrl   = 2;
+  string          username     = 3;
+  string          secret       = 4;
+  optional string connectionId = 5;
+  optional string label        = 6;
+}
+
 message SupportedConnection {
   string service      = 1;
   string displayName  = 2;
@@ -76,6 +87,7 @@ message Connection {
   string          userId       = 6;
   optional string userName     = 7;
   optional string emailAddress = 8;
+  optional string label        = 9;
 }
 
 message DeleteConnectionRequest {

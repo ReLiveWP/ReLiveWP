@@ -121,6 +121,8 @@ message GetPhotoContentReply {
   string              content_type = 4;
   int64               size         = 5;
   string              etag         = 6;
+  // set when the provider can't serve a sized rendition and the fetcher must scale it down
+  int32               resize_to    = 7;
 }
 
 message UploadTarget {

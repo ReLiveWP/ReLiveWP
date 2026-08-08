@@ -12,7 +12,7 @@ export const AccountLinkInfo = ({ type, accountInfo }: { type: AccountType, acco
             <dd><a href={accountInfo.url} target="_blank">{accountInfo.name}</a> {accountInfo.needs_relink && <img class="attention" alt={"Account requires attention!"} src={Attention} />}</dd>
             <dd>
                 <button>options</button>
-                {accountInfo.needs_relink && <button onClick={() => openDialog({ dialog: 'relink', id: accountInfo.id })}>fix account</button>}
+                {accountInfo.needs_relink && <button onClick={() => openDialog({ dialog: 'relink', service: type, id: accountInfo.id })}>fix account</button>}
                 <button onClick={() => openDialog({ dialog: 'unlink', id: accountInfo.id, service: type })}>unlink account</button>
             </dd>
         </>

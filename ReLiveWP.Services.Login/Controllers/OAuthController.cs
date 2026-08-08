@@ -1,4 +1,5 @@
 ﻿using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Services.Grpc;
@@ -42,6 +43,37 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
             new() { ConnectionId = model.ConnectionId });
 
         return new BeginAccountLinkResponse(response.RedirectUri);
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ActionName("link-credentials")]
+    public async Task<ActionResult<CredentialLinkResponse>> LinkCredentials([FromBody] CredentialLinkModel model)
+    {
+        var request = new CredentialLinkRequest()
+        {
+            Service = model.Service,
+            ServiceUrl = model.ServiceUrl,
+            Username = model.Username,
+            Secret = model.Secret,
+        };
+
+        if (!string.IsNullOrEmpty(model.ConnectionId))
+            request.ConnectionId = model.ConnectionId;
+
+        if (!string.IsNullOrWhiteSpace(model.Label))
+            request.Label = model.Label;
+
+        try
+        {
+            var response = await connectedServicesClient.LinkServiceWithCredentialsAsync(request);
+            return new CredentialLinkResponse(response.ConnectionId);
+        }
+        catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.InvalidArgument)
+        {
+            // the detail explains which part of the server or credentials was wrong
+            return BadRequest(ex.Status.Detail);
+        }
     }
 
     [HttpPatch]

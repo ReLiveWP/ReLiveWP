@@ -58,61 +58,63 @@ public static class ConnectedServicesProxy
                 return;
             }
 
-            var serviceLock = await tokenLocks.AcquireAsync(service.Id, context.RequestAborted);
-            try
+            if (NeedsRefresh(service))
             {
-                if (!serviceLock.IsAcquired)
+                var serviceLock = await tokenLocks.AcquireAsync(service.Id, context.RequestAborted);
+                try
                 {
-                    logger.LogError("Failed to acquire lock on {ServiceId}!", service.Id);
-                    context.Response.StatusCode = StatusCodes.Status408RequestTimeout;
-                    return;
-                }
+                    if (!serviceLock.IsAcquired)
+                    {
+                        logger.LogError("Failed to acquire lock on {ServiceId}!", service.Id);
+                        context.Response.StatusCode = StatusCodes.Status408RequestTimeout;
+                        return;
+                    }
 
-                service = await LoadServiceAsync(dbContext, userId, connectionId, serviceId);
-                if (service == null)
+                    service = await LoadServiceAsync(dbContext, userId, connectionId, serviceId);
+                    if (service == null)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return;
+                    }
+
+                    // reload in case EF cached our entity between refetches
+                    await dbContext.Entry(service).ReloadAsync(context.RequestAborted);
+                    if (dbContext.Entry(service).State == EntityState.Detached)
+                    {
+                        // it got deleted
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return;
+                    }
+
+                    // recheck Busted after reload, DB state may have changed while we waited for the lock
+                    if ((service.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return;
+                    }
+
+                    if (NeedsRefresh(service))
+                    {
+                        logger.LogInformation("Service {ConnectionId} requires refresh", service.Id);
+
+                        service.Flags = await proxy.RefreshAsync(service, context.RequestAborted)
+                            ? LiveConnectedServiceFlags.None
+                            : LiveConnectedServiceFlags.Busted;
+
+                        dbContext.ConnectedServices.Update(service);
+                        await dbContext.SaveChangesAsync(context.RequestAborted);
+                    }
+
+                    if ((service.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return;
+                    }
+                }
+                finally
                 {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    return;
+                    await serviceLock.DisposeAsync();
                 }
-                
-                // reload in case EF cached our entity between refetches
-                await dbContext.Entry(service).ReloadAsync(context.RequestAborted);
-                if (dbContext.Entry(service).State == EntityState.Detached)
-                {
-                    // it got deleted
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    return;
-                }
-
-                // recheck Busted after reload, DB state may have changed while we waited for the lock
-                if ((service.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
-                {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    return;
-                }
-
-                if (service.ExpiresAt <= DateTime.UtcNow ||
-                    (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
-                {
-                    logger.LogInformation("Service {ConnectionId} requires refresh", service.Id);
-
-                    service.Flags = await proxy.RefreshAsync(service, context.RequestAborted)
-                        ? LiveConnectedServiceFlags.None
-                        : LiveConnectedServiceFlags.Busted;
-
-                    dbContext.ConnectedServices.Update(service);
-                    await dbContext.SaveChangesAsync(context.RequestAborted);
-                }
-
-                if ((service.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
-                {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    return;
-                }
-            }
-            finally
-            {
-                await serviceLock.DisposeAsync();
             }
 
 
@@ -138,6 +140,10 @@ public static class ConnectedServicesProxy
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         }
     }
+
+    private static bool NeedsRefresh(LiveConnectedService service)
+        => service.ExpiresAt <= DateTime.UtcNow ||
+           (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh;
 
     private static async Task<LiveConnectedService?> LoadServiceAsync(
         ConnectedServicesDbContext dbContext, Guid userId, Guid connectionId, string serviceId)

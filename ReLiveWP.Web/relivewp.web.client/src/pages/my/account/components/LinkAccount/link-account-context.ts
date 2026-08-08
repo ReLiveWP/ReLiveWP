@@ -14,6 +14,7 @@ export type LinkAccountContextValue = {
     id?: string;
     initialCaps?: number;
     currentEnabledCaps?: number;
+    isRelink?: boolean;
     onClose: () => void;
 };
 

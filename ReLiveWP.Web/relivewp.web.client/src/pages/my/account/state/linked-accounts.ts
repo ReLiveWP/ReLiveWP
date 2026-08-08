@@ -5,6 +5,7 @@ import GoogleDriveIcon from "../icons/google-drive";
 import MastodonIcon from "../icons/mastodon";
 import MisskeyIcon from "../icons/misskey";
 import OneDriveIcon from "../icons/onedrive";
+import WebDavIcon from "../icons/webdav";
 import { Signal } from "@preact/signals";
 import { createContext, type JSX } from "preact";
 import { ServiceCaps } from "~/util/service-caps";
@@ -55,6 +56,11 @@ export const AccountTypes = {
         name: "dropbox",
         icon: DropboxIcon,
         allowsMany: true
+    },
+    "webdav": {
+        name: "webdav share",
+        icon: WebDavIcon,
+        allowsMany: true
     }
 } satisfies Record<string, AccountTypeEntry>;
 
@@ -103,7 +109,7 @@ export type LinkedAccountsContext = {
 export type OpenDialogAction =
     | { dialog: 'link'; service: AccountType; initialCaps?: number; existingConnectionId?: string; currentEnabledCaps?: number }
     | { dialog: 'unlink'; service: AccountType; id: string }
-    | { dialog: 'relink'; id: string };
+    | { dialog: 'relink'; service: AccountType; id: string };
 
 export const OpenDialogContext = createContext<(action: OpenDialogAction) => void>(null!);
 export const LinkedAccountsContext = createContext<LinkedAccountsContext>(null!);

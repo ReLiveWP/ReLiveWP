@@ -23,6 +23,8 @@ public class LiveConnectedService
     public string? DPoPKeyId { get; set; }
     public LiveDPoPKey? DPoPKey { get; set; }
 
+    public string? EncryptedSecret { get; set; }
+
     public string? ServiceUrl { get; set; }
     public string? AuthorizationEndpoint { get; set; }
     public string? TokenEndpoint { get; set; }
@@ -39,4 +41,5 @@ public class LiveConnectedServiceProfile
     public string? DisplayName { get; set; }
     public string? EmailAddress { get; set; }
     public string? AvatarUrl { get; set; }
+    public string? Label { get; set; }
 }

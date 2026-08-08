@@ -23,11 +23,13 @@ builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
 
 builder.Services.AddScoped<IPhotoSyncProxyClient, GooglePhotosProxyClient>();
 builder.Services.AddScoped<IPhotoSyncProxyClient, OneDrivePhotoSyncProxyClient>();
+builder.Services.AddScoped<IPhotoSyncProxyClient, WebDavPhotoSyncClient>();
 
 builder.Services.AddScoped<IFileSyncProxyClient, OneDriveFileSyncProxyClient>();
 
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddSingleton<SyncCursorStore>();
+builder.Services.AddSingleton<WebDavUploadStore>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<SkyDriveDbContext>(options => options.UseNpgsql(connectionString));

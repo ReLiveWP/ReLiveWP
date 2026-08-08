@@ -20,6 +20,7 @@ namespace ReLiveWP.Services.Activity.Controllers;
 public class FilesController(SkyDrive.SkyDriveClient skyDrive,
                              ConnectedServices.ConnectedServicesClient connectedServices,
                              SocialAlbumProvider socialAlbums,
+                             ThumbnailResizer thumbnails,
                              IHttpClientFactory httpClientFactory,
                              ILogger<FilesController> logger) : Controller
 {
@@ -503,11 +504,13 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
             return new EmptyResult();
         }
 
-        var location = await ResolvePhotoAsync(resourceRef, maxSize, refresh: false, ct);
-        if (location == null)
+        var resolved = await ResolvePhotoAsync(resourceRef, maxSize, refresh: false, ct);
+        if (resolved == null)
             return NotFound();
 
-        var response = await http.FetchAsync(location.Value, HttpContext, ct);
+        var location = resolved.Value.Location;
+        var forwardRange = resolved.Value.ResizeTo == 0;
+        var response = await http.FetchAsync(location, HttpContext, ct, forwardRange);
         try
         {
             // the provider urls are short lived, so a stale one looks exactly like a dead item.
@@ -518,11 +521,31 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
                     return NotFound();
 
                 response.Dispose();
-                location = refreshed;
-                response = await http.FetchAsync(location.Value, HttpContext, ct);
+                resolved = refreshed;
+                location = refreshed.Value.Location;
+                forwardRange = refreshed.Value.ResizeTo == 0;
+                response = await http.FetchAsync(location, HttpContext, ct, forwardRange);
             }
 
-            await response.PipeAsync(location.Value, HttpContext, ct);
+            if (resolved.Value.ResizeTo > 0 && response.IsSuccessStatusCode)
+            {
+                await using var source = await response.Content.ReadAsStreamAsync(ct);
+                var thumbnail = await thumbnails.ResizeAsync(resourceRef, resolved.Value.ResizeTo, source, ct);
+
+                if (thumbnail != null)
+                {
+                    Response.ContentType = thumbnail.ContentType;
+                    Response.ContentLength = thumbnail.Data.Length;
+                    await Response.Body.WriteAsync(thumbnail.Data, ct);
+                    return new EmptyResult();
+                }
+
+                // a source we can't decode still beats a broken image in the hub
+                response.Dispose();
+                response = await http.FetchAsync(location, HttpContext, ct);
+            }
+
+            await response.PipeAsync(location, HttpContext, ct);
             return new EmptyResult();
         }
         finally
@@ -531,7 +554,9 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
         }
     }
 
-    private async Task<ContentLocation?> ResolvePhotoAsync(string resourceRef, int maxSize, bool refresh, CancellationToken ct)
+    private readonly record struct ResolvedPhoto(ContentLocation Location, int ResizeTo);
+
+    private async Task<ResolvedPhoto?> ResolvePhotoAsync(string resourceRef, int maxSize, bool refresh, CancellationToken ct)
     {
         var reply = await skyDrive.GetPhotoContentAsync(new GetPhotoContentRequest
         {
@@ -544,8 +569,10 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
         if (!reply.Exists)
             return null;
 
-        return new ContentLocation(reply.Url, reply.Headers, reply.ContentType,
-                                   string.IsNullOrEmpty(reply.Etag) ? null : reply.Etag);
+        return new ResolvedPhoto(
+            new ContentLocation(reply.Url, reply.Headers, reply.ContentType,
+                                string.IsNullOrEmpty(reply.Etag) ? null : reply.Etag),
+            reply.ResizeTo);
     }
 
     [HttpPost]

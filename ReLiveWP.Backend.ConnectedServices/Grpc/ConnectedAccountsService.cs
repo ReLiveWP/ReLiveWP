@@ -31,7 +31,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
         try
         {
-            var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
+            var handler = await ResolveOAuthHandlerAsync(serviceDescription, scope.ServiceProvider);
             var data = await handler.BeginAccountLinkAsync(userId, request.Identifer);
             await pendingOAuths.SetAsync(data);
 
@@ -54,7 +54,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
         using var scope = serviceProvider.CreateScope();
 
-        var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
+        var handler = await ResolveOAuthHandlerAsync(serviceDescription, scope.ServiceProvider);
 
         Guid? serviceId;
         if (pendingOauth.ExistingConnectionId is Guid existingId)
@@ -121,13 +121,86 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             ?? existing.ServiceProfile.UserId;
 
         using var scope = serviceProvider.CreateScope();
-        var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
+        var handler = await ResolveOAuthHandlerAsync(serviceDescription, scope.ServiceProvider);
         var data = await handler.BeginAccountLinkAsync(userId, identifier);
         data.ExistingConnectionId = connectionId;
 
         await pendingOAuths.SetAsync(data);
 
         return new BeginAccountLinkingResponse() { RedirectUri = data.RedirectUri };
+    }
+
+    [Authorize]
+    public override async Task<FinaliseAccountLinkingResponse> LinkServiceWithCredentials(CredentialLinkRequest request, ServerCallContext context)
+    {
+        var userId = GetUserId(context);
+
+        if (!connectedServices.TryGetValue(request.Service, out var serviceDescription))
+            throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
+
+        if (serviceDescription.LinkMode != ServiceLinkMode.Credentials || serviceDescription.CredentialHandler == null)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "This service does not accept credentials."));
+
+        using var scope = serviceProvider.CreateScope();
+        var handler = await serviceDescription.CredentialHandler(scope.ServiceProvider);
+
+        var connection = request.HasConnectionId
+            ? await LoadOwnedConnectionAsync(request.ConnectionId, userId)
+            : new LiveConnectedService()
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Service = default!,
+                AccessToken = default!,
+                RefreshToken = default!,
+                ExpiresAt = default!,
+                Flags = LiveConnectedServiceFlags.None,
+                AvailableCapabilities = serviceDescription.ServiceCapabilities,
+                EnabledCapabilities = 0
+            };
+
+        try
+        {
+            connection = await handler.LinkAsync(
+                connection,
+                new CredentialLink(request.ServiceUrl, request.Username, request.Secret, request.HasLabel ? request.Label : null),
+                context.CancellationToken);
+        }
+        catch (CredentialLinkException ex)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+        }
+
+        if (request.HasConnectionId)
+            dbContext.ConnectedServices.Update(connection);
+        else
+            await dbContext.ConnectedServices.AddAsync(connection);
+
+        await dbContext.SaveChangesAsync();
+
+        return new FinaliseAccountLinkingResponse() { ConnectionId = connection.Id.ToString() };
+    }
+
+    private async Task<LiveConnectedService> LoadOwnedConnectionAsync(string connectionId, Guid userId)
+    {
+        if (!Guid.TryParse(connectionId, out var id))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid connection ID."));
+
+        var existing = await dbContext.ConnectedServices.FindAsync(id)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Connection no longer exists."));
+
+        if (existing.UserId != userId)
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "Connection does not belong to this user."));
+
+        return existing;
+    }
+
+    private static async Task<IOAuthProvider> ResolveOAuthHandlerAsync(ConnectedServiceDescription description, IServiceProvider services)
+    {
+        if (description.OAuthHandler == null)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "This service is not linked with OAuth."));
+
+        return await description.OAuthHandler(services);
     }
 
     #endregion
@@ -161,7 +234,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
         await foreach (var item in connections)
         {
-            await responseStream.WriteAsync(new Connection()
+            var connection = new Connection()
             {
                 Id = item.Id.ToString(),
                 Service = item.Service,
@@ -170,7 +243,12 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
                 Flags = (ulong)item.Flags,
                 UserId = item.ServiceProfile.UserId,
                 UserName = item.ServiceProfile.Username,
-            });
+            };
+
+            if (item.ServiceProfile.Label != null)
+                connection.Label = item.ServiceProfile.Label;
+
+            await responseStream.WriteAsync(connection);
         }
     }
 

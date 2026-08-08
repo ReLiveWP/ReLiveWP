@@ -55,6 +55,7 @@ builder.Services.AddGrpcClient<SkyDrive.SkyDriveClient>(
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<ThumbnailResizer>();
 builder.Services.AddScoped<SocialAlbumProvider>();
 builder.Services.AddScoped<ActivityProviderService>();
 builder.Services.AddScoped<FeedRenderer>();

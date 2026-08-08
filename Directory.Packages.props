@@ -43,6 +43,7 @@
     <PackageVersion Include="Portable.BouncyCastle" Version="1.9.0" />
     <PackageVersion Include="Razor.Templating.Core" Version="2.1.0" />
     <PackageVersion Include="RedLock.net" Version="2.3.2" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageVersion Include="SoapCore" Version="1.2.1.13" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />

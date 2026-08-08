@@ -2,6 +2,7 @@ export const ENDPOINT_REQUEST_TOKENS = "https://login.relivewp.net/auth/request_
     ENDPOINT_GET_USER = "https://login.relivewp.net/auth/user/@me",
     ENDPOINT_GET_LINKED_ACCOUNTS = "https://login.relivewp.net/auth/user/@me/linked-accounts",
     ENDPOINT_BEGIN_ACCOUNT_LINKING = "https://login.relivewp.net/oauth/begin-account-link",
+    ENDPOINT_LINK_CREDENTIALS = "https://login.relivewp.net/oauth/link-credentials",
     ENDPOINT_RELINK_ACCOUNT = "https://login.relivewp.net/oauth/begin-relink",
     ENDPOINT_DELETE_CONNECTION = "https://login.relivewp.net/oauth/link",
     ENDPOINT_GET_DEVICES = "https://devices.relivewp.net/devices/@me",

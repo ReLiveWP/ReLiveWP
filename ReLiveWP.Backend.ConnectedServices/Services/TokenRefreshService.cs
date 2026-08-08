@@ -66,6 +66,17 @@ public class TokenRefreshService(ILogger<TokenRefreshService> logger,
                     if (service.ExpiresAt <= DateTime.UtcNow ||
                         (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
                     {
+                        // credential-linked services have nothing to refresh, so a rejection means the
+                        // stored password no longer works and the user has to relink
+                        if (serviceDescription.OAuthHandler == null)
+                        {
+                            logger.LogWarning("Credentials for {ServiceId} were rejected, marking for relink", tmpService.Id);
+                            service.Flags = LiveConnectedServiceFlags.Busted;
+                            dbContext.ConnectedServices.Update(service);
+                            await dbContext.SaveChangesAsync();
+                            continue;
+                        }
+
                         var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
                         if (!await handler.RefreshTokensAsync(service))
                         {

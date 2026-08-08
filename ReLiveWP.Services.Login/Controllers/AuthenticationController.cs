@@ -49,7 +49,7 @@ public class AuthenticationController(
             connectionList.Add(new ConnectionModel(
                 connection.Id,
                 connection.ServiceUrl,
-                connection.UserName,
+                string.IsNullOrWhiteSpace(connection.Label) ? connection.UserName : connection.Label,
                 (connection.Flags & 0x80000000UL) != 0,
                 connection.Capabilities));
         }

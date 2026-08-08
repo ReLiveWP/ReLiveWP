@@ -2,6 +2,7 @@ import { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 
 import { OpenDialogAction, OpenDialogContext } from "../state/linked-accounts";
+import { requiresCredentials } from "./LinkAccount/service-config";
 import LinkAccountDialog from "./LinkAccount/LinkAccountDialog";
 import RelinkAccountDialog from "./RelinkAccount/RelinkAccountDialog";
 import UnlinkAccountDialog from "./UnlinkAccount/UnlinkAccountDialog";
@@ -23,7 +24,14 @@ export function Dialogs({ children }: { children: ComponentChildren }) {
                         onClose={closeDialog} />
                 );
             case 'relink':
-                return <RelinkAccountDialog id={activeDialog.id} onClose={closeDialog} />;
+                return requiresCredentials(activeDialog.service)
+                    ? (
+                        <LinkAccountDialog
+                            service={activeDialog.service}
+                            relinkConnectionId={activeDialog.id}
+                            onClose={closeDialog} />
+                    )
+                    : <RelinkAccountDialog id={activeDialog.id} onClose={closeDialog} />;
             case 'unlink':
                 return <UnlinkAccountDialog service={activeDialog.service} id={activeDialog.id} onClose={closeDialog} />;
         }

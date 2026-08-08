@@ -30,7 +30,8 @@ public record ProviderContentLocation(
     IReadOnlyDictionary<string, string> Headers,
     string ContentType,
     long Size,
-    string? ETag);
+    string? ETag,
+    int ResizeTo = 0);
 
 public interface IFileSyncProxyClient
 {

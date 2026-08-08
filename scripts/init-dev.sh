@@ -34,5 +34,13 @@ if [ ! -f "$SECRETS_DIR/jwt_public_key" ]; then
     echo "  Written: deploy/secrets/jwt_public_key"
 fi
 
+# -- Connection secret key -----------------------------------------------------
+# AES-256 key wrapping stored credentials for services linked with a username and password
+# rather than OAuth. ConnectedServices refuses to start without it once such a service exists.
+if [ ! -f "$SECRETS_DIR/connection_secret_key" ]; then
+    openssl rand -base64 32 | tr -d '\n' > "$SECRETS_DIR/connection_secret_key"
+    echo "  Written: deploy/secrets/connection_secret_key"
+fi
+
 PRIVATE_KEY="$(cat "$SECRETS_DIR/jwt_private_key")"
 dotnet user-secrets --project "$IDENTITY_DIR" set "JWT:PrivateKey" "$PRIVATE_KEY"

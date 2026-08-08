@@ -1,8 +1,17 @@
-export type Stage = 'handle' | 'loading' | 'redirect' | 'configure' | 'applying' | 'done' | 'error';
+export type Stage = 'handle' | 'credentials' | 'loading' | 'redirect' | 'configure' | 'applying' | 'done' | 'error';
 
 type ServiceConfig = {
     title: string;
     placeholder: string;
+};
+
+type CredentialServiceConfig = {
+    urlTitle: string;
+    urlPlaceholder: string;
+    usernameTitle: string;
+    secretTitle: string;
+    labelTitle: string;
+    labelPlaceholder: string;
 };
 
 const SERVICES: Partial<Record<string, ServiceConfig>> = {
@@ -11,10 +20,29 @@ const SERVICES: Partial<Record<string, ServiceConfig>> = {
     atproto: { title: "Bluesky Handle", placeholder: "@wamwoowam.co.uk" },
 };
 
+const CREDENTIAL_SERVICES: Partial<Record<string, CredentialServiceConfig>> = {
+    webdav: {
+        urlTitle: "Server address",
+        urlPlaceholder: "https://cloud.example.com/remote.php/dav/files/me/",
+        usernameTitle: "Username",
+        secretTitle: "Password",
+        labelTitle: "Name (optional)",
+        labelPlaceholder: "my fancy webdav server",
+    },
+};
+
 export function requiresHandle(service: string): boolean {
     return service in SERVICES;
 }
 
+export function requiresCredentials(service: string): boolean {
+    return service in CREDENTIAL_SERVICES;
+}
+
 export function getServiceConfig(service: string): ServiceConfig | undefined {
     return SERVICES[service];
+}
+
+export function getCredentialServiceConfig(service: string): CredentialServiceConfig | undefined {
+    return CREDENTIAL_SERVICES[service];
 }

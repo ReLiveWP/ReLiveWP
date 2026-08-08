@@ -1,21 +1,24 @@
-﻿using System.Net;
+using System.Net;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 
 namespace ReLiveWP.Backend.ConnectedServices.Proxy;
 
-public class ConnectedServiceProxyBase<T>(string serviceId, IServiceProvider services)
-    : IConnectedServiceProxy where T : IOAuthProvider
+public class ConnectedServiceProxyBase(string serviceId, IServiceProvider services)
+    : IConnectedServiceProxy
 {
-    private readonly ILogger<ConnectedServiceProxyBase<T>> logger
-        = services.GetRequiredService<ILoggerFactory>().CreateLogger<ConnectedServiceProxyBase<T>>();
-    private readonly IHttpClientFactory httpClientFactory
+    private readonly ILogger<ConnectedServiceProxyBase> logger
+        = services.GetRequiredService<ILoggerFactory>().CreateLogger<ConnectedServiceProxyBase>();
+
+    protected IServiceProvider Services { get; } = services;
+
+    protected IHttpClientFactory HttpClientFactory { get; }
         = services.GetRequiredService<IHttpClientFactory>();
 
     public string ServiceId { get; } = serviceId;
 
-    public async Task<bool> RefreshAsync(LiveConnectedService service, CancellationToken ct = default)
-        => await services.GetRequiredService<T>().RefreshTokensAsync(service);
+    public virtual Task<bool> RefreshAsync(LiveConnectedService service, CancellationToken ct = default)
+        => Task.FromResult(true);
 
     public async Task SendProxiedRequestAsync(LiveConnectedService service, HttpContext context, string path, CancellationToken ct = default)
     {
@@ -43,8 +46,12 @@ public class ConnectedServiceProxyBase<T>(string serviceId, IServiceProvider ser
 
         if (context.Request.ContentLength > 0 || context.Request.ContentType is not null)
         {
-            targetRequest.Headers.TransferEncodingChunked = true;
             targetRequest.Content = new StreamContent(context.Request.Body);
+
+            if (PreserveContentLength && context.Request.ContentLength is { } contentLength)
+                targetRequest.Content.Headers.ContentLength = contentLength;
+            else
+                targetRequest.Headers.TransferEncodingChunked = true;
 
             if (context.Request.ContentType is { } contentType)
                 targetRequest.Content.Headers.TryAddWithoutValidation("Content-Type", contentType);
@@ -73,14 +80,23 @@ public class ConnectedServiceProxyBase<T>(string serviceId, IServiceProvider ser
         await resp.Content.CopyToAsync(context.Response.Body, ct);
     }
 
+    public virtual bool PreserveContentLength => false;
+
     public virtual Task AddHeadersAsync(LiveConnectedService service, HttpRequestMessage request)
         => Task.CompletedTask;
     public virtual Task<HttpClient> CreateHttpClientAsync(LiveConnectedService service)
-        => Task.FromResult(httpClientFactory.CreateClient());
+        => Task.FromResult(HttpClientFactory.CreateClient());
     public virtual Uri GetRequestUrl(LiveConnectedService service, HttpContext context, string path)
         => new Uri(new Uri(service.ServiceUrl!), "/" + path + context.Request.QueryString);
     public virtual bool FilterRequestHeaders(LiveConnectedService service, string header)
         => false;
     public virtual bool FilterResponseHeaders(LiveConnectedService service, string header)
         => false;
+}
+
+public class ConnectedServiceProxyBase<T>(string serviceId, IServiceProvider services)
+    : ConnectedServiceProxyBase(serviceId, services) where T : IOAuthProvider
+{
+    public override async Task<bool> RefreshAsync(LiveConnectedService service, CancellationToken ct = default)
+        => await Services.GetRequiredService<T>().RefreshTokensAsync(service);
 }

@@ -49,6 +49,8 @@
     <Project Path="ReLiveWP.Services.Devices/ReLiveWP.Services.Devices.csproj" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="ReLiveWP.Backend.SkyDrive.Tests/ReLiveWP.Backend.SkyDrive.Tests.csproj" />
+    <Project Path="ReLiveWP.Services.Activity.Tests/ReLiveWP.Services.Activity.Tests.csproj" />
     <Project Path="ReLiveWP.Services.Docs.Tests/ReLiveWP.Services.Docs.Tests.csproj" />
     <Project Path="ReLiveWP.Backend.Mailbox.Tests/ReLiveWP.Backend.Mailbox.Tests.csproj" />
     <Project Path="ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />

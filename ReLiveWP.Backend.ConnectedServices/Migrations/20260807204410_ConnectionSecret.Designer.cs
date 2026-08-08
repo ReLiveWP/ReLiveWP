@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ReLiveWP.Backend.ConnectedServices.Data;
@@ -11,9 +12,11 @@ using ReLiveWP.Backend.ConnectedServices.Data;
 namespace ReLiveWP.Backend.ConnectedServices.Migrations
 {
     [DbContext(typeof(ConnectedServicesDbContext))]
-    partial class ConnectedServicesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260807204410_ConnectionSecret")]
+    partial class ConnectionSecret
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -116,9 +119,6 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
                                 .HasColumnType("text");
 
                             b1.Property<string>("EmailAddress")
-                                .HasColumnType("text");
-
-                            b1.Property<string>("Label")
                                 .HasColumnType("text");
 
                             b1.Property<string>("UserId")
