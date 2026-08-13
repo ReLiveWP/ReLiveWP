@@ -1,3 +1,58 @@
 .leaflet-marker-pane img {
     object-fit: contain;
 }
+
+.leaflet-container {
+    background: var(--surface-subtle);
+
+    .leaflet-bar {
+        border: 1px solid var(--rule);
+
+        a {
+            background: var(--surface);
+            color: var(--ink);
+            border-bottom: 1px solid var(--rule);
+
+            &:hover,
+            &:focus {
+                background: var(--surface-panel);
+                color: var(--ink);
+            }
+
+            &.leaflet-disabled {
+                background: var(--surface-panel);
+                color: var(--ink-muted);
+            }
+        }
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: 0 3px 14px var(--shadow-colour);
+    }
+
+    a.leaflet-popup-close-button {
+        color: var(--ink-muted);
+
+        &:hover,
+        &:focus {
+            color: var(--ink);
+            background: transparent;
+        }
+    }
+
+    a {
+        color: var(--ink-secondary);
+    }
+
+    .leaflet-control-attribution {
+        background: var(--scrim);
+        color: var(--ink-muted);
+
+        a {
+            color: var(--ink-secondary);
+        }
+    }
+}

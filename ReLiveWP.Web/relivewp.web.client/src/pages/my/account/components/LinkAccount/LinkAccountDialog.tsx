@@ -4,21 +4,21 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useLayoutEffect } from "preact/hooks";
 
 import { Dialog } from "~/components/Dialog";
-import { type Stage, requiresCredentials, requiresHandle } from "./service-config";
+import { type Stage, stageForService } from "./service-config";
 import { LinkAccountContext } from "./link-account-context";
-import { HandleStage, CredentialsStage, LoadingStage, RedirectStage, DoneStage, ErrorStage, ConfigureStage, ApplyStage } from "./LinkAccountStages";
+import { ServiceStage, HandleStage, CredentialsStage, LoadingStage, RedirectStage, DoneStage, ErrorStage, ConfigureStage, ApplyStage } from "./LinkAccountStages";
 
-function initialStage(service: string): Stage {
-    if (requiresCredentials(service)) return 'credentials';
-    return requiresHandle(service) ? 'handle' : 'loading';
+function initialStage(service?: string): Stage {
+    if (!service) return 'service';
+    return stageForService(service);
 }
 
 export { OAUTH_CHANNEL } from "~/util/oauth";
 import { OAUTH_CHANNEL } from "~/util/oauth";
 
-export default function LinkAccountDialog({ onClose, service, initialCaps, existingConnectionId, currentEnabledCaps, relinkConnectionId }: {
+export default function LinkAccountDialog({ onClose, service: initialService, initialCaps, existingConnectionId, currentEnabledCaps, relinkConnectionId }: {
     onClose: () => void;
-    service: string;
+    service?: string;
     initialCaps?: number;
     existingConnectionId?: string;
     currentEnabledCaps?: number;
@@ -26,14 +26,16 @@ export default function LinkAccountDialog({ onClose, service, initialCaps, exist
 }) {
     const handle = useSignal("");
     const redirectUrl = useSignal("");
+    const service = useSignal(initialService ?? "");
     const stage = useSignal<Stage>(
         existingConnectionId ? 'configure' :
         relinkConnectionId ? 'credentials' :
-        initialStage(service));
+        initialStage(initialService));
     const error = useSignal<string | null>(null);
     const connectionId = useSignal(existingConnectionId ?? relinkConnectionId ?? "");
 
     useLayoutEffect(() => {
+        service.value = initialService ?? "";
         if (existingConnectionId) {
             connectionId.value = existingConnectionId;
             stage.value = 'configure';
@@ -41,9 +43,9 @@ export default function LinkAccountDialog({ onClose, service, initialCaps, exist
             connectionId.value = relinkConnectionId;
             stage.value = 'credentials';
         } else {
-            stage.value = initialStage(service);
+            stage.value = initialStage(initialService);
         }
-    }, [service, existingConnectionId, relinkConnectionId]);
+    }, [initialService, existingConnectionId, relinkConnectionId]);
 
     useEffect(() => {
         const channel = new BroadcastChannel(OAUTH_CHANNEL);
@@ -60,6 +62,7 @@ export default function LinkAccountDialog({ onClose, service, initialCaps, exist
 
     const renderStage = () => {
         switch (stage.value) {
+            case 'service': return <ServiceStage />;
             case 'handle': return <HandleStage />;
             case 'credentials': return <CredentialsStage />;
             case 'loading': return <LoadingStage />;

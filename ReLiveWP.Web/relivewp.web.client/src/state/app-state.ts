@@ -57,17 +57,12 @@ function createAppStateSignals(): AppState {
         isAuthenticated: computed(() => !!token.value),
         accent,
         accentStack,
-        accentColor: computed(() => ({
-            red: "#e60c00",
-            teal: "#00ABA9",
-            purple: "#A200FF",
-            pink: "#E671B8",
-            green: "#339933",
-            yellow: "#F09609",
-            blue: "#1BA1E2",
-            magenta: "#D80073",
-            zune: "#f10da1",
-        })[accent.value]),
+        accentColor: computed(() => {
+            const name = accent.value === 'zune' ? 'zune1' : accent.value;
+            return getComputedStyle(document.documentElement)
+                .getPropertyValue(`--accent-colour-${name}`)
+                .trim();
+        }),
         authenticatedFetch: computed(() => {
             const value = token.value;
             if (!value)

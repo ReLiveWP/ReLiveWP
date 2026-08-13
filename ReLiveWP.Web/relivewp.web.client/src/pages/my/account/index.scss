@@ -53,10 +53,10 @@ main:has(.my-account) {
                 margin: 0;
                 padding: 12px 24px 0 24px;
 
-                border-right: 1px solid #DEDEDE;
+                border-right: 1px solid var(--rule);
 
                 li>a {
-                    color: #333;
+                    color: var(--ink);
                     margin-left: 14px;
 
                     &.active {

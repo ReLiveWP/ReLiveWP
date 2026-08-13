@@ -1,15 +1,17 @@
 import { useContext } from "preact/hooks";
-import BlueskyIcon from "../icons/bluesky";
-import DropboxIcon from "../icons/dropbox";
-import GoogleDriveIcon from "../icons/google-drive";
-import MastodonIcon from "../icons/mastodon";
-import MisskeyIcon from "../icons/misskey";
-import OneDriveIcon from "../icons/onedrive";
-import WebDavIcon from "../icons/webdav";
+import BlueskyIcon from "../icons/bluesky.svg";
+import DropboxIcon from "../icons/dropbox.svg";
+import MastodonIcon from "../icons/mastodon.svg";
+import MisskeyIcon from "../icons/misskey.svg";
+import MicrosoftIcon from "../icons/microsoft.svg";
+import OneDriveIcon from "../icons/onedrive.svg";
+import WebDavIcon from "../icons/webdav.svg";
+import GoogleIcon from "../icons/google.svg";
+import GoogleDriveIcon from "../icons/google-drive.svg";
+import GooglePhotosIcon from "../icons/google-photos.svg";
 import { Signal } from "@preact/signals";
 import { createContext, type JSX } from "preact";
 import { ServiceCaps } from "~/util/service-caps";
-import GooglePhotosIcon from "../icons/google-photos";
 
 export type AccountIcon = (props: { class?: string }) => JSX.Element;
 
@@ -38,9 +40,13 @@ export const AccountTypes = {
     },
     "google": {
         name: "google",
-        icon: GoogleDriveIcon,
+        icon: GoogleIcon,
         allowsMany: false,
         capOptions: {
+            [ServiceCaps.fileStorage]: {
+                name: "google drive",
+                icon: GoogleDriveIcon
+            },
             [ServiceCaps.photoSync]: {
                 name: "google photos",
                 icon: GooglePhotosIcon
@@ -48,9 +54,19 @@ export const AccountTypes = {
         }
     },
     "microsoft": {
-        name: "microsoft onedrive",
-        icon: OneDriveIcon,
-        allowsMany: false
+        name: "microsoft",
+        icon: MicrosoftIcon,
+        allowsMany: false,
+        capOptions: {
+            [ServiceCaps.fileStorage]: {
+                name: "onedrive",
+                icon: OneDriveIcon
+            },
+            [ServiceCaps.photoSync]: {
+                name: "onedrive",
+                icon: OneDriveIcon
+            }
+        }
     },
     "dropbox": {
         name: "dropbox",
@@ -65,6 +81,17 @@ export const AccountTypes = {
 } satisfies Record<string, AccountTypeEntry>;
 
 export type AccountType = keyof typeof AccountTypes;
+
+export function getLinkableServices(
+    available: AvailableConnectedService[] | undefined,
+    connections: Connections["connections"] | undefined
+): AvailableConnectedService[] {
+    return (available ?? []).filter(service => {
+        const typeInfo = AccountTypes[service.service as AccountType] as AccountTypeEntry | undefined;
+        if (!typeInfo) return false;
+        return typeInfo.allowsMany || (connections?.[service.service as AccountType]?.length ?? 0) === 0;
+    });
+}
 
 export interface CapabilityGroup {
     name: string;
@@ -103,11 +130,11 @@ export type AvailableConnectedService = {
 export type LinkedAccountsContext = {
     linkedAccounts: Signal<Connections>
     availableLinks: Signal<AvailableConnectedService[]>
-    doRefresh: () => void
+    doRefresh: () => Promise<void>
 }
 
 export type OpenDialogAction =
-    | { dialog: 'link'; service: AccountType; initialCaps?: number; existingConnectionId?: string; currentEnabledCaps?: number }
+    | { dialog: 'link'; service?: AccountType; initialCaps?: number; existingConnectionId?: string; currentEnabledCaps?: number }
     | { dialog: 'unlink'; service: AccountType; id: string }
     | { dialog: 'relink'; service: AccountType; id: string };
 

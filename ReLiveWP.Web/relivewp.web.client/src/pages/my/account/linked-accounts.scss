@@ -1,23 +1,60 @@
 .linked-accounts {
-    .link-icon {
-        width: 12px;
-        margin-bottom: -2px;
+    margin-top: -12px;
+
+    .header {
+        margin-bottom: 4px;
+        margin-top: 8px;
+
+        .link-icon {
+            width: 20px;
+            height: 20px;
+            vertical-align: top;
+            margin-top: 4px;
+            margin-right: 10px;
+            margin-left: 10px;
+            shape-rendering: geometricprecision;
+            overflow-clip-margin: unset;
+            color: var(--ink);
+        }
+
+        >div {
+            display: inline-block;
+
+            >h4 {
+                >a {
+                    color: var(--ink);
+                }
+
+                margin: 0;
+                font-weight: 300;
+                font-variant: normal !important;
+            }
+
+            >p {
+                margin: 0;
+                text-transform: lowercase;
+                color: var(--ink-muted);
+            }
+        }
     }
 
+
     a {
-        color: #666;
+        color: var(--ink-secondary);
     }
 
     a.unlink {
-        color: #999;
+        color: var(--ink-muted);
     }
 
     dl {
+        margin-left: -12px;
         margin-top: 4px;
     }
 
     dd {
         margin-bottom: 4px;
+        margin-right: 4px;
 
         button {
             margin-right: 2px;
@@ -28,6 +65,57 @@
         vertical-align: middle;
     }
 
+    .link-account-button {
+        margin-top: 12px;
+    }
+
+    .linked-accounts-empty {
+        max-width: 480px;
+
+        p {
+            margin: 0;
+        }
+
+        .service-picker {
+            max-height: none;
+            overflow-y: visible;
+            margin-top: 12px;
+        }
+    }
+
+    .capability {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+
+        .capability-name {
+            flex: 0 0 120px;
+            text-transform: lowercase;
+            font-weight: 500;
+            font-variant: small-caps;
+        }
+
+        .capability-detail {
+            flex: 1;
+        }
+
+        .capability-connection {
+            display: block;
+        }
+
+        .capability-disconnected {
+            display: block;
+            color: var(--ink-muted);
+        }
+
+        .capability-caps {
+            display: block;
+            font-size: 0.85em;
+            text-transform: lowercase;
+            color: var(--ink-muted);
+        }
+    }
+
     .inactive-account {
         opacity: 0.5;
     }
@@ -35,7 +123,7 @@
     .inactive-label {
         margin-left: 6px;
         font-size: 0.85em;
-        color: #999;
+        color: var(--ink-muted);
     }
 
     .cap-badges {
@@ -47,11 +135,28 @@
         font-size: 0.75em;
         padding: 1px 5px;
         border-radius: 3px;
-        background: #eee;
-        color: #555;
+        background: var(--surface-subtle);
+        color: var(--ink-secondary);
         margin-right: 3px;
         vertical-align: middle;
         text-transform: lowercase;
         font-variant: small-caps;
+    }
+
+    .action-link,.capability-action {
+        margin-left: auto;
+        white-space: nowrap;
+        font-size: 10.5pt;
+        font-weight: 500;
+        font-variant: small-caps;
+        text-transform: lowercase;
+
+        &.text-accent {
+            color: var(--accent-colour);
+        }
+
+        &.error {
+            color: var(--danger);
+        }
     }
 }

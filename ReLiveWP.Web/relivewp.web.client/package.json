@@ -22,6 +22,7 @@
     "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
+    "@svgr/webpack": "^8.1.0",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^24.3.0",
     "css-loader": "^7.1.2",
@@ -32,11 +33,9 @@
     "html-webpack-plugin": "^5.6.4",
     "mini-css-extract-plugin": "^2.9.4",
     "node-loader": "^2.1.0",
-    "raw-loader": "^4.0.2",
     "sass": "^1.90.0",
     "sass-loader": "^16.0.5",
     "style-loader": "^4.0.0",
-    "svg-inline-loader": "^0.8.2",
     "text-loader": "^0.0.1",
     "ts-loader": "^9.5.2",
     "typescript": "^5.9.2",

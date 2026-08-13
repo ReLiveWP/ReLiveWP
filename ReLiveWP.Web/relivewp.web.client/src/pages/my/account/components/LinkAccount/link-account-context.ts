@@ -10,7 +10,7 @@ export type LinkAccountContextValue = {
     stage: Signal<Stage>;
     error: Signal<string | null>;
     connectionId: Signal<string>;
-    service: string;
+    service: Signal<string>;
     id?: string;
     initialCaps?: number;
     currentEnabledCaps?: number;

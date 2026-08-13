@@ -1,4 +1,4 @@
-export type Stage = 'handle' | 'credentials' | 'loading' | 'redirect' | 'configure' | 'applying' | 'done' | 'error';
+export type Stage = 'service' | 'handle' | 'credentials' | 'loading' | 'redirect' | 'configure' | 'applying' | 'done' | 'error';
 
 type ServiceConfig = {
     title: string;
@@ -37,6 +37,11 @@ export function requiresHandle(service: string): boolean {
 
 export function requiresCredentials(service: string): boolean {
     return service in CREDENTIAL_SERVICES;
+}
+
+export function stageForService(service: string): Stage {
+    if (requiresCredentials(service)) return 'credentials';
+    return requiresHandle(service) ? 'handle' : 'loading';
 }
 
 export function getServiceConfig(service: string): ServiceConfig | undefined {

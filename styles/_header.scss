@@ -90,7 +90,7 @@ header {
                 text-decoration: none;
 
                 &:not(.text-accent) {
-                    color: t.$ink;
+                    @include t.themed(color, ink);
                 }
             }
         }
@@ -100,11 +100,11 @@ header {
 .header-splitter {
     clear: both;
     border: none;
-    border-bottom: 1px solid t.$rule;
+    @include t.themed(border-bottom, rule, "1px solid ");
 }
 
 .home-link:visited,
 .home-link:active,
 .home-link:hover {
-    color: t.$ink;
+    @include t.themed(color, ink);
 }

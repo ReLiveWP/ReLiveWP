@@ -1,6 +1,6 @@
 import "./index.scss"
 
-import Lumia800 from "~/static/lumia-800.jpg"
+import Lumia800 from "~/static/lumia-800.webp"
 import { useTitle } from '~/util/effects';
 
 const Index = () => {
@@ -34,8 +34,8 @@ const Index = () => {
                 </div>
                 <div class="feature">
                     <h3 class="background-accent">compatible</h3>
-                    <p>Escape the walled garden! Explore alternative services never-before-seen on the Windows Phone platfom.</p>
-                    <p>Access Bluesky (etc) like it was there from the very start.</p>
+                    <p>Escape the walled garden! Explore alternative services never-before-seen on the Windows Phone platform.</p>
+                    <p>Access Google, Bluesky and even self-hosted services like they were there from the very start.</p>
                     <p><a href="/features/services">Learn more about services</a></p>
                 </div>
             </div>

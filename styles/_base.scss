@@ -1,8 +1,25 @@
+@use "sass:map";
 @use "tokens" as t;
+
+:root {
+    color-scheme: dark light;
+
+    @each $name, $light in t.$theme-light {
+        --#{$name}: light-dark(#{$light}, #{map.get(t.$theme-dark, $name)});
+    }
+}
+
+:root[data-colour-scheme="light"] {
+    color-scheme: light;
+}
+
+:root[data-colour-scheme="dark"] {
+    color-scheme: dark;
+}
 
 body {
     margin: 0;
-    color: t.$ink;
+    @include t.themed(color, ink);
 
     font-family: t.$font-family;
     font-size: t.$font-size-base;

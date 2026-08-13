@@ -4,25 +4,31 @@
 @use "header";
 
 $accent: t.accent("purple");
-$accent-link: #A200FF;
-$surface: #f7f7f7;
-$surface-code: #f4f4f4;
-$rule-soft: #e6e6e6;
-$rule-faint: #f0f0f0;
-$border-input: #cccccc;
+$accent-shades: t.accent-shades($accent);
+$bg-1: map.get($accent-shades, bg-1);
+$bg-2: map.get($accent-shades, bg-2);
+$bg-3: map.get($accent-shades, bg-3);
 
 html {
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
 }
 
-$accent-shades: map.get(t.$accents, "purple");
+:root {
+    --accent-colour: #{$accent};
+    --accent-ink: light-dark(#{$accent}, #{t.accent-ink($accent)});
+
+    @each $stop in (bg-1, bg-2, bg-3) {
+        --accent-colour-#{$stop}: light-dark(#{t.shade($accent, $stop)},
+            #{t.shade($accent, $stop, t.$shades-dark)});
+    }
+}
 
 body {
-    background-color: map.get($accent-shades, bg-3);
+    @include t.themed-raw(background-color, $bg-3, var(--accent-colour-bg-3));
 
     background-image: t.accent-gradient-svg($accent-shades);
-    background-image: t.accent-gradient($accent-shades);
+    background-image: t.accent-gradient-vars();
     background-size: 100% 200px;
 
     line-height: 1.5;
@@ -39,7 +45,7 @@ footer {
 }
 
 a {
-    color: $accent-link;
+    @include t.themed-raw(color, $accent, var(--accent-ink));
 
     &:hover {
         text-decoration: underline;
@@ -47,28 +53,28 @@ a {
 }
 
 .text-accent {
-    color: $accent;
+    @include t.themed-raw(color, $accent, var(--accent-ink));
 }
 
 h1 {
     font-size: 30px;
     line-height: 1.2;
     margin: 0 0 4px 0;
-    color: t.$ink-strong;
+    @include t.themed(color, ink-strong);
 }
 
 h2 {
     font-size: 21px;
     margin: 32px 0 8px 0;
     padding-bottom: 4px;
-    border-bottom: 1px solid $rule-soft;
-    color: t.$ink-strong;
+    @include t.themed(border-bottom, rule-soft, "1px solid ");
+    @include t.themed(color, ink-strong);
 }
 
 h3 {
     font-size: 17px;
     margin: 24px 0 6px 0;
-    color: t.$ink-strong;
+    @include t.themed(color, ink-strong);
 }
 
 code,
@@ -79,13 +85,13 @@ pre,
 }
 
 code {
-    background-color: $surface-code;
+    @include t.themed(background-color, surface-panel);
     padding: 1px 4px;
 }
 
 pre {
-    background-color: $surface-code;
-    border-left: 3px solid $accent;
+    @include t.themed(background-color, surface-panel);
+    @include t.themed-raw(border-left, 3px solid $accent, 3px solid var(--accent-ink));
     padding: 12px;
     overflow-x: auto;
 }
@@ -106,7 +112,7 @@ td {
     text-align: left;
     vertical-align: top;
     padding: 6px 10px 6px 0;
-    border-bottom: 1px solid $rule-soft;
+    @include t.themed(border-bottom, rule-soft, "1px solid ");
 }
 
 th {
@@ -114,8 +120,8 @@ th {
     font-size: 12px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #444444;
-    border-bottom: 1px solid $border-input;
+    @include t.themed(color, ink-secondary);
+    @include t.themed(border-bottom, border-input, "1px solid ");
 }
 
 .header-search {
@@ -127,7 +133,7 @@ th {
         font-family: inherit;
         font-size: 14px;
         padding: 4px 8px;
-        border: 1px solid $border-input;
+        @include t.themed(border, border-input, "1px solid ");
         width: 220px;
         max-width: 45vw;
         vertical-align: middle;
@@ -137,9 +143,9 @@ th {
         font-family: inherit;
         font-size: 14px;
         padding: 4px 12px;
-        border: 1px solid $accent;
-        background-color: $accent;
-        color: #ffffff;
+        @include t.themed-raw(border, 1px solid $accent, 1px solid var(--accent-colour));
+        @include t.themed-raw(background-color, $accent, var(--accent-colour));
+        @include t.themed(color, on-accent);
         cursor: pointer;
         vertical-align: middle;
     }
@@ -152,29 +158,29 @@ th {
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #ffffff;
-    background-color: $accent;
+    @include t.themed(color, on-accent);
+    @include t.themed-raw(background-color, $accent, var(--accent-colour));
     padding: 2px 8px;
     margin-bottom: 10px;
 }
 
 .article-meta {
-    color: t.$ink-muted;
+    @include t.themed(color, ink-muted);
     font-size: 12px;
     margin: 0 0 24px 0;
     padding-bottom: 12px;
-    border-bottom: 1px solid $rule-soft;
+    @include t.themed(border-bottom, rule-soft, "1px solid ");
 }
 
 .article-summary {
     font-size: 16px;
-    color: #444444;
+    @include t.themed(color, ink-secondary);
     margin: 0 0 24px 0;
 }
 
 .applies-to {
-    background-color: $surface;
-    border-left: 3px solid t.$ink-muted;
+    @include t.themed(background-color, surface-panel);
+    @include t.themed(border-left, ink-muted, "3px solid ");
     padding: 12px 16px;
     margin: 0 0 24px 0;
 
@@ -182,7 +188,7 @@ th {
         font-size: 11px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #444444;
+        @include t.themed(color, ink-secondary);
         border: none;
         margin: 0 0 6px 0;
         padding: 0;
@@ -195,8 +201,8 @@ th {
 }
 
 .shortlink {
-    background-color: #fff6f6;
-    border: 1px solid #f2d5d3;
+    @include t.themed(background-color, danger-surface);
+    @include t.themed(border, danger-border, "1px solid ");
     padding: 10px 14px;
     margin: 24px 0;
     font-size: 13px;
@@ -205,15 +211,15 @@ th {
 .properties {
     margin-top: 40px;
     padding-top: 16px;
-    border-top: 1px solid $rule-soft;
-    color: t.$ink-muted;
+    @include t.themed(border-top, rule-soft, "1px solid ");
+    @include t.themed(color, ink-muted);
     font-size: 12px;
 
     dt {
         float: left;
         clear: left;
         width: 110px;
-        color: #444444;
+        @include t.themed(color, ink-secondary);
     }
 
     dd {
@@ -244,11 +250,11 @@ ul.articles {
 
     li {
         padding: 6px 0;
-        border-bottom: 1px solid $rule-faint;
+        @include t.themed(border-bottom, rule-faint, "1px solid ");
     }
 
     .id {
-        color: t.$ink-muted;
+        @include t.themed(color, ink-muted);
         font-size: 12px;
         display: inline-block;
         min-width: 68px;
@@ -256,15 +262,15 @@ ul.articles {
 
     .summary {
         display: block;
-        color: t.$ink-muted;
+        @include t.themed(color, ink-muted);
         font-size: 12px;
         margin-left: 72px;
     }
 }
 
 .callout {
-    background-color: $surface;
-    border-left: 3px solid $accent;
+    @include t.themed(background-color, surface-panel);
+    @include t.themed-raw(border-left, 3px solid $accent, 3px solid var(--accent-ink));
     padding: 12px 16px;
     margin: 24px 0;
 }
@@ -272,8 +278,8 @@ ul.articles {
 .site-footer {
     margin-top: 48px;
     padding-top: 16px;
-    border-top: 1px solid $rule-soft;
-    color: #999999;
+    @include t.themed(border-top, rule-soft, "1px solid ");
+    @include t.themed(color, ink-muted);
     font-size: 12px;
     padding-bottom: 32px;
 }

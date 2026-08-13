@@ -59,6 +59,7 @@ export default function RelinkAccountDialog({ id, onClose }: {
 }) {
     const handle = useSignal("");
     const redirectUrl = useSignal("");
+    const service = useSignal("");
     const stage = useSignal<Stage>('loading');
     const error = useSignal<string | null>(null);
     const connectionId = useSignal("");
@@ -83,7 +84,7 @@ export default function RelinkAccountDialog({ id, onClose }: {
     };
 
     return (
-        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, connectionId, id, service: "", onClose }}>
+        <LinkAccountContext.Provider value={{ handle, redirectUrl, stage, error, connectionId, id, service, onClose }}>
             <Dialog class="link-account-dialog" onClose={onClose}>
                 {renderStage()}
             </Dialog>

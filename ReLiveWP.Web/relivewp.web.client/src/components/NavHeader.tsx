@@ -3,6 +3,7 @@ import "./nav-header.scss"
 import Link from "./Link";
 import NavLoginLink from "./NavLoginLink";
 import NavLogo from "./NavLogo";
+import { ENDPOINT_SUPPORT } from "~/util/endpoints";
 
 export default function NavHeader() {
     return (
@@ -28,7 +29,7 @@ export default function NavHeader() {
                         <Link activeClass="active text-accent" href="/marketplace">marketplace</Link>
                     </li>
                     <li>
-                        <Link activeClass="active text-accent" href="/help">how-to</Link>
+                        <Link activeClass="active text-accent" href={ENDPOINT_SUPPORT}>how-to</Link>
                     </li>
                     <li>
                         <Link activeClass="active text-accent" href="/my/device">my phone</Link>

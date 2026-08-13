@@ -49,9 +49,41 @@ module.exports = [
                     ],
                 },
                 {
-                    test: /\.(woff(2)?|ttf|eot|wasm|svg)(\?v=\d+\.\d+\.\d+)?$/i,
+                    test: /\.(woff(2)?|ttf|eot|wasm)(\?v=\d+\.\d+\.\d+)?$/i,
                     use: [
                         { loader: 'file-loader', options: { outputPath: 'static/' } }
+                    ]
+                },
+                {
+                    test: /\.svg$/i,
+                    oneOf: [
+                        {
+                            resourceQuery: /url/,
+                            type: 'asset/resource',
+                            generator: { filename: 'static/[name].[contenthash][ext]' }
+                        },
+                        {
+                            issuer: /\.[jt]sx?$/,
+                            use: [
+                                {
+                                    loader: '@svgr/webpack',
+                                    options: {
+                                        svgProps: { fill: 'currentColor' },
+                                        svgoConfig: {
+                                            plugins: [
+                                                { name: 'preset-default', params: { overrides: { removeViewBox: false } } },
+                                                'removeDimensions',
+                                                'convertStyleToAttrs'
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            type: 'asset/resource',
+                            generator: { filename: 'static/[name].[contenthash][ext]' }
+                        }
                     ]
                 }
             ],

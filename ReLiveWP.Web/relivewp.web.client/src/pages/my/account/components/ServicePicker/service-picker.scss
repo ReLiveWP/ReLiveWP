@@ -1,0 +1,50 @@
+.service-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 8px;
+
+    max-height: 160px;
+    overflow-y: auto;
+    margin-top: 8px;
+
+    .service-tile {
+        position: static;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        margin: 0;
+        padding: 10px 6px;
+
+        background: var(--surface);
+        border: 1px solid var(--rule);
+        color: var(--ink-secondary);
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--accent-colour);
+            color: var(--ink);
+        }
+    }
+
+    .service-icon {
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
+    }
+
+    .service-name {
+        font-size: 9pt;
+        font-weight: 500;
+        font-variant: small-caps;
+        text-transform: lowercase;
+        text-align: center;
+        line-height: 1.2;
+    }
+}

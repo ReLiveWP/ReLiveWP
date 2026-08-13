@@ -3,14 +3,39 @@ import { useSignal } from "@preact/signals";
 
 import { ENDPOINT_BEGIN_ACCOUNT_LINKING, ENDPOINT_LINK_CREDENTIALS, ENDPOINT_UPDATE_LINK } from "~/util/endpoints";
 import { useAuthenticatedFetch } from "~/state/app-state";
-import { getCredentialServiceConfig, getServiceConfig, requiresHandle } from "./service-config";
+import { getCredentialServiceConfig, getServiceConfig, requiresHandle, stageForService } from "./service-config";
 import { useLinkAccount } from "./link-account-context";
-import { useLinkedAccounts } from "../../state/linked-accounts";
+import { getLinkableServices, useLinkedAccounts } from "../../state/linked-accounts";
 import { ServiceCaps, ServiceCapNames } from "~/util/service-caps";
+import ServicePicker from "../ServicePicker/ServicePicker";
+
+export function ServiceStage() {
+    const { service, stage, onClose } = useLinkAccount();
+    const { availableLinks, linkedAccounts } = useLinkedAccounts();
+
+    const services = getLinkableServices(availableLinks.value, linkedAccounts.value.connections);
+
+    return (
+        <>
+            <h1>start</h1>
+            <p>pick an account to link</p>
+            <ServicePicker
+                services={services}
+                onSelect={(selected) => {
+                    service.value = selected;
+                    stage.value = stageForService(selected);
+                }}
+            />
+            <div class="buttons">
+                <button onClick={() => onClose()}>cancel</button>
+            </div>
+        </>
+    );
+}
 
 export function HandleStage() {
     const { handle, error, service, stage, onClose } = useLinkAccount();
-    const config = getServiceConfig(service);
+    const config = getServiceConfig(service.value);
     if (!config) return null;
 
     const onSubmit = (e: SubmitEvent) => {
@@ -42,7 +67,7 @@ export function HandleStage() {
 export function CredentialsStage() {
     const fetch = useAuthenticatedFetch();
     const { error, service, stage, connectionId, isRelink, onClose } = useLinkAccount();
-    const config = getCredentialServiceConfig(service);
+    const config = getCredentialServiceConfig(service.value);
 
     const serviceUrl = useSignal("");
     const username = useSignal("");
@@ -67,7 +92,7 @@ export function CredentialsStage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    service,
+                    service: service.value,
                     service_url: serviceUrl.value,
                     username: username.value,
                     secret: secret.value,
@@ -156,11 +181,11 @@ export function LoadingStage() {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ service, identifier: handle.value }),
+                    body: JSON.stringify({ service: service.value, identifier: handle.value }),
                 });
 
                 if (!response.ok) {
-                    if (requiresHandle(service)) {
+                    if (requiresHandle(service.value)) {
                         error.value = "We couldn't find that handle, try again.";
                         stage.value = 'handle';
                     } else {
@@ -212,7 +237,7 @@ export function ConfigureStage() {
 
     const isReconfigure = currentEnabledCaps !== undefined;
 
-    const serviceInfo = (availableLinks.value ?? []).find(l => l.service === service);
+    const serviceInfo = (availableLinks.value ?? []).find(l => l.service === service.value);
     const availableCaps = serviceInfo
         ? Object.entries(ServiceCapNames)
             .map(([cap]) => Number(cap) as ServiceCaps)

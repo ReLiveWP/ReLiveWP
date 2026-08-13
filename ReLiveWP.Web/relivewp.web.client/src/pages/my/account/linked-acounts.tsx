@@ -1,55 +1,14 @@
 import "./linked-accounts.scss"
 
 import { Signal } from "@preact/signals";
-import { AccountType, AccountTypes, AvailableConnectedService, CapabilityGroups, Connections, LinkedAccountsContext, useOpenDialog } from "./state/linked-accounts";
+import { AccountType, AvailableConnectedService, Connections, LinkedAccountsContext } from "./state/linked-accounts";
 import { ENDPOINT_AVAILABLE_LINKS, ENDPOINT_GET_LINKED_ACCOUNTS } from "~/util/endpoints";
 import { Dialogs } from "./components/Dialogs";
 import { useFetchSignal } from "~/util/use-fetch";
 
-import CapabilityGroupSection from "./components/CapabilityGroupSection";
-
-const allKnownCaps = CapabilityGroups.reduce((acc, g) => acc | g.caps, 0);
-
-function OrphanedAccounts({ connections }: { connections: Connections }) {
-    const openDialog = useOpenDialog();
-    const orphaned: Array<{ type: AccountType; id: string; name: string; url: string }> = [];
-
-    for (const [serviceKey, accounts] of Object.entries(connections.connections ?? {})) {
-        const type = serviceKey as AccountType;
-        for (const account of accounts ?? []) {
-            if (((account.enabled_capabilities ?? 0) & allKnownCaps) === 0) {
-                orphaned.push({ type, id: account.id, name: account.name, url: account.url });
-            }
-        }
-    }
-
-    if (orphaned.length === 0) return null;
-
-    return (
-        <>
-            <h4>Other Connected Accounts</h4>
-            <dl>
-                {orphaned.map(({ type, id, name, url }) => {
-                    const typeInfo = AccountTypes[type];
-                    const Icon = typeInfo?.icon;
-                    return (
-                        <div key={id} class="orphaned-account">
-                            <dt>{Icon && <Icon class="link-icon" />} {typeInfo?.name ?? type}</dt>
-                            <dd>
-                                <a href={url} target="_blank">{name}</a>
-                                <span class="inactive-label">(no active features)</span>
-                            </dd>
-                            <dd>
-                                <button onClick={() => openDialog({ dialog: 'link', service: type })}>configure</button>
-                                <button onClick={() => openDialog({ dialog: 'unlink', service: type, id })}>unlink account</button>
-                            </dd>
-                        </div>
-                    );
-                })}
-            </dl>
-        </>
-    );
-}
+import { AccountEntry } from "./components/AccountEntry";
+import LinkAccountButton from "./components/ServicePicker/LinkAccountButton";
+import LinkedAccountsEmptyState from "./components/ServicePicker/LinkedAccountsEmptyState";
 
 export default function LinkedAccounts() {
     const { data: linkedAccounts, refresh: doRefresh } = useFetchSignal<Connections>(ENDPOINT_GET_LINKED_ACCOUNTS);
@@ -59,16 +18,25 @@ export default function LinkedAccounts() {
         return <span>Fetching your accounts...</span>;
     }
 
+    const connections = linkedAccounts.value.connections ?? {};
+    const hasAnyConnection = Object.values(connections).some(accounts => (accounts?.length ?? 0) > 0);
+
     return (
         <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts as Signal<Connections>, availableLinks: availableLinks as Signal<AvailableConnectedService[]>, doRefresh }}>
             <Dialogs>
                 <div class="linked-accounts">
-                    {CapabilityGroups.map(group => {
-                        const services = availableLinks.value?.filter(s => (s.capabilities & group.caps) !== 0) ?? [];
-                        if (services.length === 0) return null;
-                        return <CapabilityGroupSection key={group.name} group={group} services={services} />;
-                    })}
-                    {/* <OrphanedAccounts connections={linkedAccounts.value} /> */}
+                    {hasAnyConnection ? (
+                        <>
+                            <dl>
+                                {(availableLinks.value ?? []).flatMap(service =>
+                                    (connections[service.service as AccountType] ?? []).map(account =>
+                                        <AccountEntry key={account.id} service={service} account={account} />))}
+                            </dl>
+                            <LinkAccountButton />
+                        </>
+                    ) : (
+                        <LinkedAccountsEmptyState />
+                    )}
                 </div>
             </Dialogs>
         </LinkedAccountsContext.Provider>

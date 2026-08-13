@@ -10,9 +10,11 @@
 }
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
     <title>@pageTitle - ReLiveWP Support</title>
     @if (!string.IsNullOrEmpty(description))
     {
@@ -37,11 +39,11 @@
     {
         <meta property="article:modified_time" content="@modified" />
     }
-    @* summary, not summary_large_image: there is no image to show *@
     <meta name="twitter:card" content="summary" />
 
-    <link rel="stylesheet" href="~/support.css" />
+    <link rel="stylesheet" href="~/support.css" asp-append-version="true" />
 </head>
+
 <body>
     <header>
         <div class="brand-container">
@@ -56,6 +58,7 @@
         <nav class="header-nav">
             <ul class="header-items leading">
                 <li><a href="/kb">all articles</a></li>
+                <li> <a href="https://relivewp.net/">home</a></li>
             </ul>
             <ul class="header-items trailing">
                 <li>
@@ -83,4 +86,5 @@
         </div>
     </footer>
 </body>
+
 </html>

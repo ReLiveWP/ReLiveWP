@@ -4,46 +4,49 @@
 @use "base";
 
 :root {
-  @each $name, $shades in t.$accents {
-    --accent-colour-#{$name}: #{map.get($shades, base)};
-    --accent-colour-#{$name}-bg-1: #{map.get($shades, bg-1)};
-    --accent-colour-#{$name}-bg-2: #{map.get($shades, bg-2)};
-    --accent-colour-#{$name}-bg-3: #{map.get($shades, bg-3)};
+  @each $name, $base in t.$accents {
+    --accent-colour-#{$name}: #{$base};
+
+    @each $stop in (bg-1, bg-2, bg-3) {
+      --accent-colour-#{$name}-#{$stop}: light-dark(#{t.shade($base, $stop)},
+        #{t.shade($base, $stop, t.$shades-dark)});
+    }
   }
 
   --accent-colour-zune1: #{t.$accent-zune-1};
-  --accent-colour-zune1-bg-1: #{map.get(t.$accent-zune-shades, bg-1)};
-  --accent-colour-zune1-bg-2: #{map.get(t.$accent-zune-shades, bg-2)};
-  --accent-colour-zune1-bg-3: #{map.get(t.$accent-zune-shades, bg-3)};
+
+  @each $stop in (bg-1, bg-2, bg-3) {
+    --accent-colour-zune1-#{$stop}: light-dark(#{t.shade(t.$accent-zune-2, $stop)},
+      #{t.shade(t.$accent-zune-2, $stop, t.$shades-dark)});
+  }
 
   --accent-colour-zune2: #{t.$accent-zune-2};
 
-  @each $name, $shades in t.$accents {
-    --accent-gradient-#{$name}: #{t.accent-gradient($shades)};
-  }
+  --accent-colour-bg-1: var(--accent-colour-red-bg-1);
+  --accent-colour-bg-2: var(--accent-colour-red-bg-2);
+  --accent-colour-bg-3: var(--accent-colour-red-bg-3);
 
-  --accent-gradient-zune: #{t.accent-gradient(t.$accent-zune-shades)};
-
-  // inspect() rather than plain interpolation: the latter strips the quotes from "Courier New"
   --font-family: #{meta.inspect(t.$font-family)};
   --font-family-monospace: #{meta.inspect(t.$font-family-monospace)};
 }
+
 
 body {
   min-height: 100vh;
 
   display: flex;
   flex-direction: column;
+
+  background: t.accent-gradient-vars();
 }
 
-@each $name, $shades in t.$accents {
+@each $name, $base in t.$accents {
   .accent-#{$name} {
     --accent-colour: var(--accent-colour-#{$name});
     --accent-colour-bg-1: var(--accent-colour-#{$name}-bg-1);
     --accent-colour-bg-2: var(--accent-colour-#{$name}-bg-2);
     --accent-colour-bg-3: var(--accent-colour-#{$name}-bg-3);
     accent-color: var(--accent-colour-#{$name});
-    background: var(--accent-gradient-#{$name});
   }
 }
 
@@ -51,9 +54,8 @@ body {
   --accent-colour: linear-gradient(to bottom, var(--accent-colour-zune1), var(--accent-colour-zune2));
   --accent-colour-bg-1: var(--accent-colour-zune1-bg-1);
   --accent-colour-bg-2: var(--accent-colour-zune1-bg-2);
-  --accent-colour-bg-2: var(--accent-colour-zune1-bg-3);
+  --accent-colour-bg-3: var(--accent-colour-zune1-bg-3);
   accent-color: var(--accent-colour-zune1);
-  background: var(--accent-gradient-zune);
 
   .text-accent {
     background-image: var(--accent-colour);
@@ -101,11 +103,11 @@ footer {
 
   margin-top: 24px;
   margin-bottom: 24px;
-  color: #aaa;
+  color: var(--ink-faint);
 }
 
 a {
-  color: t.$ink-soft;
+  color: var(--ink-muted);
 }
 
 button,
@@ -154,5 +156,5 @@ input[type="submit"] {
 
 
 .error {
-  color: t.accent("red");
+  color: var(--danger);
 }

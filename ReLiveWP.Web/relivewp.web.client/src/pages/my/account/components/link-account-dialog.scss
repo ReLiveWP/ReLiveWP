@@ -9,9 +9,9 @@
 }
 
 .unlink-account-dialog {
-    background: radial-gradient(circle at top 30px right 30px, #ffe1e0, white 60%);
+    background: radial-gradient(circle at top 30px right 30px, var(--accent-colour-red-bg-1), var(--surface) 60%);
 
     h1::before {
-        background: #e60c00;
+        background: var(--danger);
     }
 }

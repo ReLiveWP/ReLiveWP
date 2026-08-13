@@ -54,7 +54,7 @@
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 1px solid black;
+            border: 1px solid var(--rule-strong);
             vertical-align: text-bottom;
         }
 
@@ -120,7 +120,7 @@
         width: 100%;
         position: relative;
         outline-style: none;
-        background-color: rgba(0, 0, 0, 0.05);
+        background-color: var(--surface-sunken);
 
         display: flex;
         justify-content: center;
@@ -128,7 +128,7 @@
 
         >p {
             font-size: 14px;
-            color: #555;
+            color: var(--ink-secondary);
             font-variant: small-caps;
 
             >img {

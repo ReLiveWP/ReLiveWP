@@ -3,7 +3,12 @@ declare module "*.png" {
     export default content;
 }
 declare module "*.svg" {
-    const content: any;
+    import type { JSX } from "preact";
+    const component: (props: JSX.SVGAttributes<SVGSVGElement>) => JSX.Element;
+    export default component;
+}
+declare module "*.svg?url" {
+    const content: string;
     export default content;
 }
 declare module "*.jpg" {

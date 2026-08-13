@@ -1,27 +1,33 @@
 @use "sass:color";
 @use "sass:map";
+@use "sass:math";
 @use "sass:string";
 
 $accents: (
-    "red": (base: #e60c00, bg-1: #ffe1e0, bg-2: #fff0f0, bg-3: #ffffff),
-    "teal": (base: #00ABA9, bg-1: #e0fffe, bg-2: #f0fffe, bg-3: #fcffff),
-    "purple": (base: #A200FF, bg-1: #f4e0ff, bg-2: #faf0ff, bg-3: #fefcff),
-    "pink": (base: #E671B8, bg-1: #ffe0f3, bg-2: #fff0f9, bg-3: #fffcfe),
-    "green": (base: #339933, bg-1: #e0ffe0, bg-2: #f0fff0, bg-3: #fcfffc),
-    "yellow": (base: #F09609, bg-1: #fff3e0, bg-2: #fff9f0, bg-3: #fffefc),
-    "blue": (base: #1BA1E2, bg-1: #e0f5ff, bg-2: #f0faff, bg-3: #fafdff),
-    "magenta": (base: #D80073, bg-1: #ffe0f1, bg-2: #fff0f8, bg-3: #fffcfe),
+    "red": #e60c00,
+    "teal": #00ABA9,
+    "purple": #A200FF,
+    "pink": #E671B8,
+    "green": #339933,
+    "yellow": #F09609,
+    "blue": #1BA1E2,
+    "magenta": #D80073,
 );
 
 $accent-zune-1: #f10da1;
 $accent-zune-2: #e95214;
-$accent-zune-shades: (bg-1: #ffe9e0, bg-2: #fff4f0, bg-3: #fffdfc);
 
-$ink: #333333;
-$ink-strong: #1a1a1a;
-$ink-muted: #767676;
-$ink-soft: #888888;
-$rule: #DEDEDE;
+$shades-light: (
+    bg-1: (sat: 100%, lig: 93.9%),
+    bg-2: (sat: 100%, lig: 97.1%),
+    bg-3: (sat: 100%, lig: 99.4%),
+);
+
+$shades-dark: (
+    bg-1: (sat: 55%, lig: 14%),
+    bg-2: (sat: 45%, lig: 10%),
+    bg-3: (sat: 30%, lig: 7.5%),
+);
 
 $font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
 $font-family-monospace: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
@@ -32,15 +38,122 @@ $column-width: 1024px;
 $column-gutter: 24px;
 $breakpoint-narrow: 600px;
 
-@function accent($name, $shade: base) {
-    @return map.get(map.get($accents, $name), $shade);
+@function to-hex($colour) {
+    @return rgb(math.round(color.channel($colour, "red", $space: rgb)),
+        math.round(color.channel($colour, "green", $space: rgb)),
+        math.round(color.channel($colour, "blue", $space: rgb)));
 }
+
+@function shade($colour, $stop, $stops: $shades-light) {
+    $spec: map.get($stops, $stop);
+    @return to-hex(hsl(color.channel($colour, "hue", $space: hsl),
+        map.get($spec, sat),
+        map.get($spec, lig)));
+}
+
+@function accent-ink($colour, $lightness: 70%) {
+    @return to-hex(hsl(color.channel($colour, "hue", $space: hsl), 100%, $lightness));
+}
+
+@function accent-shades($colour, $stops: $shades-light) {
+    @return (
+        bg-1: shade($colour, bg-1, $stops),
+        bg-2: shade($colour, bg-2, $stops),
+        bg-3: shade($colour, bg-3, $stops)
+    );
+}
+
+@function accent($name, $shade: base) {
+    $base: map.get($accents, $name);
+
+    @if $shade == base {
+        @return $base;
+    }
+
+    @return shade($base, $shade);
+}
+
+$accent-zune-shades: accent-shades($accent-zune-2);
+
+$theme-light: (
+    ink-strong: #1a1a1a,
+    ink: #333333,
+    ink-secondary: #666666,
+    ink-muted: #999999,
+    ink-faint: #aaaaaa,
+
+    surface: #ffffff,
+    surface-subtle: #eeeeee,
+    surface-sunken: rgba(0, 0, 0, 0.05),
+    surface-panel: #f4f4f4,
+    scrim: rgba(255, 255, 255, 0.66),
+
+    rule: #DEDEDE,
+    rule-strong: #000000,
+    rule-soft: #e6e6e6,
+    rule-faint: #f0f0f0,
+    border-input: #cccccc,
+
+    shadow-colour: #999999,
+    on-accent: #ffffff,
+
+    danger: accent("red"),
+    danger-surface: #fff6f6,
+    danger-border: #f2d5d3,
+);
+
+$theme-dark: (
+    ink-strong: #f5f5f5,
+    ink: #e2e2e2,
+    ink-secondary: #b4b4b4,
+    ink-muted: #8c8c8c,
+    ink-faint: #6f6f6f,
+
+    surface: #1b1b1b,
+    surface-subtle: #2b2b2b,
+    surface-sunken: rgba(255, 255, 255, 0.05),
+    surface-panel: #212121,
+    scrim: rgba(0, 0, 0, 0.66),
+
+    rule: #3a3a3a,
+    rule-strong: #ffffff,
+    rule-soft: #303030,
+    rule-faint: #272727,
+    border-input: #4a4a4a,
+
+    shadow-colour: #000000,
+    on-accent: #ffffff,
+
+    danger: #ff5f52,
+    danger-surface: #2c1512,
+    danger-border: #5b2723,
+);
 
 @function accent-gradient($shades) {
     @return linear-gradient(to bottom,
         map.get($shades, bg-1),
         map.get($shades, bg-2) 80px,
         map.get($shades, bg-3) 200px);
+}
+
+// wp7's browser (ie9) has no custom properties and no light-dark(), so it drops
+// any declaration using them. emit the light value first as a floor, then the
+// token; modern browsers take the later declaration and theme normally.
+@mixin themed($property, $token, $before: "", $after: "") {
+    #{$property}: #{$before}#{map.get($theme-light, $token)}#{$after};
+    #{$property}: #{$before}var(--#{$token})#{$after};
+}
+
+@mixin themed-raw($property, $fallback, $value) {
+    #{$property}: $fallback;
+    #{$property}: $value;
+}
+
+@function accent-gradient-vars() {
+    @return linear-gradient(to bottom,
+        var(--accent-colour-bg-1),
+        var(--accent-colour-bg-2) 80px,
+        var(--accent-colour-bg-3) 200px);
 }
 
 @function svg-hex($colour) {

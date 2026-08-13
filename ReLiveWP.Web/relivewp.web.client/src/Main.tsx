@@ -3,7 +3,6 @@ import { ErrorBoundary, LocationProvider, Route, Router, lazy } from "preact-iso
 import { useAccentColor, useTitle } from "./util/effects";
 
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
-import { ENDPOINT_SUPPORT } from "./util/endpoints";
 import Home from "./pages/index"
 import NavHeader from "./components/NavHeader"
 import { useSignalEffect } from "@preact/signals";
@@ -24,7 +23,8 @@ const AccentHandler = () => {
         body.className = 'accent-' + accent.value;
 
         const themeTag = document.querySelector('meta[name="theme-color"]')!;
-        themeTag.setAttribute("content", accentColor.value)
+        if (accentColor.value)
+            themeTag.setAttribute("content", accentColor.value)
     });
 
     useAccentColor('red');
@@ -43,7 +43,6 @@ const AccentHandler = () => {
                 </ErrorBoundary>
             </main>
             <footer>
-                <p><small><a href={ENDPOINT_SUPPORT}>support</a></small></p>
                 <p><small>relive for windows phone &bull; windows phone is a trademark of Microsoft Corp.</small></p>
             </footer>
         </LocationProvider>

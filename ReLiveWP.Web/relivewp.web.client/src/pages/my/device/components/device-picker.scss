@@ -10,7 +10,7 @@
         padding: 0 0.5em 0 0;
         border-radius: 0;
         border: none;
-        border-bottom: 1px solid #DEDEDE;
+        border-bottom: 1px solid var(--rule);
         background: none;
         margin-top: 0.5em;
 
@@ -65,7 +65,7 @@
             display: block;
             width: 16px;
             height: 16px;
-            border: 1px solid black;
+            border: 1px solid var(--rule-strong);
             justify-self: flex-end;
             margin-left: 8px;
         }

@@ -1,0 +1,7 @@
+<!-- i wanted somebody to know i hand edited this svg to be the correct size -->
+ <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+    <path d="M0 0h9v9H0z" />
+    <path d="M10 0h9v9H10z" />
+    <path d="M0 10h9v9H0z" />
+    <path d="M10 10h9v9H10z" />
+</svg>
