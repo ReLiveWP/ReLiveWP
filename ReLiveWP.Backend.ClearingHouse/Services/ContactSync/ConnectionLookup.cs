@@ -4,7 +4,11 @@ using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 
-public sealed record ResolvedConnection(string ServiceId, SyncConnection? Usable, bool IsTransient);
+public sealed record ResolvedConnection(
+    string ServiceId, SyncConnection? Usable, bool IsTransient, uint Capabilities)
+{
+    public bool SuppliesContacts => (Capabilities & ConnectionConsts.ContactsCapability) != 0;
+}
 
 public static class ConnectionLookup
 {
@@ -35,6 +39,6 @@ public static class ConnectionLookup
             : null;
 
         return new ResolvedConnection(
-            match.Service, usable, (match.Flags & ConnectionConsts.TransientFlag) != 0);
+            match.Service, usable, (match.Flags & ConnectionConsts.TransientFlag) != 0, match.Capabilities);
     }
 }

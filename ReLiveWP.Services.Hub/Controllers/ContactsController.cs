@@ -12,31 +12,31 @@ namespace ReLiveWP.Services.Hub.Controllers;
 public class ContactsController(ClearingHouseClient clearingHouse) : Controller
 {
     [HttpGet]
-    [ActionName("sources")]
-    public async Task<ActionResult<ContactSourcesResponse>> GetSources([FromQuery] string connectionId)
+    [ActionName("sync")]
+    public async Task<ActionResult<ContactSyncListResponse>> Get([FromQuery] string? connectionId)
     {
-        var response = await clearingHouse.ListContactSourcesAsync(new() { ConnectionId = connectionId });
+        var request = new GetContactSyncRequest();
+        if (!string.IsNullOrWhiteSpace(connectionId)) request.ConnectionId = connectionId;
 
-        return new ContactSourcesResponse(response.ServiceId,
-            [.. response.Sources.Select(s => new ContactSourceModel(
-                s.Id, s.DisplayName, s.HasCount ? s.Count : null, s.IsDefault))]);
+        var result = await clearingHouse.GetContactSyncAsync(request);
+
+        return new ContactSyncListResponse([.. result.Connections.Select(Model)]);
     }
 
     [HttpPost]
-    [ActionName("import")]
-    public async Task<ActionResult<ImportContactsResponse>> Import([FromBody] ImportContactsModel model)
-    {
-        var request = new ImportContactsRequest
-        {
-            ConnectionId = model.ConnectionId,
-            KeepInSync = model.KeepInSync,
-        };
+    [ActionName("sync")]
+    public async Task<ActionResult<ContactSyncModel>> SyncNow([FromBody] ContactSyncNowModel model) =>
+        Model(await clearingHouse.SyncContactsNowAsync(new() { ConnectionId = model.ConnectionId }));
 
-        if (model.SourceIds is { Length: > 0 })
-            request.SourceIds.AddRange(model.SourceIds);
+    [HttpPut]
+    [ActionName("sync")]
+    public async Task<ActionResult<ContactSyncModel>> SetEnabled([FromBody] SetContactSyncModel model) =>
+        Model(await clearingHouse.SetContactSyncAsync(
+            new() { ConnectionId = model.ConnectionId, Enabled = model.Enabled }));
 
-        var result = await clearingHouse.ImportContactsAsync(request);
-
-        return new ImportContactsResponse([.. result.QueuedSourceIds]);
-    }
+    private static ContactSyncModel Model(ContactSyncStatus s) => new(
+        s.ConnectionId, s.ServiceId, s.Enabled, s.Running, s.Queued,
+        s.HasLastSyncedAt ? s.LastSyncedAt : null,
+        s.HasLastFailure ? s.LastFailure : null,
+        s.Created, s.Updated, s.Deleted, s.Skipped);
 }

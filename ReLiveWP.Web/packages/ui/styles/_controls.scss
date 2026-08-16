@@ -29,7 +29,7 @@ input[type="submit"] {
     padding: 0 !important;
     margin: 0 !important;
     font: inherit;
-    font-size: t.$font-size-base;
+    font-size: t.$font-size-base !important;
     font-weight: 500;
     font-variant: small-caps;
     color: var(--accent-colour);

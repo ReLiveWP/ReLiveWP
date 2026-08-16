@@ -31,8 +31,8 @@ public class MirrorPlanTests
         new($"server-{id}", $"etag-{id}", IsDeleted: true, RemoteSynced: true);
 
     private static List<ContactMirrorService.MirrorWrite> Writes(
-        Dictionary<string, KnownItem> known, ContactSyncBatch batch, bool force = false) =>
-        ContactMirrorService.PlanWrites(known, batch, force);
+        Dictionary<string, KnownItem> known, ContactSyncBatch batch) =>
+        ContactMirrorService.PlanWrites(known, batch);
 
     private static List<string> Deletes(Dictionary<string, KnownItem> known, ContactSyncBatch batch) =>
         ContactMirrorService.PlanDeletes(known, batch);
@@ -67,19 +67,6 @@ public class MirrorPlanTests
         var writes = Writes(Known(Edited("c1", "etag-old")), FullSync(Remote("c1", "Changed remotely")));
 
         Assert.Empty(writes);
-    }
-
-    // an explicit import forces past the etag check; it must not force past this one
-    [Fact]
-    public void Forcing_a_run_still_leaves_an_edited_contact_alone()
-    {
-        Assert.Empty(Writes(Known(Edited("c1")), FullSync(Remote("c1")), force: true));
-    }
-
-    [Fact]
-    public void Forcing_a_run_refreshes_a_contact_whose_etag_matches()
-    {
-        Assert.Single(Writes(Known(Tracked("c1")), FullSync(Remote("c1")), force: true));
     }
 
     [Fact]

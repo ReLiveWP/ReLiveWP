@@ -1,9 +1,35 @@
+@use "tokens" as t;
+
 .linked-accounts {
-    margin-top: -12px;
+    margin-top: -16px;
 
     .header {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+
         margin-bottom: 4px;
-        margin-top: 8px;
+        padding-bottom: 4px;
+        margin-top: 12px;
+        margin-left: 10px;
+
+        >div:first-of-type {
+            flex: 1;
+        }
+
+        .account-actions {
+            display: flex;
+            gap: 20px;
+            white-space: nowrap;
+            font-weight: 500;
+            font-variant: small-caps;
+            text-transform: lowercase;
+            align-self: flex-end;
+
+            .error {
+                color: var(--danger);
+            }
+        }
 
         .link-icon {
             width: 20px;
@@ -11,7 +37,6 @@
             vertical-align: top;
             margin-top: 4px;
             margin-right: 10px;
-            margin-left: 10px;
             shape-rendering: geometricprecision;
             overflow-clip-margin: unset;
             color: var(--ink);
@@ -84,43 +109,52 @@
     }
 
     .capability {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 0 12px;
+
+        padding-top: 8px;
+        padding-bottom: 8px;
+        margin-left: 50px;
+        @include t.themed(border-top, rule-faint, "1px solid ");
 
         .capability-name {
-            flex: 0 0 120px;
             text-transform: lowercase;
             font-weight: 500;
             font-variant: small-caps;
         }
 
-        .capability-detail {
-            flex: 1;
-        }
-
         .capability-connection {
-            display: block;
+            color: var(--ink-secondary);
         }
 
         .capability-disconnected {
-            display: block;
             color: var(--ink-muted);
         }
 
         .capability-caps {
-            display: block;
             font-size: 0.85em;
             text-transform: lowercase;
             color: var(--ink-muted);
         }
-    }
 
-    .capability-sharing {
-        .capability-name,
-        .capability-detail {
+        .capability-sharing {
             font-size: 9pt;
+            margin-top: 3px;
             color: var(--ink-muted);
+        }
+
+        .capability-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 7px;
+
+            .text-button:disabled {
+                opacity: 0.5;
+                cursor: default;
+                text-decoration: none;
+            }
         }
     }
 
@@ -151,7 +185,8 @@
         font-variant: small-caps;
     }
 
-    .action-link,.capability-action {
+    .action-link,
+    .capability-action {
         margin-left: auto;
         white-space: nowrap;
         font-size: 10.5pt;
@@ -159,12 +194,23 @@
         font-variant: small-caps;
         text-transform: lowercase;
 
+        p {
+            margin: 0;
+            text-align: right;
+        }
+
         &.text-accent {
             color: var(--accent-colour);
         }
 
-        &.error {
+        &.error,
+        .error {
             color: var(--danger);
+        }
+
+        a.disabled {
+            opacity: 0.5;
+            cursor: default;
         }
     }
 }

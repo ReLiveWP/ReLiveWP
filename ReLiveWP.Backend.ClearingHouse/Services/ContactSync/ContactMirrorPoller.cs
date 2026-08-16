@@ -56,7 +56,7 @@ public class ContactMirrorPoller(
 
         var sources = await db.ContactSyncSources
             .Where(s => s.RunRequestedAt != null
-                     || (!s.DetachAfterRun
+                     || (s.SyncEnabled
                          && s.ConsecutiveFailures < MaxConsecutiveFailures
                          && (s.LastSyncedAt == null || s.LastSyncedAt < due)))
             .OrderByDescending(s => s.RunRequestedAt)
@@ -88,10 +88,8 @@ public class ContactMirrorPoller(
         var source = await db.ContactSyncSources.FirstOrDefaultAsync(s => s.Id == sourceId, ct);
         if (source is null) return;
 
-        var requested = source.RunRequestedAt is not null;
-
-        var pull = requested
-            || (!source.DetachAfterRun
+        var pull = source.RunRequestedAt is not null
+            || (source.SyncEnabled
                 && source.ConsecutiveFailures < MaxConsecutiveFailures
                 && (source.LastSyncedAt is null || source.LastSyncedAt < due));
 
@@ -112,6 +110,13 @@ public class ContactMirrorPoller(
                 return;
             }
 
+            // turning People off on the connection stops the pull, whatever the source row says
+            if (!resolved.SuppliesContacts)
+            {
+                source.SyncEnabled = false;
+                return;
+            }
+
             if (resolved.Usable is not { } connection)
             {
                 logger.LogInformation("connection {Connection} is unusable, leaving {Service} contacts in place",
@@ -123,7 +128,7 @@ public class ContactMirrorPoller(
 
             if (!pull) return;
 
-            var result = await mirror.RunAsync(source, connection, requested, ct);
+            var result = await mirror.RunAsync(source, connection, ct);
 
             source.LastRunCreated = result.Created;
             source.LastRunUpdated = result.Updated;
@@ -135,12 +140,10 @@ public class ContactMirrorPoller(
                     source.ServiceId, source.SourceId, source.UserId,
                     result.Created, result.Updated, result.Deleted, result.Skipped);
 
-            if (source.DetachAfterRun)
+            if (resolved.IsTransient)
             {
                 await detach.DetachAsync([source], ct);
-
-                if (resolved.IsTransient)
-                    await DiscardConnectionAsync(connected, source, ct);
+                await DiscardConnectionAsync(connected, source, ct);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException)

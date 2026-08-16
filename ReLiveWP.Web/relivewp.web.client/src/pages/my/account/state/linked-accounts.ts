@@ -11,7 +11,7 @@ import GoogleDriveIcon from "../icons/google-drive.svg";
 import GooglePhotosIcon from "../icons/google-photos.svg";
 import { Signal } from "@preact/signals";
 import { createContext, type JSX } from "preact";
-import { ServiceCaps } from "~/util/service-caps";
+import { ServiceCapNames, ServiceCaps } from "~/util/service-caps";
 
 export type AccountIcon = (props: { class?: string }) => JSX.Element;
 
@@ -122,6 +122,37 @@ export type AccountInfo = {
     enabled_capabilities?: number
     shared_capabilities?: number
 }
+
+export const enabledCaps = (account: AccountInfo) => account.enabled_capabilities ?? 0;
+export const sharedCaps = (account: AccountInfo) => account.shared_capabilities ?? 0;
+
+export const isGroupEnabled = (account: AccountInfo, group: CapabilityGroup) =>
+    (enabledCaps(account) & group.caps) !== 0;
+
+export const isMultiCapGroup = (group: CapabilityGroup) =>
+    (group.caps & (group.caps - 1)) !== 0;
+
+export const shareableCaps = (service: AvailableConnectedService, group: CapabilityGroup) =>
+    ((service.shareable_capabilities ?? 0) & group.caps) >>> 0;
+
+export const groupsFor = (service: AvailableConnectedService) =>
+    CapabilityGroups.filter(group => (service.capabilities & group.caps) !== 0);
+
+export const connectionLabel = (typeInfo: AccountTypeEntry, group: CapabilityGroup) =>
+    typeInfo.capOptions?.[group.caps]?.name ?? typeInfo.name;
+
+const stripGroupPrefix = (name: string) => {
+    const separator = name.indexOf(" - ");
+    return separator === -1 ? name : name.slice(separator + 3);
+};
+
+export const enabledCapNames = (account: AccountInfo, group: CapabilityGroup) =>
+    Object.entries(ServiceCapNames).flatMap(([cap, name]) => {
+        const bit = Number(cap);
+        return name && (bit & group.caps) !== 0 && (bit & enabledCaps(account)) !== 0
+            ? [stripGroupPrefix(name)]
+            : [];
+    });
 
 export type Connections = {
     connections: Partial<{ [key in AccountType]: AccountInfo[] | undefined }>

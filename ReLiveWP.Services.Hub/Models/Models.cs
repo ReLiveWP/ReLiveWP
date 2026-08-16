@@ -1,26 +1,20 @@
 namespace ReLiveWP.Services.Hub.Models;
 
-public record ContactSourceModel(string Id, string DisplayName, int? Count, bool IsDefault);
+public record ContactSyncNowModel(string ConnectionId);
 
-public record ContactSourcesResponse(string ServiceId, IReadOnlyList<ContactSourceModel> Sources);
+public record SetContactSyncModel(string ConnectionId, bool Enabled);
 
-public record ImportContactsModel(string ConnectionId, string[]? SourceIds = null, bool KeepInSync = false);
-
-public record ImportContactsResponse(IReadOnlyList<string> QueuedSourceIds);
-
-public record SourceSyncStatusModel(
+public record ContactSyncModel(
     string ConnectionId,
     string ServiceId,
-    string SourceId,
-    bool DetachAfterRun,
+    bool Enabled,
     bool Running,
     bool Queued,
     string? LastSyncedAt,
     string? LastFailure,
-    int ConsecutiveFailures,
     int Created,
     int Updated,
     int Deleted,
     int Skipped);
 
-public record SyncStatusResponse(IReadOnlyList<SourceSyncStatusModel> Sources);
+public record ContactSyncListResponse(IReadOnlyList<ContactSyncModel> Connections);

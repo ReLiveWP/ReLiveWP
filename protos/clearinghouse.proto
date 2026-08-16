@@ -5,62 +5,41 @@ option csharp_namespace = "ReLiveWP.Services.Grpc.ClearingHouse";
 package clearinghouse;
 
 service ClearingHouse {
-  rpc ListContactSources (ListContactSourcesRequest) returns (ListContactSourcesResponse);
-  rpc ImportContacts     (ImportContactsRequest)     returns (ImportContactsResult);
-  rpc GetSyncStatus      (GetSyncStatusRequest)      returns (GetSyncStatusResponse);
+  rpc SyncContactsNow (ContactSyncRequest)    returns (ContactSyncStatus);
+  rpc SetContactSync  (SetContactSyncRequest) returns (ContactSyncStatus);
+  rpc GetContactSync  (GetContactSyncRequest) returns (GetContactSyncResponse);
 }
 
-message GetSyncStatusRequest {
+message ContactSyncRequest {
+  string connection_id = 1;
+}
+
+message SetContactSyncRequest {
+  string connection_id = 1;
+  bool   enabled       = 2;
+}
+
+message GetContactSyncRequest {
   optional string connection_id = 1;
 }
 
-message SourceSyncStatus {
+message GetContactSyncResponse {
+  repeated ContactSyncStatus connections = 1;
+}
+
+message ContactSyncStatus {
   string connection_id = 1;
   string service_id    = 2;
-  string source_id     = 3;
 
-  bool   detach_after_run = 4;
+  bool   enabled       = 3;
+  bool   running       = 4;
+  bool   queued        = 5;
 
-  bool   running       = 5;
-  bool   queued        = 6;
+  optional string last_synced_at = 6;
+  optional string last_failure   = 7;
 
-  optional string last_synced_at = 7;
-  optional string last_failure   = 8;
-  int32    consecutive_failures  = 9;
-
-  int32 created = 10;
-  int32 updated = 11;
-  int32 deleted = 12;
-  int32 skipped = 13;
-}
-
-message GetSyncStatusResponse {
-  repeated SourceSyncStatus sources = 1;
-}
-
-message ListContactSourcesRequest {
-  string connection_id = 1;
-}
-
-message ContactSource {
-  string          id           = 1;
-  string          display_name = 2;
-  optional int32  count        = 3;
-  bool            is_default   = 4;
-}
-
-message ListContactSourcesResponse {
-  string                 service_id = 1;
-  repeated ContactSource sources    = 2;
-}
-
-message ImportContactsRequest {
-  string connection_id = 1;
-  repeated string source_ids = 2;
-
-  bool keep_in_sync = 4;
-}
-
-message ImportContactsResult {
-  repeated string queued_source_ids = 1;
+  int32 created = 8;
+  int32 updated = 9;
+  int32 deleted = 10;
+  int32 skipped = 11;
 }

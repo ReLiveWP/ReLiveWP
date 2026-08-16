@@ -16,60 +16,60 @@ public class ClearingHouseService(
     ILogger<ClearingHouseService> logger)
     : ClearingHouseBase
 {
-    public override async Task<ListContactSourcesResponse> ListContactSources(
-        ListContactSourcesRequest request, ServerCallContext context)
+    public override async Task<ContactSyncStatus> SyncContactsNow(
+        ContactSyncRequest request, ServerCallContext context)
     {
         var connection = await ResolveConnectionAsync(request.ConnectionId, context);
+        var sources = await EnrolAsync(connection, context.CancellationToken);
 
-        if (!drivers.TryGet(connection.ServiceId, out var driver))
-            throw new RpcException(new Status(StatusCode.Unimplemented, $"No contact driver for '{connection.ServiceId}'"));
+        foreach (var source in sources) Request(source);
 
-        var sources = await driver.ListSourcesAsync(connection.Connection, context.CancellationToken);
+        await db.SaveChangesAsync(context.CancellationToken);
 
-        var response = new ListContactSourcesResponse { ServiceId = connection.ServiceId };
-        foreach (var s in sources)
-        {
-            var source = new ContactSource { Id = s.Id, DisplayName = s.DisplayName, IsDefault = s.IsDefault };
-            if (s.Count is { } count) source.Count = count;
-            response.Sources.Add(source);
-        }
+        logger.LogInformation("queued a {Service} contact sync for {User}",
+            connection.ServiceId, connection.Connection.UserId);
 
-        return response;
+        return Aggregate(connection.ConnectionId, connection.ServiceId, sources);
     }
 
-    public override async Task<ImportContactsResult> ImportContacts(
-        ImportContactsRequest request, ServerCallContext context)
+    public override async Task<ContactSyncStatus> SetContactSync(
+        SetContactSyncRequest request, ServerCallContext context)
     {
+        if (!request.Enabled) return await DisableAsync(request.ConnectionId, context);
+
         var connection = await ResolveConnectionAsync(request.ConnectionId, context);
+        var sources = await EnrolAsync(connection, context.CancellationToken);
 
-        if (!drivers.TryGet(connection.ServiceId, out var driver))
-            throw new RpcException(new Status(StatusCode.Unimplemented, $"No contact driver for '{connection.ServiceId}'"));
-
-        var detachAfterRun = !request.KeepInSync;
-        var result = new ImportContactsResult();
-
-        var discovered = await driver.ListSourcesAsync(connection.Connection, context.CancellationToken);
-        var wanted = request.SourceIds.Count > 0
-            ? request.SourceIds.Select(id =>
-                discovered.FirstOrDefault(s => s.Id == id) ?? new RemoteContactSource(id, id)).ToList()
-            : [.. discovered];
-
-        foreach (var source in wanted)
+        foreach (var source in sources)
         {
-            await EnrolAsync(connection, source, detachAfterRun, context.CancellationToken);
-            result.QueuedSourceIds.Add(source.Id);
+            source.SyncEnabled = true;
+            Request(source);
         }
 
         await db.SaveChangesAsync(context.CancellationToken);
 
-        logger.LogInformation("queued {Count} {Service} source(s) for {User} to {What}",
-            wanted.Count, connection.ServiceId, connection.Connection.UserId,
-            detachAfterRun ? "import once" : "keep in sync");
+        logger.LogInformation("enabled {Service} contact sync for {User}",
+            connection.ServiceId, connection.Connection.UserId);
 
-        return result;
+        return Aggregate(connection.ConnectionId, connection.ServiceId, sources);
     }
 
-    public override async Task<GetSyncStatusResponse> GetSyncStatus(GetSyncStatusRequest request, ServerCallContext context)
+    private async Task<ContactSyncStatus> DisableAsync(string connectionId, ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(connectionId))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "connection_id is required"));
+
+        var sources = await ExistingAsync(GetUserId(context), connectionId, context.CancellationToken);
+
+        foreach (var source in sources) source.SyncEnabled = false;
+
+        await db.SaveChangesAsync(context.CancellationToken);
+
+        return Aggregate(connectionId, sources.FirstOrDefault()?.ServiceId ?? string.Empty, sources);
+    }
+
+    public override async Task<GetContactSyncResponse> GetContactSync(
+        GetContactSyncRequest request, ServerCallContext context)
     {
         var userId = GetUserId(context);
 
@@ -77,68 +77,87 @@ public class ClearingHouseService(
         if (request.HasConnectionId)
             query = query.Where(s => s.ConnectionId == request.ConnectionId);
 
-        var response = new GetSyncStatusResponse();
+        var response = new GetContactSyncResponse();
 
-        foreach (var s in await query.ToListAsync(context.CancellationToken))
-        {
-            var status = new SourceSyncStatus
-            {
-                ConnectionId = s.ConnectionId,
-                ServiceId = s.ServiceId,
-                SourceId = s.SourceId,
-                DetachAfterRun = s.DetachAfterRun,
-                Running = s.RunStartedAt is not null,
-                Queued = s.RunRequestedAt is not null,
-                ConsecutiveFailures = s.ConsecutiveFailures,
-                Created = s.LastRunCreated,
-                Updated = s.LastRunUpdated,
-                Deleted = s.LastRunDeleted,
-                Skipped = s.LastRunSkipped,
-            };
-
-            if (s.LastSyncedAt is { } synced) status.LastSyncedAt = synced.ToString("O");
-            if (s.LastFailure is { } failure) status.LastFailure = failure;
-
-            response.Sources.Add(status);
-        }
+        foreach (var group in (await query.ToListAsync(context.CancellationToken)).GroupBy(s => s.ConnectionId))
+            response.Connections.Add(Aggregate(group.Key, group.First().ServiceId, [.. group]));
 
         return response;
     }
 
-    private async Task EnrolAsync(
-        (string ServiceId, SyncConnection Connection) connection, RemoteContactSource source,
-        bool detachAfterRun, CancellationToken ct)
+    private Task<List<DbContactSyncSource>> ExistingAsync(string userId, string connectionId, CancellationToken ct) =>
+        db.ContactSyncSources
+            .Where(s => s.UserId == userId && s.ConnectionId == connectionId)
+            .ToListAsync(ct);
+
+    private static void Request(DbContactSyncSource source)
     {
+        source.RunRequestedAt = DateTime.UtcNow;
+        source.ConsecutiveFailures = 0;
+        source.LastFailure = null;
+    }
+
+    private async Task<List<DbContactSyncSource>> EnrolAsync(
+        (string ServiceId, string ConnectionId, SyncConnection Connection) connection, CancellationToken ct)
+    {
+        if (!drivers.TryGet(connection.ServiceId, out var driver))
+            throw new RpcException(new Status(
+                StatusCode.Unimplemented, $"No contact driver for '{connection.ServiceId}'"));
+
         var userId = connection.Connection.UserId;
-        var connectionId = connection.Connection.ConnectionId;
+        var connectionId = connection.ConnectionId;
 
-        var existing = await db.ContactSyncSources.FirstOrDefaultAsync(
-            s => s.UserId == userId && s.ConnectionId == connectionId && s.SourceId == source.Id, ct);
+        var existing = await ExistingAsync(userId, connectionId, ct);
+        var discovered = await driver.ListSourcesAsync(connection.Connection, ct);
+        var enabled = existing.Count > 0 && existing.All(s => s.SyncEnabled);
 
-        if (existing is null)
+        foreach (var source in discovered)
         {
-            db.ContactSyncSources.Add(new DbContactSyncSource
+            if (existing.Any(s => s.SourceId == source.Id)) continue;
+
+            var added = new DbContactSyncSource
             {
                 Id = Guid.NewGuid().ToString("N"),
                 UserId = userId,
                 ConnectionId = connectionId,
                 ServiceId = connection.ServiceId,
                 SourceId = source.Id,
-                DetachAfterRun = detachAfterRun,
-                RunRequestedAt = DateTime.UtcNow,
-            });
-            return;
+                SyncEnabled = enabled,
+            };
+
+            db.ContactSyncSources.Add(added);
+            existing.Add(added);
         }
 
-        existing.DetachAfterRun = detachAfterRun;
-        existing.RunRequestedAt = DateTime.UtcNow;
-        existing.ConsecutiveFailures = 0;
-        existing.LastFailure = null;
-
-        existing.DeltaToken = null;
+        return existing;
     }
 
-    private async Task<(string ServiceId, SyncConnection Connection)> ResolveConnectionAsync(
+    private static ContactSyncStatus Aggregate(
+        string connectionId, string serviceId, IReadOnlyList<DbContactSyncSource> sources)
+    {
+        var status = new ContactSyncStatus
+        {
+            ConnectionId = connectionId,
+            ServiceId = serviceId,
+            Enabled = sources.Count > 0 && sources.All(s => s.SyncEnabled),
+            Running = sources.Any(s => s.RunStartedAt is not null),
+            Queued = sources.Any(s => s.RunRequestedAt is not null),
+            Created = sources.Sum(s => s.LastRunCreated),
+            Updated = sources.Sum(s => s.LastRunUpdated),
+            Deleted = sources.Sum(s => s.LastRunDeleted),
+            Skipped = sources.Sum(s => s.LastRunSkipped),
+        };
+
+        if (sources.Count > 0 && sources.All(s => s.LastSyncedAt is not null))
+            status.LastSyncedAt = sources.Min(s => s.LastSyncedAt)!.Value.ToString("O");
+
+        if (sources.FirstOrDefault(s => s.LastFailure is not null)?.LastFailure is { } failure)
+            status.LastFailure = failure;
+
+        return status;
+    }
+
+    private async Task<(string ServiceId, string ConnectionId, SyncConnection Connection)> ResolveConnectionAsync(
         string connectionId, ServerCallContext context)
     {
         if (string.IsNullOrWhiteSpace(connectionId))
@@ -150,8 +169,12 @@ public class ClearingHouseService(
                 connectedServices, userId, connectionId, ct: context.CancellationToken)
             ?? throw new RpcException(new Status(StatusCode.NotFound, $"Connection {connectionId} not found"));
 
+        if (!resolved.SuppliesContacts)
+            throw new RpcException(new Status(
+                StatusCode.FailedPrecondition, $"Contacts are turned off for connection {connectionId}"));
+
         return resolved.Usable is { } usable
-            ? (resolved.ServiceId, usable)
+            ? (resolved.ServiceId, connectionId, usable)
             : throw new RpcException(new Status(
                 StatusCode.FailedPrecondition, $"Connection {connectionId} needs relinking"));
     }

@@ -9,7 +9,7 @@ public class DbContactSyncSource
     public string ConnectionId { get; set; } = null!;
     public string ServiceId { get; set; } = null!;
     public string SourceId { get; set; } = null!;
-    public bool DetachAfterRun { get; set; }
+    public bool SyncEnabled { get; set; }
     
     public string? DeltaToken { get; set; }
 
@@ -37,7 +37,7 @@ public class ClearingHouseDbContext(DbContextOptions<ClearingHouseDbContext> opt
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.UserId, x.ConnectionId, x.SourceId }).IsUnique();
-            e.HasIndex(x => x.DetachAfterRun);
+            e.HasIndex(x => x.SyncEnabled);
         });
     }
 }

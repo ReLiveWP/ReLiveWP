@@ -4,23 +4,7 @@ import type { EngineState } from "@relivewp/eas-sync/host";
 
 import { useAppState } from "~/state/app-state";
 import { useSync } from "~/state/sync";
-
-const RELATIVE = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "narrow" });
-
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-    ["day", 86_400_000],
-    ["hour", 3_600_000],
-    ["minute", 60_000],
-];
-
-function ago(at: number): string {
-    const elapsed = Date.now() - at;
-
-    for (const [unit, size] of UNITS)
-        if (elapsed >= size) return RELATIVE.format(-Math.floor(elapsed / size), unit);
-
-    return "just now";
-}
+import { ago } from "@relivewp/ui";
 
 function since(engine: EngineState | null): string {
     return engine === null || engine.lastSyncAt === null ? "" : `, synced ${ago(engine.lastSyncAt)}`;

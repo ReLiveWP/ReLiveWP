@@ -18,6 +18,8 @@ export {
     type ThemeState,
 } from "./theme/state.tsx";
 
+export { ago } from "./time/ago.ts";
+
 export {
     useAccentColor,
     useColourScheme,

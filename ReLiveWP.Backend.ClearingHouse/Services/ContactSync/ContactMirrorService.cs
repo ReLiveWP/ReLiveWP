@@ -23,8 +23,12 @@ public class ContactMirrorService(
 {
     private const int DefaultPhotoConcurrency = 8;
 
+    internal readonly record struct MirrorWrite(RemoteContact Remote, string? ServerId);
+
+    internal sealed record KnownItem(string ServerId, string? Etag, bool IsDeleted, bool RemoteSynced);
+
     public async Task<MirrorRunResult> RunAsync(
-        DbContactSyncSource source, SyncConnection connection, bool force = false, CancellationToken ct = default)
+        DbContactSyncSource source, SyncConnection connection, CancellationToken ct = default)
     {
         if (!drivers.TryGet(source.ServiceId, out var driver))
             throw new ContactSyncException($"No contact driver for '{source.ServiceId}'");
@@ -42,7 +46,7 @@ public class ContactMirrorService(
             batch = await driver.FetchChangesAsync(connection, source.SourceId, null, ct);
         }
 
-        var result = await ApplyAsync(source, connection, driver, batch, force, ct);
+        var result = await ApplyAsync(source, connection, driver, batch, ct);
 
         source.DeltaToken = batch.DeltaToken ?? source.DeltaToken;
         source.LastSyncedAt = DateTime.UtcNow;
@@ -55,12 +59,12 @@ public class ContactMirrorService(
 
     private async Task<MirrorRunResult> ApplyAsync(
         DbContactSyncSource source, SyncConnection connection, IContactSyncDriver driver,
-        ContactSyncBatch batch, bool force, CancellationToken ct)
+        ContactSyncBatch batch, CancellationToken ct)
     {
         var userId = connection.UserId;
         var known = await ReadKnownAsync(userId, source, ct);
 
-        var writes = PlanWrites(known, batch, force);
+        var writes = PlanWrites(known, batch);
         var gone = PlanDeletes(known, batch);
 
         // every contact in the batch either gets written or gets left alone
@@ -121,7 +125,7 @@ public class ContactMirrorService(
         return new MirrorRunResult(created, updated, deleted, skipped);
     }
 
-    internal static List<MirrorWrite> PlanWrites(IReadOnlyDictionary<string, KnownItem> known, ContactSyncBatch batch, bool force)
+    internal static List<MirrorWrite> PlanWrites(IReadOnlyDictionary<string, KnownItem> known, ContactSyncBatch batch)
     {
         var writes = new List<MirrorWrite>(batch.Contacts.Count);
         var seen = new HashSet<string>(batch.Contacts.Count, StringComparer.Ordinal);
@@ -137,7 +141,7 @@ public class ContactMirrorService(
 
             // a deleted row keeps the etag it had, so testing it here would make asking for a fresh
             // copy do nothing at all
-            if (!force && existing is { IsDeleted: false } && existing.Etag == remote.Etag && remote.Etag is not null)
+            if (existing is { IsDeleted: false } && existing.Etag == remote.Etag && remote.Etag is not null)
                 continue;
 
             // deleting a synced contact is how you ask for a fresh copy, so a soft-deleted row gets a
@@ -222,11 +226,6 @@ public class ContactMirrorService(
 
         return origin;
     }
-
-    // a contact the pull will write, and the row it lands on. no row means create.
-    internal readonly record struct MirrorWrite(RemoteContact Remote, string? ServerId);
-
-    internal sealed record KnownItem(string ServerId, string? Etag, bool IsDeleted, bool RemoteSynced);
 
     private async Task<Dictionary<string, KnownItem>> ReadKnownAsync(string userId, DbContactSyncSource source, CancellationToken ct)
     {
