@@ -3,7 +3,6 @@ if (process.env.NODE_ENV === "development") {
 }
 
 import './index.scss';
-import './segoe.scss';
 
 import Main from "./Main";
 import { render } from "preact"

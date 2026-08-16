@@ -12,7 +12,8 @@ public class MailboxStoreService(
     MailboxDbContext db,
     MailboxIntegrityService integrity,
     SyncStateRepairService syncStateReconciler,
-    MailboxDeletionService deletion)
+    MailboxDeletionService deletion,
+    ContactLinkResolver linkResolver)
     : MailboxStore.MailboxStoreBase
 {
     private const int MaxAttachmentContentBytes = 25 * 1024 * 1024;
@@ -128,6 +129,7 @@ public class MailboxStoreService(
         entity.ServerId = id;
         entity.ClientId = clientId;
         entity.CreatedAt = DateTime.UtcNow;
+        MailboxMapper.ApplyOrigin(entity, request.Origin);
 
         db.Items.Add(entity);
 
@@ -136,6 +138,13 @@ public class MailboxStoreService(
             var ann = MailboxMapper.ToEntity(request.Annotation, id);
             ann.ContactItem = contact;
             db.ContactAnnotations.Add(ann);
+        }
+
+        var touchedDirectory = false;
+        if (entity is DbContactItem newContact)
+        {
+            await SyncContactEmailsAsync(newContact, context.CancellationToken, isNew: true);
+            touchedDirectory = await linkResolver.ResolveForContactAsync(newContact, context.CancellationToken);
         }
 
         if (entity is DbNote note && request.BodyCase == CreateItemRequest.BodyOneofCase.Note)
@@ -161,6 +170,9 @@ public class MailboxStoreService(
             if (winner is null) throw;
             return MailboxMapper.ToProto(winner);
         }
+
+        if (touchedDirectory)
+            await linkResolver.ReconcileAddressBookOwnerAsync(request.UserId, context.CancellationToken);
 
         return MailboxMapper.ToProto(entity);
     }
@@ -247,13 +259,20 @@ public class MailboxStoreService(
         if (request.HasExpectedVersion && db.Database.IsNpgsql())
             db.Entry(entity).Property(i => i.Version).OriginalValue = request.ExpectedVersion;
 
+        MailboxMapper.ApplyOrigin(entity, request.Origin);
+
+        var touchedDirectory = false;
+
         switch (request.BodyCase)
         {
             case UpdateItemRequest.BodyOneofCase.Contact when entity is DbContactItem c:
                 MailboxMapper.ApplyToEntity(c, request.Contact);
                 await SyncContactChildrenAsync(c, request.Contact, context.CancellationToken);
+                await SyncContactEmailsAsync(c, context.CancellationToken);
                 if (request.Annotation != null)
                     await UpsertAnnotationAsync(c, request.Annotation, context.CancellationToken);
+                else
+                    touchedDirectory = await linkResolver.ResolveForContactAsync(c, context.CancellationToken);
                 break;
 
             case UpdateItemRequest.BodyOneofCase.Calendar when entity is DbCalendarItem cal:
@@ -275,6 +294,12 @@ public class MailboxStoreService(
                 break;
         }
 
+        // an edit from anywhere but the mirror takes the item off the provider for good. checking for
+        // a real change first is what stops a device resending the same Change from freezing it.
+        if (request.Origin is null && entity.RemoteSynced &&
+            db.Entry(entity).Properties.Any(p => p.IsModified))
+            entity.RemoteSynced = false;
+
         try
         {
             await db.SaveChangesAsync(context.CancellationToken);
@@ -288,6 +313,10 @@ public class MailboxStoreService(
             db.Entry(entity).State = EntityState.Detached;
             return new MutationResult { Found = true, Conflict = true };
         }
+
+        if (touchedDirectory)
+            await linkResolver.ReconcileAddressBookOwnerAsync(request.UserId, context.CancellationToken);
+
         return new MutationResult { Found = true };
     }
 
@@ -302,7 +331,85 @@ public class MailboxStoreService(
 
         entity.DeletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(context.CancellationToken);
+
+        if (entity is DbContactItem)
+            await linkResolver.ReconcileAddressBookOwnerAsync(request.UserId, context.CancellationToken);
+
         return new MutationResult { Found = true };
+    }
+
+    public override async Task ListItemsByOrigin(
+        ListItemsByOriginRequest request, IServerStreamWriter<MirroredItem> stream, ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(request.OriginServiceId))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "origin_service_id is required"));
+
+        var query = db.Items.AsNoTracking().Where(i =>
+            i.UserId == request.UserId &&
+            i.OriginServiceId == request.OriginServiceId &&
+            i.ValidationFlaggedAt == null);
+
+        if (!request.IncludeDeleted)
+            query = query.Where(i => i.DeletedAt == null);
+
+        if (request.HasOriginCollectionId)
+            query = query.Where(i => i.OriginCollectionId == request.OriginCollectionId);
+
+        var rows = query.Select(i => new
+        {
+            i.ServerId,
+            i.OriginExternalId,
+            i.OriginEtag,
+            Deleted = i.DeletedAt != null,
+            i.RemoteSynced,
+        });
+
+        await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(context.CancellationToken))
+        {
+            var mirrored = new MirroredItem
+            {
+                ServerId = row.ServerId,
+                ExternalId = row.OriginExternalId ?? string.Empty,
+                Deleted = row.Deleted,
+                RemoteSynced = row.RemoteSynced,
+            };
+
+            if (row.OriginEtag is not null) mirrored.Etag = row.OriginEtag;
+
+            await stream.WriteAsync(mirrored);
+        }
+    }
+
+    public override async Task<DeleteItemsByOriginResult> DeleteItemsByOrigin(
+        DeleteItemsByOriginRequest request, ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(request.OriginServiceId))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "origin_service_id is required"));
+
+        var origin = db.Items.Where(i =>
+            i.UserId == request.UserId &&
+            i.OriginServiceId == request.OriginServiceId &&
+            i.DeletedAt == null);
+
+        if (request.HasOriginCollectionId)
+            origin = origin.Where(i => i.OriginCollectionId == request.OriginCollectionId);
+
+        var targeted = request.ExternalIds.Count == 0
+            ? origin
+            : origin.Where(i => request.ExternalIds.Contains(i.OriginExternalId!));
+
+        // load-and-mark per entity so ChangeLogInterceptor emits one event per item; a bulk update
+        // would desync devices
+        var doomed = await targeted.ToListAsync(context.CancellationToken);
+
+        var now = DateTime.UtcNow;
+        foreach (var item in doomed)
+            item.DeletedAt = now;
+
+        if (doomed.Count > 0)
+            await db.SaveChangesAsync(context.CancellationToken);
+
+        return new DeleteItemsByOriginResult { ItemsDeleted = doomed.Count };
     }
 
     public override async Task<MoveItemResult> MoveItem(MoveItemRequest request, ServerCallContext context)
@@ -537,7 +644,7 @@ public class MailboxStoreService(
             s => s.UserId == request.UserId && s.DeviceId == request.DeviceId
               && s.CollectionId == request.CollectionId,
             context.CancellationToken)
-            ?? throw new RpcException(new Status(StatusCode.NotFound, "SyncState not found"));
+            ?? throw new RpcException(new Status(StatusCode.NotFound, string.Format("SyncState not found for user: {0} device: {1} collection: {2}", request.UserId, request.DeviceId, request.CollectionId)));
 
         return MailboxMapper.ToProto(state);
     }
@@ -819,29 +926,69 @@ public class MailboxStoreService(
         return response;
     }
 
+    public override async Task<ResolveFeedSubjectsResponse> ResolveFeedSubjects(ResolveFeedSubjectsRequest request, ServerCallContext context)
+    {
+        var response = new ResolveFeedSubjectsResponse();
+        if (request.Cids.Count == 0)
+            return response;
+
+        var cids = request.Cids.Distinct().ToList();
+
+        var identities = await db.ContactIdentities.AsNoTracking()
+            .Where(x => x.UserId == request.UserId && cids.Contains(x.ContactCid))
+            .ToListAsync(context.CancellationToken);
+
+        var subjects = await linkResolver.ResolveDiscoverableSubjectsAsync(request.UserId, cids, context.CancellationToken);
+
+        foreach (var cid in cids)
+        {
+            var subject = new FeedSubject { Cid = cid, Kind = FeedSubjectKind.Unknown };
+
+            // a contact the user linked by hand wins over the automatic one, it is the more specific
+            // statement about who this card is
+            var bound = identities.Where(i => i.ContactCid == cid).ToList();
+            if (bound.Count > 0)
+            {
+                subject.Kind = FeedSubjectKind.ContactIdentity;
+                foreach (var row in bound)
+                    subject.Identities.Add(new ContactIdentity
+                    {
+                        ContactItemId = row.ContactItemId,
+                        ContactCid = row.ContactCid,
+                        Provider = row.Provider,
+                        ExternalId = row.ExternalId,
+                    });
+            }
+            else if (subjects.TryGetValue(cid, out var subjectUserId))
+            {
+                subject.Kind = FeedSubjectKind.LiveUser;
+                subject.SubjectUserId = subjectUserId;
+            }
+
+            response.Subjects.Add(subject);
+        }
+
+        return response;
+    }
+
     public override async Task<GetContactProfilesResponse> GetContactProfiles(GetContactProfilesRequest request, ServerCallContext context)
     {
         var response = new GetContactProfilesResponse();
         if (request.Cids.Count == 0)
             return response;
 
-        var cids = request.Cids.ToList();
+        var cids = request.Cids.Select(c => (long?)c).ToList();
         var rows = await db.ContactAnnotations.AsNoTracking()
-            .Join(db.Items.OfType<DbContactItem>(),
-                ann => ann.ContactItemId,
-                contact => contact.Id,
-                (ann, contact) => new { ann, contact })
-            .Where(x => x.contact.UserId == request.UserId
-                && x.contact.DeletedAt == null
-                && x.ann.Cid != null
-                && cids.Contains(x.ann.Cid!.Value))
-            .Select(x => new
+            .Where(a => cids.Contains(a.Cid)
+                && a.ContactItem.UserId == request.UserId
+                && a.ContactItem.DeletedAt == null)
+            .Select(a => new
             {
-                Cid = x.ann.Cid!.Value,
-                x.contact.FileAs,
-                x.contact.FirstName,
-                x.contact.LastName,
-                x.ann.UserTileUrl,
+                Cid = a.Cid!.Value,
+                a.ContactItem.FileAs,
+                a.ContactItem.FirstName,
+                a.ContactItem.LastName,
+                a.UserTileUrl,
             })
             .ToListAsync(context.CancellationToken);
 
@@ -986,6 +1133,26 @@ public class MailboxStoreService(
 
         c.Categories = [.. proto.Categories.Select(x => new DbContactCategory { Id = Guid.NewGuid().ToString("N"), ContactItemId = c.Id, Name = x.Name })];
         c.Children = [.. proto.Children.Select(x => new DbContactChild { Id = Guid.NewGuid().ToString("N"), ContactItemId = c.Id, Name = x.Name })];
+    }
+
+    private async Task SyncContactEmailsAsync(DbContactItem c, CancellationToken ct, bool isNew = false)
+    {
+        if (!isNew)
+            db.ContactEmails.RemoveRange(await db.ContactEmails.Where(x => x.ContactItemId == c.Id).ToListAsync(ct));
+
+        // the owner's own address isn't "in the address book", and indexing it would make every
+        // mutual check pass against itself
+        if (ContactAddresses.IsMeContact(c))
+            return;
+
+        foreach (var address in ContactAddresses.Of(c))
+            db.ContactEmails.Add(new DbContactEmail
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                UserId = c.UserId,
+                ContactItemId = c.Id,
+                NormalizedAddress = address,
+            });
     }
 
     private async Task SyncNoteChildrenAsync(DbNote n, NoteItem proto, CancellationToken ct)

@@ -140,7 +140,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         service.RefreshToken = tokenResult.RefreshToken!;
         service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
-        service.EnabledCapabilities = 0;
+        service.EnabledCapabilities &= description.ServiceCapabilities;
         service.AvailableCapabilities = description.ServiceCapabilities;
         service.DPoPKeyId = keyId;
         service.AuthorizationEndpoint = doc.AuthorizeEndpoint;

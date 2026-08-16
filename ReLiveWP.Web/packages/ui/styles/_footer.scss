@@ -1,0 +1,19 @@
+@use "tokens" as t;
+
+footer {
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+
+.site-footer {
+    // contains any floated child an app passes in, so the border and padding still wrap it
+    display: flow-root;
+    padding-top: 16px;
+    @include t.themed(border-top, rule-soft, "1px solid ");
+    @include t.themed(color, ink-faint);
+    font-size: 12px;
+
+    &>p {
+        margin: 0 0 2px 0;
+    }
+}

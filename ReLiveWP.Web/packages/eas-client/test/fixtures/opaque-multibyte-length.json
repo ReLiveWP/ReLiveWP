@@ -1,0 +1,18 @@
+{
+  "name": "opaque-multibyte-length",
+  "description": "Opaque run of 200 bytes, so the length needs two octets: 200 = 1*128 + 72, encoded 0x81 0x48. Anything that treats the length as a single byte truncates at 127 and desynchronises.",
+  "wbxml": [
+    { "hex": "03 01 6A 00", "note": "header" },
+    { "hex": "00 16", "note": "SWITCH_PAGE to 22 (Email2)" },
+    { "hex": "4A", "note": "ConversationIndex (0x0A) with content" },
+    { "hex": "C3", "note": "OPAQUE" },
+    { "hex": "81 48", "note": "mb_u_int32 length 200" },
+    { "fill": 171, "length": 200, "note": "200 bytes of 0xAB" },
+    { "hex": "01", "note": "END ConversationIndex" }
+  ],
+  "tree": {
+    "ns": "Email2",
+    "name": "ConversationIndex",
+    "children": [{ "opaque": { "fill": 171, "length": 200 } }]
+  }
+}

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml.Linq;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +21,8 @@ namespace ReLiveWP.Services.Activity.Controllers;
 public class FilesController(SkyDrive.SkyDriveClient skyDrive,
                              ConnectedServices.ConnectedServicesClient connectedServices,
                              SocialAlbumProvider socialAlbums,
+                             ActivityProviderService activityProvider,
+                             User.UserClient userClient,
                              ThumbnailResizer thumbnails,
                              IHttpClientFactory httpClientFactory,
                              ILogger<FilesController> logger) : Controller
@@ -57,12 +60,36 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
     private static string? CanonicalNameFor(string category)
         => CanonicalNames.TryGetValue(category, out var name) ? name : null;
 
+    // the {id} segment is decoration on every other route here. until a device capture says what it
+    // holds for a non-self request, use it only to widen what a viewer may reach, never to narrow it
+    private async Task<long?> SubjectCidAsync(string id)
+    {
+        if (!long.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cid))
+            return null;
+
+        try
+        {
+            var userInfo = await userClient.GetUserInfoAsync(
+                new GetUserInfoRequest { UserId = User.Id() }, cancellationToken: HttpContext.RequestAborted);
+
+            var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            if (cid == ownerCid)
+                return null;
+
+            logger.LogInformation("Files route addressed to {Cid}, owner is {Owner}", cid, ownerCid);
+            return cid;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "could not read the owner cid, treating the files route as self");
+            return null;
+        }
+    }
+
     [HttpGet]
     [Route("/Users({id})/Files")]
     public async Task<ActionResult> GetFiles(string id)
     {
-        var reply = await skyDrive.ListLibrariesAsync(new ListLibrariesRequest { UserId = User.Id() });
-
         var feed = new LiveLibraryFeed
         {
             Id = $"{Request.Scheme}://{Request.Host}/Users({id})/Files",
@@ -73,6 +100,17 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
             QuotaUsed = 0,
         };
 
+        // a contact only ever has the albums they chose to share, never anything of ours
+        if (await SubjectCidAsync(id) is { } subjectCid)
+        {
+            foreach (var album in await GetSharedAlbumsAsync(subjectCid))
+                feed.Entries.Add(ToAlbumEntry(id, album));
+
+            return Ok(feed);
+        }
+
+        var reply = await skyDrive.ListLibrariesAsync(new ListLibrariesRequest { UserId = User.Id() });
+
         if (await HasPhotoSyncProviderAsync())
         {
             foreach (var library in reply.Libraries)
@@ -80,20 +118,38 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
         }
 
         foreach (var album in await GetSocialAlbumsAsync())
-        {
-            feed.Entries.Add(new LiveLibraryEntry
-            {
-                Id = $"{Request.Scheme}://{Request.Host}/Users({id})/Files/folders('{album.ResourceId}')",
-                ResourceId = album.ResourceId,
-                Type = FolderType,
-                Category = PhotosCategory,
-                SharingLevel = "publicshared",
-                Title = album.Title,
-                Updated = DateTime.UtcNow,
-            });
-        }
+            feed.Entries.Add(ToAlbumEntry(id, album));
 
         return Ok(feed);
+    }
+
+    private LiveLibraryEntry ToAlbumEntry(string id, SocialAlbum album) => new()
+    {
+        Id = $"{Request.Scheme}://{Request.Host}/Users({id})/Files/folders('{album.ResourceId}')",
+        ResourceId = album.ResourceId,
+        Type = FolderType,
+        Category = PhotosCategory,
+        SharingLevel = PublicSharedLevel,
+        Title = album.Title,
+        Updated = DateTime.UtcNow,
+    };
+
+    private async Task<IReadOnlyList<SocialAlbum>> GetSharedAlbumsAsync(long subjectCid)
+    {
+        var ct = HttpContext.RequestAborted;
+        var sources = await activityProvider.GetContactPhotoSourcesAsync(subjectCid, User.Id()!, ct);
+
+        var albums = new List<SocialAlbum>();
+        foreach (var source in sources.Where(s => s.Provider == SocialAlbumProvider.Provider))
+        {
+            var photos = await socialAlbums.GetPhotosAsync(User.Id()!, source.ExternalId, connection: null, ct);
+            albums.Add(new SocialAlbum(
+                SocialAlbumProvider.AlbumResourceId(source.ExternalId),
+                SocialAlbumProvider.TitleFor(source.Handle),
+                photos.Count));
+        }
+
+        return albums;
     }
 
     private async Task<bool> HasPhotoSyncProviderAsync()
@@ -121,6 +177,9 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
     [Route(AlbumRoute)]
     public async Task<ActionResult> GetAlbum(string id, string album)
     {
+        if (await SubjectCidAsync(id) != null)
+            return NotFound();
+
         var reply = await skyDrive.ListPhotosAsync(new ListPhotosRequest
         {
             UserId = User.Id(),
@@ -192,6 +251,9 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
     [Route(AlbumRoute)]
     public async Task<ActionResult> PutAlbum(string id, string album, [FromBody] LiveLibraryEntry entry)
     {
+        if (await SubjectCidAsync(id) != null)
+            return NotFound();
+
         var reply = await skyDrive.CreateOrUpdateLibraryAsync(new CreateOrUpdateLibraryRequest
         {
             UserId = User.Id(),
@@ -210,6 +272,9 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
     [Route(AlbumRoute)]
     public async Task<ActionResult> UploadPhoto(string id, string album)
     {
+        if (await SubjectCidAsync(id) != null)
+            return NotFound();
+
         if (!MediaTypeHeaderValue.TryParse(Request.ContentType, out var mediaType) ||
             !mediaType.MediaType.Equals("multipart/related", StringComparison.OrdinalIgnoreCase))
             return StatusCode(StatusCodes.Status415UnsupportedMediaType);
@@ -404,6 +469,9 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
         if (SocialAlbumProvider.TryParseAlbumId(folderId, out var did))
             return await GetSocialFolderAsync(id, folderId, did);
 
+        if (await SubjectCidAsync(id) != null)
+            return NotFound();
+
         var request = new ListPhotosRequest { UserId = User.Id() };
 
         if (WellKnownFolders.TryGetValue(folderId, out var category))
@@ -427,6 +495,10 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
 
     private async Task<ActionResult> GetSocialFolderAsync(string id, string folderId, string did)
     {
+        var subjectCid = await SubjectCidAsync(id);
+        if (!await activityProvider.IsServableDidAsync(did, subjectCid, User.Id()!, HttpContext.RequestAborted))
+            return NotFound();
+
         var connections = new List<Connection>();
         var call = connectedServices.GetConnections(new ConnectionsRequest(), cancellationToken: HttpContext.RequestAborted);
         await foreach (var connection in call.ResponseStream.ReadAllAsync(HttpContext.RequestAborted))
@@ -483,20 +555,24 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
     [HttpGet]
     [Route("/Users({id})/Files/files('{resourceRef}')/thumbnail/{size:int}")]
     public Task<ActionResult> GetThumbnail(string id, string resourceRef, int size)
-        => StreamPhotoAsync(resourceRef, size);
+        => StreamPhotoAsync(id, resourceRef, size);
 
     [HttpGet]
     [Route("/Users({id})/Files/files('{resourceRef}')/media")]
     public Task<ActionResult> GetMedia(string id, string resourceRef)
-        => StreamPhotoAsync(resourceRef, 0);
+        => StreamPhotoAsync(id, resourceRef, 0);
 
-    private async Task<ActionResult> StreamPhotoAsync(string resourceRef, int maxSize)
+    private async Task<ActionResult> StreamPhotoAsync(string id, string resourceRef, int maxSize)
     {
         var ct = HttpContext.RequestAborted;
         using var http = httpClientFactory.CreateClient();
 
         if (SocialAlbumProvider.TryParsePhotoRef(resourceRef, out var did, out var cid))
         {
+            var subjectCid = await SubjectCidAsync(id);
+            if (!await activityProvider.IsServableDidAsync(did, subjectCid, User.Id()!, ct))
+                return NotFound();
+
             var social = SocialAlbumProvider.GetMediaLocation(did, cid, maxSize);
             using var socialResponse = await http.FetchAsync(social, HttpContext, ct);
 
@@ -579,6 +655,9 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
     [Route("/Users({id})/Files/provision")]
     public async Task<ActionResult> Provision(string id)
     {
+        if (await SubjectCidAsync(id) != null)
+            return NotFound();
+
         await skyDrive.ProvisionUserAsync(new ProvisionUserRequest { UserId = User.Id() });
         return Ok();
     }
@@ -587,6 +666,9 @@ public class FilesController(SkyDrive.SkyDriveClient skyDrive,
     [Route("/Users({id})/Files/{album:regex(^(wmphotos|mobilephotos|twitterphotos)$)}/permissions")]
     public async Task<ActionResult> SetPermissions(string id, string album)
     {
+        if (await SubjectCidAsync(id) != null)
+            return NotFound();
+
         await skyDrive.SetAlbumPermissionsAsync(new SetAlbumPermissionsRequest
         {
             UserId = User.Id(),

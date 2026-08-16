@@ -1,0 +1,100 @@
+@use "config" with ($accent-name: "purple");
+@use "ui";
+@use "tokens" as t;
+
+html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+body {
+    line-height: 1.5;
+}
+
+a {
+    @include t.themed-raw(color, t.accent("purple"), var(--accent-ink));
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.text-accent {
+    @include t.themed-raw(color, t.accent("purple"), var(--accent-ink));
+}
+
+.brand-container {
+    .header-container {
+        margin-left: 4px !important;
+    }
+}
+
+// article furniture
+
+.article-type {
+    margin-bottom: 10px;
+}
+
+.article-meta {
+    @include t.themed(color, ink-muted);
+    font-size: 12px;
+    margin: 0 0 24px 0;
+    padding-bottom: 12px;
+    @include t.themed(border-bottom, rule-soft, "1px solid ");
+}
+
+.article-summary {
+    font-size: 16px;
+    @include t.themed(color, ink-secondary);
+    margin: 0 0 24px 0;
+}
+
+.shortlink {
+    @include t.themed(background-color, danger-surface);
+    @include t.themed(border, danger-border, "1px solid ");
+    padding: 10px 14px;
+    margin: 24px 0;
+    font-size: 13px;
+}
+
+.properties {
+    margin-top: 40px;
+    padding-top: 16px;
+    @include t.themed(border-top, rule-soft, "1px solid ");
+}
+
+// listings
+
+.area {
+    margin-bottom: 28px;
+
+    h2 {
+        font-size: 17px;
+    }
+}
+
+ul.articles {
+    .id {
+        @include t.themed(color, ink-muted);
+        font-size: 12px;
+        display: inline-block;
+        min-width: 68px;
+    }
+
+    .summary {
+        display: block;
+        @include t.themed(color, ink-muted);
+        font-size: 12px;
+        margin-left: 72px;
+    }
+}
+
+@media screen and (max-width: t.$breakpoint-narrow) {
+    ul.articles .id {
+        display: block;
+    }
+
+    ul.articles .summary {
+        margin-left: 0;
+    }
+}

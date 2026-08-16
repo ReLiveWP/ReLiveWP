@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Login.Models;
+using GrpcStatus = Grpc.Core.StatusCode;
 
 namespace ReLiveWP.Services.Login.Controllers;
 
 [ApiController]
 [Route("oauth/[action]/{service?}")]
-public class OAuthController(ConnectedServices.ConnectedServicesClient connectedServicesClient, IConfiguration configuration) : Controller
+public class OAuthController(
+    ConnectedServices.ConnectedServicesClient connectedServicesClient,
+    IConfiguration configuration) : Controller
 {
     [HttpGet]
     [Authorize]
@@ -19,7 +22,8 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
         var available = await connectedServicesClient.GetSupportedConnectionsAsync(new Empty());
         foreach (var service in available.AvailableConnections)
         {
-            yield return new AvailableConnectedService(service.Service, service.DisplayName, (uint)service.Capabilities);
+            yield return new AvailableConnectedService(
+                service.Service, service.DisplayName, service.Capabilities, service.ShareableCapabilities);
         }
     }
 
@@ -29,7 +33,7 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
     public async Task<ActionResult<BeginAccountLinkResponse>> BeginAccountLink([FromBody] BeginAcountLinkModel model)
     {
         var response = await connectedServicesClient.BeginAccountLinkingForServiceAsync(
-            new() { Service = model.Service, Identifer = model.Identifier });
+            new() { Service = model.Service, Identifer = model.Identifier, Transient = model.Transient });
 
         return new BeginAccountLinkResponse(response.RedirectUri);
     }
@@ -39,8 +43,12 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
     [ActionName("begin-relink")]
     public async Task<ActionResult<BeginAccountLinkResponse>> BeginRelink([FromBody] BeginRelinkModel model)
     {
-        var response = await connectedServicesClient.BeginRelinkForConnectionAsync(
-            new() { ConnectionId = model.ConnectionId });
+        var request = new BeginRelinkRequest { ConnectionId = model.ConnectionId };
+
+        if (model.RequestedCapabilities is { } requested)
+            request.RequestedCapabilities = requested;
+
+        var response = await connectedServicesClient.BeginRelinkForConnectionAsync(request);
 
         return new BeginAccountLinkResponse(response.RedirectUri);
     }
@@ -56,6 +64,7 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
             ServiceUrl = model.ServiceUrl,
             Username = model.Username,
             Secret = model.Secret,
+            Transient = model.Transient,
         };
 
         if (!string.IsNullOrEmpty(model.ConnectionId))
@@ -69,7 +78,7 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
             var response = await connectedServicesClient.LinkServiceWithCredentialsAsync(request);
             return new CredentialLinkResponse(response.ConnectionId);
         }
-        catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.InvalidArgument)
+        catch (RpcException ex) when (ex.StatusCode == GrpcStatus.InvalidArgument)
         {
             // the detail explains which part of the server or credentials was wrong
             return BadRequest(ex.Status.Detail);
@@ -81,11 +90,16 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
     [ActionName("link")]
     public async Task<IActionResult> UpdateLink(string connectionId, [FromBody] UpdateConnectedServiceModel model)
     {
-        await connectedServicesClient.UpdateCapabilitiesAsync(new UpdateCapabilitiesRequest()
+        var request = new UpdateCapabilitiesRequest()
         {
             ConnectionId = connectionId,
             Capabilities = model.EnabledCapabilities
-        });
+        };
+
+        if (model.SharedCapabilities is { } shared)
+            request.SharedCapabilities = shared;
+
+        await connectedServicesClient.UpdateCapabilitiesAsync(request);
 
         return Accepted();
     }
@@ -93,10 +107,10 @@ public class OAuthController(ConnectedServices.ConnectedServicesClient connected
     [HttpDelete]
     [Authorize]
     [ActionName("link")]
-    public async Task<ActionResult> DeleteLink(string connectionId)
+    public async Task<ActionResult> DeleteLink(string connectionId, bool deleteData = false)
     {
         await connectedServicesClient.DeleteConnectionAsync(
-            new() { ConnectionId = connectionId });
+            new() { ConnectionId = connectionId, DeleteData = deleteData });
 
         return NoContent();
     }

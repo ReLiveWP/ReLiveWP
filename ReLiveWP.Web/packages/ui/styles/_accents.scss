@@ -1,0 +1,66 @@
+@use "tokens" as t;
+
+:root {
+    @each $name, $base in t.$accents {
+        --accent-colour-#{$name}: #{$base};
+        --accent-colour-#{$name}-ink: light-dark(#{$base}, #{t.accent-ink($base)});
+
+        @each $stop in (bg-1, bg-2, bg-3) {
+            --accent-colour-#{$name}-#{$stop}: light-dark(#{t.shade($base, $stop)},
+                #{t.shade($base, $stop, t.$shades-dark)});
+        }
+    }
+
+    --accent-colour-zune1: #{t.$accent-zune-1};
+    --accent-colour-zune1-ink: light-dark(#{t.$accent-zune-1}, #{t.accent-ink(t.$accent-zune-1)});
+
+    @each $stop in (bg-1, bg-2, bg-3) {
+        --accent-colour-zune1-#{$stop}: light-dark(#{t.shade(t.$accent-zune-2, $stop)},
+            #{t.shade(t.$accent-zune-2, $stop, t.$shades-dark)});
+    }
+
+    --accent-colour-zune2: #{t.$accent-zune-2};
+
+    --accent-colour-bg-1: var(--accent-colour-red-bg-1);
+    --accent-colour-bg-2: var(--accent-colour-red-bg-2);
+    --accent-colour-bg-3: var(--accent-colour-red-bg-3);
+    --accent-ink: var(--accent-colour-red-ink);
+}
+
+@each $name, $base in t.$accents {
+    .accent-#{$name} {
+        --accent-colour: var(--accent-colour-#{$name});
+        --accent-ink: var(--accent-colour-#{$name}-ink);
+        --accent-colour-bg-1: var(--accent-colour-#{$name}-bg-1);
+        --accent-colour-bg-2: var(--accent-colour-#{$name}-bg-2);
+        --accent-colour-bg-3: var(--accent-colour-#{$name}-bg-3);
+        accent-color: var(--accent-colour-#{$name});
+    }
+}
+
+.accent-zune {
+    --accent-colour: linear-gradient(to bottom, var(--accent-colour-zune1), var(--accent-colour-zune2));
+    --accent-ink: var(--accent-colour-zune1-ink);
+    --accent-colour-bg-1: var(--accent-colour-zune1-bg-1);
+    --accent-colour-bg-2: var(--accent-colour-zune1-bg-2);
+    --accent-colour-bg-3: var(--accent-colour-zune1-bg-3);
+    accent-color: var(--accent-colour-zune1);
+
+    .text-accent {
+        background-image: var(--accent-colour);
+        color: transparent;
+        background-clip: text;
+    }
+
+    .background-accent {
+        background-image: linear-gradient(to left, var(--accent-colour-zune1), var(--accent-colour-zune2));
+    }
+}
+
+.text-accent {
+    color: var(--accent-colour);
+}
+
+.background-accent {
+    background: var(--accent-colour);
+}

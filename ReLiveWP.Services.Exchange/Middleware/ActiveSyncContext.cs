@@ -21,5 +21,6 @@ public class ActiveSyncContext
     public bool AcceptMultiPart { get; set; }      // ItemOperations
 
     public XmlDocument? XmlDocument { get; set; }
+    public bool BodyDecodeFailed { get; set; }
     public string? OutputXml { get; set; }
 }

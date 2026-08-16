@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Grpc.Core;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -45,7 +46,7 @@ public class MailboxStoreServiceTests : IDisposable
     }
 
     private MailboxStoreService NewService(MailboxDbContext db) =>
-        new(db, new MailboxIntegrityService(db), new SyncStateRepairService(db), new MailboxDeletionService(db));
+        new(db, new MailboxIntegrityService(db), new SyncStateRepairService(db), new MailboxDeletionService(db), FakeUserClient.NoLinks(db));
 
     private static ServerCallContext NewCallContext() => new StubCallContext();
 

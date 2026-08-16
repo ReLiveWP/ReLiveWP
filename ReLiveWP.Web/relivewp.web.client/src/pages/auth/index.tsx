@@ -3,7 +3,7 @@ import { ErrorBoundary, Route, Router } from "preact-iso";
 import GoHome from "~/components/GoHome";
 import Login from "./login";
 import Register from "./register";
-import { useAccentColor } from "~/util/effects";
+import { useAccentColor } from "@relivewp/ui";
 
 export default function Index() {
     useAccentColor('magenta');

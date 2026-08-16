@@ -1,0 +1,23 @@
+{
+  "name": "unknown-token",
+  "description": "A token with no entry in the code page table. Decoding continues and reports it, because \"the server sent an element we have no name for\" is the single most useful thing this client can tell you. Decode-only: the placeholder name has no token to encode back to.",
+  "decodeOnly": true,
+  "wbxml": [
+    { "hex": "03 01 6A 00", "note": "header" },
+    { "hex": "45", "note": "AirSync:Sync (0x05) with content" },
+    { "hex": "7F", "note": "token 0x3F with content - unassigned in AirSync" },
+    { "hex": "03 78 00", "note": "STR_I \"x\"" },
+    { "hex": "01", "note": "END unknown" },
+    { "hex": "01", "note": "END Sync" }
+  ],
+  "tree": {
+    "ns": "AirSync",
+    "name": "Sync",
+    "children": [
+      { "ns": "AirSync", "name": "UNKNOWN_TAG_3F", "children": [{ "text": "x" }] }
+    ]
+  },
+  "expect": {
+    "unknownTokens": [{ "page": 0, "ns": "AirSync", "token": 63, "name": "UNKNOWN_TAG_3F" }]
+  }
+}

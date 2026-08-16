@@ -61,10 +61,6 @@ public class ActivitiesController(
             ]
         };
 
-        var provider = await activityProvider.GetActivityProviderAsync();
-        if (provider == null)
-            return feed;
-
         // The device selects whose feed via the ObjectId: the owner's own CID -> the owner's feed;
         // any other CID is a contact card asking for that contact's feed (its linked accounts).
         var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
@@ -72,14 +68,19 @@ public class ActivitiesController(
 
         if (requested is { } contactCid && contactCid != ownerCid)
         {
+            var sources = await activityProvider.GetContactFeedSourcesAsync(contactCid, User.Id()!, HttpContext.RequestAborted);
             feed.Entries.AddRange(
-                await feeds.RenderContactFeedAsync(Url, provider, contactCid, count, User.Id()!));
+                await feeds.RenderContactFeedAsync(Url, activityProvider.PublicProviders, sources, contactCid, count));
+
+            return feed;
         }
-        else
-        {
-            feed.Entries.AddRange(
-                await feeds.RenderFeedAsync(Url, provider, ActivitiesContext.My, count, author, User.Id()!));
-        }
+
+        var provider = await activityProvider.GetOwnedProviderAsync();
+        if (provider == null)
+            return feed;
+
+        feed.Entries.AddRange(
+            await feeds.RenderFeedAsync(Url, provider, ActivitiesContext.My, count, author, User.Id()!));
 
         return feed;
     }
@@ -110,7 +111,7 @@ public class ActivitiesController(
             ]
         };
 
-        var provider = await activityProvider.GetActivityProviderAsync();
+        var provider = await activityProvider.GetOwnedProviderAsync();
         if (provider == null)
             return feed;
 
@@ -162,11 +163,12 @@ public class ActivitiesController(
             ]
         };
 
-        var activityProviderInstance = await activityProvider.GetActivityProviderAsync();
-        if (activityProviderInstance == null)
-            return feed;
+        var providers = await activityProvider.GetReplyProvidersAsync();
+        var replies = providers
+            .ToAsyncEnumerable()
+            .SelectMany(p => p.GetRepliesAsync(providerId, stringId, Math.Min(count, 49)));
 
-        await foreach (var item in activityProviderInstance.GetRepliesAsync(providerId, stringId, Math.Min(count, 49)))
+        await foreach (var item in replies)
         {
             feed.Entries.Add(new LiveComment()
             {
@@ -202,7 +204,7 @@ public class ActivitiesController(
         var providerId = id[..id.IndexOf(':')];
         var stringId = id[(id.IndexOf(':') + 1)..];
 
-        var activityProviderInstance = await activityProvider.GetActivityProviderAsync();
+        var activityProviderInstance = await activityProvider.GetOwnedProviderAsync();
         if (activityProviderInstance == null)
             return NoContent();
 

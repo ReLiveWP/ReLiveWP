@@ -23,7 +23,7 @@ public static class ConnectedServicesProxy
                                          IEnumerable<IConnectedServiceProxy> proxies,
                                          ILogger<ConnectedServicesProxyLog> logger,
                                          ServiceTokenLocks tokenLocks,
-                                         string path)
+                                         string? path)
         => ProxyHandler(context, dbContext, proxies, logger, tokenLocks, AtProto.SERVICE_NAME, path);
 
     private static async Task ProxyHandler(HttpContext context,
@@ -32,8 +32,10 @@ public static class ConnectedServicesProxy
                                            ILogger<ConnectedServicesProxyLog> logger,
                                            ServiceTokenLocks tokenLocks,
                                            string serviceId,
-                                           string path)
+                                           string? path)
     {
+        path ??= string.Empty;
+
         try
         {
             context.Request.EnableBuffering();

@@ -2,7 +2,7 @@
 
 namespace ReLiveWP.Services.Activity.Services;
 
-public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> providers) : ActivityProviderBase
+public class FeedCoalescingActivityProvider(IReadOnlyList<OwnedActivityProviderBase> providers) : OwnedActivityProviderBase
 {
     private class EntryEqualityComparaer : IEqualityComparer<EntryModel>
     {
@@ -79,16 +79,6 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<ActivityProviderBase> 
         foreach (var provider in providers)
         {
             await foreach (var item in provider.GetRepliesAsync(providerId, activityId, count))
-                yield return item;
-        }
-    }
-
-    public override async IAsyncEnumerable<EntryModel> GetAuthorEntriesAsync(string providerToken, string externalId, int count)
-    {
-        // providers ignore identities they don't own (provider-token mismatch)
-        foreach (var provider in providers)
-        {
-            await foreach (var item in provider.GetAuthorEntriesAsync(providerToken, externalId, count))
                 yield return item;
         }
     }

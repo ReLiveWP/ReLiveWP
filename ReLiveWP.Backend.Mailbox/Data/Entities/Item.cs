@@ -19,6 +19,16 @@ public abstract class DbItem
 
     // maps onto the Postgres xmin system column, used for version tracking
     public uint Version { get; set; }
+
+    public string? OriginServiceId { get; set; }
+    public string? OriginCollectionId { get; set; }
+    public string? OriginExternalId { get; set; }
+    public string? OriginEtag { get; set; }
+    public DateTime? OriginSyncedAt { get; set; }
+
+    // the origin survives an edit so a later pull matches this row instead of duplicating it, so
+    // "came from a provider" and "still follows one" have to be separate questions
+    public bool RemoteSynced { get; set; }
 }
 
 public class DbTask : DbItem

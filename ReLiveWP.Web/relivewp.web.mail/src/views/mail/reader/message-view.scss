@@ -1,0 +1,111 @@
+@use "tokens" as t;
+
+.message-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 22px 26px;
+    overflow-y: auto;
+    @include t.themed(background-color, surface);
+    @include t.themed(border, rule, "1px solid ");
+    border-left: none;
+
+    &.empty {
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.message-view-bar {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex: none;
+}
+
+.message-view-stamp {
+    margin-left: auto;
+    font-size: 9pt;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-muted);
+}
+
+.message-view-subject {
+    flex: none;
+    margin: 18px 0 0;
+    font-size: 24pt;
+    font-weight: t.$font-weight-display;
+    line-height: 1.15;
+    @include t.themed(color, ink-strong);
+}
+
+.message-view-people {
+    flex: none;
+    margin: 10px 0 0;
+    font-size: t.$font-size-base;
+    @include t.themed(color, ink-secondary);
+}
+
+.message-attachments {
+    flex: none;
+    margin-top: 18px;
+    @include t.themed(border-top, rule-faint, "1px solid ");
+
+    ul {
+        margin: 0;
+        padding: 8px 0 0;
+        list-style: none;
+    }
+
+    li {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        padding: 2px 0;
+        font-size: 9pt;
+        @include t.themed(color, ink-secondary);
+    }
+}
+
+.message-attachments-bar {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 12px 0 0;
+}
+
+.message-attachments-count {
+    font-size: 9pt;
+    font-weight: 500;
+    font-variant: small-caps;
+    text-transform: lowercase;
+    @include t.themed(color, ink-muted);
+}
+
+.message-attachments-size,
+.attachment-size {
+    margin-left: auto;
+    font-size: 9pt;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-muted);
+}
+
+.message-frame {
+    flex: 1;
+    min-height: 240px;
+    width: 100%;
+    margin-top: 20px;
+    border: none;
+}
+
+.message-text {
+    flex: none;
+    margin-top: 20px;
+    max-width: 60ch;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    line-height: 1.55;
+    @include t.themed(color, ink);
+}

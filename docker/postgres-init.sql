@@ -7,3 +7,4 @@ CREATE DATABASE relive_skybox;
 CREATE DATABASE relive_skydrive;
 CREATE DATABASE relive_push;
 CREATE DATABASE relive_mailbox;
+CREATE DATABASE relive_clearinghouse;

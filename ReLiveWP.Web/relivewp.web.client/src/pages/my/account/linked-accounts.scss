@@ -116,6 +116,14 @@
         }
     }
 
+    .capability-sharing {
+        .capability-name,
+        .capability-detail {
+            font-size: 9pt;
+            color: var(--ink-muted);
+        }
+    }
+
     .inactive-account {
         opacity: 0.5;
     }

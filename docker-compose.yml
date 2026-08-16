@@ -54,21 +54,6 @@ services:
       - "8086:80"
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      login:
-        condition: service_healthy
-      devices:
-        condition: service_healthy
-      web:
-        condition: service_healthy
-      activity:
-        condition: service_healthy
-      findmyphone:
-        condition: service_healthy
-      push:
-        condition: service_healthy
-      support:
-        condition: service_healthy
 
   identity:
     image: relive/identity
@@ -88,6 +73,7 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.Identity.ini:/app/ReLiveWP.Backend.Identity.ini:ro
       - ./deploy/data/identity/certstore:/home/app/.dotnet/corefx/cryptography/x509stores
+      - ./deploy/data/identity/avatars:/data/avatars
       - ./deploy/certs/identity_ca.pfx:/certs/identity_ca.pfx:ro
       - ./deploy/certs/root_ca.pfx:/certs/root_ca.pfx:ro
     secrets:
@@ -171,6 +157,33 @@ services:
       - ./deploy/ReLiveWP.Backend.Skybox.ini:/app/ReLiveWP.Backend.Skybox.ini:ro
     secrets:
       - source: skybox_db_connection
+        target: ConnectionStrings__DefaultConnection
+
+  clearinghouse:
+    image: relive/clearinghouse
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      identity:
+        condition: service_healthy
+      connectedservices:
+        condition: service_healthy
+      mailbox:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.ClearingHouse.ini:/app/ReLiveWP.Backend.ClearingHouse.ini:ro
+    secrets:
+      - source: clearinghouse_db_connection
         target: ConnectionStrings__DefaultConnection
 
   skydrive:
@@ -277,7 +290,20 @@ services:
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
-      - ./deploy/ReLiveWP.Web.Server.ini:/app/ReLiveWP.Web.Server.ini:ro
+      
+  webmail:
+    image: relive/webmail
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 10018:8080
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
 
   push:
     image: relive/push
@@ -387,6 +413,9 @@ services:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Exchange.ini:/app/ReLiveWP.Services.Exchange.ini:ro
+    secrets:
+      - source: jwt_public_key
+        target: JWT__PublicKey
 
   addressbook:
     image: relive/addressbook
@@ -411,6 +440,9 @@ services:
 
   profile:
     image: relive/profile
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10014/health"]
     environment: *v-env
     networks:
       - relive
@@ -422,6 +454,29 @@ services:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Profile.ini:/app/ReLiveWP.Services.Profile.ini:ro
+
+  hub:
+    image: relive/hub
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10020/health"]
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      identity:
+        condition: service_healthy
+      clearinghouse:
+        condition: service_healthy
+    ports:
+      - 10020:10020
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.Hub.ini:/app/ReLiveWP.Services.Hub.ini:ro
+    secrets:
+      - source: jwt_public_key
+        target: JWT__PublicKey
 
   devices:
     image: relive/devices
@@ -473,12 +528,12 @@ services:
     image: relive/appserver
     healthcheck:
       <<: *healthcheck
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10018/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10019/health"]
     environment: *v-env
     networks:
       - relive
     ports:
-      - 10018:10018
+      - 10019:10019
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -575,6 +630,8 @@ secrets:
     file: ./deploy/secrets/skybox_db_connection
   skydrive_db_connection:
     file: ./deploy/secrets/skydrive_db_connection
+  clearinghouse_db_connection:
+    file: ./deploy/secrets/clearinghouse_db_connection
   push_db_connection:
     file: ./deploy/secrets/push_db_connection
   mailbox_db_connection:

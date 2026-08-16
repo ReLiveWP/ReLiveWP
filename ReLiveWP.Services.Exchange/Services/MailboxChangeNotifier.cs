@@ -38,8 +38,7 @@ public sealed class MailboxChangeNotifier(
             return;
         }
 
-        // only notify on new item adds
-        if (evt is null || evt.Kind != MailboxChangeKind.Add)
+        if (evt is null)
             return;
 
         if (!_waiters.TryGetValue(evt.UserId, out var userWaiters))

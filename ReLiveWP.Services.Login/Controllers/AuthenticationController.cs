@@ -15,6 +15,7 @@ public class AuthenticationController(
     User.UserClient userClient,
     Authentication.AuthenticationClient authenticationClient,
     ConnectedServices.ConnectedServicesClient connectedServicesClient,
+    IConfiguration configuration,
     SupportLinks supportLinks) : ControllerBase
 {
     [Authorize]
@@ -31,7 +32,14 @@ public class AuthenticationController(
         if (user == null)
             return NotFound();
 
-        return new UserModel(User.Id()!, user.Cid, user.Puid, user.Username, user.EmailAddress);
+        var etag = user.HasPictureEtag ? user.PictureEtag : null;
+
+        return new UserModel(User.Id()!, user.Cid, user.Puid, user.Username, user.EmailAddress,
+            user.HasFirstName ? user.FirstName : null,
+            user.HasLastName ? user.LastName : null,
+            ProfileController.PictureUrl(configuration, user.Cid, etag),
+            etag,
+            VisibilityModel.ToModel(user.Visibility));
     }
 
     [Authorize]
@@ -51,7 +59,8 @@ public class AuthenticationController(
                 connection.ServiceUrl,
                 string.IsNullOrWhiteSpace(connection.Label) ? connection.UserName : connection.Label,
                 (connection.Flags & 0x80000000UL) != 0,
-                connection.Capabilities));
+                connection.Capabilities,
+                connection.SharedCapabilities));
         }
 
         return new ConnectionModels(connectionModels);

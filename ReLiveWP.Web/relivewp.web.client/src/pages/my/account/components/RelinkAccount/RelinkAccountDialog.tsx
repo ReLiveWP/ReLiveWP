@@ -3,7 +3,7 @@ import "../link-account-dialog.scss";
 import { useSignal } from "@preact/signals";
 import { useEffect } from "preact/hooks";
 
-import { Dialog } from "~/components/Dialog";
+import { Dialog } from "@relivewp/ui";
 import { useAuthenticatedFetch } from "~/state/app-state";
 import { ENDPOINT_RELINK_ACCOUNT } from "~/util/endpoints";
 import { type Stage } from "../LinkAccount/service-config";

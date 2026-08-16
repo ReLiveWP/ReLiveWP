@@ -1,0 +1,13 @@
+@use "tokens" as t;
+
+.text-monospace {
+    font-family: t.$font-family-monospace;
+}
+
+.block {
+    display: block !important;
+}
+
+.error {
+    @include t.themed(color, danger);
+}

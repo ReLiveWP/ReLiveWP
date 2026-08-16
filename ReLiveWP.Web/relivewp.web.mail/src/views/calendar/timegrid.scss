@@ -1,0 +1,221 @@
+@use "../../theme" as config;
+@use "tokens" as t;
+
+
+.timegrid {
+    --hour: 44px;
+    --gutter: 54px;
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    @include t.themed(border-left, rule-soft, "1px solid ");
+}
+
+.timegrid-row {
+    display: grid;
+    grid-template-columns: var(--gutter) minmax(0, 1fr);
+}
+
+.timegrid-head,
+.timegrid-allday,
+.timegrid-scroll {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+.timegrid-columns {
+    display: grid;
+    min-width: 0;
+}
+
+.timegrid-head {
+    @include t.themed(border-bottom, rule-soft, "1px solid ");
+}
+
+.timegrid-heading {
+    padding: 6px 8px;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: lowercase;
+    font-variant-caps: small-caps;
+    font-weight: 500;
+    @include t.themed(color, ink-secondary);
+    @include t.themed(border-left, rule-faint, "1px solid ");
+
+    &:first-child {
+        border-left: none;
+    }
+
+    .timegrid-date {
+        margin-left: 6px;
+        font-size: 13px;
+        letter-spacing: 0;
+        font-variant-numeric: tabular-nums;
+        @include t.themed(color, ink);
+    }
+
+    &.today {
+        .timegrid-weekday,
+        .timegrid-date {
+            font-weight: 600;
+            @include t.themed-raw(color, config.$accent, var(--accent-ink));
+        }
+    }
+}
+
+.timegrid-allday {
+    max-height: 76px;
+    @include t.themed(border-bottom, rule-soft, "1px solid ");
+
+    .timegrid-gutter {
+        padding: 6px 6px 0;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: lowercase;
+        font-variant-caps: small-caps;
+        font-weight: 500;
+        @include t.themed(color, ink-muted);
+    }
+}
+
+.timegrid-allday-cell {
+    padding: 3px;
+    min-width: 0;
+    @include t.themed(border-left, rule-faint, "1px solid ");
+
+    &:first-child {
+        border-left: none;
+    }
+}
+
+.timegrid-allday-chip {
+    margin-bottom: 2px;
+    padding: 1px 5px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    line-height: 15px;
+    @include t.themed(color, ink);
+    @include t.themed-raw(background-color, rgba(0, 0, 0, 0.07),
+        color-mix(in srgb, var(--event-ink, var(--accent-ink)) 18%, transparent));
+    @include t.themed-raw(border-left, 3px solid config.$accent, 3px solid var(--event-ink, var(--accent-ink)));
+}
+
+.timegrid-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-anchor: none;
+}
+
+.timegrid-body {
+    height: calc(var(--hour) * 24);
+}
+
+.timegrid-hour {
+    box-sizing: border-box;
+    height: var(--hour);
+    padding: 2px 8px 0 0;
+    text-align: right;
+    font-size: 10px;
+    line-height: 12px;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-muted);
+}
+
+.timegrid-column {
+    position: relative;
+    min-width: 0;
+    @include t.themed(border-left, rule-faint, "1px solid ");
+
+    &:first-child {
+        border-left: none;
+    }
+
+    background-image: repeating-linear-gradient(to bottom, #e6e6e6 0 1px, transparent 1px, transparent 44px);
+    background-image:
+        repeating-linear-gradient(to bottom, var(--rule-soft) 0 1px, transparent 1px, transparent var(--hour)),
+        repeating-linear-gradient(to bottom, var(--rule-faint) 0 1px, transparent 1px, transparent calc(var(--hour) / 2));
+}
+
+.timegrid-box {
+    position: absolute;
+    z-index: 1;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 1px 5px;
+    border-right: 2px solid transparent;
+    border-bottom: 1px solid transparent;
+    background-clip: padding-box;
+    font-size: 11px;
+    line-height: 14px;
+    @include t.themed(color, ink);
+    @include t.themed-raw(background-color, #e8f4fb,
+        color-mix(in srgb, var(--event-ink, var(--accent-ink)) 22%, var(--surface)));
+    @include t.themed-raw(border-left, 3px solid config.$accent, 3px solid var(--event-ink, var(--accent-ink)));
+
+    &.short {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+        line-height: 13px;
+    }
+
+    &.abuts {
+        @include t.themed(border-top, rule, "1px solid ");
+    }
+
+    &[data-busy="tentative"] {
+        opacity: 0.75;
+    }
+
+    &[data-busy="free"] {
+        @include t.themed(background-color, surface);
+        @include t.themed(border-left, border-input, "3px dashed ");
+    }
+}
+
+.timegrid-box-subject {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+.timegrid-box-where {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    @include t.themed(color, ink-secondary);
+}
+
+.timegrid-now {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 0;
+    z-index: 2;
+    pointer-events: none;
+    @include t.themed(border-top, danger, "1px solid ");
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: -3px;
+        top: -3px;
+        width: 6px;
+        height: 6px;
+        border-radius: 3px;
+        @include t.themed(background-color, danger);
+    }
+}

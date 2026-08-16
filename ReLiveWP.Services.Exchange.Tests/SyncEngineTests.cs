@@ -200,34 +200,38 @@ public class SyncEngineTests
     }
 
     [Fact]
-    public void Collapse_orders_groups_by_their_max_id_not_their_first_id()
+    public void Collapse_orders_groups_by_their_first_id_not_their_max_id()
     {
-        // group "b" starts early (id 2) but is later updated at id 6, so its true position in
-        // the window ordering is after "c" (id 3), not right after "a"
+        // "b" starts at id 2 and is updated at id 6. Ordering by latest event would put it after
+        // "c", excluding it while including an item that starts later - and then the watermark
+        // has to be dragged back below b's Add to avoid stranding it, which is where paging used
+        // to stop making progress. Ordering by earliest event cannot produce that situation.
         var delta = SyncEngine.Collapse(
             [Add(1, "a"), Add(2, "b"), Add(3, "c"), Update(6, "b")], windowSize: 2);
 
         Assert.True(delta.MoreAvailable);
-        Assert.Equal(["a", "c"], delta.Added);
-        // "b" is excluded but its Add (id 2) sits below the last-included MaxId (c, id 3); the
-        // watermark is clamped to just below b's earliest event so the follow-up sync re-reads
-        // b whole as an Add rather than stranding it and surfacing a bogus Change.
-        Assert.Equal(1, delta.Watermark);
+        Assert.Equal(["a", "b"], delta.Added);
+        // Just below "c", the first thing not delivered. b's later update is above this and comes
+        // back as a Change next round, which is correct: the client already holds b.
+        Assert.Equal(2, delta.Watermark);
     }
 
     [Fact]
     public void Collapse_does_not_strand_an_excluded_groups_add_below_the_watermark()
     {
-        // "b" Added at id 1 then Updated at id 5; "a"/"c" (ids 2,3) sort ahead of b by MaxId and
-        // fill the window. Advancing to c's id 3 would leave b's Add (id 1) below the watermark,
-        // so the next AfterWatermark read would see only Update(5,"b") and misclassify b as a
-        // Change for an item never delivered. The clamp must hold the watermark below b's Add.
+        // "b" Added at id 1 then Updated at id 5. Stranding means advancing the watermark past
+        // b's Add without delivering b, because the next read would then see only Update(5) and
+        // report a Change for an item the client never received.
         var delta = SyncEngine.Collapse(
             [Add(1, "b"), Add(2, "a"), Add(3, "c"), Update(5, "b")], windowSize: 2);
 
         Assert.True(delta.MoreAvailable);
-        Assert.Equal(["a", "c"], delta.Added);
-        Assert.Equal(0, delta.Watermark);
+        Assert.Equal(["b", "a"], delta.Added);
+        Assert.Equal(2, delta.Watermark);
+
+        // The invariant, stated directly: nothing whose earliest event is at or below the
+        // watermark may be left undelivered.
+        Assert.Contains("b", delta.Added);
     }
 
     // The reason the cursor is a commit id and not the row id: a sequence allocates outside the
@@ -329,4 +333,84 @@ public class SyncEngineTests
     [InlineData(100, 100)]
     public void ResolveWindowSize_clamps_per_spec(int? requested, int expected) =>
         Assert.Equal(expected, SyncEngine.ResolveWindowSize(requested));
+
+    // A collection larger than the window must drain. The watermark after a truncated window is
+    // "just before the first event not delivered", so if an excluded group owns an earlier event
+    // than an included one the watermark moves backwards and the client loops forever. Found by
+    // the conformance harness against a live mailbox, at WindowSize 2.
+    [Fact]
+    public void Truncated_window_advances_the_watermark_past_the_baseline()
+    {
+        // "old" was added at commit 1 and touched again at 100, so it sorts last by latest event
+        // and first by earliest. Everything else is a plain add.
+        var events = new List<SyncEvent>
+        {
+            In(1, 1, "old", ChangeEventType.Add),
+            In(2, 2, "b", ChangeEventType.Add),
+            In(3, 3, "c", ChangeEventType.Add),
+            In(4, 4, "d", ChangeEventType.Add),
+            In(100, 100, "old", ChangeEventType.Update),
+        };
+
+        var delta = SyncEngine.Collapse(events, windowSize: 2);
+
+        Assert.True(delta.MoreAvailable);
+        Assert.True(delta.Watermark > 0,
+            $"watermark must advance past the baseline, got {delta.Watermark}");
+    }
+
+    [Fact]
+    public void Draining_a_collection_larger_than_the_window_terminates()
+    {
+        var events = new List<SyncEvent>
+        {
+            In(1, 1, "old", ChangeEventType.Add),
+            In(2, 2, "b", ChangeEventType.Add),
+            In(3, 3, "c", ChangeEventType.Add),
+            In(4, 4, "d", ChangeEventType.Add),
+            In(5, 5, "e", ChangeEventType.Add),
+            In(100, 100, "old", ChangeEventType.Update),
+        };
+
+        var delivered = new HashSet<string>();
+        long watermark = 0;
+        int rounds = 0;
+
+        while (rounds++ < 20)
+        {
+            var visible = events.Where(e => e.CommitId > watermark).ToList();
+            if (visible.Count == 0) break;
+
+            var delta = SyncEngine.Collapse(visible, windowSize: 2);
+
+            Assert.True(delta.Watermark > watermark,
+                $"round {rounds}: watermark stalled at {watermark}");
+
+            watermark = delta.Watermark;
+            foreach (var id in delta.Added.Concat(delta.Updated)) delivered.Add(id);
+
+            if (!delta.MoreAvailable) break;
+        }
+
+        Assert.True(rounds < 20, "draining did not terminate");
+        Assert.Equal(new[] { "b", "c", "d", "e", "old" }, delivered.OrderBy(x => x));
+    }
+
+    [Fact]
+    public void Window_cut_never_strands_an_earlier_event_behind_a_later_one()
+    {
+        var events = new List<SyncEvent>
+        {
+            In(1, 1, "straddler", ChangeEventType.Add),
+            In(2, 2, "b", ChangeEventType.Add),
+            In(50, 50, "straddler", ChangeEventType.Update),
+        };
+
+        var delta = SyncEngine.Collapse(events, windowSize: 1);
+
+        // Whatever is delivered, nothing below the watermark may still be undelivered: the
+        // straddler's add is at commit 1, so a watermark above 1 requires it to have been sent.
+        if (delta.Watermark >= 1)
+            Assert.Contains("straddler", delta.Added.Concat(delta.Updated));
+    }
 }

@@ -1,0 +1,31 @@
+.account-avatar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+
+    .account-avatar-tile {
+        width: 96px;
+        height: 96px;
+        object-fit: cover;
+        background: var(--rule);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32pt;
+        font-weight: 300;
+        color: var(--ink);
+    }
+
+    .account-avatar-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+
+        input[type="file"] {
+            display: none;
+        }
+    }
+}

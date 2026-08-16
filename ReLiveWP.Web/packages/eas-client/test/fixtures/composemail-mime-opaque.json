@@ -1,0 +1,30 @@
+{
+  "name": "composemail-mime-opaque",
+  "description": "SendMail carrying a MIME message. MS-ASCMD 2.2.3.109 says Mime is transferred as an opaque BLOB, so the payload is raw RFC 5322 bytes: base64ing it first produces a message whose visible body is base64 text, and the server's Latin-1 fallback swallows the mistake silently. The opaque run must begin with \"From:\".",
+  "wbxml": [
+    { "hex": "03 01 6A 00", "note": "header" },
+    { "hex": "00 15", "note": "SWITCH_PAGE to 21 (ComposeMail)" },
+    { "hex": "45", "note": "SendMail (0x05) with content" },
+    { "hex": "51 03 31 00 01", "note": "ClientId (0x11) = \"1\"" },
+    { "hex": "08", "note": "SaveInSentItems (0x08), empty element - no content bit, no END" },
+    { "hex": "50", "note": "Mime (0x10) with content" },
+    { "hex": "C3", "note": "OPAQUE" },
+    { "hex": "29", "note": "mb_u_int32 length 41" },
+    { "ascii": "From: a@b\r\nTo: c@d\r\nSubject: hi\r\n\r\nbody\r\n", "note": "41 bytes of raw RFC 5322" },
+    { "hex": "01", "note": "END Mime" },
+    { "hex": "01", "note": "END SendMail" }
+  ],
+  "tree": {
+    "ns": "ComposeMail",
+    "name": "SendMail",
+    "children": [
+      { "ns": "ComposeMail", "name": "ClientId", "children": [{ "text": "1" }] },
+      { "ns": "ComposeMail", "name": "SaveInSentItems", "children": [] },
+      {
+        "ns": "ComposeMail",
+        "name": "Mime",
+        "children": [{ "opaque": { "ascii": "From: a@b\r\nTo: c@d\r\nSubject: hi\r\n\r\nbody\r\n" } }]
+      }
+    ]
+  }
+}

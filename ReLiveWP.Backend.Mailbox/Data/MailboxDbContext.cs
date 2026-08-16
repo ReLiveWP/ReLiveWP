@@ -26,6 +26,7 @@ public class MailboxDbContext : DbContext
     public DbSet<DbItemEvent> ItemEvents { get; set; }
 
     public DbSet<DbContactAnnotation> ContactAnnotations { get; set; }
+    public DbSet<DbContactEmail> ContactEmails { get; set; }
     public DbSet<DbContactIdentity> ContactIdentities { get; set; }
     public DbSet<DbContactCategory> ContactCategories { get; set; }
     public DbSet<DbContactChild> ContactChildren { get; set; }
@@ -101,6 +102,10 @@ public class MailboxDbContext : DbContext
             e.HasIndex(i => new { i.UserId, i.CollectionId, i.ClientId })
                 .IsUnique()
                 .HasFilter("\"ClientId\" IS NOT NULL AND \"DeletedAt\" IS NULL");
+
+            e.HasIndex(i => new { i.UserId, i.OriginServiceId, i.OriginCollectionId, i.OriginExternalId })
+                .IsUnique()
+                .HasFilter("\"OriginServiceId\" IS NOT NULL AND \"DeletedAt\" IS NULL");
                 
             if (Database.IsNpgsql())
             {
@@ -155,6 +160,18 @@ public class MailboxDbContext : DbContext
              .HasForeignKey<DbContactAnnotation>(a => a.ContactItemId);
             // supports GetContactProfiles' cid lookup join
             e.HasIndex(a => a.Cid);
+        });
+
+        modelBuilder.Entity<DbContactEmail>(e =>
+        {
+            e.HasKey(x => x.Id);
+            // the bare address index serves the fan-out when a user's visibility changes,
+            // the owner-scoped one answers the mutual reciprocity check
+            e.HasIndex(x => x.NormalizedAddress);
+            e.HasIndex(x => new { x.UserId, x.NormalizedAddress });
+            e.HasOne(x => x.ContactItem)
+             .WithMany()
+             .HasForeignKey(x => x.ContactItemId);
         });
 
         modelBuilder.Entity<DbContactIdentity>(e =>

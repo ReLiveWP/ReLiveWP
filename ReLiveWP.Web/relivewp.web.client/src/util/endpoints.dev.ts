@@ -1,6 +1,8 @@
 export const ENDPOINT_REQUEST_TOKENS = "https://login.int.relivewp.net/auth/request_tokens",
     ENDPOINT_GET_USER = "https://login.int.relivewp.net/auth/user/@me",
     ENDPOINT_GET_LINKED_ACCOUNTS = "https://login.int.relivewp.net/auth/user/@me/linked-accounts",
+    ENDPOINT_UPDATE_PROFILE = "https://login.int.relivewp.net/auth/user/@me",
+    ENDPOINT_USER_PICTURE = "https://login.int.relivewp.net/auth/user/@me/picture",
     ENDPOINT_BEGIN_ACCOUNT_LINKING = "https://login.int.relivewp.net/oauth/begin-account-link",
     ENDPOINT_LINK_CREDENTIALS = "https://login.int.relivewp.net/oauth/link-credentials",
     ENDPOINT_RELINK_ACCOUNT = "https://login.int.relivewp.net/oauth/begin-relink",
@@ -14,4 +16,7 @@ export const ENDPOINT_REQUEST_TOKENS = "https://login.int.relivewp.net/auth/requ
     ENDPOINT_DEVICE_IMAGE = "https://devices.int.relivewp.net/devices/image/:size/:device",
     ENDPOINT_AVAILABLE_LINKS = "https://login.int.relivewp.net/oauth/available-links",
     ENDPOINT_UPDATE_LINK = "https://login.int.relivewp.net/oauth/link",
+    ENDPOINT_CONTACT_SOURCES = "https://hub.int.relivewp.net/contacts/sources",
+    ENDPOINT_IMPORT_CONTACTS = "https://hub.int.relivewp.net/contacts/import",
+    ENDPOINT_SYNC_STATUS = "https://hub.int.relivewp.net/status",
     ENDPOINT_SUPPORT = "https://support.int.relivewp.net/";

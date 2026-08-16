@@ -18,6 +18,12 @@ public class SyncStateRepairBackgroundService(
             if (states > 0)
                 logger.LogInformation(
                     "sync-state sweep: deleted {States} orphaned SyncState rows", states);
+
+            foreach (var device in await reconciler.UnknownDevicesAsync(null, stoppingToken))
+                logger.LogWarning(
+                    "sync state for {User} on {Device} has no DeviceInfo row, keeping {Rows} rows. "
+                    + "a device id that never provisioned usually means one was parsed wrong.",
+                    device.UserId, device.DeviceId, device.Rows);
         }
         catch (Exception ex)
         {

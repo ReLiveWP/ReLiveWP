@@ -1,0 +1,78 @@
+@use "config" as c;
+@use "tokens" as t;
+
+.prose {
+    h1 {
+        font-size: 30px;
+        line-height: 1.2;
+        margin: 0 0 4px 0;
+        @include t.themed(color, ink-strong);
+    }
+
+    h2 {
+        font-size: 21px;
+        margin: 32px 0 8px 0;
+        padding-bottom: 4px;
+        @include t.themed(border-bottom, rule-soft, "1px solid ");
+        @include t.themed(color, ink-strong);
+    }
+
+    h3 {
+        font-size: 17px;
+        margin: 24px 0 6px 0;
+        @include t.themed(color, ink-strong);
+    }
+
+    code,
+    pre,
+    .mono {
+        font-family: t.$font-family-monospace;
+        font-size: 13px;
+    }
+
+    code {
+        @include t.themed(background-color, surface-panel);
+        padding: 1px 4px;
+    }
+
+    pre {
+        @include t.themed(background-color, surface-panel);
+        @include t.themed-raw(border-left, 3px solid c.$accent, 3px solid var(--accent-ink));
+        padding: 12px;
+        overflow-x: auto;
+
+        code {
+            background: none;
+            padding: 0;
+        }
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 16px 0;
+    }
+
+    th,
+    td {
+        text-align: left;
+        vertical-align: top;
+        padding: 6px 10px 6px 0;
+        @include t.themed(border-bottom, rule-soft, "1px solid ");
+    }
+
+    th {
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        @include t.themed(color, ink-secondary);
+        @include t.themed(border-bottom, border-input, "1px solid ");
+    }
+
+    @media screen and (max-width: t.$breakpoint-narrow) {
+        h1 {
+            font-size: 23px;
+        }
+    }
+}

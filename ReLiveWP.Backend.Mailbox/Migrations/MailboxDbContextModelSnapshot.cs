@@ -252,6 +252,9 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Property<string>("ImMri")
                         .HasColumnType("text");
 
+                    b.Property<bool>("LinkIsManual")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ObjectId")
                         .HasColumnType("text");
 
@@ -312,6 +315,34 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.HasIndex("ContactItemId");
 
                     b.ToTable("ContactChildren");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactEmail", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContactItemId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NormalizedAddress")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactItemId");
+
+                    b.HasIndex("NormalizedAddress");
+
+                    b.HasIndex("UserId", "NormalizedAddress");
+
+                    b.ToTable("ContactEmails");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactIdentity", b =>
@@ -517,6 +548,24 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<string>("OriginCollectionId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginEtag")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginExternalId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginServiceId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("OriginSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("RemoteSynced")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ServerId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -551,6 +600,10 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
 
                     b.HasIndex("UserId", "CollectionId", "ServerId")
                         .IsUnique();
+
+                    b.HasIndex("UserId", "OriginServiceId", "OriginCollectionId", "OriginExternalId")
+                        .IsUnique()
+                        .HasFilter("\"OriginServiceId\" IS NOT NULL AND \"DeletedAt\" IS NULL");
 
                     b.ToTable("Items");
 
@@ -1334,6 +1387,17 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                 {
                     b.HasOne("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactItem", "ContactItem")
                         .WithMany("Children")
+                        .HasForeignKey("ContactItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ContactItem");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactEmail", b =>
+                {
+                    b.HasOne("ReLiveWP.Backend.Mailbox.Data.Entities.DbContactItem", "ContactItem")
+                        .WithMany()
                         .HasForeignKey("ContactItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

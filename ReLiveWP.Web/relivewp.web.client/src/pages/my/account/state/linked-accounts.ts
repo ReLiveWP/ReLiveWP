@@ -77,6 +77,11 @@ export const AccountTypes = {
         name: "webdav share",
         icon: WebDavIcon,
         allowsMany: true
+    },
+    "carddav": {
+        name: "carddav address book",
+        icon: WebDavIcon,
+        allowsMany: true
     }
 } satisfies Record<string, AccountTypeEntry>;
 
@@ -99,7 +104,7 @@ export interface CapabilityGroup {
 }
 
 export const CapabilityGroups: CapabilityGroup[] = [
-    { name: "Social",       caps: ServiceCaps.socialFeed | ServiceCaps.socialPost | ServiceCaps.socialCheckIn | ServiceCaps.socialNotifications },
+    { name: "Social",       caps: ServiceCaps.socialFeed | ServiceCaps.socialPost | ServiceCaps.socialCheckIn | ServiceCaps.socialNotifications | ServiceCaps.socialPhotos },
     { name: "Mail",         caps: ServiceCaps.email },
     { name: "People",       caps: ServiceCaps.contacts },
     { name: "Calendar",     caps: ServiceCaps.calendar },
@@ -115,6 +120,7 @@ export type AccountInfo = {
     url: string
     needs_relink: boolean
     enabled_capabilities?: number
+    shared_capabilities?: number
 }
 
 export type Connections = {
@@ -123,8 +129,9 @@ export type Connections = {
 
 export type AvailableConnectedService = {
     service: string;
-    displayName: string;
+    display_name: string;
     capabilities: number;
+    shareable_capabilities?: number;
 }
 
 export type LinkedAccountsContext = {

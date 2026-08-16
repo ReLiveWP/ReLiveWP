@@ -1,4 +1,4 @@
-import { useTitle } from "~/util/effects";
+import { useTitle } from "@relivewp/ui";
 
 export default function Register() {
     useTitle("register");

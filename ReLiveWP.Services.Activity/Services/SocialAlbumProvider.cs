@@ -22,13 +22,17 @@ public class SocialAlbumProvider(IConfiguration configuration,
 
     private const int MaxPhotos = 150;
 
-    private static readonly TimeSpan FeedLifetime = TimeSpan.FromMinutes(2);
+    // how long public social data is allowed to be stale, shared with the feed cache
+    public static readonly TimeSpan FeedLifetime = TimeSpan.FromMinutes(2);
 
     private readonly ILogger<SocialAlbumProvider> logger = loggerFactory.CreateLogger<SocialAlbumProvider>();
 
     public static string AlbumResourceId(string did) => $"{Provider}+{did}";
 
-    public static string TitleFor(Connection connection) => $"@{connection.UserName.TrimStart('@')}'s photos";
+    public static string TitleFor(Connection connection) => TitleFor(connection.UserName);
+
+    public static string TitleFor(string? handle) =>
+        string.IsNullOrWhiteSpace(handle) ? "photos" : $"@{handle.TrimStart('@')}'s photos";
 
     public static bool TryParseAlbumId(string resourceId, out string did)
     {
@@ -37,7 +41,7 @@ public class SocialAlbumProvider(IConfiguration configuration,
             return false;
 
         did = resourceId[(Provider.Length + 1)..];
-        return did.StartsWith("did:", StringComparison.OrdinalIgnoreCase);
+        return ATDid.IsValid(did);
     }
 
     public static bool TryParsePhotoRef(string resourceRef, out string did, out string cid)
@@ -53,7 +57,9 @@ public class SocialAlbumProvider(IConfiguration configuration,
 
         did = rest[..split];
         cid = rest[(split + 1)..];
-        return true;
+
+        // both halves land in a cdn url unescaped, so anything that could steer the path is out
+        return ATDid.IsValid(did) && cid.All(char.IsAsciiLetterOrDigit);
     }
 
     public async Task<IReadOnlyList<SocialAlbum>> GetAlbumsAsync(string userId, IEnumerable<Connection> connections, CancellationToken ct = default)

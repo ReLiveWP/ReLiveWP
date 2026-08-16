@@ -17,6 +17,7 @@ public class MailboxBackfillService(
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<MailboxDbContext>();
             var provisioner = scope.ServiceProvider.GetRequiredService<MailboxProvisioningService>();
+            var mirror = scope.ServiceProvider.GetRequiredService<MeContactMirrorService>();
             var users = scope.ServiceProvider.GetRequiredService<User.UserClient>();
 
             var provisioned = await db.Folders.Select(f => f.UserId).Distinct().ToHashSetAsync(stoppingToken);
@@ -29,6 +30,7 @@ public class MailboxBackfillService(
                     continue;
 
                 await provisioner.ProvisionAsync(user.Id, user.EmailAddress, user.Username, stoppingToken);
+                await mirror.MirrorFromIdentityAsync(user.Id, stoppingToken);
                 count++;
             }
 

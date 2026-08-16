@@ -27,4 +27,5 @@
       <Link>Protos\authentication.proto</Link>
     </Protobuf>
   </ItemGroup>
+  
 </Project>

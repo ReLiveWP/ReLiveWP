@@ -1,0 +1,182 @@
+@use "../../theme" as config;
+@use "tokens" as t;
+
+.month {
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    // @include t.themed(background-color, surface);
+    @include t.themed(border-left, rule-soft, "1px solid ");
+}
+
+.month-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: lowercase;
+    font-variant: small-caps;
+    font-weight: 500;
+    @include t.themed(color, ink-secondary);
+    // @include t.themed(background-color, surface-subtle);
+    @include t.themed(border-bottom, rule-soft, "1px solid ");
+
+    span {
+        padding: 5px 6px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}
+
+.month-body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.month-cells {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    flex: 1;
+    min-height: 0;
+}
+
+.month-cell {
+    min-width: 0;
+    @include t.themed(border-left, rule-faint, "1px solid ");
+    @include t.themed(border-top, rule-faint, "1px solid ");
+
+    &:nth-child(7n + 1) {
+        border-left: none;
+    }
+
+    &:nth-child(-n + 7) {
+        border-top: none;
+    }
+
+    &.outside {
+        .month-date {
+            @include t.themed(color, ink-faint);
+        }
+    }
+
+    // after .outside deliberately: today can land in a trailing week, and it should still be the
+    // thing that stands out when it does
+    &.today {
+        @include t.themed-raw(background-color, rgba(config.$accent, 0.1),
+            color-mix(in srgb, var(--accent-ink) 10%, transparent));
+
+        .month-date {
+            font-weight: 600;
+            @include t.themed-raw(color, config.$accent, var(--accent-ink));
+        }
+    }
+}
+
+.month-date {
+    display: block;
+    padding: 4px 6px 0;
+    // the slot positions all count down from a fixed header height, so a date that wrapped onto a
+    // second line would put the first chip through it
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    line-height: 16px;
+    text-transform: lowercase;
+    // the caps longhand, not the font-variant shorthand: the shorthand resets every other
+    // font-variant longhand, and would quietly take the tabular figures below with it
+    font-variant-caps: small-caps;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    @include t.themed(color, ink-secondary);
+}
+
+.month-chips {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.month-chip {
+    position: absolute;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 5px;
+    border-right: 3px solid transparent;
+    background-clip: padding-box;
+    font-size: 11px;
+    line-height: 16px;
+    pointer-events: auto;
+    @include t.themed(color, ink);
+
+    &.bar {
+        @include t.themed-raw(background-color, rgba(0, 0, 0, 0.07),
+            color-mix(in srgb, var(--event-ink, var(--accent-ink)) 18%, transparent));
+        @include t.themed-raw(border-left, 3px solid config.$accent, 3px solid var(--event-ink, var(--accent-ink)));
+    }
+
+    &:not(.bar):hover {
+        @include t.themed(background-color, surface-subtle);
+    }
+
+    &[data-busy="tentative"] {
+        opacity: 0.7;
+    }
+}
+
+// the chips are the loudest thing in a cell, so draining the colour out of the ones in a
+// neighbouring month reads the boundary far better than another background tone would. they sit in
+// an overlay rather than inside the cells, so the class has to be handed to them
+.month-chip.outside,
+.month-more.outside {
+    filter: saturate(0.15);
+    opacity: 0.65;
+}
+
+.month-chip-dot {
+    flex: none;
+    box-sizing: border-box;
+    width: 7px;
+    height: 7px;
+    border-radius: 4px;
+    @include t.themed-raw(background-color, config.$accent, var(--event-ink, var(--accent-ink)));
+
+    [data-busy="free"] & {
+        background-color: transparent;
+        @include t.themed(border, border-input, "1px solid ");
+    }
+}
+
+.month-chip-subject {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.month-chip-time {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-muted);
+}
+
+.month-more {
+    position: absolute;
+    box-sizing: border-box;
+    padding: 0 8px;
+    font-size: 11px;
+    line-height: 15px;
+    pointer-events: auto;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-secondary);
+}

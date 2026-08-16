@@ -1,0 +1,56 @@
+{
+  "name": "sync-multipage",
+  "description": "Sync with an AirSyncBase BodyPreference. Pins SWITCH_PAGE mid-document and the fact that END is global: the encoder does not switch back to AirSync to close Options, Collection, Collections and Sync.",
+  "wbxml": [
+    { "hex": "03 01 6A 00", "note": "header" },
+    { "hex": "45", "note": "AirSync:Sync (0x05) with content; page 0 needs no switch" },
+    { "hex": "5C", "note": "Collections (0x1C) with content" },
+    { "hex": "4F", "note": "Collection (0x0F) with content" },
+    { "hex": "4B 03 31 00 01", "note": "SyncKey (0x0B) = \"1\"" },
+    { "hex": "52 03 35 00 01", "note": "CollectionId (0x12) = \"5\"" },
+    { "hex": "57", "note": "Options (0x17) with content" },
+    { "hex": "00 11", "note": "SWITCH_PAGE to 17 (AirSyncBase)" },
+    { "hex": "45", "note": "BodyPreference (0x05) with content" },
+    { "hex": "46 03 32 00 01", "note": "Type (0x06) = \"2\" (HTML)" },
+    { "hex": "47 03 35 31 32 00 01", "note": "TruncationSize (0x07) = \"512\"" },
+    { "hex": "01", "note": "END BodyPreference" },
+    { "hex": "01", "note": "END Options - still on page 17, because END is a global token" },
+    { "hex": "01", "note": "END Collection" },
+    { "hex": "01", "note": "END Collections" },
+    { "hex": "01", "note": "END Sync" }
+  ],
+  "tree": {
+    "ns": "AirSync",
+    "name": "Sync",
+    "children": [
+      {
+        "ns": "AirSync",
+        "name": "Collections",
+        "children": [
+          {
+            "ns": "AirSync",
+            "name": "Collection",
+            "children": [
+              { "ns": "AirSync", "name": "SyncKey", "children": [{ "text": "1" }] },
+              { "ns": "AirSync", "name": "CollectionId", "children": [{ "text": "5" }] },
+              {
+                "ns": "AirSync",
+                "name": "Options",
+                "children": [
+                  {
+                    "ns": "AirSyncBase",
+                    "name": "BodyPreference",
+                    "children": [
+                      { "ns": "AirSyncBase", "name": "Type", "children": [{ "text": "2" }] },
+                      { "ns": "AirSyncBase", "name": "TruncationSize", "children": [{ "text": "512" }] }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

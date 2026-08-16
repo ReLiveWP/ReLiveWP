@@ -1,0 +1,43 @@
+.sync-status {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.sync-status-label,
+.sync-status-auto {
+    appearance: none;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    padding: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    min-width: 0;
+
+    &[disabled] {
+        cursor: default;
+        opacity: 0.7;
+    }
+}
+
+.sync-status-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sync-status-auto {
+    flex: none;
+    opacity: 0.6;
+
+    &[aria-pressed="false"] {
+        opacity: 0.9;
+        text-decoration: underline;
+    }
+}

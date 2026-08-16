@@ -18,6 +18,7 @@ public class ConnectedServiceDescription
     public string Scopes { get; set; } = "";
     public string RedirectUri { get; set; } = "";
     public required LiveConnectedServiceCapabilities ServiceCapabilities { get; set; }
+    public LiveConnectedServiceCapabilities ShareableCapabilities { get; set; } = LiveConnectedServiceCapabilities.None;
     public string? Issuer { get; set; }
     public string? ClientSecret { get; set; }
     public string? AuthorizationEndpoint { get; set; }

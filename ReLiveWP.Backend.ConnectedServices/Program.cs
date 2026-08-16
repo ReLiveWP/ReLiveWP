@@ -49,11 +49,13 @@ builder.Services.AddScoped<AtProtoOAuthProvider>();
 builder.Services.AddScoped<GoogleOAuthProvider>();
 builder.Services.AddScoped<MicrosoftOAuthProvider>();
 builder.Services.AddScoped<WebDavCredentialProvider>();
+builder.Services.AddScoped<CardDavCredentialProvider>();
 
 builder.Services.AddScoped<IConnectedServiceProxy, AtProtoServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, GoogleServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, MicrosoftServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, WebDavServiceProxy>();
+builder.Services.AddScoped<IConnectedServiceProxy, CardDavServiceProxy>();
 
 builder.Services.AddConnectedServices()
     .AddConnectedService(s => new()
@@ -63,7 +65,8 @@ builder.Services.AddConnectedServices()
         ClientId = builder.Configuration["ConnectedServices:AtProto:ClientId"]!,
         RedirectUri = builder.Configuration["ConnectedServices:AtProto:RedirectUrl"]!,
         Scopes = "atproto transition:generic",
-        ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialCheckIn | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost,
+        ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialCheckIn | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost | ServiceCaps.SocialPhotos,
+        ShareableCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<AtProtoOAuthProvider>())
     })
     .AddConnectedService(s => new()
@@ -76,7 +79,7 @@ builder.Services.AddConnectedServices()
         Scopes = string.Concat("openid ",
             "https://www.googleapis.com/auth/userinfo.profile ",
             "https://www.googleapis.com/auth/userinfo.email ",
-            // "https://www.googleapis.com/auth/contacts ",
+            "https://www.googleapis.com/auth/contacts.readonly ",
             // "https://www.googleapis.com/auth/calendar ",
             // "https://www.googleapis.com/auth/calendar.events ",
             // "https://www.googleapis.com/auth/drive ",
@@ -86,7 +89,7 @@ builder.Services.AddConnectedServices()
             "https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata "),
         ServiceCapabilities = 
             // ServiceCaps.Email | 
-            // ServiceCaps.Contacts | 
+            ServiceCaps.Contacts |
             // ServiceCaps.Calendar | 
             // ServiceCaps.FileStorage |
             ServiceCaps.PhotoSync,
@@ -110,10 +113,19 @@ builder.Services.AddConnectedServices()
         LinkMode = ServiceLinkMode.Credentials,
         ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
         CredentialHandler = s => Task.FromResult<ICredentialLinkProvider>(s.GetRequiredService<WebDavCredentialProvider>())
+    })
+    .AddConnectedService(s => new()
+    {
+        ServiceId = CardDav.SERVICE_NAME,
+        DisplayName = "CardDAV",
+        LinkMode = ServiceLinkMode.Credentials,
+        ServiceCapabilities = ServiceCaps.Contacts,
+        CredentialHandler = s => Task.FromResult<ICredentialLinkProvider>(s.GetRequiredService<CardDavCredentialProvider>())
     });
 
 builder.Services.AddGrpc();
 builder.Services.AddHostedService<TokenRefreshService>();
+builder.Services.AddHostedService<TransientConnectionSweeper>();
 
 var app = builder.Build();
 
@@ -160,12 +172,14 @@ static void ApplyMigrations(WebApplication app)
         dbContext.DPoPKeys.Add(new LiveDPoPKey() { Id = keyId, Key = JsonSerializer.Serialize(jwk) });
     }
 
+    var services = scope.ServiceProvider.GetRequiredService<IConnectedServicesContainer>();
     foreach (var service in dbContext.ConnectedServices)
     {
-        // migrating available capabilities from enabled capabilities for now, this is fine
-        // because users cant yet modify caps
         if (service.AvailableCapabilities == 0)
             service.AvailableCapabilities = service.EnabledCapabilities;
+
+        if (services.TryGetValue(service.Service, out var description))
+            service.AvailableCapabilities |= description.ServiceCapabilities;
     }
 
     dbContext.SaveChanges();

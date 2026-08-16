@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <UiPackageDir>$(MSBuildProjectDirectory)/node_modules/@relivewp/ui</UiPackageDir>
+    <SupportStylesheet>$(MSBuildProjectDirectory)/wwwroot/support.css</SupportStylesheet>
+    <SupportLogo>$(MSBuildProjectDirectory)/wwwroot/logo.svg</SupportLogo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Content\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <SassInput Include="Styles/**/*.scss" />
+    <SassInput Include="$(UiPackageDir)/styles/**/*.scss" />
+  </ItemGroup>
+
+  <Target Name="RestoreStyleTools"
+          Inputs="package.json"
+          Outputs="node_modules/.modules.yaml">
+    <Exec Command="pnpm install --silent" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+
+  <Target Name="BuildSupportStyles"
+          DependsOnTargets="RestoreStyleTools"
+          Inputs="@(SassInput)"
+          Outputs="$(SupportStylesheet)">
+    <Exec Command="pnpm run styles" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Copy SourceFiles="$(UiPackageDir)/logo.svg" DestinationFiles="$(SupportLogo)" />
+  </Target>
+
+  <Target Name="IncludeSupportStyles"
+          DependsOnTargets="BuildSupportStyles"
+          BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <Content Include="$(SupportStylesheet)" CopyToPublishDirectory="PreserveNewest" />
+      <Content Include="$(SupportLogo)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>

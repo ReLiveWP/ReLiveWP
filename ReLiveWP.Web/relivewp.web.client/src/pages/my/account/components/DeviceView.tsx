@@ -1,6 +1,6 @@
 import { Device } from "~/util/device-types";
 import useDeviceImage from "~/util/device-image";
-import Link from "~/components/Link";
+import { Link } from "@relivewp/ui";
 import DeviceSpecRows from "~/components/DeviceSpecRows";
 
 

@@ -19,6 +19,7 @@ builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
+    options.User.RequireUniqueEmail = true;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireLowercase = false;
     options.Password.RequireUppercase = false;
@@ -31,6 +32,8 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 builder.Services.AddScoped<TokenManager>();
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();
 builder.Services.AddScoped<RootCACertificateProvider>();
+builder.Services.AddSingleton<AvatarStore>();
+builder.Services.AddSingleton<AvatarProcessor>();
 
 builder.Services.AddGrpc();
 
@@ -43,8 +46,6 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<LiveDbContext>().Database.Migrate();
 }
 
-// Print the JWT public key on startup so it can be copied into JWT:PublicKey and distributed to
-// every verifying service (verifiers only ever see the public half).
 if (JwtKeyLoader.GetVerifyingKey(app.Configuration) is ECDsaSecurityKey publicKey)
 {
     app.Services.GetRequiredService<ILogger<Program>>().LogInformation(

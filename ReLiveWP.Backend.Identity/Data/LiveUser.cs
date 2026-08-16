@@ -20,6 +20,7 @@ public class LiveUser : IdentityUser<Guid>
     public LiveUserType Type { get; set; }
     public string? DeviceId { get; set; }
     public ICollection<LiveUserCertificate> Certificates { get; set; } = [];
+    public LiveUserProfile? Profile { get; set; } = default!;
 }
 
 [Owned]

@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ReLiveWP.Services.Activity.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FishyFlip" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="MisskeySharp" />

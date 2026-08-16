@@ -47,19 +47,15 @@ class ASWBXMLByteQueue : Queue<byte>
         return Encoding.UTF8.GetString([.. bytes]);
     }
 
-    // Length-prefixed OPAQUE data is a raw byte channel (binary, or base64-reconstructed by
-    // the caller via (byte)ch); keep it byte-preserving, one char per byte.
-    public string DequeueString(int length)
+    // Length-prefixed OPAQUE data is a raw byte channel; the caller decides whether the run is
+    // binary or text, so it never gets a decoding forced on it here.
+    public byte[] DequeueBytes(int length)
     {
-        StringBuilder strReturn = new StringBuilder();
+        var bytes = new byte[length];
 
-        byte currentByte = 0x00;
         for (int i = 0; i < length; i++)
-        {
-            currentByte = this.Dequeue();
-            strReturn.Append((char)currentByte);
-        }
+            bytes[i] = this.Dequeue();
 
-        return strReturn.ToString();
+        return bytes;
     }
 }

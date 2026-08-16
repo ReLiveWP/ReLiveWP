@@ -280,6 +280,40 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveUserProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PictureContentType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PictureEtag")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PictureFileName")
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("PictureThumbnail")
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("ProfileVisibility")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("LiveUserProfiles");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("ReLiveWP.Backend.Identity.Data.LiveRole", null)
@@ -352,6 +386,22 @@ namespace ReLiveWP.Backend.Identity.Migrations
                         });
 
                     b.Navigation("Certificates");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveUserProfile", b =>
+                {
+                    b.HasOne("ReLiveWP.Backend.Identity.Data.LiveUser", "User")
+                        .WithOne("Profile")
+                        .HasForeignKey("ReLiveWP.Backend.Identity.Data.LiveUserProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveUser", b =>
+                {
+                    b.Navigation("Profile");
                 });
 #pragma warning restore 612, 618
         }

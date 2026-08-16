@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Exchange.Models;
@@ -141,7 +142,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         int devIdLen = span[pos++];
         if (devIdLen > 0 && pos + devIdLen <= span.Length)
         {
-            ctx.DeviceId = System.Text.Encoding.UTF8.GetString(span.Slice(pos, devIdLen));
+            ctx.DeviceId = Convert.ToHexString(span.Slice(pos, devIdLen));
             pos += devIdLen;
         }
 
@@ -163,7 +164,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         int devTypeLen = span[pos++];
         if (devTypeLen > 0 && pos + devTypeLen <= span.Length)
         {
-            ctx.DeviceType = System.Text.Encoding.UTF8.GetString(span.Slice(pos, devTypeLen));
+            ctx.DeviceType = Encoding.UTF8.GetString(span.Slice(pos, devTypeLen));
             pos += devTypeLen;
         }
 
@@ -174,7 +175,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
 
             if (pos + length > span.Length) break;
 
-            var value = System.Text.Encoding.UTF8.GetString(span.Slice(pos, length));
+            var value = Encoding.UTF8.GetString(span.Slice(pos, length));
             pos += length;
 
             switch (tag)
@@ -200,13 +201,12 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
 
     private async Task DecodeBodyAsync(HttpRequest request, ActiveSyncContext ctx)
     {
-        var contentType = request.ContentType ?? string.Empty;
-
-        // only decode WBXML bodies, leave MIME/XML bodies for the controller to handle
-        if (!contentType.StartsWith("application/vnd.ms-sync", StringComparison.OrdinalIgnoreCase))
+        if (request.ContentLength == 0 || !request.Body.CanRead)
             return;
 
-        if (request.ContentLength == 0 || !request.Body.CanRead)
+        var contentType = request.ContentType ?? string.Empty;
+        if (contentType.Length > 0 &&
+            !contentType.StartsWith("application/vnd.ms-sync", StringComparison.OrdinalIgnoreCase))
             return;
 
         try
@@ -224,6 +224,7 @@ public class ActiveSyncMiddleware(RequestDelegate next, ILogger<ActiveSyncMiddle
         }
         catch (Exception ex)
         {
+            ctx.BodyDecodeFailed = true;
             logger.LogWarning(ex, "Failed to decode WBXML body for command {Command}", ctx.Command);
         }
     }

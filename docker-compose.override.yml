@@ -37,6 +37,13 @@ services:
       args:
         PROJECT: ReLiveWP.Backend.SkyDrive
 
+  clearinghouse:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.ClearingHouse
+
   mailbox:
     build:
       context: .
@@ -67,6 +74,15 @@ services:
     build:
       context: .
       dockerfile: ReLiveWP.Web/Dockerfile
+      args:
+        APP: relivewp.web.client
+
+  webmail:
+    build:
+      context: .
+      dockerfile: ReLiveWP.Web/Dockerfile
+      args:
+        APP: relivewp.web.mail
 
   push:
     build:
@@ -110,6 +126,13 @@ services:
       args:
         PROJECT: ReLiveWP.Services.Profile
 
+  hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Hub
+
   devices:
     build:
       context: .
@@ -148,4 +171,4 @@ services:
   support:
     build:
       context: .
-      dockerfile: ReLiveWP.Services.Support/Dockerfile
+      dockerfile: ReLiveWP.Web/ReLiveWP.Services.Support/Dockerfile

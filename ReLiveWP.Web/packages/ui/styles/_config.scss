@@ -1,0 +1,8 @@
+@use "tokens" as t;
+
+$accent-name: "red" !default;
+$site-max-width: t.$column-width !default;
+$site-gutter: t.$column-gutter !default;
+
+$accent: t.accent($accent-name);
+$accent-shades: t.accent-shades($accent);

@@ -1,0 +1,24 @@
+{
+  "name": "opaque-empty",
+  "description": "Zero-length opaque run. [WBXML1.3] 5.8.4.6 gives the grammar as `opaque = OPAQUE length *byte`, and mb_u_int32 of zero is one 0x00 octet - never nothing. ASWBXML.EncodeMultiByteInteger loops `while (value > 0)` and so returns an empty array here, emitting 0xC3 with no length at all; the next token is then read as the length and the rest of the document is garbage.",
+  "wbxml": [
+    { "hex": "03 01 6A 00", "note": "header" },
+    { "hex": "00 15", "note": "SWITCH_PAGE to 21 (ComposeMail)" },
+    { "hex": "45", "note": "SendMail (0x05) with content" },
+    { "hex": "50", "note": "Mime (0x10) with content" },
+    { "hex": "C3 00", "note": "OPAQUE, length 0 - the 0x00 is mandatory" },
+    { "hex": "01", "note": "END Mime" },
+    { "hex": "01", "note": "END SendMail" }
+  ],
+  "tree": {
+    "ns": "ComposeMail",
+    "name": "SendMail",
+    "children": [
+      {
+        "ns": "ComposeMail",
+        "name": "Mime",
+        "children": [{ "opaque": { "hex": "" } }]
+      }
+    ]
+  }
+}

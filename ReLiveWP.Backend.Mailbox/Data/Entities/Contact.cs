@@ -109,6 +109,18 @@ public class DbContactAnnotation
     public string? UserTileHash { get; set; }
     public int? TrustLevel { get; set; }
     public int? FavoriteOrder { get; set; }
+    public bool LinkIsManual { get; set; }
+}
+
+// one row per email address on a contact, so a live user can be found from an address without
+// scanning every contact in every mailbox
+public class DbContactEmail
+{
+    public string Id { get; set; } = null!;
+    public string UserId { get; set; } = null!;
+    public string ContactItemId { get; set; } = null!;
+    public DbContactItem ContactItem { get; set; } = null!;
+    public string NormalizedAddress { get; set; } = null!;
 }
 
 // links an external social identity (provider, external_id) to a contact; unique per (UserId, Provider, ExternalId)

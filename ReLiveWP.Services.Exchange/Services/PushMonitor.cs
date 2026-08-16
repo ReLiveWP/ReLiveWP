@@ -25,7 +25,9 @@ public class PushMonitor(
             }
             catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
             {
-                changed.Add(collectionId); // never synced, tell the client to sync it
+                if (await TipAsync(userId, collectionId, ct) > 0)
+                    changed.Add(collectionId);
+
                 continue;
             }
 
@@ -35,16 +37,17 @@ public class PushMonitor(
                 continue;
             }
 
-            var tip = (await mailbox.GetItemEventTipAsync(
-                new ItemEventTipRequest { UserId = userId, CollectionId = collectionId },
-                cancellationToken: ct)).Value;
-
-            if (tip > state.Watermark)
+            if (await TipAsync(userId, collectionId, ct) > state.Watermark)
                 changed.Add(collectionId);
         }
 
         return changed;
     }
+
+    private async Task<long> TipAsync(string userId, string collectionId, CancellationToken ct) =>
+        (await mailbox.GetItemEventTipAsync(
+            new ItemEventTipRequest { UserId = userId, CollectionId = collectionId },
+            cancellationToken: ct)).Value;
 
     public async Task<List<string>> WaitForChangesAsync(string userId,
                                                         string deviceId,

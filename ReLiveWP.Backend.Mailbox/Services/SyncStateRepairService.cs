@@ -8,13 +8,12 @@ public class SyncStateRepairService(MailboxDbContext db)
     private const int PageSize = 500;
     private const string FolderHierarchyCollectionId = "0"; // sentinel; never corresponds to a DbFolder row
 
-    // deletes sync states for folders that have been deleted
-    public async Task<int> SweepAsync(string? userId, CancellationToken ct)
-    {
-        var states = await RemoveFolderOrphansAsync(userId, ct);
-        var deviceStates = await RemoveDeviceOrphansAsync(userId, ct);
-        return states + deviceStates;
-    }
+    public sealed record UnknownDevice(string UserId, string DeviceId, int Rows);
+
+    // deletes sync states for folders that have been deleted. devices are reported, never swept,
+    // see UnknownDevicesAsync.
+    public Task<int> SweepAsync(string? userId, CancellationToken ct) =>
+        RemoveFolderOrphansAsync(userId, ct);
 
     private async Task<int> RemoveFolderOrphansAsync(string? userId, CancellationToken ct)
     {
@@ -73,8 +72,13 @@ public class SyncStateRepairService(MailboxDbContext db)
         return statesDeleted;
     }
 
-    // currently unreachable: nothing deletes a DbDeviceInfo row yet, kept ready for when something does
-    private async Task<int> RemoveDeviceOrphansAsync(string? userId, CancellationToken ct)
+    // a missing DeviceInfo row is not evidence the device is gone, only that nothing ever wrote
+    // one. this used to delete on that, which read a device id the gateway failed to parse as a
+    // dead device, wiped its sync state, and left the client to re-prime into the same hole on its
+    // next request. reporting it instead makes an id we cannot account for visible without
+    // destroying the state that proves it was ever there.
+    public async Task<IReadOnlyList<UnknownDevice>> UnknownDevicesAsync(
+        string? userId, CancellationToken ct)
     {
         var stateQuery = db.SyncStates.AsQueryable();
         if (!string.IsNullOrEmpty(userId)) stateQuery = stateQuery.Where(s => s.UserId == userId);
@@ -84,24 +88,19 @@ public class SyncStateRepairService(MailboxDbContext db)
             .Distinct()
             .ToListAsync(ct);
 
-        int states = 0;
+        var unknown = new List<UnknownDevice>();
         foreach (var pair in devicePairs)
         {
             var known = await db.DeviceInfos.AnyAsync(
                 d => d.UserId == pair.UserId && d.DeviceId == pair.DeviceId, ct);
             if (known) continue;
 
-            var orphanStates = await db.SyncStates
-                .Where(s => s.UserId == pair.UserId && s.DeviceId == pair.DeviceId)
-                .ToListAsync(ct);
+            var rows = await db.SyncStates
+                .CountAsync(s => s.UserId == pair.UserId && s.DeviceId == pair.DeviceId, ct);
 
-            db.SyncStates.RemoveRange(orphanStates);
-            states += orphanStates.Count;
+            unknown.Add(new UnknownDevice(pair.UserId, pair.DeviceId, rows));
         }
 
-        if (states > 0)
-            await db.SaveChangesAsync(ct);
-
-        return states;
+        return unknown;
     }
 }

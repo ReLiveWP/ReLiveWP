@@ -36,7 +36,7 @@ module.exports = [
                             loader: "sass-loader",
                             options: {
                                 sassOptions: {
-                                    loadPaths: [path.resolve(__dirname, '../../styles')]
+                                    loadPaths: [path.resolve(__dirname, '../packages/ui/styles')]
                                 }
                             }
                         },

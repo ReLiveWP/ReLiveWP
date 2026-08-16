@@ -1,0 +1,33 @@
+.auth-form {
+    display: block;
+
+    label,
+    input:not([type="checkbox"]) {
+        display: block;
+    }
+
+    label,
+    .submit {
+        margin-top: 16px;
+        margin-bottom: 2px;
+    }
+
+    .remember-me-text {
+        vertical-align: middle;
+    }
+
+    .forgot-link {
+        font-size: 9pt;
+    }
+
+    .help-link {
+        color: inherit;
+        text-decoration: underline;
+    }
+
+    input[type="checkbox"]>span {
+        display: inline-block;
+        position: relative;
+        top: -1px;
+    }
+}

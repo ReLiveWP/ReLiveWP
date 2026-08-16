@@ -29,6 +29,14 @@ const CREDENTIAL_SERVICES: Partial<Record<string, CredentialServiceConfig>> = {
         labelTitle: "Name (optional)",
         labelPlaceholder: "my fancy webdav server",
     },
+    carddav: {
+        urlTitle: "Server address",
+        urlPlaceholder: "https://cloud.example.com/remote.php/dav/",
+        usernameTitle: "Username",
+        secretTitle: "Password",
+        labelTitle: "Name (optional)",
+        labelPlaceholder: "my address book",
+    },
 };
 
 export function requiresHandle(service: string): boolean {
