@@ -24,7 +24,7 @@ public class WbxmlGeneratedTableParityTests
 
     private static string GeneratedTablePath([CallerFilePath] string thisFile = "")
     {
-        var repo = Path.GetDirectoryName(Path.GetDirectoryName(thisFile))!;
+        var repo = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(thisFile)))!;
         return Path.Combine(repo, "ReLiveWP.Web", "packages", "eas-client", "spec", "codepages.json");
     }
 
