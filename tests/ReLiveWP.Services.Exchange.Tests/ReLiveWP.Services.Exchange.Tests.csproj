@@ -1,12 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -15,11 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
+    <ProjectReference Include="..\..\ReLiveWP.Services.Exchange\ReLiveWP.Services.Exchange.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReLiveWP.Services.Docs\ReLiveWP.Services.Docs.csproj" />
+    <Using Include="Xunit" />
   </ItemGroup>
 
 </Project>

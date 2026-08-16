@@ -8,13 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReLiveWP.Services.Exchange\ReLiveWP.Services.Exchange.csproj" />
+    <ProjectReference Include="..\..\ReLiveWP.Backend.Mailbox\ReLiveWP.Backend.Mailbox.csproj" />
   </ItemGroup>
 
   <ItemGroup>

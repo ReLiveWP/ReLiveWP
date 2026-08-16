@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -22,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReLiveWP.Services.Activity\ReLiveWP.Services.Activity.csproj" />
+    <ProjectReference Include="..\..\ReLiveWP.Backend.Identity\ReLiveWP.Backend.Identity.csproj" />
   </ItemGroup>
 
 </Project>
