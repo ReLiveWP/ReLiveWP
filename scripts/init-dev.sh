@@ -42,5 +42,13 @@ if [ ! -f "$SECRETS_DIR/connection_secret_key" ]; then
     echo "  Written: deploy/secrets/connection_secret_key"
 fi
 
+# -- Passport STS key ----------------------------------------------------------
+# 3DES key sealing the DA token Identity hands back to wlidsvc. Must be 24 bytes, Identity
+# throws on startup without it.
+if [ ! -f "$SECRETS_DIR/passport_sts_key" ]; then
+    openssl rand -base64 24 | tr -d '\n' > "$SECRETS_DIR/passport_sts_key"
+    echo "  Written: deploy/secrets/passport_sts_key"
+fi
+
 PRIVATE_KEY="$(cat "$SECRETS_DIR/jwt_private_key")"
 dotnet user-secrets --project "$IDENTITY_DIR" set "JWT:PrivateKey" "$PRIVATE_KEY"
