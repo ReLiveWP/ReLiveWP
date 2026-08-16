@@ -31,6 +31,11 @@ public class LiveAlbumFeed : Root
     [XmlElement(ElementName = "itemCount", Namespace = Constants.Live_Namespace)]
     public int ItemCount { get; set; }
 
+    // must stay above Entries. the parser latches on the first entry and hard-errors on any
+    // album-level element after it, and XmlSerializer writes members in declaration order.
+    [XmlElement(ElementName = "thumbnail", Namespace = Constants.MediaRss_Namespace)]
+    public List<LiveMediaThumbnail> Thumbnails { get; set; } = [];
+
     [XmlElement(ElementName = "entry")]
     public List<LiveAlbumItemEntry> Entries { get; set; } = [];
 }

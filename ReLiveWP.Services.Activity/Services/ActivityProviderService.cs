@@ -64,31 +64,30 @@ public class ActivityProviderService(
         long cid, string viewerUserId, CancellationToken ct = default)
         => GetContactSourcesAsync(cid, viewerUserId, SocialPhotosCapability, ct);
 
-    // a did the viewer has no relationship with is not ours to fetch and hand over, even though the
-    // appview would serve it to anyone
-    public async Task<bool> IsServableDidAsync(
-        string did, long? subjectCid, string viewerUserId, CancellationToken ct = default)
+    public async Task<bool> IsServableIdentityAsync(
+        string provider, string externalId, long? subjectCid, string viewerUserId, CancellationToken ct = default)
     {
-        if (await OwnsDidAsync(did, ct))
+        if (await OwnsIdentityAsync(provider, externalId, ct))
             return true;
 
-        if (await HasContactIdentityAsync(did, viewerUserId, ct))
+        if (await HasContactIdentityAsync(provider, externalId, viewerUserId, ct))
             return true;
 
         if (subjectCid is not { } cid)
             return false;
 
         var sources = await GetContactPhotoSourcesAsync(cid, viewerUserId, ct);
-        return sources.Any(s => string.Equals(s.ExternalId, did, StringComparison.OrdinalIgnoreCase));
+        return sources.Any(s => s.Provider == provider
+                                && string.Equals(s.ExternalId, externalId, StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<bool> OwnsDidAsync(string did, CancellationToken ct)
+    private async Task<bool> OwnsIdentityAsync(string provider, string externalId, CancellationToken ct)
     {
         var call = connectedServices.GetConnections(new ConnectionsRequest(), cancellationToken: ct);
         await foreach (var connection in call.ResponseStream.ReadAllAsync(ct))
         {
-            if (connection.Service == BlueskyEntryMapper.IdentityProviderToken &&
-                string.Equals(connection.UserId, did, StringComparison.OrdinalIgnoreCase))
+            if (connection.Service == provider &&
+                string.Equals(connection.UserId, externalId, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -97,15 +96,15 @@ public class ActivityProviderService(
         return false;
     }
 
-    private async Task<bool> HasContactIdentityAsync(string did, string viewerUserId, CancellationToken ct)
+    private async Task<bool> HasContactIdentityAsync(string provider, string externalId, string viewerUserId, CancellationToken ct)
     {
         try
         {
             var resolved = await mailbox.ResolveAuthorsToContactsAsync(new ResolveAuthorsToContactsRequest
             {
                 UserId = viewerUserId,
-                Provider = BlueskyEntryMapper.IdentityProviderToken,
-                ExternalIds = { did },
+                Provider = provider,
+                ExternalIds = { externalId },
             }, cancellationToken: ct);
 
             return resolved.ContactCids.Count > 0;
@@ -151,8 +150,6 @@ public class ActivityProviderService(
         }
     }
 
-    // what a subject shares is not viewer-specific, so this caches like the feed does. the decision
-    // that the viewer may ask at all is made upstream and never cached
     private async Task<IReadOnlyList<ContactFeedSource>> SharedSourcesAsync(
         string subjectUserId, uint capability, CancellationToken ct)
     {

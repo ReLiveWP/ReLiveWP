@@ -62,7 +62,7 @@ public class PublicBlueskyActivityProvider : PublicActivityProviderBase
             return cached;
 
         var page = await FetchAuthorPageAsync(did);
-        cache.Set(key, page, SocialAlbumProvider.FeedLifetime);
+        cache.Set(key, page, SocialAlbumProviderBase.FeedLifetime);
         return page;
     }
 

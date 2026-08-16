@@ -1,6 +1,6 @@
-const RELATIVE = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "narrow" });
+export const RELATIVE = new Intl.RelativeTimeFormat(undefined, { numeric: "auto", style: "narrow" });
 
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+export const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
     ["day", 86_400_000],
     ["hour", 3_600_000],
     ["minute", 60_000],

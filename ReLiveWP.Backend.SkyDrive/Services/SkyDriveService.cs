@@ -16,6 +16,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
 {
     private const uint PhotoSyncCapability = 0x10;
     private const long MaxUploadBytes = 100L * 1024 * 1024;
+    private const string VideoMediaType = "video";
 
     public override async Task<LibraryReply> GetLibrary(GetLibraryRequest request, ServerCallContext context)
     {
@@ -30,25 +31,110 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
         if (library == null)
             return new LibraryReply { Exists = false };
 
-        return new LibraryReply { Exists = true, Library = ToProto(library) };
+        var coverRef = await CoverRefAsync(ownerId, library.Id.ToString(), context.CancellationToken);
+        return new LibraryReply { Exists = true, Library = ToProto(library, coverRef) };
     }
 
     public override async Task<ListLibrariesReply> ListLibraries(ListLibrariesRequest request, ServerCallContext context)
     {
         var ownerId = GetOwnerId(context);
+        var ct = context.CancellationToken;
 
-        // Bootstrap the defaults so a never-provisioned user still gets a populated feed, mirroring
-        // the lazy EnsureLibraryAsync in UploadPhoto/ProvisionUser.
         foreach (var category in DefaultLibraries)
             await EnsureLibraryAsync(ownerId, category);
 
         var libraries = await dbContext.Libraries
             .Where(l => l.OwnerId == ownerId)
-            .ToListAsync();
+            .ToListAsync(ct);
+
+        var covers = await CoverRefsAsync(ownerId, libraries.Select(l => l.Id.ToString()).ToList(), ct);
 
         var reply = new ListLibrariesReply();
-        reply.Libraries.AddRange(libraries.Select(ToProto));
+        reply.Libraries.AddRange(libraries.Select(l => ToProto(l, Cover(covers, l.Id.ToString()))));
         return reply;
+    }
+
+    public override async Task<GetAlbumCoversReply> GetAlbumCovers(GetAlbumCoversRequest request, ServerCallContext context)
+    {
+        var ownerId = GetOwnerId(context);
+        var covers = await CoverRefsAsync(ownerId, request.AlbumRefs, context.CancellationToken);
+
+        var reply = new GetAlbumCoversReply();
+        foreach (var (albumRef, resourceRef) in covers)
+            reply.Covers.Add(new AlbumCover { AlbumRef = albumRef, ResourceRef = resourceRef });
+
+        return reply;
+    }
+
+    public override async Task<Empty> SetAlbumCover(SetAlbumCoverRequest request, ServerCallContext context)
+    {
+        var ownerId = GetOwnerId(context);
+
+        if (string.IsNullOrEmpty(request.AlbumRef))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Missing album reference."));
+
+        await SetCoverAsync(ownerId, request.AlbumRef, request.ResourceRef, context.CancellationToken);
+        return new Empty();
+    }
+
+    private static string Cover(Dictionary<string, string> covers, string albumRef)
+        => covers.TryGetValue(albumRef, out var found) ? found : "";
+
+    private Task<Dictionary<string, string>> CoverRefsAsync(Guid ownerId, IReadOnlyCollection<string> albumRefs, CancellationToken ct)
+        => albumRefs.Count == 0
+            ? Task.FromResult(new Dictionary<string, string>())
+            : dbContext.AlbumCovers
+                .Where(c => c.OwnerId == ownerId && albumRefs.Contains(c.AlbumRef))
+                .ToDictionaryAsync(c => c.AlbumRef, c => c.ResourceRef, ct);
+
+    private async Task<string> CoverRefAsync(Guid ownerId, string albumRef, CancellationToken ct)
+        => await dbContext.AlbumCovers
+            .Where(c => c.OwnerId == ownerId && c.AlbumRef == albumRef)
+            .Select(c => c.ResourceRef)
+            .FirstOrDefaultAsync(ct) ?? "";
+
+    private async Task SetCoverAsync(Guid ownerId, string albumRef, string resourceRef, CancellationToken ct)
+    {
+        var existing = await dbContext.AlbumCovers.AsTracking()
+            .FirstOrDefaultAsync(c => c.OwnerId == ownerId && c.AlbumRef == albumRef, ct);
+
+        if (string.IsNullOrEmpty(resourceRef))
+        {
+            if (existing == null)
+                return;
+
+            dbContext.AlbumCovers.Remove(existing);
+        }
+        else if (existing == null)
+        {
+            dbContext.AlbumCovers.Add(new SkyAlbumCover
+            {
+                OwnerId = ownerId,
+                AlbumRef = albumRef,
+                ResourceRef = resourceRef,
+                Updated = DateTimeOffset.UtcNow,
+            });
+        }
+        else if (existing.ResourceRef == resourceRef)
+        {
+            return;
+        }
+        else
+        {
+            existing.ResourceRef = resourceRef;
+            existing.Updated = DateTimeOffset.UtcNow;
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            // a concurrent listing of the same album got there first, and it wrote the same photo
+            dbContext.ChangeTracker.Clear();
+            logger.LogDebug(ex, "Cover for {AlbumRef} lost a race, leaving it to the next list", albumRef);
+        }
     }
 
     public override async Task<ListPhotosReply> ListPhotos(ListPhotosRequest request, ServerCallContext context)
@@ -79,6 +165,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
 
         var ct = context.CancellationToken;
         var userId = GetUserId(context);
+        var albumRef = library.Id.ToString();
         var reply = new ListPhotosReply { Exists = true, Library = ToProto(library) };
 
         var membership = (await dbContext.AlbumItems
@@ -109,14 +196,24 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
             }
         }
 
+        // an empty list is as likely to be a provider that just failed on us as an empty album, and
+        // blanking the tile over that is worse than showing a slightly old cover
         if (items.Count == 0)
+        {
+            reply.Library.CoverRef = await CoverRefAsync(ownerId, albumRef, ct);
             return reply;
+        }
 
         await AdoptAlbumItemsAsync(ownerId, library.Category, items, membership, ct);
 
         foreach (var (photo, provider) in items.OrderByDescending(i => i.Photo.Created))
             reply.Photos.Add(ToPhotoItem(photo, provider));
 
+        var cover = reply.Photos.FirstOrDefault(p => p.MediaType != VideoMediaType);
+        if (cover != null)
+            await SetCoverAsync(ownerId, albumRef, cover.ResourceRef, ct);
+
+        reply.Library.CoverRef = cover?.ResourceRef ?? await CoverRefAsync(ownerId, albumRef, ct);
         return reply;
     }
 
@@ -168,7 +265,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
         FileName = photo.FileName,
         ContentType = photo.ContentType,
         Summary = photo.Description ?? "",
-        MediaType = photo.IsVideo ? "video" : "photo",
+        MediaType = photo.IsVideo ? VideoMediaType : "photo",
         CreatedUnix = photo.Created.ToUnixTimeSeconds(),
         Width = photo.Width,
         Height = photo.Height,
@@ -518,7 +615,7 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
     private static Guid GetOwnerId(ServerCallContext context)
         => Guid.Parse(GetUserId(context));
 
-    private static Library ToProto(SkyLibrary library) => new()
+    private static Library ToProto(SkyLibrary library, string coverRef = "") => new()
     {
         Id = library.Id.ToString(),
         Type = library.Type ?? "",
@@ -527,5 +624,6 @@ public class SkyDriveService(SkyDriveDbContext dbContext,
         Title = library.Title ?? "",
         Summary = library.Summary ?? "",
         EmailKeyword = library.EmailKeyword ?? "",
+        CoverRef = coverRef,
     };
 }

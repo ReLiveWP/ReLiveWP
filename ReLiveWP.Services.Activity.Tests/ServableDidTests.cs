@@ -5,12 +5,13 @@ using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Services.Activity.Tests;
 
-// the appview would hand any of these to anyone, but proxying an arbitrary did through our own
-// server makes us a mirror for accounts the viewer has no relationship with
+// the provider would hand any of these to anyone, but proxying an arbitrary identity through our
+// own server makes us a mirror for accounts the viewer has no relationship with
 public class ServableDidTests
 {
     private const string Viewer = "user-a";
     private const string Subject = "user-b";
+    private const string Provider = "atproto";
     private const string Did = "did:plc:amyamyamyamyamyamyamy";
     private const string StrangerDid = "did:plc:strangerstrangerstra";
     private const long Cid = 0x15fe5d7a6d8d65ff;
@@ -23,7 +24,7 @@ public class ServableDidTests
     {
         connectedServices.OnGetConnections = _ => [new Connection { Service = "atproto", UserId = Did }];
 
-        Assert.True(await NewService().IsServableDidAsync(Did, subjectCid: null, Viewer));
+        Assert.True(await NewService().IsServableIdentityAsync(Provider, Did, subjectCid: null, Viewer));
     }
 
     [Fact]
@@ -32,7 +33,7 @@ public class ServableDidTests
         connectedServices.OnGetConnections = _ => [];
         mailbox.OnResolveAuthorsToContacts = _ => new ResolveAuthorsToContactsResponse { ContactCids = { [Did] = Cid } };
 
-        Assert.True(await NewService().IsServableDidAsync(Did, subjectCid: null, Viewer));
+        Assert.True(await NewService().IsServableIdentityAsync(Provider, Did, subjectCid: null, Viewer));
     }
 
     [Fact]
@@ -45,7 +46,7 @@ public class ServableDidTests
             Connections = { new SharedConnection { OwnerUserId = Subject, Service = "atproto", UserId = Did } },
         };
 
-        Assert.True(await NewService().IsServableDidAsync(Did, Cid, Viewer));
+        Assert.True(await NewService().IsServableIdentityAsync(Provider, Did, Cid, Viewer));
     }
 
     // the same contact, after they stop sharing or stop being discoverable
@@ -56,7 +57,7 @@ public class ServableDidTests
         mailbox.OnResolveFeedSubjects = _ => LiveUser();
         connectedServices.OnGetSharedConnections = _ => new SharedConnectionsResponse();
 
-        Assert.False(await NewService().IsServableDidAsync(Did, Cid, Viewer));
+        Assert.False(await NewService().IsServableIdentityAsync(Provider, Did, Cid, Viewer));
     }
 
     [Fact]
@@ -68,7 +69,7 @@ public class ServableDidTests
             Subjects = { new FeedSubject { Cid = Cid, Kind = FeedSubjectKind.Unknown } },
         };
 
-        Assert.False(await NewService().IsServableDidAsync(Did, Cid, Viewer));
+        Assert.False(await NewService().IsServableIdentityAsync(Provider, Did, Cid, Viewer));
     }
 
     [Fact]
@@ -81,18 +82,21 @@ public class ServableDidTests
             Connections = { new SharedConnection { OwnerUserId = Subject, Service = "atproto", UserId = Did } },
         };
 
-        Assert.False(await NewService().IsServableDidAsync(StrangerDid, Cid, Viewer));
+        Assert.False(await NewService().IsServableIdentityAsync(Provider, StrangerDid, Cid, Viewer));
     }
 
     [Fact]
     public void A_photo_ref_cannot_steer_the_cdn_path()
     {
-        Assert.False(SocialAlbumProvider.TryParsePhotoRef($"atproto+{Did}+../../evil", out _, out _));
-        Assert.False(SocialAlbumProvider.TryParsePhotoRef($"atproto+{Did}+a/b", out _, out _));
-        Assert.False(SocialAlbumProvider.TryParsePhotoRef($"atproto+{Did}+a?x=1", out _, out _));
-        Assert.False(SocialAlbumProvider.TryParsePhotoRef("atproto+not-a-did+bafyabc123", out _, out _));
+        var albums = NewAlbums();
 
-        Assert.True(SocialAlbumProvider.TryParsePhotoRef($"atproto+{Did}+bafyabc123", out var did, out var cid));
+        Assert.False(albums.TryResolvePhoto($"atproto+{Did}+../../evil", out _, out _, out _));
+        Assert.False(albums.TryResolvePhoto($"atproto+{Did}+a/b", out _, out _, out _));
+        Assert.False(albums.TryResolvePhoto($"atproto+{Did}+a?x=1", out _, out _, out _));
+        Assert.False(albums.TryResolvePhoto("atproto+not-a-did+bafyabc123", out _, out _, out _));
+
+        Assert.True(albums.TryResolvePhoto($"atproto+{Did}+bafyabc123", out var provider, out var did, out var cid));
+        Assert.Equal(Provider, provider.Provider);
         Assert.Equal(Did, did);
         Assert.Equal("bafyabc123", cid);
     }
@@ -100,10 +104,27 @@ public class ServableDidTests
     [Fact]
     public void An_album_id_must_name_a_real_did()
     {
-        Assert.False(SocialAlbumProvider.TryParseAlbumId("atproto+../../evil", out _));
-        Assert.True(SocialAlbumProvider.TryParseAlbumId($"atproto+{Did}", out var did));
+        var albums = NewAlbums();
+
+        Assert.False(albums.TryResolveAlbum("atproto+../../evil", out _, out _));
+        Assert.True(albums.TryResolveAlbum($"atproto+{Did}", out var provider, out var did));
+        Assert.Equal(Provider, provider.Provider);
         Assert.Equal(Did, did);
     }
+
+    // a ref naming a provider we do not have must not fall through to whichever one is registered
+    [Fact]
+    public void An_unknown_provider_resolves_to_nothing()
+    {
+        var albums = NewAlbums();
+
+        Assert.False(albums.TryResolveAlbum($"nostr+{Did}", out _, out _));
+        Assert.False(albums.TryResolvePhoto($"nostr+{Did}+bafyabc123", out _, out _, out _));
+        Assert.False(albums.TryResolveAlbum(Did, out _, out _));
+    }
+
+    private static SocialAlbums NewAlbums() =>
+        new([new BlueskyAlbumProvider(null!, TestCache.New(), NullLoggerFactory.Instance)]);
 
     private static ResolveFeedSubjectsResponse LiveUser() =>
         new() { Subjects = { new FeedSubject { Cid = Cid, Kind = FeedSubjectKind.LiveUser, SubjectUserId = Subject } } };

@@ -61,11 +61,8 @@ public class ActivitiesController(
             ]
         };
 
-        // The device selects whose feed via the ObjectId: the owner's own CID -> the owner's feed;
-        // any other CID is a contact card asking for that contact's feed (its linked accounts).
         var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
         var requested = requestedId != null ? long.Parse(requestedId, CultureInfo.InvariantCulture) : (long?)null;
-
         if (requested is { } contactCid && contactCid != ownerCid)
         {
             var sources = await activityProvider.GetContactFeedSourcesAsync(contactCid, User.Id()!, HttpContext.RequestAborted);

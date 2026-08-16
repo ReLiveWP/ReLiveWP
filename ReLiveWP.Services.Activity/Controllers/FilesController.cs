@@ -1,695 +1,219 @@
-using System.Globalization;
-using System.Xml.Linq;
-using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Net.Http.Headers;
 using ReLiveWP.Identity;
-using ReLiveWP.ServiceDefaults;
 using ReLiveWP.Services.Activity.Models.Atom;
 using ReLiveWP.Services.Activity.Services;
-using ReLiveWP.Services.Grpc;
-using ContentRangeHeaderValue = System.Net.Http.Headers.ContentRangeHeaderValue;
-using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
 namespace ReLiveWP.Services.Activity.Controllers;
 
 [Controller]
 [Authorize]
 [Produces("application/atom+xml")]
-public class FilesController(SkyDrive.SkyDriveClient skyDrive,
-                             ConnectedServices.ConnectedServicesClient connectedServices,
-                             SocialAlbumProvider socialAlbums,
-                             ActivityProviderService activityProvider,
-                             User.UserClient userClient,
-                             ThumbnailResizer thumbnails,
-                             IHttpClientFactory httpClientFactory,
-                             ILogger<FilesController> logger) : Controller
+public class FilesController(FilesViewer viewer,
+                             PhotoLibraryService libraries,
+                             SocialAlbums socialAlbums,
+                             SocialAlbumService social,
+                             ConnectionLookup connections,
+                             PhotoUploadService uploads,
+                             PhotoStreamService streams) : Controller
 {
-    private const string AlbumRoute = "/Users({id})/Files/{album:regex(^(wmphotos|mobilephotos|twitterphotos)$)}";
-    private const string PhotosCategory = "Photos";
-    private const string FolderType = "Folder";
-    private const string PhotoType = "photo";
-    private const string VideoType = "video";
-
-    private const string PublicSharedLevel = "publicshared";
-
-    private static readonly int[] ThumbnailSizes = [800, 176, 96];
-
-    private const uint PhotoSyncCapability = 0x10;
-
-    private const long TotalQuota = 25L * 1024 * 1024 * 1024;
-    private const long MaxFileSize = 100L * 1024 * 1024;
-    private const int SpoolMemoryThreshold = 1024 * 1024;
-
-    private static readonly Dictionary<string, string> WellKnownFolders = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["WMPhotos"] = "wmphotos",
-        ["MobilePhotos"] = "mobilephotos",
-        ["TwitterPhotos"] = "twitterphotos",
-    };
-
-    private static readonly Dictionary<string, string> CanonicalNames = new()
-    {
-        ["wmphotos"] = "WMPhotos",
-        ["mobilephotos"] = "MobilePhotos",
-        ["twitterphotos"] = "TwitterPhotos",
-    };
-
-    private static string? CanonicalNameFor(string category)
-        => CanonicalNames.TryGetValue(category, out var name) ? name : null;
-
-    // the {id} segment is decoration on every other route here. until a device capture says what it
-    // holds for a non-self request, use it only to widen what a viewer may reach, never to narrow it
-    private async Task<long?> SubjectCidAsync(string id)
-    {
-        if (!long.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cid))
-            return null;
-
-        try
-        {
-            var userInfo = await userClient.GetUserInfoAsync(
-                new GetUserInfoRequest { UserId = User.Id() }, cancellationToken: HttpContext.RequestAborted);
-
-            var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-            if (cid == ownerCid)
-                return null;
-
-            logger.LogInformation("Files route addressed to {Cid}, owner is {Owner}", cid, ownerCid);
-            return cid;
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "could not read the owner cid, treating the files route as self");
-            return null;
-        }
-    }
+    private string UserId => User.Id()!;
+    private CancellationToken Aborted => HttpContext.RequestAborted;
+    private FilesUrls Urls(string id) => FilesUrls.For(Request, id);
 
     [HttpGet]
     [Route("/Users({id})/Files")]
     public async Task<ActionResult> GetFiles(string id)
     {
-        var feed = new LiveLibraryFeed
-        {
-            Id = $"{Request.Scheme}://{Request.Host}/Users({id})/Files",
-            Updated = DateTime.UtcNow,
-            // sample values, not critical
-            TotalQuota = TotalQuota,
-            MaxFileSize = MaxFileSize,
-            QuotaUsed = 0,
-        };
+        var urls = Urls(id);
+        var feed = PhotoFeedRenderer.Listing(urls);
 
         // a contact only ever has the albums they chose to share, never anything of ours
-        if (await SubjectCidAsync(id) is { } subjectCid)
+        if (await viewer.SubjectCidAsync(id, UserId, Aborted) is { } subjectCid)
         {
-            foreach (var album in await GetSharedAlbumsAsync(subjectCid))
-                feed.Entries.Add(ToAlbumEntry(id, album));
-
+            await AddSocialAlbumsAsync(feed, urls, await social.SharedAlbumsAsync(subjectCid, UserId, Aborted));
             return Ok(feed);
         }
 
-        var reply = await skyDrive.ListLibrariesAsync(new ListLibrariesRequest { UserId = User.Id() });
-
-        if (await HasPhotoSyncProviderAsync())
+        var owned = await libraries.ListLibrariesAsync(UserId, Aborted);
+        if (await connections.HasPhotoSyncAsync(Aborted))
         {
-            foreach (var library in reply.Libraries)
-                feed.Entries.Add(ToEntry(id, library.Category, library));
+            foreach (var library in owned)
+                feed.Entries.Add(PhotoFeedRenderer.LibraryEntry(urls, library));
         }
 
-        foreach (var album in await GetSocialAlbumsAsync())
-            feed.Entries.Add(ToAlbumEntry(id, album));
-
+        await AddSocialAlbumsAsync(feed, urls, await social.OwnedAlbumsAsync(UserId, Aborted));
         return Ok(feed);
-    }
-
-    private LiveLibraryEntry ToAlbumEntry(string id, SocialAlbum album) => new()
-    {
-        Id = $"{Request.Scheme}://{Request.Host}/Users({id})/Files/folders('{album.ResourceId}')",
-        ResourceId = album.ResourceId,
-        Type = FolderType,
-        Category = PhotosCategory,
-        SharingLevel = PublicSharedLevel,
-        Title = album.Title,
-        Updated = DateTime.UtcNow,
-    };
-
-    private async Task<IReadOnlyList<SocialAlbum>> GetSharedAlbumsAsync(long subjectCid)
-    {
-        var ct = HttpContext.RequestAborted;
-        var sources = await activityProvider.GetContactPhotoSourcesAsync(subjectCid, User.Id()!, ct);
-
-        var albums = new List<SocialAlbum>();
-        foreach (var source in sources.Where(s => s.Provider == SocialAlbumProvider.Provider))
-        {
-            var photos = await socialAlbums.GetPhotosAsync(User.Id()!, source.ExternalId, connection: null, ct);
-            albums.Add(new SocialAlbum(
-                SocialAlbumProvider.AlbumResourceId(source.ExternalId),
-                SocialAlbumProvider.TitleFor(source.Handle),
-                photos.Count));
-        }
-
-        return albums;
-    }
-
-    private async Task<bool> HasPhotoSyncProviderAsync()
-    {
-        var call = connectedServices.GetConnections(
-            new ConnectionsRequest { Capabilities = PhotoSyncCapability }, cancellationToken: HttpContext.RequestAborted);
-
-        await foreach (var _ in call.ResponseStream.ReadAllAsync(HttpContext.RequestAborted))
-            return true;
-
-        return false;
-    }
-
-    private async Task<IReadOnlyList<SocialAlbum>> GetSocialAlbumsAsync()
-    {
-        var connections = new List<Connection>();
-        var call = connectedServices.GetConnections(new ConnectionsRequest(), cancellationToken: HttpContext.RequestAborted);
-        await foreach (var connection in call.ResponseStream.ReadAllAsync(HttpContext.RequestAborted))
-            connections.Add(connection);
-
-        return await socialAlbums.GetAlbumsAsync(User.Id()!, connections, HttpContext.RequestAborted);
     }
 
     [HttpGet]
-    [Route(AlbumRoute)]
-    public async Task<ActionResult> GetAlbum(string id, string album)
+    [Route("/Users({id})/PhotosOf")]
+    public ActionResult PhotosOf(string id)
     {
-        if (await SubjectCidAsync(id) != null)
-            return NotFound();
-
-        var reply = await skyDrive.ListPhotosAsync(new ListPhotosRequest
-        {
-            UserId = User.Id(),
-            Category = album,
-        });
-
-        if (!reply.Exists)
-            return NotFound();
-
-        var baseUri = $"{Request.Scheme}://{Request.Host}";
-        var feed = BuildAlbumFeed(reply.Library, $"{baseUri}/Users({id})/Files/{album}", reply.Photos.Count);
-
-        foreach (var photo in reply.Photos)
-            AddPhotoEntry(feed, baseUri, id, photo);
-
-        return Ok(feed);
+        // TODO: photo tagging
+        return Ok(new LiveTaggedPhotosFeed());
     }
 
-    private static LiveAlbumFeed BuildAlbumFeed(Library library, string feedId, int itemCount) => new()
+    [HttpGet]
+    [Route(PhotoAlbums.AlbumRoute)]
+    public async Task<ActionResult> GetAlbum(string id, string album)
     {
-        Id = feedId,
-        Title = library.Title,
-        Updated = DateTime.UtcNow,
-        Type = FolderType,
-        ResourceId = library.Id,
-        CanonicalName = CanonicalNameFor(library.Category),
-        Category = PhotosCategory,
-        SharingLevel = library.SharingLevel,
-        EmailKeyword = library.EmailKeyword,
-        ItemCount = itemCount,
-    };
+        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
+            return NotFound();
 
-    private static void AddPhotoEntry(LiveAlbumFeed feed, string baseUri, string id, PhotoItem photo)
-    {
-        var isVideo = photo.MediaType == VideoType;
-        var created = DateTimeOffset.FromUnixTimeSeconds(photo.CreatedUnix).UtcDateTime;
-        var mediaBase = $"{baseUri}/Users({id})/Files/files('{photo.ResourceRef}')";
+        var listing = await libraries.ListByCategoryAsync(UserId, album, Aborted);
+        if (listing == null)
+            return NotFound();
 
-        var entry = new LiveAlbumItemEntry
-        {
-            Id = mediaBase,
-            ResourceId = photo.ResourceRef,
-            Type = isVideo ? "Video" : "Photo",
-            Title = photo.FileName,
-            Summary = photo.Summary,
-            CommentsEnabled = false,
-            Updated = created,
-            Published = created,
-        };
-
-        foreach (var size in ThumbnailSizes)
-        {
-            entry.Thumbnails.Add(new LiveMediaThumbnail
-            {
-                Url = $"{mediaBase}/thumbnail/{size}",
-                MaxWidth = size,
-                Width = photo.Width,
-                Height = photo.Height,
-            });
-        }
-
-        if (isVideo)
-            entry.MediaContent = new LiveMediaContent { Url = $"{mediaBase}/media" };
-
-        feed.Entries.Add(entry);
+        var urls = Urls(id);
+        return Ok(PhotoFeedRenderer.AlbumFeed(urls, urls.Album(album), listing.Library, listing.Photos));
     }
 
     [HttpPut]
-    [Route(AlbumRoute)]
+    [Route(PhotoAlbums.AlbumRoute)]
     public async Task<ActionResult> PutAlbum(string id, string album, [FromBody] LiveLibraryEntry entry)
     {
-        if (await SubjectCidAsync(id) != null)
+        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
             return NotFound();
 
-        var reply = await skyDrive.CreateOrUpdateLibraryAsync(new CreateOrUpdateLibraryRequest
-        {
-            UserId = User.Id(),
-            Type = entry.Type ?? "Library",
-            Category = album,
-            SharingLevel = entry.SharingLevel ?? "private",
-            Title = entry.Title?.Value ?? "",
-            Summary = entry.Summary?.Value ?? "",
-            EmailKeyword = entry.EmailKeyword ?? "",
-        });
+        var library = await libraries.CreateOrUpdateAsync(UserId, album, new LibraryUpdate(
+            entry.Type ?? "Library",
+            entry.SharingLevel ?? PhotoAlbums.PrivateSharing,
+            entry.Title?.Value ?? "",
+            entry.Summary?.Value ?? "",
+            entry.EmailKeyword ?? ""), Aborted);
 
-        return Ok(ToEntry(id, album, reply.Library));
+        return Ok(PhotoFeedRenderer.LibraryEntry(Urls(id), library));
     }
 
     [HttpPost]
-    [Route(AlbumRoute)]
+    [Route(PhotoAlbums.AlbumRoute)]
     public async Task<ActionResult> UploadPhoto(string id, string album)
     {
-        if (await SubjectCidAsync(id) != null)
+        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
             return NotFound();
 
-        if (!MediaTypeHeaderValue.TryParse(Request.ContentType, out var mediaType) ||
-            !mediaType.MediaType.Equals("multipart/related", StringComparison.OrdinalIgnoreCase))
+        if (!PhotoUploadReader.IsMultipartRelated(Request.ContentType, out var boundary))
             return StatusCode(StatusCodes.Status415UnsupportedMediaType);
 
-        var boundary = HeaderUtilities.RemoveQuotes(mediaType.Boundary).Value;
         if (string.IsNullOrEmpty(boundary))
             return BadRequest();
 
-        var userId = User.Id();
-        var reader = new MultipartReader(boundary, Request.Body);
-
-        var ct = HttpContext.RequestAborted;
-
-        string? fileName = null;
-        string? summary = null;
-        string? liveType = null;
-        var resolveNameConflict = false;
-        var suppressNotification = false;
-        string? imageContentType = null;
-
-        FileBufferingReadStream? spool = null;
-
         try
         {
-            for (var section = await reader.ReadNextSectionAsync(ct);
-                 section != null;
-                 section = await reader.ReadNextSectionAsync(ct))
-            {
-                var sectionType = section.ContentType ?? "";
-                if (sectionType.Contains("atom+xml", StringComparison.OrdinalIgnoreCase))
-                {
-                    var doc = await XDocument.LoadAsync(section.Body, LoadOptions.None, ct);
-                    XNamespace atom = Constants.Atom_Namespace;
-                    XNamespace live = Constants.Live_Namespace;
-                    fileName = doc.Root?.Element(atom + "title")?.Value;
-                    summary = doc.Root?.Element(atom + "summary")?.Value;
-                    liveType = doc.Root?.Element(live + "type")?.Value;
-                    resolveNameConflict = ParseLiveBool(doc.Root?.Element(live + "ResolveNameConflict")?.Value);
-                    suppressNotification = ParseLiveBool(doc.Root?.Element(live + "SuppressNotification")?.Value);
-                }
-                else
-                {
-                    spool = new FileBufferingReadStream(section.Body, SpoolMemoryThreshold, MaxFileSize, Path.GetTempPath());
-                    await spool.DrainAsync(ct);
-
-                    imageContentType = NormaliseContentType(sectionType, liveType);
-                }
-            }
-
-            if (spool is null || spool.Length == 0)
+            await using var upload = await PhotoUploadReader.ReadAsync(Request.Body, boundary, UserId, album, Aborted);
+            if (upload == null)
                 return BadRequest();
 
-            liveType = string.Equals(liveType, VideoType, StringComparison.OrdinalIgnoreCase) ? VideoType : PhotoType;
-            fileName = string.IsNullOrWhiteSpace(fileName)
-                ? $"{Guid.NewGuid():N}{(liveType == VideoType ? ".mp4" : ".jpg")}"
-                : fileName;
+            var created = await uploads.UploadAsync(upload.Spool, upload.Metadata, Aborted);
+            if (created == null)
+                return BadRequest();
 
-            return await SyncPhotoAsync(id, spool, new PhotoUploadMetadata
-            {
-                UserId = userId,
-                Category = album,
-                FileName = fileName,
-                ContentType = imageContentType ?? NormaliseContentType("", liveType),
-                Summary = summary ?? "",
-                MediaType = liveType,
-                ResolveNameConflict = resolveNameConflict,
-                SuppressNotification = suppressNotification,
-            }, ct);
+            return Ok(PhotoFeedRenderer.UploadedEntry(Urls(id), created));
         }
         catch (IOException)
         {
             return StatusCode(StatusCodes.Status413PayloadTooLarge);
         }
-        finally
-        {
-            if (spool != null)
-                await spool.DisposeAsync();
-        }
-    }
-
-    private async Task<ActionResult> SyncPhotoAsync(string id, Stream spool, PhotoUploadMetadata metadata, CancellationToken ct)
-    {
-        BeginPhotoUploadReply plan;
-        try
-        {
-            plan = await skyDrive.BeginPhotoUploadAsync(new BeginPhotoUploadRequest
-            {
-                Metadata = metadata,
-                ContentLength = spool.Length,
-            }, cancellationToken: ct);
-        }
-        catch (RpcException ex) when (ex.StatusCode is global::Grpc.Core.StatusCode.FailedPrecondition
-                                                     or global::Grpc.Core.StatusCode.InvalidArgument)
-        {
-            return BadRequest();
-        }
-
-        var complete = new CompletePhotoUploadRequest { Metadata = metadata };
-        foreach (var target in plan.Targets)
-            complete.Outcomes.Add(await SendUploadAsync(target, spool, ct));
-
-        PhotoReply created;
-        try
-        {
-            created = await skyDrive.CompletePhotoUploadAsync(complete, cancellationToken: ct);
-        }
-        catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.FailedPrecondition)
-        {
-            return BadRequest();
-        }
-
-        return Ok(new LivePhotoEntry
-        {
-            Id = $"{Request.Scheme}://{Request.Host}/Users({id})/Files/files('{created.ResourceRef}')",
-            ResourceId = created.ResourceRef,
-            Type = created.MediaType == VideoType ? "Video" : "Photo",
-            Title = created.FileName,
-            Updated = DateTime.UtcNow,
-        });
-    }
-
-    // a failed target is recorded rather than thrown so one broken provider can't sink an upload the
-    // others accepted; CompletePhotoUpload decides whether anything usable came back.
-    private async Task<UploadOutcome> SendUploadAsync(UploadTarget target, Stream spool, CancellationToken ct)
-    {
-        var outcome = new UploadOutcome { Service = target.Service, ConnectionId = target.ConnectionId };
-
-        try
-        {
-            using var http = httpClientFactory.CreateClient();
-
-            var total = spool.Length;
-            var fragment = target.FragmentSize > 0 ? target.FragmentSize : total;
-
-            for (var offset = 0L; offset < total; offset += fragment)
-            {
-                var length = Math.Min(fragment, total - offset);
-
-                spool.Seek(offset, SeekOrigin.Begin);
-
-                using var request = new HttpRequestMessage(new HttpMethod(target.Method), target.Url)
-                {
-                    Content = new StreamContent(new WindowStream(spool, length))
-                };
-
-                foreach (var (name, value) in target.Headers)
-                {
-                    if (!request.Headers.TryAddWithoutValidation(name, value))
-                        request.Content.Headers.TryAddWithoutValidation(name, value);
-                }
-
-                request.Content.Headers.ContentLength = length;
-
-                if (target.FragmentSize > 0)
-                    request.Content.Headers.ContentRange = new ContentRangeHeaderValue(offset, offset + length - 1, total);
-
-                using var response = await http.SendAsync(request, ct);
-
-                outcome.StatusCode = (int)response.StatusCode;
-                outcome.ResponseBody = await response.Content.ReadAsStringAsync(ct);
-
-                if (!response.IsSuccessStatusCode)
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Upload to {Service} ({ConnectionId}) failed", target.Service, target.ConnectionId);
-            outcome.StatusCode = 0;
-            outcome.ResponseBody = "";
-        }
-
-        return outcome;
-    }
-
-    private static bool ParseLiveBool(string? value)
-        => string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
-
-    private static string NormaliseContentType(string sectionType, string? mediaType)
-    {
-        var isVideo = string.Equals(mediaType, VideoType, StringComparison.OrdinalIgnoreCase);
-        if (string.IsNullOrWhiteSpace(sectionType) || !sectionType.Contains('/'))
-            return isVideo ? "video/mp4" : "image/jpeg";
-
-        return sectionType;
     }
 
     [HttpGet]
     [Route("/Users({id})/Files/folders('{folderId}')")]
     public async Task<ActionResult> GetFolder(string id, string folderId)
     {
-        if (SocialAlbumProvider.TryParseAlbumId(folderId, out var did))
-            return await GetSocialFolderAsync(id, folderId, did);
+        if (socialAlbums.TryResolveAlbum(folderId, out var provider, out var externalId))
+            return await GetSocialFolderAsync(id, folderId, provider, externalId);
 
-        if (await SubjectCidAsync(id) != null)
+        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
             return NotFound();
 
-        var request = new ListPhotosRequest { UserId = User.Id() };
-
-        if (WellKnownFolders.TryGetValue(folderId, out var category))
-            request.Category = category;
-        else
-            request.LibraryId = folderId;
-
-        var reply = await skyDrive.ListPhotosAsync(request);
-
-        if (!reply.Exists)
+        var listing = await libraries.ListByFolderAsync(UserId, folderId, Aborted);
+        if (listing == null)
             return NotFound();
 
-        var baseUri = $"{Request.Scheme}://{Request.Host}";
-        var feed = BuildAlbumFeed(reply.Library, $"{baseUri}/Users({id})/Files/folders('{folderId}')", reply.Photos.Count);
-
-        foreach (var photo in reply.Photos)
-            AddPhotoEntry(feed, baseUri, id, photo);
-
-        return Ok(feed);
+        var urls = Urls(id);
+        return Ok(PhotoFeedRenderer.AlbumFeed(urls, urls.Folder(folderId), listing.Library, listing.Photos));
     }
 
-    private async Task<ActionResult> GetSocialFolderAsync(string id, string folderId, string did)
+    [HttpGet]
+    [Route("/Users({id})/Files/files('{resourceRef}')")]
+    public async Task<ActionResult> GetPhoto(string id, string resourceRef)
     {
-        var subjectCid = await SubjectCidAsync(id);
-        if (!await activityProvider.IsServableDidAsync(did, subjectCid, User.Id()!, HttpContext.RequestAborted))
-            return NotFound();
+        string? title = null;
 
-        var connections = new List<Connection>();
-        var call = connectedServices.GetConnections(new ConnectionsRequest(), cancellationToken: HttpContext.RequestAborted);
-        await foreach (var connection in call.ResponseStream.ReadAllAsync(HttpContext.RequestAborted))
-            connections.Add(connection);
-
-        var owned = connections.FirstOrDefault(c => c.Service == SocialAlbumProvider.Provider && c.UserId == did);
-        var photos = await socialAlbums.GetPhotosAsync(User.Id()!, did, owned, HttpContext.RequestAborted);
-
-        var baseUri = $"{Request.Scheme}://{Request.Host}";
-        var feed = new LiveAlbumFeed
+        if (socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
         {
-            Id = $"{baseUri}/Users({id})/Files/folders('{folderId}')",
-            Title = owned != null ? SocialAlbumProvider.TitleFor(owned) : did,
-            Updated = DateTime.UtcNow,
-            Type = FolderType,
-            ResourceId = folderId,
-            Category = PhotosCategory,
-            SharingLevel = "private",
-            ItemCount = photos.Count,
-        };
+            var subjectCid = await viewer.SubjectCidAsync(id, UserId, Aborted);
+            if (!await social.IsServableAsync(provider, externalId, subjectCid, UserId, Aborted))
+                return NotFound();
 
-        foreach (var photo in photos)
-        {
-            var mediaBase = $"{baseUri}/Users({id})/Files/files('{photo.ResourceRef}')";
-            var entry = new LiveAlbumItemEntry
-            {
-                Id = mediaBase,
-                ResourceId = photo.ResourceRef,
-                Type = "Photo",
-                Title = photo.FileName,
-                Summary = photo.Summary,
-                CommentsEnabled = false,
-                Updated = photo.Created,
-                Published = photo.Created,
-            };
-
-            foreach (var size in ThumbnailSizes)
-            {
-                entry.Thumbnails.Add(new LiveMediaThumbnail
-                {
-                    Url = $"{mediaBase}/thumbnail/{size}",
-                    MaxWidth = size,
-                    Width = photo.Width,
-                    Height = photo.Height,
-                });
-            }
-
-            feed.Entries.Add(entry);
+            title = provider.FileNameFor(mediaId);
         }
 
-        return Ok(feed);
+        return Ok(PhotoFeedRenderer.PhotoFeed(Urls(id), resourceRef, title));
     }
 
     [HttpGet]
     [Route("/Users({id})/Files/files('{resourceRef}')/thumbnail/{size:int}")]
     public Task<ActionResult> GetThumbnail(string id, string resourceRef, int size)
-        => StreamPhotoAsync(id, resourceRef, size);
+    {
+        return StreamPhotoAsync(id, resourceRef, size);
+    }
 
     [HttpGet]
     [Route("/Users({id})/Files/files('{resourceRef}')/media")]
     public Task<ActionResult> GetMedia(string id, string resourceRef)
-        => StreamPhotoAsync(id, resourceRef, 0);
-
-    private async Task<ActionResult> StreamPhotoAsync(string id, string resourceRef, int maxSize)
     {
-        var ct = HttpContext.RequestAborted;
-        using var http = httpClientFactory.CreateClient();
-
-        if (SocialAlbumProvider.TryParsePhotoRef(resourceRef, out var did, out var cid))
-        {
-            var subjectCid = await SubjectCidAsync(id);
-            if (!await activityProvider.IsServableDidAsync(did, subjectCid, User.Id()!, ct))
-                return NotFound();
-
-            var social = SocialAlbumProvider.GetMediaLocation(did, cid, maxSize);
-            using var socialResponse = await http.FetchAsync(social, HttpContext, ct);
-
-            await socialResponse.PipeAsync(social, HttpContext, ct);
-            return new EmptyResult();
-        }
-
-        var resolved = await ResolvePhotoAsync(resourceRef, maxSize, refresh: false, ct);
-        if (resolved == null)
-            return NotFound();
-
-        var location = resolved.Value.Location;
-        var forwardRange = resolved.Value.ResizeTo == 0;
-        var response = await http.FetchAsync(location, HttpContext, ct, forwardRange);
-        try
-        {
-            // the provider urls are short lived, so a stale one looks exactly like a dead item.
-            if (!response.IsSuccessStatusCode)
-            {
-                var refreshed = await ResolvePhotoAsync(resourceRef, maxSize, refresh: true, ct);
-                if (refreshed == null)
-                    return NotFound();
-
-                response.Dispose();
-                resolved = refreshed;
-                location = refreshed.Value.Location;
-                forwardRange = refreshed.Value.ResizeTo == 0;
-                response = await http.FetchAsync(location, HttpContext, ct, forwardRange);
-            }
-
-            if (resolved.Value.ResizeTo > 0 && response.IsSuccessStatusCode)
-            {
-                await using var source = await response.Content.ReadAsStreamAsync(ct);
-                var thumbnail = await thumbnails.ResizeAsync(resourceRef, resolved.Value.ResizeTo, source, ct);
-
-                if (thumbnail != null)
-                {
-                    Response.ContentType = thumbnail.ContentType;
-                    Response.ContentLength = thumbnail.Data.Length;
-                    await Response.Body.WriteAsync(thumbnail.Data, ct);
-                    return new EmptyResult();
-                }
-
-                // a source we can't decode still beats a broken image in the hub
-                response.Dispose();
-                response = await http.FetchAsync(location, HttpContext, ct);
-            }
-
-            await response.PipeAsync(location, HttpContext, ct);
-            return new EmptyResult();
-        }
-        finally
-        {
-            response.Dispose();
-        }
-    }
-
-    private readonly record struct ResolvedPhoto(ContentLocation Location, int ResizeTo);
-
-    private async Task<ResolvedPhoto?> ResolvePhotoAsync(string resourceRef, int maxSize, bool refresh, CancellationToken ct)
-    {
-        var reply = await skyDrive.GetPhotoContentAsync(new GetPhotoContentRequest
-        {
-            UserId = User.Id(),
-            ResourceRef = resourceRef,
-            MaxSize = maxSize,
-            Refresh = refresh,
-        }, cancellationToken: ct);
-
-        if (!reply.Exists)
-            return null;
-
-        return new ResolvedPhoto(
-            new ContentLocation(reply.Url, reply.Headers, reply.ContentType,
-                                string.IsNullOrEmpty(reply.Etag) ? null : reply.Etag),
-            reply.ResizeTo);
+        return StreamPhotoAsync(id, resourceRef, 0);
     }
 
     [HttpPost]
     [Route("/Users({id})/Files/provision")]
     public async Task<ActionResult> Provision(string id)
     {
-        if (await SubjectCidAsync(id) != null)
+        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
             return NotFound();
 
-        await skyDrive.ProvisionUserAsync(new ProvisionUserRequest { UserId = User.Id() });
+        await libraries.ProvisionAsync(UserId, Aborted);
         return Ok();
     }
 
     [HttpPost]
-    [Route("/Users({id})/Files/{album:regex(^(wmphotos|mobilephotos|twitterphotos)$)}/permissions")]
+    [Route(PhotoAlbums.PermissionsRoute)]
     public async Task<ActionResult> SetPermissions(string id, string album)
     {
-        if (await SubjectCidAsync(id) != null)
+        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
             return NotFound();
 
-        await skyDrive.SetAlbumPermissionsAsync(new SetAlbumPermissionsRequest
-        {
-            UserId = User.Id(),
-            Category = album,
-            SharingLevel = PublicSharedLevel,
-        });
-
+        await libraries.ShareAsync(UserId, album, Aborted);
         return Ok();
     }
 
-    private LiveLibraryEntry ToEntry(string id, string album, Library library) => new()
+    private async Task<ActionResult> GetSocialFolderAsync(
+        string id, string folderId, SocialAlbumProviderBase provider, string externalId)
     {
-        Id = $"{Request.Scheme}://{Request.Host}/Users({id})/Files/{album}",
-        ResourceId = library.Id,
-        Type = FolderType,
-        CanonicalName = CanonicalNameFor(library.Category)!,
-        Category = PhotosCategory,
-        SharingLevel = library.SharingLevel,
-        EmailKeyword = library.EmailKeyword,
-        Title = library.Title,
-        Summary = library.Summary,
-        Updated = DateTime.UtcNow,
-    };
+        var subjectCid = await viewer.SubjectCidAsync(id, UserId, Aborted);
+        if (!await social.IsServableAsync(provider, externalId, subjectCid, UserId, Aborted))
+            return NotFound();
+
+        var folder = await social.FolderAsync(provider, externalId, UserId, Aborted);
+        await libraries.RememberCoverAsync(UserId, folderId, folder.Photos.FirstOrDefault()?.ResourceRef, Aborted);
+
+        return Ok(PhotoFeedRenderer.SocialAlbumFeed(Urls(id), folderId, folder.Title, folder.Photos));
+    }
+
+    private async Task AddSocialAlbumsAsync(LiveLibraryFeed feed, FilesUrls urls, IReadOnlyList<SocialAlbum> albums)
+    {
+        var covers = await libraries.CoversAsync(UserId, [.. albums.Select(a => a.ResourceId)], Aborted);
+
+        foreach (var album in albums)
+            feed.Entries.Add(PhotoFeedRenderer.SocialAlbumEntry(urls, album, covers.GetValueOrDefault(album.ResourceId)));
+    }
+
+    private async Task<ActionResult> StreamPhotoAsync(string id, string resourceRef, int maxSize)
+    {
+        return await streams.WriteAsync(HttpContext, id, resourceRef, maxSize, Aborted)
+            ? new EmptyResult()
+            : NotFound();
+    }
 }

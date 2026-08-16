@@ -57,9 +57,6 @@ public class UsersController(
         [FromQuery(Name = "$xslt")] string? xslt = null)
         => ContactFeedAsync(id, count, "activities_route_for_user");
 
-    // Per-contact feed: resolve the contact CID to its linked external identities, fetch each
-    // identity's author feed, and merge. Every entry binds to this one contact CID so the card's
-    // social tab shows all of the contact's accounts, merged.
     private async Task<ActionResult<LiveFeed>> ContactFeedAsync(string id, int count, string routeName)
     {
         Response.Headers.Append("X-QueriedServices", "WL");

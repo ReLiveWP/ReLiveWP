@@ -5,6 +5,7 @@ using Atom.Xml;
 namespace ReLiveWP.Services.Activity.Models.Atom;
 
 [NamespacePrefix("live", Constants.Live_Namespace)]
+[NamespacePrefix("media", Constants.MediaRss_Namespace)]
 [NamespacePrefix("a", Constants.Atom_Namespace)]
 [XmlInclude(typeof(LiveLibraryEntry))]
 [XmlRoot(ElementName = "feed", Namespace = Constants.Atom_Namespace)]

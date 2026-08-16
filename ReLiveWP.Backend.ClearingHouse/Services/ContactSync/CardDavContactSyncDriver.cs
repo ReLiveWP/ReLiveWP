@@ -349,9 +349,13 @@ public class CardDavContactSyncDriver(
             ? doc.Root
             : throw new ContactSyncException($"CardDAV returned {doc.Root?.Name.LocalName ?? "nothing"}, expected multistatus");
     }
+    
     internal static string Relative(string href, string? serviceUrl)
     {
-        var path = Uri.TryCreate(href, UriKind.Absolute, out var absolute) ? absolute.AbsolutePath : href;
+        var path = Uri.TryCreate(href, UriKind.Absolute, out var absolute) &&
+                   (absolute.Scheme == Uri.UriSchemeHttp || absolute.Scheme == Uri.UriSchemeHttps)
+            ? absolute.AbsolutePath
+            : href;
 
         if (!string.IsNullOrEmpty(serviceUrl) &&
             Uri.TryCreate(serviceUrl, UriKind.Absolute, out var root))

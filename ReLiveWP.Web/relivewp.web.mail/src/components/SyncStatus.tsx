@@ -4,7 +4,7 @@ import type { EngineState } from "@relivewp/eas-sync/host";
 
 import { useAppState } from "~/state/app-state";
 import { useSync } from "~/state/sync";
-import { ago } from "@relivewp/ui";
+import { ago, UNITS, RELATIVE } from "@relivewp/ui";
 
 function since(engine: EngineState | null): string {
     return engine === null || engine.lastSyncAt === null ? "" : `, synced ${ago(engine.lastSyncAt)}`;

@@ -11,6 +11,8 @@ service SkyDrive {
   rpc ListPhotos (ListPhotosRequest) returns (ListPhotosReply);
   rpc GetPhotoContent (GetPhotoContentRequest) returns (GetPhotoContentReply);
   rpc CreateOrUpdateLibrary (CreateOrUpdateLibraryRequest) returns (LibraryReply);
+  rpc GetAlbumCovers (GetAlbumCoversRequest) returns (GetAlbumCoversReply);
+  rpc SetAlbumCover (SetAlbumCoverRequest) returns (google.protobuf.Empty);
   rpc ProvisionUser (ProvisionUserRequest) returns (google.protobuf.Empty);
   rpc SetAlbumPermissions (SetAlbumPermissionsRequest) returns (google.protobuf.Empty);
   rpc BeginPhotoUpload (BeginPhotoUploadRequest) returns (BeginPhotoUploadReply);
@@ -25,6 +27,27 @@ message Library {
   string title         = 5;
   string summary       = 6;
   string email_keyword = 7;
+  string cover_ref     = 8;
+}
+
+message AlbumCover {
+  string album_ref    = 1;
+  string resource_ref = 2;
+}
+
+message GetAlbumCoversRequest {
+  string userId              = 1;
+  repeated string album_refs = 2;
+}
+
+message GetAlbumCoversReply {
+  repeated AlbumCover covers = 1;
+}
+
+message SetAlbumCoverRequest {
+  string userId       = 1;
+  string album_ref    = 2;
+  string resource_ref = 3;
 }
 
 message GetLibraryRequest {
