@@ -1,4 +1,4 @@
-import Link from "./Link";
+import { Link } from "@relivewp/ui";
 import { Show } from "@preact/signals/utils";
 import { useAppState } from "~/state/app-state";
 

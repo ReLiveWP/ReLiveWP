@@ -893,17 +893,16 @@ class ASWBXML
                     break;
                 case GlobalTokens.OPAQUE:
                     int CDATALength = bytes.DequeueMultibyteInt();
-                    string opaque = bytes.DequeueString(CDATALength);
+                    byte[] opaque = bytes.DequeueBytes(CDATALength);
                     if (opaqueElements.Contains((currentNode.NamespaceURI, currentNode.LocalName)))
                     {
                         // mirrors the encoder: base64 text keeps NUL-containing binary valid XML
-                        var raw = new byte[opaque.Length];
-                        for (int i = 0; i < opaque.Length; i++) raw[i] = (byte)opaque[i];
-                        currentNode.AppendChild(xmlDoc.CreateTextNode(Convert.ToBase64String(raw)));
+                        currentNode.AppendChild(xmlDoc.CreateTextNode(Convert.ToBase64String(opaque)));
                     }
                     else
                     {
-                        currentNode.AppendChild(xmlDoc.CreateCDataSection(opaque));
+                        // an opaque run on anything else is text, at the document charset (0x6A)
+                        currentNode.AppendChild(xmlDoc.CreateCDataSection(Encoding.UTF8.GetString(opaque)));
                     }
                     break;
                 case GlobalTokens.STR_I:
@@ -1035,7 +1034,7 @@ class ASWBXML
                 break;
             case XmlNodeType.CDATA:
                 byteList.Add((byte)GlobalTokens.OPAQUE);
-                byteList.AddRange(EncodeOpaque(node.Value ?? string.Empty));
+                byteList.AddRange(EncodeOpaque(Encoding.UTF8.GetBytes(node.Value ?? string.Empty)));
                 break;
             default:
                 break;
@@ -1069,22 +1068,6 @@ class ASWBXML
         return [.. byteList];
     }
 
-    private byte[] EncodeOpaque(string value)
-    {
-        List<byte> byteList = new List<byte>();
-
-        char[] charArray = value.ToCharArray();
-
-        byteList.AddRange(EncodeMultiByteInteger(charArray.Length));
-
-        for (int i = 0; i < charArray.Length; i++)
-        {
-            byteList.Add((byte)charArray[i]);
-        }
-
-        return [.. byteList];
-    }
-
     private byte[] EncodeOpaque(byte[] value)
     {
         List<byte> byteList = new List<byte>();
@@ -1093,13 +1076,13 @@ class ASWBXML
         return [.. byteList];
     }
 
-    private byte[] EncodeMultiByteInteger(int value)
+    internal static byte[] EncodeMultiByteInteger(int value)
     {
         List<byte> byteList = new List<byte>();
 
-        int shiftedValue = value;
-
-        while (value > 0)
+        // do/while, not while: zero encodes as a single 0x00 octet. An empty run leaves an
+        // opaque element with no length field at all and everything after it reads as garbage.
+        do
         {
             byte addByte = (byte)(value & 0x7F);
 
@@ -1112,6 +1095,7 @@ class ASWBXML
 
             value >>= 7;
         }
+        while (value > 0);
 
         return [.. byteList];
     }

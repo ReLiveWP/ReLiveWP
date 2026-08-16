@@ -6,13 +6,17 @@ import { ENDPOINT_AVAILABLE_LINKS, ENDPOINT_GET_LINKED_ACCOUNTS } from "~/util/e
 import { Dialogs } from "./components/Dialogs";
 import { useFetchSignal } from "~/util/use-fetch";
 
-import { AccountEntry } from "./components/AccountEntry";
+import { AccountEntry } from "./components/AccountEntry/AccountEntry";
+import { ContactSyncContext, useContactSyncList } from "./state/use-contact-sync";
 import LinkAccountButton from "./components/ServicePicker/LinkAccountButton";
 import LinkedAccountsEmptyState from "./components/ServicePicker/LinkedAccountsEmptyState";
 
 export default function LinkedAccounts() {
     const { data: linkedAccounts, refresh: doRefresh } = useFetchSignal<Connections>(ENDPOINT_GET_LINKED_ACCOUNTS);
     const { data: availableLinks } = useFetchSignal<AvailableConnectedService[]>(ENDPOINT_AVAILABLE_LINKS);
+
+    // one call covers every account on the page, so a row knows where it stands before it is touched
+    const { data: contactSync } = useContactSyncList();
 
     if (!linkedAccounts.value) {
         return <span>Fetching your accounts...</span>;
@@ -23,22 +27,24 @@ export default function LinkedAccounts() {
 
     return (
         <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts as Signal<Connections>, availableLinks: availableLinks as Signal<AvailableConnectedService[]>, doRefresh }}>
-            <Dialogs>
-                <div class="linked-accounts">
-                    {hasAnyConnection ? (
-                        <>
-                            <dl>
-                                {(availableLinks.value ?? []).flatMap(service =>
-                                    (connections[service.service as AccountType] ?? []).map(account =>
-                                        <AccountEntry key={account.id} service={service} account={account} />))}
-                            </dl>
-                            <LinkAccountButton />
-                        </>
-                    ) : (
-                        <LinkedAccountsEmptyState />
-                    )}
-                </div>
-            </Dialogs>
+            <ContactSyncContext.Provider value={contactSync}>
+                <Dialogs>
+                    <div class="linked-accounts">
+                        {hasAnyConnection ? (
+                            <>
+                                <dl>
+                                    {(availableLinks.value ?? []).flatMap(service =>
+                                        (connections[service.service as AccountType] ?? []).map(account =>
+                                            <AccountEntry key={account.id} service={service} account={account} />))}
+                                </dl>
+                                <LinkAccountButton />
+                            </>
+                        ) : (
+                            <LinkedAccountsEmptyState />
+                        )}
+                    </div>
+                </Dialogs>
+            </ContactSyncContext.Provider>
         </LinkedAccountsContext.Provider>
     );
 }

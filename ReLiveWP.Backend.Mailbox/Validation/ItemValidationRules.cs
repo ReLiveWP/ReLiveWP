@@ -1,4 +1,5 @@
 using ReLiveWP.Backend.Mailbox.Data.Entities;
+using ReLiveWP.ServiceDefaults.Contacts;
 
 namespace ReLiveWP.Backend.Mailbox.Validation;
 
@@ -258,15 +259,45 @@ public static class ItemValidationRules
         }
     }
 
+    public const int UnknownYear = ContactContract.UnknownBirthYear;
+
     private static void ValidateContact(DbContactItem c, List<ValidationIssue> issues)
     {
         if (c.Picture is { } pic)
         {
             long base64Len = ((long)pic.Length + 2) / 3 * 4;
-            if (base64Len > 48 * 1024)
+            if (base64Len > ContactContract.MaxPictureBase64Bytes)
                 issues.Add(ValidationIssue.Rejected("contact-picture-size", nameof(c.Picture),
-                    $"contact picture ({base64Len} B base64) exceeds the 48 KB limit"));
+                    $"contact picture ({base64Len} B base64) exceeds the {ContactContract.MaxPictureBase64Bytes / 1024} KB limit"));
         }
+
+        CorrectAnnualDate(c.Birthday, v => c.Birthday = v, nameof(c.Birthday), issues);
+        CorrectAnnualDate(c.Anniversary, v => c.Anniversary = v, nameof(c.Anniversary), issues);
+    }
+
+    private static void CorrectAnnualDate(
+        DateTime? value, Action<DateTime?> assign, string field, List<ValidationIssue> issues)
+    {
+        if (value is not { } date) return;
+
+        if (date.Year < UnknownYear)
+        {
+            issues.Add(ValidationIssue.Corrected("contact-unknown-year", field,
+                $"clamped an implausible year ({date.Year}) to {UnknownYear}; the provider meant the year was unknown"));
+
+            date = new DateTime(UnknownYear, date.Month, date.Day, date.Hour, date.Minute, date.Second, date.Kind);
+        }
+
+        // MS-ASCNTC 2.2.2.6 and 2.2.2.3: the time is meant to be ignored, and midday is what keeps a
+        // client that ignores it anyway from landing on the day before
+        var anchored = new DateTime(date.Year, date.Month, date.Day, 11, 59, 0, DateTimeKind.Utc);
+        if (anchored == date && date.Kind == DateTimeKind.Utc) return;
+
+        if (anchored != date)
+            issues.Add(ValidationIssue.Corrected("contact-annual-date-time", field,
+                "anchored the time to 11:59 UTC so a time zone offset cannot move the date"));
+
+        assign(anchored);
     }
 
     private static void RejectIfStartAfterDue(DateTime? start, DateTime? due, string rule, List<ValidationIssue> issues)

@@ -5,6 +5,7 @@ using Atom.Xml;
 namespace ReLiveWP.Services.Activity.Models.Atom;
 
 [NamespacePrefix("live", Constants.Live_Namespace)]
+[NamespacePrefix("media", Constants.MediaRss_Namespace)]
 [XmlRoot("entry", Namespace = Constants.Atom_Namespace)]
 public class LiveLibraryEntry : Entry
 {
@@ -26,4 +27,7 @@ public class LiveLibraryEntry : Entry
 
     [XmlElement(ElementName = "emailKeyword", Namespace = Constants.Live_Namespace)]
     public string EmailKeyword { get; set; } = default!;
+
+    [XmlElement(ElementName = "thumbnail", Namespace = Constants.MediaRss_Namespace)]
+    public List<LiveMediaThumbnail> Thumbnails { get; set; } = [];
 }

@@ -1,4 +1,5 @@
 using System.Xml;
+using Google.Protobuf;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Exchange.Services;
 using ReLiveWP.Services.Grpc.Mailbox;
@@ -28,17 +29,36 @@ public class GhostingTests
         MobilePhoneNumber = "+441234567890",
     };
 
-    // --- the fallback ----------------------------------------------------------------
+    // --- the three rules of MS-ASCMD 2.2.3.179 ---------------------------------------
 
+    // rule 1: no Supported element at all means nothing is ghosted, so omission deletes
     [Fact]
-    public void Absent_Supported_preserves_every_omitted_element()
+    public void Absent_Supported_is_ghost_none()
     {
         var policy = GhostingPolicy.FromSupported(null);
+
+        Assert.Equal(GhostingMode.GhostNone, policy.Mode);
+
+        var result = ItemSyncService.ApplyContactChange(FullContact(),
+            new ContactData { FirstName = "Ada B" }, policy.Effective(true));
+
+        Assert.Equal("Ada B", result.FirstName);
+        Assert.False(result.HasLastName);
+        Assert.False(result.HasCompanyName);
+        Assert.False(result.HasJobTitle);
+        Assert.False(result.HasMobilePhoneNumber);
+    }
+
+    // rule 1 is destructive and we cannot prove what WP7 sends, so it is gated off by default
+    [Fact]
+    public void Absent_Supported_still_preserves_when_the_flag_is_off()
+    {
+        var policy = GhostingPolicy.FromSupported(null).Effective(false);
 
         var result = ItemSyncService.ApplyContactChange(FullContact(),
             new ContactData { FirstName = "Ada B" }, policy);
 
-        Assert.True(policy.IsPreserveAll);
+        Assert.True(policy.PreservesEverything);
         Assert.Equal("Ada B", result.FirstName);
         Assert.Equal("Lovelace", result.LastName);
         Assert.Equal("Analytical Engines", result.CompanyName);
@@ -46,18 +66,33 @@ public class GhostingTests
         Assert.Equal("+441234567890", result.MobilePhoneNumber);
     }
 
-    // rule 2 in the spec: an empty Supported ghosts everything, which is also what we fall back to
+    // rule 3: an empty Supported ghosts everything, and the flag must never touch that
     [Fact]
     public void Empty_Supported_preserves_every_omitted_element()
     {
         var policy = GhostingPolicy.FromSupported(new SyncSupported());
 
         var result = ItemSyncService.ApplyContactChange(FullContact(),
-            new ContactData { FirstName = "Ada B" }, policy);
+            new ContactData { FirstName = "Ada B" }, policy.Effective(true));
 
-        Assert.True(policy.IsPreserveAll);
+        Assert.Equal(GhostingMode.GhostAll, policy.Mode);
+        Assert.True(policy.PreservesEverything);
         Assert.Equal("Lovelace", result.LastName);
         Assert.Equal("Analytical Engines", result.CompanyName);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Effective_only_ever_changes_ghost_none(bool flag)
+    {
+        Assert.Same(GhostingPolicy.GhostAll, GhostingPolicy.GhostAll.Effective(flag));
+
+        var declared = PolicyFor((Constants.Contacts, "CompanyName"));
+        Assert.Same(declared, declared.Effective(flag));
+
+        Assert.Equal(flag ? GhostingMode.GhostNone : GhostingMode.GhostAll,
+            GhostingPolicy.GhostNone.Effective(flag).Mode);
     }
 
     [Fact]
@@ -199,23 +234,90 @@ public class GhostingTests
         Assert.True(restored.ShouldClear(Constants.Contacts, "CompanyName"));
         Assert.True(restored.ShouldClear(Constants.Calendar, "Location"));
         Assert.True(restored.IsGhosted(Constants.Contacts, "LastName"));
-        Assert.False(restored.IsPreserveAll);
+        Assert.Equal(GhostingMode.Declared, restored.Mode);
     }
 
+    // every row written before the three-state encoding holds null or "", and both must keep
+    // meaning preserve-everything or an in-flight sync relationship changes behaviour on deploy
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    public void Missing_cached_policy_parses_back_to_preserve_all(string? stored)
+    public void Missing_cached_policy_parses_back_to_ghost_all(string? stored)
     {
         var policy = GhostingPolicy.Parse(stored);
 
-        Assert.True(policy.IsPreserveAll);
+        Assert.True(policy.PreservesEverything);
         Assert.True(policy.IsGhosted(Constants.Contacts, "CompanyName"));
     }
 
     [Fact]
-    public void PreserveAll_serializes_to_nothing()
+    public void GhostAll_serializes_to_empty()
     {
-        Assert.Equal(string.Empty, GhostingPolicy.PreserveAll.Serialize());
+        Assert.Equal(string.Empty, GhostingPolicy.GhostAll.Serialize());
+    }
+
+    [Fact]
+    public void GhostNone_round_trips_through_the_cache()
+    {
+        var restored = GhostingPolicy.Parse(GhostingPolicy.GhostNone.Serialize());
+
+        Assert.Equal(GhostingMode.GhostNone, restored.Mode);
+        Assert.True(restored.ShouldClear(Constants.Contacts, "CompanyName"));
+    }
+
+    [Fact]
+    public void GhostNone_marker_cannot_collide_with_a_declared_list()
+    {
+        var marker = GhostingPolicy.GhostNone.Serialize();
+
+        Assert.DoesNotContain(':', marker);
+        foreach (var (ns, name) in GhostableVocabulary.All())
+            Assert.NotEqual(marker, PolicyFor((ns, name)).Serialize());
+    }
+
+    // --- the MS-ASCMD 2.2.3.24 carve-out ---------------------------------------------
+
+    [Fact]
+    public void Picture_is_never_cleared_even_when_declared()
+    {
+        var contact = new ContactItem { FirstName = "Ada", Picture = ByteString.CopyFrom(1, 2, 3) };
+
+        var result = ItemSyncService.ApplyContactChange(contact, new ContactData { FirstName = "Ada" },
+            PolicyFor((Constants.Contacts, "Picture")));
+
+        Assert.True(result.HasPicture);
+    }
+
+    [Fact]
+    public void Picture_survives_ghost_none()
+    {
+        var contact = new ContactItem { FirstName = "Ada", Picture = ByteString.CopyFrom(1, 2, 3) };
+
+        var result = ItemSyncService.ApplyContactChange(contact, new ContactData { FirstName = "Ada" },
+            GhostingPolicy.GhostNone);
+
+        Assert.True(result.HasPicture);
+    }
+
+    [Fact]
+    public void Contact_notes_survive_ghost_none()
+    {
+        var contact = new ContactItem { FirstName = "Ada", Notes = "kept" };
+
+        var result = ItemSyncService.ApplyContactChange(contact, new ContactData { FirstName = "Ada" },
+            GhostingPolicy.GhostNone);
+
+        Assert.Equal("kept", result.Notes);
+    }
+
+    [Fact]
+    public void Calendar_notes_survive_ghost_none()
+    {
+        var cal = new CalendarItem { Subject = "Standup", Notes = "kept" };
+
+        var result = ItemSyncService.ApplyCalendarChange(cal, new CalendarData { Subject = "Standup" },
+            GhostingPolicy.GhostNone);
+
+        Assert.Equal("kept", result.Notes);
     }
 }

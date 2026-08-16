@@ -406,6 +406,90 @@ public class ItemValidationRulesTests
         Assert.True(Corrected(issues, "calendar-exception-all-day"));
     }
 
+    // EAS has no yearless birthday, so providers invent a year: Apple sends 1604. Nobody alive was
+    // born before 1909, so an older year is that placeholder rather than a real date.
+    [Theory]
+    [InlineData(1604, 9, 23)]
+    [InlineData(1900, 1, 1)]
+    [InlineData(1907, 12, 31)]
+    public void An_implausible_birth_year_is_clamped_keeping_the_day_and_month(int year, int month, int day)
+    {
+        var contact = new DbContactItem { Birthday = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc) };
+
+        var issues = ItemValidationRules.ValidateAndCorrect(contact, DbFolderType.ContactsDefault);
+
+        Assert.True(Corrected(issues, "contact-unknown-year"));
+        Assert.Equal(ItemValidationRules.UnknownYear, contact.Birthday!.Value.Year);
+        Assert.Equal(month, contact.Birthday.Value.Month);
+        Assert.Equal(day, contact.Birthday.Value.Day);
+    }
+
+    // the placeholder is a leap year on purpose, or a 29 February birthday cannot survive the clamp
+    [Fact]
+    public void A_leap_day_birthday_survives_the_clamp()
+    {
+        var contact = new DbContactItem { Birthday = new DateTime(1604, 2, 29, 0, 0, 0, DateTimeKind.Utc) };
+
+        ItemValidationRules.ValidateAndCorrect(contact, DbFolderType.ContactsDefault);
+
+        Assert.Equal(new DateTime(ItemValidationRules.UnknownYear, 2, 29, 0, 0, 0), contact.Birthday!.Value.Date);
+    }
+
+    [Fact]
+    public void A_real_birth_year_is_left_alone()
+    {
+        var contact = new DbContactItem { Birthday = new DateTime(1948, 5, 10, 0, 0, 0, DateTimeKind.Utc) };
+
+        var issues = ItemValidationRules.ValidateAndCorrect(contact, DbFolderType.ContactsDefault);
+
+        Assert.False(Corrected(issues, "contact-unknown-year"));
+        Assert.Equal(new DateTime(1948, 5, 10), contact.Birthday!.Value.Date);
+    }
+
+    // MS-ASCNTC 2.2.2.6 and 2.2.2.3: midnight lands a client west of UTC on the day before
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(23, 30)]
+    public void An_annual_date_is_anchored_to_midday_utc(int hour, int minute)
+    {
+        var contact = new DbContactItem
+        {
+            Birthday = new DateTime(1948, 5, 10, hour, minute, 0, DateTimeKind.Utc),
+            Anniversary = new DateTime(1970, 6, 1, hour, minute, 0, DateTimeKind.Utc),
+        };
+
+        var issues = ItemValidationRules.ValidateAndCorrect(contact, DbFolderType.ContactsDefault);
+
+        Assert.True(Corrected(issues, "contact-annual-date-time"));
+        Assert.Equal(new TimeSpan(11, 59, 0), contact.Birthday!.Value.TimeOfDay);
+        Assert.Equal(new TimeSpan(11, 59, 0), contact.Anniversary!.Value.TimeOfDay);
+
+        // the date itself must not have moved
+        Assert.Equal(new DateTime(1948, 5, 10), contact.Birthday.Value.Date);
+    }
+
+    [Fact]
+    public void An_already_anchored_date_is_not_corrected_again()
+    {
+        var contact = new DbContactItem { Birthday = new DateTime(1948, 5, 10, 11, 59, 0, DateTimeKind.Utc) };
+
+        var issues = ItemValidationRules.ValidateAndCorrect(contact, DbFolderType.ContactsDefault);
+
+        Assert.False(Corrected(issues, "contact-annual-date-time"));
+    }
+
+    [Fact]
+    public void A_contact_with_no_dates_is_untouched()
+    {
+        var contact = new DbContactItem();
+
+        var issues = ItemValidationRules.ValidateAndCorrect(contact, DbFolderType.ContactsDefault);
+
+        Assert.Null(contact.Birthday);
+        Assert.Null(contact.Anniversary);
+        Assert.False(AnyRejected(issues));
+    }
+
     [Fact]
     public void Oversized_contact_picture_is_rejected()
     {

@@ -1,0 +1,49 @@
+@use "sass:meta";
+@use "theme";
+@use "ui";
+@use "tokens" as t;
+
+:root {
+    --font-family-monospace: #{meta.inspect(t.$font-family-monospace)};
+}
+
+body {
+    height: 100vh;
+    height: 100dvh;
+
+    // the page already has a ground of its own, and an opaque track cuts a grey channel straight
+    // through it. scrollbar-color inherits, so this one declaration reaches every scroller in the
+    // app, unlike scrollbar-width which would have to be set on each. the flat pair below is the
+    // floor for engines without color-mix
+    @include t.themed-raw(scrollbar-color,
+        rgba(128, 128, 128, 0.4) transparent,
+        color-mix(in srgb, var(--ink-muted) 45%, transparent) transparent);
+}
+
+app {
+    min-height: 0;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+main > * {
+    flex-shrink: 0;
+}
+
+h2 {
+    font-size: t.$font-size-base;
+    margin: 0 0 8px;
+}
+
+.note {
+    color: var(--ink-muted);
+}
+
+.error {
+    color: var(--accent-colour);
+}

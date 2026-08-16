@@ -5,7 +5,13 @@ namespace ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 public interface IOAuthProvider
 {
     Task<LivePendingOAuth> BeginAccountLinkAsync(Guid userId, string identifier);
-    
+
+    public virtual Task<LivePendingOAuth> BeginAccountLinkAsync(
+        Guid userId, string identifier, LiveConnectedServiceCapabilities requested)
+    {
+        return this.BeginAccountLinkAsync(userId, identifier);
+    }
+
     Task<bool> RefreshTokensAsync(LiveConnectedService connectedService);
     
     Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService connectedService, LivePendingOAuth state, string code);

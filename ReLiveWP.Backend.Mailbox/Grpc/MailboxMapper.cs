@@ -122,6 +122,36 @@ public static class MailboxMapper
         return p;
     }
 
+    public static ItemOrigin? ToProtoOrigin(DbItem item)
+    {
+        if (item.OriginServiceId is null) return null;
+
+        var o = new ItemOrigin
+        {
+            ServiceId = item.OriginServiceId,
+            CollectionId = item.OriginCollectionId ?? string.Empty,
+            ExternalId = item.OriginExternalId ?? string.Empty,
+            SyncedAt = ToProtoTs(item.OriginSyncedAt),
+            RemoteSynced = item.RemoteSynced,
+        };
+        if (item.OriginEtag is not null) o.Etag = item.OriginEtag;
+        return o;
+    }
+
+    // supplying an origin is what makes a caller the mirror, so it is also what puts the item back
+    // under a provider's control
+    public static void ApplyOrigin(DbItem item, ItemOrigin? o)
+    {
+        if (o is null) return;
+
+        item.OriginServiceId = o.ServiceId;
+        item.OriginCollectionId = o.CollectionId;
+        item.OriginExternalId = o.ExternalId;
+        item.OriginEtag = o.HasEtag ? o.Etag : null;
+        item.OriginSyncedAt = FromProtoTs(o.SyncedAt);
+        item.RemoteSynced = true;
+    }
+
     public static Item ToProto(DbItem item)
     {
         var p = new Item
@@ -135,6 +165,7 @@ public static class MailboxMapper
             Version = item.Version,
         };
         if (item.ClientId is not null) p.ClientId = item.ClientId;
+        if (ToProtoOrigin(item) is { } origin) p.Origin = origin;
 
         switch (item)
         {

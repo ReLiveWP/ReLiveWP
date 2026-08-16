@@ -14,7 +14,7 @@ public class FeedRenderer(
 {
     public async Task<List<LiveEntry>> RenderFeedAsync(
         IUrlHelper url,
-        ActivityProviderBase provider,
+        OwnedActivityProviderBase provider,
         ActivitiesContext context,
         int count,
         LiveAuthor meAuthor,
@@ -32,31 +32,25 @@ public class FeedRenderer(
 
     public async Task<List<LiveEntry>> RenderContactFeedAsync(
         IUrlHelper url,
-        ActivityProviderBase provider,
+        IReadOnlyList<PublicActivityProviderBase> providers,
+        IReadOnlyList<ContactFeedSource> sources,
         long cid,
-        int count,
-        string userId)
+        int count)
     {
-        var identities = await mailbox.ResolveContactIdentitiesAsync(new ResolveContactIdentitiesRequest
-        {
-            UserId = userId,
-            Cids = { cid },
-        });
-
-        if (identities.Identities.Count == 0)
-        {
-            logger.LogInformation("Per-contact feed for CID {Cid}: no linked identities", cid);
+        if (sources.Count == 0)
             return [];
-        }
 
-        var entries = await identities.Identities
+        // providers ignore identities they don't own (provider-token mismatch)
+        var entries = await sources
             .ToAsyncEnumerable()
-            .SelectMany(identity => provider.GetAuthorEntriesAsync(identity.Provider, identity.ExternalId, count))
+            .SelectMany(source => providers
+                .ToAsyncEnumerable()
+                .SelectMany(provider => provider.GetAuthorEntriesAsync(source.Provider, source.ExternalId, count)))
             .ToListAsync();
 
         logger.LogInformation(
-            "Per-contact feed for CID {Cid}: {Identities} identities, {Entries} entries",
-            cid, identities.Identities.Count, entries.Count);
+            "Per-contact feed for CID {Cid}: {Sources} source(s), {Entries} entries",
+            cid, sources.Count, entries.Count);
 
         return [.. entries
             .OrderByDescending(e => e.Published)

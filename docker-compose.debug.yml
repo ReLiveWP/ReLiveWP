@@ -67,6 +67,17 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 15000:5000
+
+  clearinghouse:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+    ports:
+      - 15001:5000
 
   activation:
     <<: *debug
@@ -83,6 +94,12 @@ services:
     environment: *dev-env
 
   web:
+    build:
+      args:
+        CLIENT_BUILD_SCRIPT: build:local
+    environment: *dev-env
+
+  webmail:
     build:
       args:
         CLIENT_BUILD_SCRIPT: build:local
@@ -117,6 +134,13 @@ services:
     environment: *dev-env
 
   addressbook:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  hub:
     <<: *debug
     build:
       args:

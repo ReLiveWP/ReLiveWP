@@ -100,7 +100,7 @@ public class MicrosoftOAuthProvider(IConnectedServicesContainer connectedService
         service.RefreshToken = tokenResult.RefreshToken!;
         service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
-        service.EnabledCapabilities = 0;
+        service.EnabledCapabilities &= caps;
         service.AvailableCapabilities = caps;
         service.AuthorizationEndpoint = state.AuthorizationEndpoint;
         service.TokenEndpoint = state.TokenEndpoint!;

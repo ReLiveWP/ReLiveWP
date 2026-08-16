@@ -1,7 +1,7 @@
 import { useCallback } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 
-import { Dialog } from "~/components/Dialog";
+import { Dialog } from "@relivewp/ui";
 import { useAuthenticatedFetch } from "~/state/app-state";
 import { ENDPOINT_DEVICE_REMOVE, populateEndpoint } from "~/util/endpoints";
 import { Device } from "~/util/device-types";

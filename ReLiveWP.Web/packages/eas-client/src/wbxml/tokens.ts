@@ -1,0 +1,29 @@
+export const SWITCH_PAGE = 0x00;
+export const END = 0x01;
+export const ENTITY = 0x02;
+export const STR_I = 0x03;
+export const LITERAL = 0x04;
+export const EXT_I_0 = 0x40;
+export const EXT_I_1 = 0x41;
+export const EXT_I_2 = 0x42;
+export const PI = 0x43;
+export const LITERAL_C = 0x44;
+export const EXT_T_0 = 0x80;
+export const EXT_T_1 = 0x81;
+export const EXT_T_2 = 0x82;
+export const STR_T = 0x83;
+export const LITERAL_A = 0x84;
+export const EXT_0 = 0xc0;
+export const EXT_1 = 0xc1;
+export const EXT_2 = 0xc2;
+export const OPAQUE = 0xc3;
+export const LITERAL_AC = 0xc4;
+
+export const TAG_ATTRIBUTES = 0x80;
+export const TAG_CONTENT = 0x40;
+export const TAG_MASK = 0x3f;
+
+export const WBXML_VERSION_1_3 = 0x03;
+export const PUBLIC_ID_UNKNOWN = 0x01;
+export const CHARSET_UTF8 = 0x6a;
+export const CHARSET_UNKNOWN = 0x00;

@@ -1,0 +1,24 @@
+{
+  "$comment": "Code pages that are in no published MS-AS* document",
+  "pages": [
+    {
+      "page": 254,
+      "ns": "WindowsLive",
+      "xmlns": "live",
+      "tokens": {
+        "Annotations": 5,
+        "Annotation": 6,
+        "Name": 7,
+        "Value": 8,
+        "SystemCategories": 9,
+        "CategoryId": 10,
+        "CategoryMode": 12,
+        "SentTime": 13,
+        "SentItem": 14,
+        "SimSlotNumber": 15,
+        "MmsMessageId": 16,
+        "ExtensionType": 17
+      }
+    }
+  ]
+}

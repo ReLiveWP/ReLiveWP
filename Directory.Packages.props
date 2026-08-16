@@ -8,6 +8,7 @@
     <PackageVersion Include="Duende.IdentityModel.OidcClient" Version="6.0.1" />
     <PackageVersion Include="Duende.IdentityModel.OidcClient.Extensions" Version="6.0.1" />
     <PackageVersion Include="FishyFlip" Version="4.1.0-alpha.2" />
+    <PackageVersion Include="FolkerKinzel.VCards" Version="8.2.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
     <PackageVersion Include="Google.Apis.Oauth2.v2" Version="1.74.0.1869" />
     <PackageVersion Include="Google.Protobuf" Version="3.35.0" />
@@ -50,8 +51,10 @@
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.*" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="vCardLib.dll" Version="6.3.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.61" />
     <PackageVersion Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 </Project>

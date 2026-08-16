@@ -43,12 +43,16 @@ service MailboxStore {
   rpc DeleteContactIdentity    (DeleteContactIdentityRequest)    returns (MutationResult);
   rpc ResolveAuthorsToContacts (ResolveAuthorsToContactsRequest) returns (ResolveAuthorsToContactsResponse);
   rpc ResolveContactIdentities (ResolveContactIdentitiesRequest) returns (ResolveContactIdentitiesResponse);
+  rpc ResolveFeedSubjects      (ResolveFeedSubjectsRequest)      returns (ResolveFeedSubjectsResponse);
   rpc GetContactProfiles      (GetContactProfilesRequest)      returns (GetContactProfilesResponse);
 
   rpc ReconcileDuplicateItems (ReconcileDuplicateItemsRequest) returns (ReconcileDuplicateItemsResult);
   rpc RevalidateItems (RevalidateItemsRequest) returns (RevalidateItemsResult);
   rpc ListFlaggedItems (ListFlaggedItemsRequest) returns (stream FlaggedItem);
   rpc ReconcileSyncState (ReconcileSyncStateRequest) returns (ReconcileSyncStateResult);
+  
+  rpc DeleteItemsByOrigin (DeleteItemsByOriginRequest) returns (DeleteItemsByOriginResult);
+  rpc ListItemsByOrigin   (ListItemsByOriginRequest)   returns (stream MirroredItem);
 }
 
 enum FolderType {
@@ -150,8 +154,8 @@ message Item {
   string                             server_id     = 4;
   optional google.protobuf.Timestamp created_at    = 5;
   optional google.protobuf.Timestamp deleted_at    = 6;
-  optional string                    client_id     = 7;  
-  
+  optional string                    client_id     = 7;
+
   uint32                             version       = 8;
 
   oneof body {
@@ -161,6 +165,21 @@ message Item {
     EmailItem    email    = 13;
     NoteItem     note     = 14;
   }
+
+  optional ItemOrigin origin = 20;
+}
+
+// absent means the item was never mirrored. present means it came from a remote object, which is a
+// different question from whether it still tracks one: see remote_synced.
+message ItemOrigin {
+  string                             service_id    = 1;
+  string                             collection_id = 2;
+  string                             external_id   = 3;
+  optional string                    etag          = 4;
+  optional google.protobuf.Timestamp synced_at     = 6;
+
+  // cleared the moment anything but the mirror writes the item, after which no sync touches it again
+  bool                               remote_synced = 7;
 }
 
 message ContactItem {
@@ -499,6 +518,7 @@ message CreateItemRequest {
   optional ContactAnnotation annotation = 20;
 
   optional string client_id = 21;  // nonce, prevents re-creating the same item twice
+  optional ItemOrigin origin = 22;
 }
 
 message UpdateItemRequest {
@@ -513,11 +533,46 @@ message UpdateItemRequest {
   }
   optional ContactAnnotation annotation = 20;
   optional uint32 expected_version = 21;
+  optional ItemOrigin origin = 22;
 }
 
 message DeleteItemRequest {
   string user_id   = 1;
   string server_id = 2;
+}
+
+// every live item mirroring the given origin, so a sync can reconcile by remote identity instead of
+// re-creating rows it already has
+message ListItemsByOriginRequest {
+  string          user_id              = 1;
+  string          origin_service_id    = 2;
+  optional string origin_collection_id = 3;
+
+  // a soft-deleted row is how a sync tells "the device deleted this" from "the remote added this"
+  bool            include_deleted      = 5;
+}
+
+// a sync decides what to write from remote identity alone, so this carries no item body. returning
+// one would mean reading and marshalling every mirrored contact's photo to throw it away.
+message MirroredItem {
+  string          server_id     = 1;
+  string          external_id   = 2;
+  optional string etag          = 3;
+  bool            deleted       = 4;
+  bool            remote_synced = 5;
+}
+
+// deletes every live item mirroring the given origin. external_ids scopes it to specific remote
+// objects; empty means the whole origin, which is what removing a connection does.
+message DeleteItemsByOriginRequest {
+  string          user_id            = 1;
+  string          origin_service_id  = 2;
+  optional string origin_collection_id = 3;
+  repeated string external_ids       = 4;
+}
+
+message DeleteItemsByOriginResult {
+  int32 items_deleted = 1;
 }
 
 message MoveItemRequest {
@@ -791,6 +846,30 @@ message ResolveContactIdentitiesRequest {
 
 message ResolveContactIdentitiesResponse {
   repeated ContactIdentity identities = 1;
+}
+
+enum FeedSubjectKind {
+  FEED_SUBJECT_KIND_UNKNOWN          = 0;
+  FEED_SUBJECT_KIND_CONTACT_IDENTITY = 1;
+  FEED_SUBJECT_KIND_LIVE_USER        = 2;
+}
+
+// answers "whose feed may this viewer read for this cid, right now". unlike
+// ResolveContactIdentities this is an authorization decision, not a join
+message FeedSubject {
+  int64                    cid             = 1;
+  FeedSubjectKind          kind            = 2;
+  repeated ContactIdentity identities      = 3;
+  optional string          subject_user_id = 4;
+}
+
+message ResolveFeedSubjectsRequest {
+  string         user_id = 1;
+  repeated int64 cids    = 2;
+}
+
+message ResolveFeedSubjectsResponse {
+  repeated FeedSubject subjects = 1;
 }
 
 message GetContactProfilesRequest {

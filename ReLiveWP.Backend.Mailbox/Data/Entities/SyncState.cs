@@ -13,9 +13,10 @@ public class DbSyncState
     public DateTime LastSeenAt { get; set; }
     public string? CachedAnnotationNames { get; set; }
 
-    // comma-separated "namespace:LocalName" list from the client's Supported element, cached at
-    // sync key 0 (MS-ASCMD 2.2.3.179 caches it for subsequent synchronizations). Null or empty
-    // means preserve every ghostable element on omission.
+    // the client's Supported element as declared at sync key 0, which MS-ASCMD 2.2.3.179 caches
+    // for subsequent synchronizations. Encodes the spec's three rules: a comma-separated
+    // "namespace:LocalName" list ghosts everything absent from it, "!none" ghosts nothing at all
+    // (no Supported element was sent), and null or empty ghosts everything.
     public string? SupportedElements { get; set; }
 
     // one-deep checkpoint: a retransmit of PreviousSyncKey rolls back to this watermark and

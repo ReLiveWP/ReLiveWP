@@ -41,6 +41,17 @@ public class WebDavItemIdTests
         Assert.Equal(encoded, reference[(separator + 1)..]);
     }
 
+    // an id is a pure function of the path, so it says nothing about who owns the file. anything
+    // downstream that keys on a reference has to add the owner itself, or two users with the same
+    // filename collide (ThumbnailResizerTests covers the one place that does)
+    [Fact]
+    public void IsOwnerAgnostic()
+    {
+        const string path = "Windows phone photos/IMG_0001.jpg";
+
+        Assert.Equal(WebDavItemId.Encode(path), WebDavItemId.Encode(path));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("!!!not base64!!!")]

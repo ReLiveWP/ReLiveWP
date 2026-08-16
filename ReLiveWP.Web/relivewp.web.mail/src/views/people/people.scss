@@ -1,0 +1,393 @@
+@use "sass:map";
+@use "../../theme" as config;
+@use "tokens" as t;
+
+// 8a is a 300 / 1fr / 340 hub. Page already lays out sidebar, content and detail in a row, so the
+// two fixed columns are set here and the middle takes what is left
+.people-page .page-sidebar {
+    width: 300px;
+    padding-right: 28px;
+}
+
+.people-page .page-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+    overflow-y: auto;
+    padding-right: 28px;
+}
+
+.people-page .page-detail {
+    flex: none;
+    width: 340px;
+    box-sizing: border-box;
+    padding-left: 28px;
+    @include t.themed(border-left, rule, "1px solid ");
+}
+
+.panel-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+
+    h2 {
+        margin: 0;
+        font-size: 18pt;
+        font-weight: 200;
+        text-transform: lowercase;
+        @include t.themed(color, ink-strong);
+    }
+}
+
+.panel-count {
+    font-size: 9pt;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-muted);
+}
+
+.panel-label {
+    margin: 0;
+    font-size: 9pt;
+    font-weight: 500;
+    font-variant: small-caps;
+    text-transform: lowercase;
+    @include t.themed(color, ink-muted);
+}
+
+.me-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: 20px 24px 24px;
+    height: calc(100% - 16px);
+    margin-top: 8px;
+    margin-bottom: 8px;
+    background: radial-gradient(circle at top 30px right 30px,
+            var(--accent-colour-bg-2), var(--surface) 60%);
+    @include t.themed(border, rule, "1px solid ");
+}
+
+.me-accent {
+    position: absolute;
+    top: 0;
+    width: 110px;
+    height: 6px;
+    @include t.themed-raw(background-color, config.$accent, var(--accent-colour));
+}
+
+.me-identity {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.me-tile {
+    width: 100%;
+    max-width: 170px;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40pt;
+    font-weight: 200;
+    @include t.themed(background-color, surface-sunken);
+    @include t.themed(color, ink-faint);
+}
+
+.me-heading {
+    font-size: 18pt;
+    font-weight: 200;
+    line-height: 1.1;
+    @include t.themed(color, ink-strong);
+}
+
+.me-name {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 18px 0 0;
+    font-size: t.$font-size-base;
+    line-height: 1.5;
+    @include t.themed(color, ink);
+}
+
+.me-email {
+    font-size: 9pt;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    @include t.themed(color, ink-muted);
+}
+
+.me-rule {
+    width: 100%;
+    border: none;
+    height: 1px;
+    margin: 20px 0 16px;
+    @include t.themed(background-color, rule-faint);
+}
+
+.favourites {
+    margin-top: 8px;
+}
+
+.favourite-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.favourite-tile {
+    position: relative;
+    display: block;
+    height: 124px;
+    min-width: 0;
+    width: 100%;
+    padding: 0;
+    border: none;
+    appearance: none;
+    font: inherit;
+    cursor: pointer;
+    overflow: hidden;
+    @include t.themed(background-color, surface-sunken);
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+}
+
+.favourite-initial {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    font-size: 30pt;
+    font-weight: 200;
+    @include t.themed(color, ink-faint);
+}
+
+.favourite-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 3px 8px;
+    font-size: 9pt;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    @include t.themed(background-color, scrim);
+    @include t.themed(color, ink);
+}
+
+.whats-new .note {
+    margin-top: 12px;
+}
+
+.contact-rail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.contact-rail-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 16px;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+    margin-top: 12px;
+    margin-left: -7px;
+}
+
+.contact-list {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overflow-anchor: none;
+}
+
+.contact-list-canvas {
+    position: relative;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.contact-list-flow {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.contact-group {
+    box-sizing: border-box;
+    height: 34px;
+    padding-top: 16px;
+    font-size: 14pt;
+    font-weight: 200;
+    line-height: 18px;
+    margin: 0 7px;
+    @include t.themed-raw(color, config.$accent, var(--accent-colour));
+    @include t.themed-raw(background-color,
+        map.get(config.$accent-shades, bg-3), var(--accent-colour-bg-3));
+
+    &.first {
+        height: 18px;
+        padding-top: 0;
+    }
+}
+
+.contact-row {
+    box-sizing: border-box;
+    appearance: none;
+    font: inherit;
+    border: none;
+    background: transparent;
+    text-align: left;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    height: 46px;
+    padding: 7px;
+
+    &:hover {
+        cursor: pointer;
+        @include t.themed(background-color, surface-sunken);
+    }
+
+    &.on {
+        @include t.themed(background-color, surface);
+    }
+}
+
+.contact-tile {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    @include t.themed(background-color, surface-sunken);
+    @include t.themed(color, ink-faint);
+}
+
+.contact-name {
+    font-size: t.$font-size-base;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    @include t.themed(color, ink);
+}
+
+.contact-surname {
+    font-weight: 500;
+    @include t.themed(color, ink-strong);
+}
+
+.contact-badge {
+    width: 14px;
+    height: 14px;
+}
+
+// clipped rather than spilling: twenty seven letters are taller than a short window can give the
+// rail, and in normal flow that overflow makes the whole page scroll. the track slides instead
+.contact-index {
+    min-height: 0;
+    overflow: hidden;
+}
+
+// the padding rides on the track, not the frame, so the measured height and the scrolled height
+// are the same box and the last letter lands flush
+.contact-index-track {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 2px;
+}
+
+.contact-index-letter {
+    appearance: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    // the kit gives every button a 72px floor, which would blow this 16px track wide open
+    width: 100%;
+    min-width: 0;
+    font-size: 9pt;
+    line-height: 1.05;
+    text-align: center;
+    cursor: pointer;
+    @include t.themed-raw(color, config.$accent, var(--accent-colour));
+
+    &.empty {
+        cursor: default;
+        @include t.themed(color, ink-faint);
+    }
+}
+
+// one column under the narrow breakpoint: me, then the directory, then the rest
+@media (max-width: 1100px) {
+    .people-page .page-body {
+        flex-direction: column;
+        gap: 24px;
+        overflow-y: auto;
+    }
+
+    .people-page .page-sidebar {
+        order: 1;
+    }
+
+    .people-page .page-detail {
+        order: 2;
+    }
+
+    .people-page .page-content {
+        order: 3;
+    }
+
+    .people-page .page-sidebar,
+    .people-page .page-detail {
+        width: 100%;
+        flex: none;
+        padding-left: 0;
+        padding-right: 0;
+        border-left: none;
+    }
+
+    .people-page .page-content {
+        padding-right: 0;
+        overflow-y: visible;
+    }
+
+    .people-page .contact-list {
+        overflow-y: visible;
+        padding-right: 0;
+    }
+
+    .people-page .contact-group {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+
+    .people-page .contact-index {
+        position: sticky;
+        top: 0;
+        align-self: start;
+    }
+}

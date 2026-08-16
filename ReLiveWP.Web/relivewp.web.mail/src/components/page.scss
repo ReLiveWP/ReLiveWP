@@ -1,0 +1,91 @@
+@use "tokens" as t;
+
+.page {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.page-bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.page-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    min-width: 0;
+
+    h2 {
+        margin: 0;
+        font-size: 28pt;
+        font-weight: 100;
+        text-transform: lowercase;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.page-subtitle {
+    margin: 0;
+    font-size: 12px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-muted);
+}
+
+.page-actions {
+    display: flex;
+    align-items: baseline;
+    flex: none;
+    gap: 20px;
+}
+
+.page-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.page-sidebar {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    box-sizing: border-box;
+    width: 170px;
+    margin-top: 8px;
+    padding-right: 24px;
+}
+
+.page-sidebar-main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.page-sidebar-foot {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.page-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.page-detail {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}

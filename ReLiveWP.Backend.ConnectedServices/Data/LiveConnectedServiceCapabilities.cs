@@ -16,22 +16,24 @@ public enum LiveConnectedServiceCapabilities : uint
     MarketplaceStream = 0x200,
     MarketplacePurchase = 0x400,
     FileStorage = 0x800,
+    SocialPhotos = 0x1000,
 
     Zune = 0x40000000,
     Xbox = 0x80000000,
 
-    All = Email | 
-          Contacts | 
-          Calendar | 
-          Messaging | 
-          PhotoSync | 
-          SocialFeed | 
-          SocialPost | 
-          SocialCheckIn | 
-          SocialNotifications | 
-          MarketplaceStream | 
-          MarketplacePurchase | 
-          FileStorage | 
-          Zune | 
+    All = Email |
+          Contacts |
+          Calendar |
+          Messaging |
+          PhotoSync |
+          SocialFeed |
+          SocialPost |
+          SocialCheckIn |
+          SocialNotifications |
+          MarketplaceStream |
+          MarketplacePurchase |
+          FileStorage |
+          SocialPhotos |
+          Zune |
           Xbox
 }

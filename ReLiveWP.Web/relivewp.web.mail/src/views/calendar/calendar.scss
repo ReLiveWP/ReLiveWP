@@ -1,0 +1,100 @@
+@use "sass:list";
+@use "../../theme" as config;
+@use "tokens" as t;
+
+$palette: "blue", "green", "purple", "yellow", "teal", "magenta", "pink", "red";
+
+@for $index from 1 through list.length($palette) {
+    $colour: t.accent(list.nth($palette, $index));
+
+    [data-calendar="#{$index - 1}"] {
+        --event-ink: #{$colour};
+        --event-ink: light-dark(#{$colour}, #{t.accent-ink($colour)});
+    }
+}
+
+.calendar-list {
+    h3 {
+        margin: 8px 0 4px 0;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: lowercase;
+        font-variant: small-caps;
+        @include t.themed(color, ink-secondary);
+    }
+
+    ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    li {
+        margin-bottom: 2px;
+    }
+
+    label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        font-size: 10.5pt;
+        cursor: pointer;
+        text-transform: lowercase;
+        @include t.themed(color, ink);
+
+        &.off {
+            @include t.themed(color, ink-muted);
+        }
+    }
+    
+    input {
+        flex: none;
+        margin: 0;
+        margin-top: 1px;
+        width: 12px;
+        height: 12px;
+        accent-color: var(--event-ink, var(--accent-ink));
+    }
+}
+
+.calendar-name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.calendar-nav {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+}
+
+// the shared .text-button already carries the small caps, the flat background and the hover
+// underline. all these add is which one is current, and the chevron stays opt-in through .icon
+.calendar-modes {
+    display: flex;
+    gap: 12px;
+
+    button {
+        @include t.themed(color, ink-muted);
+
+        &.on {
+            @include t.themed-raw(color, config.$accent, var(--accent-ink));
+        }
+    }
+}
+
+.calendar-steps {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+
+    // .text-button paints itself with --accent-colour, the raw accent. everything else in this view
+    // uses --accent-ink, which is the same blue in light and a legible one in dark
+    .text-button {
+        @include t.themed-raw(color, config.$accent, var(--accent-ink));
+    }
+}

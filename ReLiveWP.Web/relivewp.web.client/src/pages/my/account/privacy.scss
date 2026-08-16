@@ -1,0 +1,44 @@
+.privacy {
+    max-width: 560px;
+
+    >p.intro {
+        color: var(--ink-secondary);
+        margin-bottom: 16px;
+    }
+
+    .visibility-option {
+        display: block;
+        margin-bottom: 12px;
+        cursor: pointer;
+
+        >input {
+            float: left;
+            margin-top: 3px;
+            margin-right: 8px;
+        }
+
+        .visibility-name {
+            display: block;
+            text-transform: lowercase;
+            font-weight: 500;
+            font-variant: small-caps;
+        }
+
+        .visibility-hint {
+            display: block;
+            overflow: hidden;
+            font-size: 9pt;
+            margin-left: 25px;
+            color: var(--ink-muted);
+        }
+    }
+
+    &.disabled {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    p.error {
+        color: var(--danger);
+    }
+}

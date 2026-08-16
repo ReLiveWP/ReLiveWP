@@ -1,0 +1,28 @@
+{
+  "name": "windowslive-annotation",
+  "description": "The Windows Live extension code page. Two things worth pinning: the page number in SWITCH_PAGE is a bare u_int8 rather than an mb_u_int32, so 0xFE is one byte and not 0x81 0x7E; and 0xFE is in no MS-AS* document, so it has to come from spec/extensions.json rather than the extracted table.",
+  "wbxml": [
+    { "hex": "03 01 6A 00", "note": "header" },
+    { "hex": "00 FE", "note": "SWITCH_PAGE to 254 (WindowsLive) - u_int8, not multi-byte" },
+    { "hex": "45", "note": "Annotations (0x05) with content" },
+    { "hex": "46", "note": "Annotation (0x06) with content" },
+    { "hex": "47 03 49 4D 4D 52 49 00 01", "note": "Name (0x07) = \"IMMRI\"" },
+    { "hex": "48 03 31 3A 61 40 62 00 01", "note": "Value (0x08) = \"1:a@b\"" },
+    { "hex": "01", "note": "END Annotation" },
+    { "hex": "01", "note": "END Annotations" }
+  ],
+  "tree": {
+    "ns": "WindowsLive",
+    "name": "Annotations",
+    "children": [
+      {
+        "ns": "WindowsLive",
+        "name": "Annotation",
+        "children": [
+          { "ns": "WindowsLive", "name": "Name", "children": [{ "text": "IMMRI" }] },
+          { "ns": "WindowsLive", "name": "Value", "children": [{ "text": "1:a@b" }] }
+        ]
+      }
+    ]
+  }
+}

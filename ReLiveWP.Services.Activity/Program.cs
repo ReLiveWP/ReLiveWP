@@ -56,9 +56,16 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ThumbnailResizer>();
-builder.Services.AddScoped<SocialAlbumProvider>();
+builder.Services.AddScoped<SocialAlbumProviderBase, BlueskyAlbumProvider>();
+builder.Services.AddScoped<SocialAlbums>();
 builder.Services.AddScoped<ActivityProviderService>();
 builder.Services.AddScoped<FeedRenderer>();
+builder.Services.AddScoped<ConnectionLookup>();
+builder.Services.AddScoped<FilesViewer>();
+builder.Services.AddScoped<PhotoLibraryService>();
+builder.Services.AddScoped<SocialAlbumService>();
+builder.Services.AddScoped<PhotoUploadService>();
+builder.Services.AddScoped<PhotoStreamService>();
 
 var app = builder.Build();
 

@@ -17,16 +17,16 @@ public interface IProfileService
 public class ProfileService(
     Authentication.AuthenticationClient authentication,
     MailboxStore.MailboxStoreClient mailbox,
+    User.UserClient users,
+    IConfiguration configuration,
     ILogger<ProfileService> logger) : IProfileService
 {
-    // Fallback avatar for CIDs we can't resolve to one of the caller's contacts (unlinked river
-    // authors, etc.). Real contacts use their own stored tile.
     private const string PlaceholderAvatar =
         "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:7rfssi44thh6f4ywcl3u5nvt/bafkreifzzvtmxjraoiym6plysmh3e5wc257aecnapxvs427esswjktmvoy@jpeg";
 
     public async Task<GetManyResponse> GetMany(GetManyRequest message)
     {
-        var token = message.UserHeader?.TicketToken;
+        var token = HttpUtility.HtmlDecode(message.UserHeader?.TicketToken);
         if (string.IsNullOrWhiteSpace(token))
             throw new FaultException("Missing TicketToken.");
 
@@ -62,12 +62,8 @@ public class ProfileService(
             ?? EmailLocalPart(Claim(claims, "email") ?? FindEmail(claims))
             ?? "User";
 
-        // reply.Id is the caller's account id (NameIdentifier), which is the mailbox user_id scope.
         var userId = reply.Id;
-
-        // Requested CID per ProfileId. The wire slot carrying the CID isn't fully pinned down yet,
-        // so scan the id's value slots for the first parseable int64 and log the raw shape for a
-        // device capture. Unparseable ids resolve to null and degrade to the placeholder.
+        var owner = await LoadOwnerAsync(userId);
         var cidByProfile = message.Request.Ids.ToDictionary(id => id, ExtractCid);
 
         var wantedCids = cidByProfile.Values.Where(c => c.HasValue).Select(c => c!.Value).Distinct().ToList();
@@ -90,9 +86,15 @@ public class ProfileService(
         var response = new GetManyResponse();
         foreach (var id in message.Request.Ids)
         {
-            var view = cidByProfile[id] is { } cid && profilesByCid.TryGetValue(cid, out var contact)
-                ? BuildView(contact.DisplayName, string.IsNullOrEmpty(contact.AvatarUrl) ? PlaceholderAvatar : contact.AvatarUrl)
-                : BuildView(fallbackName, PlaceholderAvatar);
+            var cid = cidByProfile[id];
+
+            ProfileView view;
+            if (owner is not null && cid == owner.Cid)
+                view = BuildView(owner.FirstName, owner.LastName, owner.TileUrl ?? PlaceholderAvatar);
+            else if (cid is { } c && profilesByCid.TryGetValue(c, out var contact))
+                view = BuildView(contact.DisplayName, "", string.IsNullOrEmpty(contact.AvatarUrl) ? PlaceholderAvatar : contact.AvatarUrl);
+            else
+                view = BuildView(fallbackName, "", PlaceholderAvatar);
 
             response.GetManyResult.Profiles.Add(new ProfileResponse { ProfileId = id, View = view });
         }
@@ -100,19 +102,46 @@ public class ProfileService(
         return response;
     }
 
-    private static ProfileView BuildView(string displayName, string avatarUrl) => new()
+    private record Owner(long Cid, string FirstName, string LastName, string? TileUrl);
+
+    private async Task<Owner?> LoadOwnerAsync(string userId)
+    {
+        try
+        {
+            var profile = await users.GetUserProfileAsync(new GetUserProfileRequest { UserId = userId });
+            if (!long.TryParse(profile.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var cid))
+                return null;
+
+            var first = profile.HasFirstName ? profile.FirstName : null;
+            var last = profile.HasLastName ? profile.LastName : null;
+            var tile = profile.HasPictureEtag ? TileUrl(profile.Cid) : null;
+
+            return new Owner(cid, first ?? profile.Username, last ?? "", tile);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "could not read the owner profile for {User}", userId);
+            return null;
+        }
+    }
+
+    private string? TileUrl(string cid)
+    {
+        var root = configuration["PublicUrls:Avatars"];
+        return string.IsNullOrWhiteSpace(root) ? null : $"{root.TrimEnd('/')}/{cid}/picture";
+    }
+
+    private static ProfileView BuildView(string displayName, string lastName, string avatarUrl) => new()
     {
         Attributes =
         [
             new(ProfileConstants.ExprDisplayName, new ProfileValue(displayName)),
-            new(ProfileConstants.ExprDisplayLastName, new ProfileValue("")),
+            new(ProfileConstants.ExprDisplayLastName, new ProfileValue(lastName)),
             new(ProfileConstants.ExprUserTileUrl, new ProfileValue(avatarUrl)),
             new(ProfileConstants.ExprUserTileLastModified, new ProfileValue(DateTime.UtcNow)),
         ]
     };
 
-    // Pull the contact CID out of a ProfileId. The device sends it in one of the value slots as a
-    // decimal int64; take the first that parses. Logs the raw slots so the exact slot can be pinned.
     private long? ExtractCid(ProfileId id)
     {
         logger.LogDebug("ProfileId slots: [{Ns1}={V1}] [{Ns2}={V2}] [{Ns3}={V3}]",

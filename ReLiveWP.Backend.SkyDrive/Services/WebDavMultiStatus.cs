@@ -62,20 +62,29 @@ public static class WebDavMultiStatus
     }
 
     private static string? First(List<XElement> props, string name)
-        => props.Select(p => p.Element(Dav + name)?.Value)
-                .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+    {
+        return props.Select(p => p.Element(Dav + name)?.Value)
+                    .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+    }
 
     private static DateTimeOffset ParseModified(string? value)
-        => DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture,
-                                   DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
-            ? parsed
-            : DateTimeOffset.UnixEpoch;
+    {
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture,
+                                       DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
+        {
+            return parsed;
+        }
+        else
+        {
+            return DateTimeOffset.UnixEpoch;
+        }
+    }
 
     public static string NormalisePath(string href)
     {
         var value = href.Trim();
-
-        if (Uri.TryCreate(value, UriKind.Absolute, out var absolute))
+        if (Uri.TryCreate(value, UriKind.Absolute, out var absolute) &&
+            (absolute.Scheme == Uri.UriSchemeHttp || absolute.Scheme == Uri.UriSchemeHttps))
             value = absolute.AbsolutePath;
 
         value = Uri.UnescapeDataString(value);

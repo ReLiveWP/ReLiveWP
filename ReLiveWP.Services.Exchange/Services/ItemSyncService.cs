@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Xml.Serialization;
 using Grpc.Core;
+using Microsoft.Extensions.Options;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
 using ProtoFolderType = ReLiveWP.Services.Grpc.Mailbox.FolderType;
@@ -11,9 +12,14 @@ namespace ReLiveWP.Services.Exchange.Services;
 
 public class ItemSyncService(
     MailboxStore.MailboxStoreClient mailbox,
-    ILogger<ItemSyncService> logger)
+    ILogger<ItemSyncService> logger,
+    IOptions<EasSyncOptions> options,
+    MeProfileWriteback? profileWriteback = null)
 {
     private static readonly IReadOnlySet<string> EmptyServerIds = new HashSet<string>();
+
+    // read once per scope: a monitor would let the flag flip between two collections of one request
+    private readonly bool absentSupportedClearsOmitted = options.Value.AbsentSupportedClearsOmitted;
 
     // bounded so a genuinely contended item still resolves to a conflict rather than spinning
     private const int MaxChangeWriteAttempts = 3;
@@ -54,47 +60,15 @@ public class ItemSyncService(
         return stale;
     }
 
-    public async Task<List<string>> ListDeviceCollectionIdsAsync(string userId, string deviceId, CancellationToken ct = default)
-    {
-        var ids = new List<string>();
-        using var call = mailbox.ListSyncStates(
-            new ListSyncStatesRequest { UserId = userId, DeviceId = deviceId }, cancellationToken: ct);
-        await foreach (var s in call.ResponseStream.ReadAllAsync(ct))
-            ids.Add(s.CollectionId);
-        return ids;
-    }
-
-    public async Task<SyncCollection?> SyncByCollectionIdAsync(string userId,
-                                                               string deviceId,
-                                                               string collectionId,
-                                                               CancellationToken ct = default)
-    {
-        SyncState state;
-        try
-        {
-            state = await mailbox.GetSyncStateAsync(
-                new GetSyncStateRequest { UserId = userId, DeviceId = deviceId, CollectionId = collectionId },
-                cancellationToken: ct);
-        }
-        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
-        {
-            return null;
-        }
-
-        var request = new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, GetChanges = true };
-        return await SyncAsync(userId, deviceId, request, ct);
-    }
-
     public async Task<SyncCollection> SyncAsync(string userId,
                                                 string deviceId,
                                                 SyncCollection request,
                                                 CancellationToken ct = default)
     {
         var collectionId = request.CollectionId;
-        bool hasClientCommands = request.Commands is { } reqCmds &&
+        var hasClientCommands = request.Commands is { } reqCmds &&
             (reqCmds.Add.Count > 0 || reqCmds.Change.Count > 0 || reqCmds.Delete.Count > 0 || reqCmds.Fetch.Count > 0);
-        // explicit GetChanges wins; if absent it defaults to false only at key 0
-        bool getChanges = request.GetChanges ?? (request.SyncKey != "0");
+        var getChanges = request.GetChanges ?? (request.SyncKey != "0");
 
         SyncState? state;
         try
@@ -110,23 +84,22 @@ public class ItemSyncService(
 
         SyncCollection result;
         IReadOnlySet<string> serverChangedIds;
-        GhostingPolicy ghosting = GhostingPolicy.Parse(state?.SupportedElements);
-        int windowSize = SyncEngine.ResolveWindowSize(request.WindowSize);
-        bool windowSizeSent = request.WindowSize.HasValue;
+        GhostingPolicy ghosting = GhostingPolicy.Parse(state?.SupportedElements)
+                                                .Effective(absentSupportedClearsOmitted);
+        var windowSize = SyncEngine.ResolveWindowSize(request.WindowSize);
+        var windowSizeSent = request.WindowSize.HasValue;
 
         if (request.SyncKey == "0")
         {
             var annotationNames = request.Options?.Annotations?.RequestedNames();
-            var supported = GhostingPolicy.FromSupported(request.Supported);
-            result = await InitialSyncAsync(userId, deviceId, collectionId, state, annotationNames, supported, ct);
-            serverChangedIds = EmptyServerIds;
-            if (!supported.IsPreserveAll) ghosting = supported;
+            var declared = GhostingPolicy.FromSupported(request.Supported);
+
+            (result, serverChangedIds) = (await InitialSyncAsync(userId, deviceId, collectionId, state, annotationNames, declared, ct), EmptyServerIds);
+            
+            ghosting = declared.Effective(absentSupportedClearsOmitted);
         }
         else if (state is not null && request.SyncKey == state.PreviousSyncKey && request.SyncKey != state.SyncKey)
         {
-            // client resent a key it never got a response for: roll back to that checkpoint and
-            // recompute from current code rather than replay a stored blob, so retries and
-            // command resends are handled the same way
             state = new SyncState
             {
                 UserId = userId,
@@ -146,8 +119,8 @@ public class ItemSyncService(
         }
         else if (state is null || state.SyncKey != request.SyncKey)
         {
-            // key is neither current nor the one-deep checkpoint: genuinely out of window, re-prime from 0
             if (state is not null)
+            {
                 await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
                 {
                     UserId = userId,
@@ -160,6 +133,7 @@ public class ItemSyncService(
                     PreviousSyncKey = "0",
                     PreviousWatermark = 0,
                 }, cancellationToken: ct);
+            }
 
             return new SyncCollection { CollectionId = collectionId, SyncKey = "0", Status = 3 };
         }
@@ -194,16 +168,12 @@ public class ItemSyncService(
                                                         string collectionId,
                                                         SyncState? state,
                                                         IReadOnlySet<string>? requestedAnnotations,
-                                                        GhostingPolicy supported,
+                                                        GhostingPolicy declared,
                                                         CancellationToken ct)
     {
         var cached = requestedAnnotations is { Count: > 0 }
             ? string.Join(",", requestedAnnotations)
             : string.IsNullOrEmpty(state?.CachedAnnotationNames) ? null : state.CachedAnnotationNames;
-
-        var supportedElements = supported.IsPreserveAll
-            ? state?.SupportedElements ?? string.Empty
-            : supported.Serialize();
 
         await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
         {
@@ -213,7 +183,7 @@ public class ItemSyncService(
             SyncKey = "1",
             Watermark = -1,
             CachedAnnotationNames = cached ?? string.Empty,
-            SupportedElements = supportedElements,
+            SupportedElements = declared.Serialize(),
             PreviousSyncKey = "0",
             PreviousWatermark = 0,
         }, cancellationToken: ct);
@@ -233,7 +203,6 @@ public class ItemSyncService(
         bool windowSizeSent,
         CancellationToken ct)
     {
-        // records a one-deep checkpoint on advance so a retransmit of the prior key can roll back
         Task UpsertAdvancedAsync(string newKey, long newWatermark)
         {
             bool advanced = newKey != state.SyncKey;
@@ -263,7 +232,7 @@ public class ItemSyncService(
             var noContentDelta = SyncEngine.Collapse(noContentEvents);
 
             var key = hasClientCommands ? SyncEngine.NextSyncKey(state.SyncKey) : state.SyncKey;
-            await UpsertAdvancedAsync(key, state.Watermark);
+            await UpsertAdvancedAsync(key, baseline);
             return (new SyncCollection { CollectionId = collectionId, SyncKey = key, Status = 1 }, noContentDelta.AllUpdatedServerIds);
         }
 
@@ -273,8 +242,10 @@ public class ItemSyncService(
 
         if (events.Count == 0)
         {
+            // settles on the baseline rather than writing -1 back: an empty collection that keeps
+            // its "never synced" marker is reported as changed by every Ping, forever
             var key = hasClientCommands ? SyncEngine.NextSyncKey(state.SyncKey) : state.SyncKey;
-            await UpsertAdvancedAsync(key, state.Watermark);
+            await UpsertAdvancedAsync(key, baseline);
             return (new SyncCollection { CollectionId = collectionId, SyncKey = key, Status = 1 }, EmptyServerIds);
         }
 
@@ -472,7 +443,13 @@ public class ItemSyncService(
             {
                 var result = await mailbox.UpdateItemAsync(req, cancellationToken: ct);
                 if (!result.Found) return 8;
-                if (!result.Conflict) return 1;
+                if (!result.Conflict)
+                {
+                    if (profileWriteback is not null && itemClass == "Contact" && IsSelfContact(existing.Contact))
+                        await profileWriteback.WriteBackAsync(userId, existing.Contact, req.Contact, ct);
+
+                    return 1;
+                }
             }
             catch (RpcException e) when (e.StatusCode == StatusCode.InvalidArgument)
             {
@@ -594,23 +571,51 @@ public class ItemSyncService(
     }
 
     internal static ContactItem ApplyContactChange(ContactItem existing, ContactData cd) =>
-        ApplyContactChange(existing, cd, GhostingPolicy.PreserveAll);
+        ApplyContactChange(existing, cd, GhostingPolicy.GhostAll);
 
     internal static ContactItem ApplyContactChange(ContactItem existing, ContactData cd, GhostingPolicy ghosting)
     {
         var merged = ApplyContactOverlay(existing, cd);
         ClearOmittedContactElements(merged, cd, ghosting);
+
+        if (IsSelfContact(existing))
+            RestoreAccountAddresses(merged, existing);
+
         return merged;
+    }
+
+    internal static bool IsSelfContact(ContactItem c) =>
+        c.Annotation is { } a && a.HasContactType &&
+        string.Equals(a.ContactType, "Me", StringComparison.OrdinalIgnoreCase);
+
+    // the account owns these on the me contact, so a device edit never lands and the device gets the
+    // server's value back on its next sync
+    private static void RestoreAccountAddresses(ContactItem merged, ContactItem existing)
+    {
+        if (existing.HasEmail1Address) merged.Email1Address = existing.Email1Address;
+        else merged.ClearEmail1Address();
+
+        if (existing.HasImAddress) merged.ImAddress = existing.ImAddress;
+        else merged.ClearImAddress();
+
+        if (existing.HasImAddress2) merged.ImAddress2 = existing.ImAddress2;
+        else merged.ClearImAddress2();
     }
 
     private static void ClearOmittedContactElements(ContactItem c, ContactData cd, GhostingPolicy g)
     {
-        if (g.IsPreserveAll) return;
+        if (g.PreservesEverything) return;
 
-        void Clear(string name, object? sent, Action clear)
+        void ClearIn(string ns, string name, object? sent, Action clear)
         {
-            if (sent is null && g.ShouldClear(Constants.Contacts, name)) clear();
+            if (sent is null && g.ShouldClear(ns, name)) clear();
         }
+
+        void Clear(string name, object? sent, Action clear) => ClearIn(Constants.Contacts, name, sent, clear);
+
+        // contacts2 is its own code page and its own namespace on the wire, so a Supported
+        // declaration of these arrives keyed "Contacts2:" and never matches "Contacts:"
+        void Clear2(string name, object? sent, Action clear) => ClearIn(Constants.Contacts2, name, sent, clear);
 
         Clear(nameof(cd.FirstName), cd.FirstName, c.ClearFirstName);
         Clear(nameof(cd.MiddleName), cd.MiddleName, c.ClearMiddleName);
@@ -618,8 +623,7 @@ public class ItemSyncService(
         Clear(nameof(cd.Title), cd.Title, c.ClearTitle);
         Clear(nameof(cd.Suffix), cd.Suffix, c.ClearSuffix);
         Clear(nameof(cd.FileAs), cd.FileAs, c.ClearFileAs);
-        Clear(nameof(cd.Alias), cd.Alias, c.ClearAlias);
-        Clear(nameof(cd.NickName), cd.NickName, c.ClearNickName);
+        Clear2(nameof(cd.NickName), cd.NickName, c.ClearNickName);
         Clear(nameof(cd.YomiFirstName), cd.YomiFirstName, c.ClearYomiFirstName);
         Clear(nameof(cd.YomiLastName), cd.YomiLastName, c.ClearYomiLastName);
         Clear(nameof(cd.YomiCompanyName), cd.YomiCompanyName, c.ClearYomiCompanyName);
@@ -627,10 +631,10 @@ public class ItemSyncService(
         Clear(nameof(cd.Department), cd.Department, c.ClearDepartment);
         Clear(nameof(cd.JobTitle), cd.JobTitle, c.ClearJobTitle);
         Clear(nameof(cd.OfficeLocation), cd.OfficeLocation, c.ClearOfficeLocation);
-        Clear(nameof(cd.AccountName), cd.AccountName, c.ClearAccountName);
-        Clear(nameof(cd.ManagerName), cd.ManagerName, c.ClearManagerName);
-        Clear(nameof(cd.CustomerId), cd.CustomerId, c.ClearCustomerId);
-        Clear(nameof(cd.GovernmentId), cd.GovernmentId, c.ClearGovernmentId);
+        Clear2(nameof(cd.AccountName), cd.AccountName, c.ClearAccountName);
+        Clear2(nameof(cd.ManagerName), cd.ManagerName, c.ClearManagerName);
+        Clear2(nameof(cd.CustomerId), cd.CustomerId, c.ClearCustomerId);
+        Clear2(nameof(cd.GovernmentId), cd.GovernmentId, c.ClearGovernmentId);
         Clear(nameof(cd.AssistantName), cd.AssistantName, c.ClearAssistantName);
         Clear(nameof(cd.Email1Address), cd.Email1Address, c.ClearEmail1Address);
         Clear(nameof(cd.Email2Address), cd.Email2Address, c.ClearEmail2Address);
@@ -646,11 +650,11 @@ public class ItemSyncService(
         Clear(nameof(cd.PagerNumber), cd.PagerNumber, c.ClearPagerNumber);
         Clear(nameof(cd.RadioPhoneNumber), cd.RadioPhoneNumber, c.ClearRadioPhoneNumber);
         Clear(nameof(cd.AssistantPhoneNumber), cd.AssistantPhoneNumber, c.ClearAssistantPhoneNumber);
-        Clear(nameof(cd.CompanyMainPhone), cd.CompanyMainPhone, c.ClearCompanyMainPhone);
-        Clear(nameof(cd.MMS), cd.MMS, c.ClearMms);
-        Clear(nameof(cd.IMAddress), cd.IMAddress, c.ClearImAddress);
-        Clear(nameof(cd.IMAddress2), cd.IMAddress2, c.ClearImAddress2);
-        Clear(nameof(cd.IMAddress3), cd.IMAddress3, c.ClearImAddress3);
+        Clear2(nameof(cd.CompanyMainPhone), cd.CompanyMainPhone, c.ClearCompanyMainPhone);
+        Clear2(nameof(cd.MMS), cd.MMS, c.ClearMms);
+        Clear2(nameof(cd.IMAddress), cd.IMAddress, c.ClearImAddress);
+        Clear2(nameof(cd.IMAddress2), cd.IMAddress2, c.ClearImAddress2);
+        Clear2(nameof(cd.IMAddress3), cd.IMAddress3, c.ClearImAddress3);
         Clear(nameof(cd.BusinessAddressStreet), cd.BusinessAddressStreet, c.ClearBusinessAddressStreet);
         Clear(nameof(cd.BusinessAddressCity), cd.BusinessAddressCity, c.ClearBusinessAddressCity);
         Clear(nameof(cd.BusinessAddressState), cd.BusinessAddressState, c.ClearBusinessAddressState);
@@ -668,7 +672,8 @@ public class ItemSyncService(
         Clear(nameof(cd.OtherAddressCountry), cd.OtherAddressCountry, c.ClearOtherAddressCountry);
         Clear(nameof(cd.Spouse), cd.Spouse, c.ClearSpouse);
         Clear(nameof(cd.WebPage), cd.WebPage, c.ClearWebPage);
-        Clear(nameof(cd.Picture), cd.Picture, c.ClearPicture);
+        // Picture is deliberately absent: MS-ASCMD 2.2.3.24 leaves Body, Data and Picture
+        // unchanged when omitted whatever Supported said. GhostingPolicy enforces this too
         Clear(nameof(cd.Birthday), cd.Birthday, () => c.Birthday = null);
         Clear(nameof(cd.Anniversary), cd.Anniversary, () => c.Anniversary = null);
         Clear(nameof(cd.Categories), cd.Categories, c.Categories.Clear);
@@ -763,7 +768,7 @@ public class ItemSyncService(
     }
 
     internal static CalendarItem ApplyCalendarChange(CalendarItem existing, CalendarData cd) =>
-        ApplyCalendarChange(existing, cd, GhostingPolicy.PreserveAll);
+        ApplyCalendarChange(existing, cd, GhostingPolicy.GhostAll);
 
     internal static CalendarItem ApplyCalendarChange(CalendarItem existing, CalendarData cd, GhostingPolicy ghosting)
     {
@@ -777,7 +782,7 @@ public class ItemSyncService(
     // that set stays ghosted no matter what the client sent.
     private static void ClearOmittedCalendarElements(CalendarItem cal, CalendarData cd, GhostingPolicy g)
     {
-        if (g.IsPreserveAll) return;
+        if (g.PreservesEverything) return;
 
         void Clear(string name, object? sent, Action clear)
         {

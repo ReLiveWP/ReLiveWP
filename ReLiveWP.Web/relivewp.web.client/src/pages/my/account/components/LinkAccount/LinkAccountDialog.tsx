@@ -3,7 +3,7 @@ import "../link-account-dialog.scss";
 import { useSignal } from "@preact/signals";
 import { useEffect, useLayoutEffect } from "preact/hooks";
 
-import { Dialog } from "~/components/Dialog";
+import { Dialog } from "@relivewp/ui";
 import { type Stage, stageForService } from "./service-config";
 import { LinkAccountContext } from "./link-account-context";
 import { ServiceStage, HandleStage, CredentialsStage, LoadingStage, RedirectStage, DoneStage, ErrorStage, ConfigureStage, ApplyStage } from "./LinkAccountStages";

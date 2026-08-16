@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "ReLiveWP.Backend.ClearingHouse": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:13665;http://localhost:13666"
+    }
+  }
+}

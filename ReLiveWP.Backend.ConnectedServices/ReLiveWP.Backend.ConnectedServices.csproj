@@ -3,7 +3,11 @@
   <PropertyGroup>
     <UserSecretsId>6cc4b98e-30b7-4216-85cd-65ac619f665a</UserSecretsId>
   </PropertyGroup>
-  
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ReLiveWP.Backend.ConnectedServices.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Duende.IdentityModel.OidcClient" />
     <PackageReference Include="Google.Apis.Auth" />

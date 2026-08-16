@@ -4,7 +4,7 @@ import { ENDPOINT_REQUEST_TOKENS } from "~/util/endpoints";
 import { useAppState } from "~/state/app-state";
 import { useLocation } from "preact-iso";
 import { useSignal } from "@preact/signals";
-import { useTitle } from "~/util/effects";
+import { useTitle } from "@relivewp/ui";
 import { toString } from "~/util/hresult";
 
 export default function Login() {

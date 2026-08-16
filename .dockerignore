@@ -33,8 +33,8 @@
 
 ReLiveWP.Backend.DeviceUpdate/Packages/**
 
-ReLiveWP.Services.Support/wwwroot/support.css
-ReLiveWP.Services.Support/wwwroot/logo.svg
+ReLiveWP.Web/ReLiveWP.Services.Support/wwwroot/support.css
+ReLiveWP.Web/ReLiveWP.Services.Support/wwwroot/logo.svg
 
 data
 /deploy/*

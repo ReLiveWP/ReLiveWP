@@ -14,6 +14,8 @@ builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));
+builder.Services.AddGrpcClient<User.UserClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IProfileService, ProfileService>();
@@ -26,6 +28,7 @@ app.UseRouting();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
+    endpoints.MapDefaultHealthCheckEndpoints();
     endpoints.UseSoapEndpoint<IProfileService>(o =>
     {
         o.Path = "/profile/profile.asmx";

@@ -4,7 +4,7 @@ import "./index.scss"
 import { LocationProvider, useLocation } from "preact-iso";
 import { useEffect } from "preact/hooks";
 
-import { useAccentColor, useTitle } from "~/util/effects";
+import { useAccentColor, useTitle } from "@relivewp/ui";
 import { ENDPOINT_GET_DEVICES } from "~/util/endpoints";
 import { Devices } from "~/util/device-types";
 import { useFetchSignal } from "~/util/use-fetch";

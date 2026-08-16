@@ -1,0 +1,158 @@
+@use "config" as c;
+@use "tokens" as t;
+
+.brand-container {
+    padding-top: 16px;
+    line-height: normal;
+
+    &::after {
+        content: "";
+        display: block;
+        clear: both;
+    }
+
+    // search is first in source so it can float onto the brand line without flexbox,
+    // so narrow widths need flex order to put the brand back on top
+    @media screen and (max-width: t.$breakpoint-narrow) {
+        display: flex;
+        flex-direction: column;
+    }
+
+    a {
+        text-decoration: none !important;
+    }
+
+    .brand-logo {
+        display: inline-block;
+        width: 36px;
+        margin-top: 6px;
+        vertical-align: top;
+    }
+
+    .header-container {
+        display: inline-block;
+        margin-left: 8px;
+    }
+
+    .header-title,
+    .header-subtitle {
+        font-weight: 100;
+        margin: 0;
+    }
+
+    .header-title {
+        font-size: 24pt;
+    }
+
+    .header-subtitle {
+        margin-left: 1px;
+        margin-top: -2px;
+        font-size: 10.5pt;
+    }
+}
+
+.brand-search {
+    float: right;
+    margin-top: 22px;
+
+    @media screen and (max-width: t.$breakpoint-narrow) {
+        float: none;
+        margin-top: 8px;
+        order: 1;
+    }
+}
+
+.header-search {
+    display: inline-block;
+    margin: 0;
+    font-size: 0;
+
+    input[type="search"],
+    input[type="text"] {
+        font-family: inherit;
+        font-size: 14px;
+        padding: 4px 8px;
+        @include t.themed(border, border-input, "1px solid ");
+        width: 220px;
+        max-width: 45vw;
+        vertical-align: middle;
+    }
+
+    input[type="submit"] {
+        font-family: inherit;
+        font-size: 14px;
+        padding: 4px 12px;
+        @include t.themed-raw(border, 1px solid c.$accent, 1px solid var(--accent-colour));
+        @include t.themed-raw(background-color, c.$accent, var(--accent-colour));
+        @include t.themed(color, on-accent);
+        cursor: pointer;
+        vertical-align: middle;
+    }
+}
+
+.header-nav {
+    clear: both;
+
+    @media screen and (max-width: t.$breakpoint-narrow) {
+        margin-top: 8px;
+    }
+
+    .header-items {
+        list-style: none;
+        padding: 0;
+
+        &.leading {
+            float: left;
+            margin-left: -8px;
+
+            @media screen and (max-width: t.$breakpoint-narrow) {
+                display: contents;
+
+                &>li:first-child {
+                    padding-left: 0;
+                }
+            }
+        }
+
+        &.trailing {
+            float: right;
+            margin-right: -8px;
+
+            @media screen and (max-width: t.$breakpoint-narrow) {
+                display: contents;
+
+                &>li:last-child {
+                    padding-right: 0;
+                }
+            }
+        }
+
+        li {
+            display: inline;
+            padding: 0 8px;
+
+            &>a {
+                font-size: 18px;
+                line-height: 24px;
+                text-decoration: none;
+
+                &:not(.text-accent) {
+                    @include t.themed(color, ink);
+                }
+            }
+        }
+    }
+}
+
+.header-splitter {
+    clear: both;
+    border: none;
+    @include t.themed(border-bottom, rule, "1px solid ");
+}
+
+.home-link,
+.home-link:visited,
+.home-link:active,
+.home-link:hover {
+    @include t.themed(color, ink);
+}

@@ -1,0 +1,29 @@
+@model KbIndexViewModel
+@{
+    ViewData["Title"] = "All articles";
+    ViewData["Description"] = $"{Model.Count} help article{(Model.Count == 1 ? "" : "s")} for ReLive for Windows Phone.";
+    ViewData["Canonical"] = "/kb";
+}
+
+<h1>Knowledge base</h1>
+<p class="article-summary">@Model.Count article@(Model.Count == 1 ? "" : "s").</p>
+
+@foreach (var area in Model.Areas)
+{
+    <div class="area" id="area-@area.Key">
+        <h2>@area.Name</h2>
+        <ul class="rows articles">
+            @foreach (var article in area.Articles)
+            {
+                <li>
+                    <span class="id mono">KB@(article.Id)</span>
+                    <a href="@article.Url">@article.Title</a>
+                    @if (!string.IsNullOrEmpty(article.Summary))
+                    {
+                        <span class="summary">@article.Summary</span>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}

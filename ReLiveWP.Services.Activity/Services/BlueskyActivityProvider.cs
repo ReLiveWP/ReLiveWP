@@ -1,7 +1,6 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net;
 using FishyFlip;
-using FishyFlip.Lexicon.App.Bsky.Embed;
 using FishyFlip.Lexicon.App.Bsky.Feed;
 using FishyFlip.Lexicon.App.Bsky.Richtext;
 using FishyFlip.Lexicon.Com.Atproto.Repo;
@@ -11,7 +10,7 @@ using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Activity.Services;
 
-public class BlueskyActivityProvider : ActivityProviderBase
+public class BlueskyActivityProvider : OwnedActivityProviderBase
 {
     private const string PopularWithFriendsUri = "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/with-friends";
     private const string TheGramUri = "at://did:plc:vpkhqolt662uhesyj6nxm7ys/app.bsky.feed.generator/followpics";
@@ -24,12 +23,12 @@ public class BlueskyActivityProvider : ActivityProviderBase
     private readonly ILogger<BlueskyActivityProvider> logger;
 
     public override string Name => "Bluesky";
-    public override string ProviderId => "AT";
+    public override string ProviderId => BlueskyEntryMapper.ProviderId;
 
-    public const string IdentityProviderToken = "atproto";
+    public const string IdentityProviderToken = BlueskyEntryMapper.IdentityProviderToken;
     public override string IdentityProvider => IdentityProviderToken;
 
-    public BlueskyActivityProvider(string userId, 
+    public BlueskyActivityProvider(string userId,
                                    Connection atprotoConnection,
                                    IConfiguration configuration,
                                    ILoggerFactory loggerFactory)
@@ -117,40 +116,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
                 if (total == count)
                     break;
 
-                var entry = CreatePostEntry(feedViewPost);
-                if (entry == null)
-                    continue;
-
-                total++;
-                yield return entry;
-            }
-        } while (total < count && !string.IsNullOrWhiteSpace(cursor));
-    }
-
-    public override async IAsyncEnumerable<EntryModel> GetAuthorEntriesAsync(string provider, string externalId, int count)
-    {
-        if (!string.Equals(provider, IdentityProvider, StringComparison.OrdinalIgnoreCase))
-            yield break;
-
-        var targetDid = ATDid.Create(externalId);
-        if (targetDid == null)
-            yield break;
-
-        var cursor = "";
-        var total = 0;
-        do
-        {
-            var toFetch = Math.Clamp(count - total, 10, 100);
-            var atFeed = (await protocol.Feed.GetAuthorFeedAsync(targetDid, limit: toFetch, cursor: cursor, filter: "posts_no_replies", includePins: false))
-                .HandleResult()!;
-            cursor = WebUtility.UrlEncode(atFeed.Cursor);
-
-            foreach (var feedViewPost in atFeed.Feed)
-            {
-                if (total >= count)
-                    break;
-
-                var entry = CreatePostEntry(feedViewPost);
+                var entry = BlueskyEntryMapper.CreatePostEntry(feedViewPost, did);
                 if (entry == null)
                     continue;
 
@@ -162,7 +128,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
 
     public override async Task<bool> CreateReplyAsync(string provider, string activityId, string text)
     {
-        var uri = ParseActivityIdToUri(provider, activityId);
+        var uri = BlueskyEntryMapper.ParseActivityIdToUri(provider, activityId);
         if (uri == null)
             return false;
 
@@ -213,7 +179,7 @@ public class BlueskyActivityProvider : ActivityProviderBase
 
     public override async IAsyncEnumerable<EntryModel> GetRepliesAsync(string provider, string activityId, int count)
     {
-        var uri = ParseActivityIdToUri(provider, activityId);
+        var uri = BlueskyEntryMapper.ParseActivityIdToUri(provider, activityId);
         if (uri == null)
             yield break;
 
@@ -231,90 +197,9 @@ public class BlueskyActivityProvider : ActivityProviderBase
 
             if (reply is ThreadViewPost { Post: { Record: Post post } postView })
             {
-                yield return MapPostView(postView, post);
+                yield return BlueskyEntryMapper.MapPostView(postView, post, did);
                 total++;
             }
         }
-    }
-
-    private static ATUri? ParseActivityIdToUri(string provider, string activityId)
-    {
-        if (string.Compare("AT", provider, true) != 0)
-            return null;
-
-        // id format: "{identity}+{collection}+{rkey}" => at://{identity}/{collection}/{rkey}
-        var parts = activityId.Split('+');
-        if (parts.Length != 3)
-            return null;
-
-        return new ATUri($"at://{parts[0]}/{parts[1]}/{parts[2]}");
-    }
-
-    private EntryModel? CreatePostEntry(FeedViewPost feedViewPost)
-    {
-        if (feedViewPost.Post is not { Record: Post post } postView || feedViewPost.Reply is { })
-            return null;
-
-        return MapPostView(postView, post);
-    }
-
-    private EntryModel MapPostView(PostView postView, Post post)
-    {
-        var author = new ProfileModel()
-        {
-            IsMe = postView.Author.Did.Equals(this.did),
-            Provider = IdentityProvider,
-            Id = $"{postView.Author.Did}",
-            ScreenName = $"@{postView.Author.Handle}",
-            DisplayName = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,
-            CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}",
-            AvatarUrl = FixImageUrl(postView.Author.Avatar!)!
-        };
-
-        var postId = postView.Uri.Rkey;
-        var postEntry = new EntryModel()
-        {
-            Id = $"{postView.Uri.Identity}+{postView.Uri.Collection}+{postView.Uri.Rkey}",
-            ProviderId = this.ProviderId,
-            EntryType = EntryType.Post,
-            Title = "Post",
-            Content = post.Text ?? "",
-            Published = post.CreatedAt ?? DateTime.Now,
-            Author = author,
-            Categories = ["status"],
-            Generator = "Bluesky",
-            CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}/{postId}",
-            CanReply = !(postView.Viewer?.ReplyDisabled ?? false),
-            ReplyCount = (int)(postView.ReplyCount ?? 0),
-        };
-
-        if (postView.Embed is ViewImages viewImages)
-        {
-            postEntry.Categories.Add("media");
-            postEntry.Categories.Add("photo");
-
-            foreach (var image in viewImages.Images)
-            {
-                postEntry.AdditionalActivities.Add(new PhotoActivityModel()
-                {
-                    Id = image.Fullsize,
-                    ThumbnailUrl = FixImageUrl(image.Thumb)!,
-                    FullSizeUrl = FixImageUrl(image.Fullsize)!,
-                    CanonicalUrl = FixImageUrl(image.Fullsize)!,
-                    MimeType = "image/jpeg"
-                });
-            }
-        }
-
-        // TODO: video
-
-        return postEntry;
-    }
-
-    private static string? FixImageUrl(string? url)
-    {
-        if (url == null) return url;
-
-        return $"{url}@jpeg";
     }
 }

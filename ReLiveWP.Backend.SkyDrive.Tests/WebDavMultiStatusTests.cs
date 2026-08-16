@@ -187,6 +187,17 @@ public class WebDavMultiStatusTests
         Assert.Equal("/a/b", WebDavMultiStatus.NormalisePath("/a/b/"));
     }
 
+    // a rooted href is an absolute file: uri on unix, and running it through Uri drops a %25 in
+    // front of every escape, so the space never comes back
+    [Fact]
+    public void RootedHrefsUnescapeWithoutGoingThroughUri()
+    {
+        Assert.Equal("/photos/Windows phone photos/WP_000084.jpg",
+            WebDavMultiStatus.NormalisePath("/photos/Windows%20phone%20photos/WP_000084.jpg"));
+
+        Assert.Equal("/photos/100% done.jpg", WebDavMultiStatus.NormalisePath("/photos/100%25%20done.jpg"));
+    }
+
     [Fact]
     public void MalformedXmlYieldsNothingRatherThanThrowing()
     {

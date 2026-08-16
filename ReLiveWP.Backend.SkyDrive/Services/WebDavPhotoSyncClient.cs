@@ -32,7 +32,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
 
     public string ServiceId => ServiceName;
 
-    private string Dav(string path)
+    private string ProxyWebDavPath(string path)
         => $"{configuration["Endpoints:ConnectedServices:Proxy"]!.TrimEnd('/')}/proxy/{ServiceName}/{EncodePath(path)}";
 
     private static Dictionary<string, string> Credentials(string userId, string connectionId) => new()
@@ -41,7 +41,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
         ["X-User-ID"] = userId,
     };
 
-    private static HttpRequestMessage Request(HttpMethod method, string url, string userId, string connectionId)
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string url, string userId, string connectionId)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.TryAddWithoutValidation("X-Connection-ID", connectionId);
@@ -54,7 +54,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
         var album = SanitiseSegment(title);
 
         using var client = httpClientFactory.CreateClient();
-        using var request = Request(MkCol, Dav(album), userId, connectionId);
+        using var request = CreateRequest(MkCol, ProxyWebDavPath(album), userId, connectionId);
         using var response = await client.SendAsync(request, ct);
 
         // 405 is the collection already existing, which is the normal case after the first sync
@@ -73,8 +73,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
             return cached;
 
         using var client = httpClientFactory.CreateClient();
-        using var request = Request(Propfind, Dav(albumId), userId, connectionId);
-
+        using var request = CreateRequest(Propfind, ProxyWebDavPath(albumId), userId, connectionId);
         request.Headers.TryAddWithoutValidation("Depth", "1");
         request.Content = new StringContent(ListBody, Encoding.UTF8, "application/xml");
 
@@ -88,7 +87,6 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
             throw new InvalidOperationException($"WebDAV PROPFIND '{albumId}' failed ({(int)response.StatusCode}): {xml}");
 
         var items = new List<ProviderPhoto>();
-
         foreach (var entry in WebDavMultiStatus.Parse(xml))
         {
             if (entry.IsCollection || items.Count >= MaxItems)
@@ -130,7 +128,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
         var path = await ResolveFreeNameAsync(userId, connectionId, albumId, SanitiseSegment(photo.FileName), ct);
         await uploads.StashAsync(connectionId, albumId, photo.FileName, path);
 
-        return new ProviderUploadTarget("PUT", Dav(path), Credentials(userId, connectionId), 0);
+        return new ProviderUploadTarget("PUT", ProxyWebDavPath(path), Credentials(userId, connectionId), 0);
     }
 
     public async Task<ProviderUploadResult> CompleteUploadAsync(string userId, string connectionId, string albumId,
@@ -159,7 +157,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
             : 0;
 
         return Task.FromResult<ProviderContentLocation?>(new ProviderContentLocation(
-            Dav(path), Credentials(userId, connectionId), contentType, 0, null, resizeTo));
+            ProxyWebDavPath(path), Credentials(userId, connectionId), contentType, 0, null, resizeTo));
     }
 
     private async Task<string> ResolveFreeNameAsync(string userId, string connectionId, string albumId,
@@ -176,7 +174,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
             var candidate = attempt == 0 ? fileName : $"{stem} ({attempt}){extension}";
             var path = $"{album}/{candidate}";
 
-            using var request = Request(HttpMethod.Head, Dav(path), userId, connectionId);
+            using var request = CreateRequest(HttpMethod.Head, ProxyWebDavPath(path), userId, connectionId);
             using var response = await client.SendAsync(request, ct);
 
             if (response.StatusCode == HttpStatusCode.NotFound)

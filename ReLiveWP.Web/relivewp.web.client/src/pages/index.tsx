@@ -1,7 +1,7 @@
 import "./index.scss"
 
 import Lumia800 from "~/static/lumia-800.webp"
-import { useTitle } from '~/util/effects';
+import { useTitle } from "@relivewp/ui";
 
 const Index = () => {
     useTitle("home");

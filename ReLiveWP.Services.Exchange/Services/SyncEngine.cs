@@ -51,7 +51,13 @@ public static class SyncEngine
             .Select(g => g.ServerId)
             .ToHashSet(StringComparer.Ordinal);
 
-        groups.Sort((a, b) => a.MaxCommit.CompareTo(b.MaxCommit));
+        // Ordered by earliest event, not latest. The watermark after a truncated window is
+        // "just before the first event we did not deliver", so an excluded group must never own
+        // an earlier event than an included one - otherwise the watermark moves backwards, the
+        // next request re-reads the same events, and the collection never drains.
+        groups.Sort((a, b) => a.MinCommit != b.MinCommit
+            ? a.MinCommit.CompareTo(b.MinCommit)
+            : a.MaxCommit.CompareTo(b.MaxCommit));
 
         bool moreAvailable = windowSize is { } w && groups.Count > w;
         var windowed = moreAvailable ? groups.Take(windowSize!.Value).ToList() : groups;
@@ -79,6 +85,11 @@ public static class SyncEngine
             long lastIncludedMaxCommit = windowed[^1].MaxCommit;
             long minExcludedCommit = groups.Skip(windowSize!.Value).Min(g => g.MinCommit);
             watermark = Math.Min(lastIncludedMaxCommit, minExcludedCommit - 1);
+
+            // The sort above guarantees this, but the cost of being wrong is an unbreakable
+            // client loop rather than a wrong answer, so it is worth asserting.
+            long firstIncludedMinCommit = windowed[0].MinCommit;
+            if (watermark < firstIncludedMinCommit) watermark = firstIncludedMinCommit;
         }
         else
         {

@@ -16,6 +16,7 @@
   "dependencies": {
     "@microsoft/fetch-event-source": "^2.0.1",
     "@preact/signals": "^2.2.1",
+    "@relivewp/ui": "workspace:*",
     "leaflet": "^1.9.4",
     "preact": "^10.27.0",
     "preact-iso": "^2.9.2",

@@ -1,3 +1,5 @@
+@use "controls";
+
 main:has(.my-account) {
     display: flex;
     flex-direction: column;
@@ -63,12 +65,7 @@ main:has(.my-account) {
                         margin-left: 0px;
 
                         &::before {
-                            content: '▶';
-                            transform: scaleX(0.6666);
-                            width: 12px;
-                            font-size: 9pt;
-                            margin-right: 2px;
-                            display: inline-block;
+                            @include controls.chevron;
                         }
                     }
                 }

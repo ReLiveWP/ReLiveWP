@@ -1,0 +1,21 @@
+@use "tokens" as t;
+
+// the borders live on the column rather than on the list inside it, because the column is always
+// there and the list is not: an empty folder, an error or a first load all replace it with a
+// line of text, and the three column rule should not blink out with it
+.mail-page .page-content {
+    flex: none;
+    box-sizing: border-box;
+    width: 380px;
+    @include t.themed(border-left, rule, "1px solid ");
+    @include t.themed(border-right, rule, "1px solid ");
+
+    > .note,
+    > .error {
+        padding: 10px 18px;
+    }
+}
+
+.mail-page .page-actions {
+    align-self: center;
+}

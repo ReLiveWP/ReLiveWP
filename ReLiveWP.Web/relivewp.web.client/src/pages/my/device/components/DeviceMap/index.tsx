@@ -5,7 +5,7 @@ import "./device-map.scss";
 
 import { useMemo } from "preact/hooks";
 import useDeviceImage from "~/util/device-image";
-// import { useColourScheme } from "~/util/effects";
+// import { useColourScheme } from "@relivewp/ui";
 
 // const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 // const TILE_URL = {

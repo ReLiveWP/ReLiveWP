@@ -1,0 +1,38 @@
+.avatar-crop-dialog {
+    // the shared 360px box cannot fit the crop viewport. auto is no good either: a modal dialog is
+    // fixed with both insets set, so it stretches to the screen instead of shrinking to its content
+    height: fit-content;
+    max-height: 100%;
+
+    .buttons {
+        position: static;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    .avatar-crop-viewport {
+        position: relative;
+        overflow: hidden;
+        margin: 12px 0;
+        background: var(--rule);
+        cursor: grab;
+        touch-action: none;
+
+        &:active {
+            cursor: grabbing;
+        }
+
+        img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            max-width: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+    }
+
+    input[type="range"] {
+        display: block;
+    }
+}

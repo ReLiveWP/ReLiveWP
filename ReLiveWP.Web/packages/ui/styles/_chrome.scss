@@ -1,0 +1,37 @@
+@use "sass:map";
+@use "config" as c;
+@use "tokens" as t;
+
+body {
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+
+    @include t.themed-raw(background-color, map.get(c.$accent-shades, bg-3), var(--accent-colour-bg-3));
+
+    background-image: t.accent-gradient-svg(c.$accent-shades);
+    background-image: t.accent-gradient-vars();
+    background-size: 100% 200px;
+}
+
+app {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+header,
+main,
+footer {
+    display: block;
+    max-width: c.$site-max-width;
+    width: 100%;
+    width: calc(100% - #{c.$site-gutter * 2});
+    margin: 0 auto;
+    padding: 0 c.$site-gutter;
+}
+
+main {
+    flex: 1;
+}

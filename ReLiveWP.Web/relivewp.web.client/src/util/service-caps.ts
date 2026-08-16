@@ -15,23 +15,25 @@ export const enum ServiceCaps
     marketplaceStream = 0x200,
     marketplacePurchase = 0x400,
     fileStorage = 0x800,
+    socialPhotos = 0x1000,
 
     zune = 0x40000000,
     xbox = 0x80000000,
 
-    all = email | 
-          contacts | 
-          calendar | 
-          messaging | 
-          photoSync | 
-          socialFeed | 
-          socialPost | 
-          socialCheckIn | 
-          socialNotifications | 
-          marketplaceStream | 
-          marketplacePurchase | 
-          fileStorage | 
-          zune | 
+    all = email |
+          contacts |
+          calendar |
+          messaging |
+          photoSync |
+          socialFeed |
+          socialPost |
+          socialCheckIn |
+          socialNotifications |
+          marketplaceStream |
+          marketplacePurchase |
+          fileStorage |
+          socialPhotos |
+          zune |
           xbox
 }
 
@@ -45,6 +47,7 @@ export const ServiceCapNames : Partial<Record<ServiceCaps, string>> = {
     [ServiceCaps.socialPost]: "Social - Post",
     [ServiceCaps.socialCheckIn]: "Social - Check in",
     [ServiceCaps.socialNotifications]: "Social - Notifications",
+    [ServiceCaps.socialPhotos]: "Social - Photos",
     [ServiceCaps.marketplaceStream]: "Marketplace - Streaming",
     [ServiceCaps.marketplacePurchase]: "Marketplace - Purchases",
     [ServiceCaps.fileStorage]: "SkyDrive", // fuck you BSkyB <3

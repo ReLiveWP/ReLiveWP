@@ -1,0 +1,20 @@
+{
+  "name": "foldersync-initial",
+  "description": "Smallest useful document: the initial FolderSync every client sends. Pins the header bytes, the switch off the default code page, and the content bit.",
+  "wbxml": [
+    { "hex": "03 01 6A 00", "note": "WBXML 1.3, unknown public id, charset UTF-8 (0x6A), empty string table" },
+    { "hex": "00 07", "note": "SWITCH_PAGE to 7 (FolderHierarchy); page 0 is the initial state" },
+    { "hex": "56", "note": "FolderSync (0x16) with content" },
+    { "hex": "52", "note": "SyncKey (0x12) with content" },
+    { "hex": "03 30 00", "note": "STR_I \"0\"" },
+    { "hex": "01", "note": "END SyncKey" },
+    { "hex": "01", "note": "END FolderSync" }
+  ],
+  "tree": {
+    "ns": "FolderHierarchy",
+    "name": "FolderSync",
+    "children": [
+      { "ns": "FolderHierarchy", "name": "SyncKey", "children": [{ "text": "0" }] }
+    ]
+  }
+}

@@ -168,19 +168,34 @@ public class SyncStateReconciliationServiceTests : IDisposable
         Assert.Equal("user-2", remaining.UserId);
     }
 
+    // a device id nothing provisioned is far more likely to be one the gateway parsed wrong than a
+    // device that went away, and deleting its sync state costs the real device its mailbox
     [Fact]
-    public async Task Sweep_deletes_SyncState_for_device_with_no_DeviceInfo_row()
+    public async Task Sweep_keeps_SyncState_for_a_device_with_no_DeviceInfo_row()
     {
-        // Unreachable today (nothing deletes DeviceInfo), but guards the branch for when something does.
         await SeedAsync(NewState(LiveFolderId, deviceId: "ghost-device"));
 
         await using (var db = NewContext())
         {
             var states = await new SyncStateRepairService(db).SweepAsync(null, default);
-            Assert.Equal(1, states);
+            Assert.Equal(0, states);
         }
 
         await using var verify = NewContext();
-        Assert.Empty(verify.SyncStates);
+        Assert.Equal("ghost-device", (await verify.SyncStates.SingleAsync()).DeviceId);
+    }
+
+    [Fact]
+    public async Task Unknown_devices_are_reported_with_the_rows_they_still_hold()
+    {
+        await SeedAsync(NewState(LiveFolderId, deviceId: "ghost-device"));
+
+        await using var db = NewContext();
+        var unknown = await new SyncStateRepairService(db).UnknownDevicesAsync(null, default);
+
+        var ghost = Assert.Single(unknown);
+        Assert.Equal("ghost-device", ghost.DeviceId);
+        Assert.Equal(UserId, ghost.UserId);
+        Assert.Equal(1, ghost.Rows);
     }
 }

@@ -1,6 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { useCallback } from "preact/hooks";
-import { Dialog } from "~/components/Dialog";
+import { Dialog } from "@relivewp/ui";
 import { useAuthenticatedFetch } from "~/state/app-state";
 import { ENDPOINT_DEVICE_PING, populateEndpoint } from "~/util/endpoints";
 

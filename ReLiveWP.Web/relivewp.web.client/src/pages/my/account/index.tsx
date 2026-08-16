@@ -3,11 +3,10 @@ import "./index.scss"
 import { ErrorBoundary, LocationProvider, Route, Router } from "preact-iso";
 
 import AccountDetails from "./account-details";
-import Link from "~/components/Link";
+import { Link, useAccentColor, useTitle } from "@relivewp/ui";
 import LinkedAccounts from "./linked-acounts";
 import SignOut from "./sign-out";
 import Devices from "./devices";
-import { useAccentColor, useTitle } from "~/util/effects";
 import Privacy from "./privacy";
 
 export default function Account() {

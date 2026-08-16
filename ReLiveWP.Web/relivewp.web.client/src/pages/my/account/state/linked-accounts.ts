@@ -11,7 +11,7 @@ import GoogleDriveIcon from "../icons/google-drive.svg";
 import GooglePhotosIcon from "../icons/google-photos.svg";
 import { Signal } from "@preact/signals";
 import { createContext, type JSX } from "preact";
-import { ServiceCaps } from "~/util/service-caps";
+import { ServiceCapNames, ServiceCaps } from "~/util/service-caps";
 
 export type AccountIcon = (props: { class?: string }) => JSX.Element;
 
@@ -77,6 +77,11 @@ export const AccountTypes = {
         name: "webdav share",
         icon: WebDavIcon,
         allowsMany: true
+    },
+    "carddav": {
+        name: "carddav address book",
+        icon: WebDavIcon,
+        allowsMany: true
     }
 } satisfies Record<string, AccountTypeEntry>;
 
@@ -99,7 +104,7 @@ export interface CapabilityGroup {
 }
 
 export const CapabilityGroups: CapabilityGroup[] = [
-    { name: "Social",       caps: ServiceCaps.socialFeed | ServiceCaps.socialPost | ServiceCaps.socialCheckIn | ServiceCaps.socialNotifications },
+    { name: "Social",       caps: ServiceCaps.socialFeed | ServiceCaps.socialPost | ServiceCaps.socialCheckIn | ServiceCaps.socialNotifications | ServiceCaps.socialPhotos },
     { name: "Mail",         caps: ServiceCaps.email },
     { name: "People",       caps: ServiceCaps.contacts },
     { name: "Calendar",     caps: ServiceCaps.calendar },
@@ -115,7 +120,39 @@ export type AccountInfo = {
     url: string
     needs_relink: boolean
     enabled_capabilities?: number
+    shared_capabilities?: number
 }
+
+export const enabledCaps = (account: AccountInfo) => account.enabled_capabilities ?? 0;
+export const sharedCaps = (account: AccountInfo) => account.shared_capabilities ?? 0;
+
+export const isGroupEnabled = (account: AccountInfo, group: CapabilityGroup) =>
+    (enabledCaps(account) & group.caps) !== 0;
+
+export const isMultiCapGroup = (group: CapabilityGroup) =>
+    (group.caps & (group.caps - 1)) !== 0;
+
+export const shareableCaps = (service: AvailableConnectedService, group: CapabilityGroup) =>
+    ((service.shareable_capabilities ?? 0) & group.caps) >>> 0;
+
+export const groupsFor = (service: AvailableConnectedService) =>
+    CapabilityGroups.filter(group => (service.capabilities & group.caps) !== 0);
+
+export const connectionLabel = (typeInfo: AccountTypeEntry, group: CapabilityGroup) =>
+    typeInfo.capOptions?.[group.caps]?.name ?? typeInfo.name;
+
+const stripGroupPrefix = (name: string) => {
+    const separator = name.indexOf(" - ");
+    return separator === -1 ? name : name.slice(separator + 3);
+};
+
+export const enabledCapNames = (account: AccountInfo, group: CapabilityGroup) =>
+    Object.entries(ServiceCapNames).flatMap(([cap, name]) => {
+        const bit = Number(cap);
+        return name && (bit & group.caps) !== 0 && (bit & enabledCaps(account)) !== 0
+            ? [stripGroupPrefix(name)]
+            : [];
+    });
 
 export type Connections = {
     connections: Partial<{ [key in AccountType]: AccountInfo[] | undefined }>
@@ -123,8 +160,9 @@ export type Connections = {
 
 export type AvailableConnectedService = {
     service: string;
-    displayName: string;
+    display_name: string;
     capabilities: number;
+    shareable_capabilities?: number;
 }
 
 export type LinkedAccountsContext = {

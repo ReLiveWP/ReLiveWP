@@ -1,0 +1,41 @@
+{
+  "name": "@relivewp/eas-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Exchange ActiveSync client for browsers and Node",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./nodes": {
+      "types": "./dist/nodes.d.ts",
+      "default": "./dist/nodes.js"
+    }
+  },
+  "files": [
+    "dist",
+    "spec"
+  ],
+  "scripts": {
+    "extract": "node tools/extract.mjs",
+    "extract:check": "node tools/extract.mjs --check",
+    "gen": "node tools/generate.mjs",
+    "gen:check": "node tools/generate.mjs --check",
+    "prebuild": "node tools/generate.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "pretypecheck": "node tools/generate.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "node tools/generate.mjs",
+    "test": "node --test \"test/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  }
+}

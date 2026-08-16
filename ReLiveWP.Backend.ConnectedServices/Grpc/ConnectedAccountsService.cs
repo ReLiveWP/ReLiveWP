@@ -8,15 +8,21 @@ using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 using ReLiveWP.Backend.ConnectedServices.Services;
+using ReLiveWP.ServiceDefaults.Events;
 using ReLiveWP.Services.Grpc;
+using StackExchange.Redis;
 
 namespace ReLiveWP.Backend.ConnectedServices.Grpc;
 
 public class ConnectedAccountsService(IServiceProvider serviceProvider,
                                       IConnectedServicesContainer connectedServices,
                                       PendingOAuthStore pendingOAuths,
-                                      ConnectedServicesDbContext dbContext) : ReLiveWP.Services.Grpc.ConnectedServices.ConnectedServicesBase
+                                      ConnectedServicesDbContext dbContext,
+                                      IConnectionMultiplexer redis,
+                                      ILogger<ConnectedAccountsService> logger) : ReLiveWP.Services.Grpc.ConnectedServices.ConnectedServicesBase
 {
+    private const int MaxSharedUserIds = 50;
+
     #region Account Linking
 
     [Authorize]
@@ -33,6 +39,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         {
             var handler = await ResolveOAuthHandlerAsync(serviceDescription, scope.ServiceProvider);
             var data = await handler.BeginAccountLinkAsync(userId, request.Identifer);
+            data.Transient = request.Transient;
             await pendingOAuths.SetAsync(data);
 
             return new BeginAccountLinkingResponse() { RedirectUri = data.RedirectUri };
@@ -88,6 +95,11 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
             // ditto for `service`
             service = await handler.FinalizeAccountLinkAsync(service, pendingOauth, request.Code, [.. request.Scopes]);
+
+            // the provider handler rebuilds Flags, so this goes on after it rather than before
+            if (pendingOauth.Transient)
+                service.Flags |= LiveConnectedServiceFlags.Transient;
+
             await dbContext.ConnectedServices.AddAsync(service);
 
             serviceId = service.Id;
@@ -122,7 +134,10 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
         using var scope = serviceProvider.CreateScope();
         var handler = await ResolveOAuthHandlerAsync(serviceDescription, scope.ServiceProvider);
-        var data = await handler.BeginAccountLinkAsync(userId, identifier);
+
+        var requested = (LiveConnectedServiceCapabilities)(request.HasRequestedCapabilities ? request.RequestedCapabilities : 0);
+
+        var data = await handler.BeginAccountLinkAsync(userId, identifier, requested);
         data.ExistingConnectionId = connectionId;
 
         await pendingOAuths.SetAsync(data);
@@ -171,6 +186,11 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
         }
 
+        // only ever on a fresh link: re-authenticating an account the user actually keeps must not
+        // quietly turn it into something we delete an hour later
+        if (request.Transient && !request.HasConnectionId)
+            connection.Flags |= LiveConnectedServiceFlags.Transient;
+
         if (request.HasConnectionId)
             dbContext.ConnectedServices.Update(connection);
         else
@@ -214,7 +234,8 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             {
                 Service = connection.ServiceId,
                 DisplayName = connection.DisplayName,
-                Capabilities = (uint)connection.ServiceCapabilities
+                Capabilities = (uint)connection.ServiceCapabilities,
+                ShareableCapabilities = (uint)connection.ShareableCapabilities
             });
         }
 
@@ -228,28 +249,89 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
         var connections = dbContext.ConnectedServices.Where(c =>
             c.UserId == userId &&
+            (request.IncludeTransient || (c.Flags & LiveConnectedServiceFlags.Transient) == 0) &&
             (!request.HasCapabilities || (c.EnabledCapabilities & (LiveConnectedServiceCapabilities)request.Capabilities) == (LiveConnectedServiceCapabilities)request.Capabilities) &&
             (request.Services.Count == 0 || request.Services.Contains(c.Service))
         ).AsAsyncEnumerable();
 
         await foreach (var item in connections)
         {
+            // protobuf setters reject null outright, so every nullable column has to be tested
             var connection = new Connection()
             {
                 Id = item.Id.ToString(),
                 Service = item.Service,
-                ServiceUrl = item.ServiceUrl,
                 Capabilities = (uint)item.EnabledCapabilities,
+                SharedCapabilities = (uint)item.SharedCapabilities,
                 Flags = (ulong)item.Flags,
                 UserId = item.ServiceProfile.UserId,
-                UserName = item.ServiceProfile.Username,
             };
+
+            if (item.ServiceUrl != null)
+                connection.ServiceUrl = item.ServiceUrl;
+
+            if (item.ServiceProfile.Username != null)
+                connection.UserName = item.ServiceProfile.Username;
 
             if (item.ServiceProfile.Label != null)
                 connection.Label = item.ServiceProfile.Label;
 
             await responseStream.WriteAsync(connection);
         }
+    }
+
+    [Authorize]
+    public override async Task<SharedConnectionsResponse> GetSharedConnections(SharedConnectionsRequest request, ServerCallContext context)
+    {
+        if (request.UserIds.Count > MaxSharedUserIds)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, $"At most {MaxSharedUserIds} users can be looked up at once."));
+
+        var ids = new List<Guid>();
+        foreach (var id in request.UserIds)
+        {
+            if (Guid.TryParse(id, out var parsed))
+                ids.Add(parsed);
+        }
+
+        var response = new SharedConnectionsResponse();
+        if (ids.Count == 0)
+            return response;
+
+        var required = (LiveConnectedServiceCapabilities)request.Capabilities;
+
+        var rows = dbContext.ConnectedServices.Where(c =>
+            ids.Contains(c.UserId) &&
+            c.SharedCapabilities != LiveConnectedServiceCapabilities.None &&
+            (!request.HasCapabilities || (c.SharedCapabilities & required) == required) &&
+            (c.Flags & LiveConnectedServiceFlags.Busted) != LiveConnectedServiceFlags.Busted
+        ).AsAsyncEnumerable();
+
+        await foreach (var item in rows)
+        {
+            var shared = new SharedConnection()
+            {
+                OwnerUserId = item.UserId.ToString(),
+                Service = item.Service,
+                UserId = item.ServiceProfile.UserId,
+                SharedCapabilities = (uint)item.SharedCapabilities,
+            };
+
+            if (item.ServiceProfile.Username != null)
+                shared.UserName = item.ServiceProfile.Username;
+
+            if (item.ServiceProfile.DisplayName != null)
+                shared.DisplayName = item.ServiceProfile.DisplayName;
+
+            if (item.ServiceProfile.AvatarUrl != null)
+                shared.AvatarUrl = item.ServiceProfile.AvatarUrl;
+
+            response.Connections.Add(shared);
+        }
+
+        logger.LogInformation("{Viewer} read {Count} shared connection(s) across {Subjects} subject(s)",
+            GetUserId(context), response.Connections.Count, ids.Count);
+
+        return response;
     }
 
     public override async Task<DeleteConnectionResponse> DeleteConnection(DeleteConnectionRequest request, ServerCallContext context)
@@ -260,8 +342,15 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         var connection = await dbContext.ConnectedServices.FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
 
+        var service = connection.Service;
+
         dbContext.ConnectedServices.Remove(connection);
         await dbContext.SaveChangesAsync();
+
+        // whatever this connection was feeding into the mailbox now has nothing behind it, and until
+        // this went out nothing noticed a connection disappearing at all
+        await redis.PublishConnectionDeletedAsync(
+            new ConnectionDeletedEvent(userId.ToString(), connId.ToString(), service, request.DeleteData));
 
         return new DeleteConnectionResponse();
     }
@@ -274,16 +363,22 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         var connection = await dbContext.ConnectedServices.AsTracking().FirstOrDefaultAsync(r => r.UserId == userId && r.Id == connId)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Connection not found!"));
 
-        // Heal rows created before the AvailableCapabilities column existed (migration default was 0)
-        if (connection.AvailableCapabilities == LiveConnectedServiceCapabilities.None &&
-            connectedServices.TryGetValue(connection.Service, out var serviceDescription))
-        {
-            connection.AvailableCapabilities = serviceDescription.ServiceCapabilities;
-        }
+        // heals rows created before AvailableCapabilities existed, and rows linked before a
+        // capability was added to the provider
+        connectedServices.TryGetValue(connection.Service, out var serviceDescription);
+        if (serviceDescription != null)
+            connection.AvailableCapabilities |= serviceDescription.ServiceCapabilities;
 
         connection.EnabledCapabilities = (LiveConnectedServiceCapabilities)request.Capabilities
             & connection.AvailableCapabilities
             & LiveConnectedServiceCapabilities.All;
+
+        if (request.HasSharedCapabilities)
+            connection.SharedCapabilities = (LiveConnectedServiceCapabilities)request.SharedCapabilities;
+
+        // unconditional, so turning a capability off also stops sharing it
+        connection.SharedCapabilities &= connection.EnabledCapabilities
+            & (serviceDescription?.ShareableCapabilities ?? LiveConnectedServiceCapabilities.None);
 
         // TODO: some capabilities can only support one enabled service, so we need to verfiy that
         // TODO: move this somewhere that isn't here, it should be validated Everywhere
@@ -307,6 +402,8 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
                 if ((otherConnection.EnabledCapabilities & cap) == cap)
                     otherConnection.EnabledCapabilities &= ~cap;
             }
+
+            otherConnection.SharedCapabilities &= otherConnection.EnabledCapabilities;
         }
 
         await dbContext.SaveChangesAsync();

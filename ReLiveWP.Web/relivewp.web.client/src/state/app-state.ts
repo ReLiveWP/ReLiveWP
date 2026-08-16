@@ -5,17 +5,13 @@ import { User } from "../util/auth-types";
 import { createContext } from "preact"
 import { useContext } from "preact/hooks";
 
-export type AccentColor = 'red' | 'purple' | 'teal' | 'pink' | 'green' | 'yellow' | 'blue' | 'magenta' | 'zune';
-
 type AppState = {
     token: Signal<string | null>,
     persistent: Signal<boolean>,
     user: Signal<User>,
     isAuthenticated: Signal<boolean>,
-    accentStack: Signal<AccentColor[]>
-    accent: Signal<AccentColor>,
-    accentColor: Signal<string>,
-    authenticatedFetch: Signal<typeof fetch | undefined>
+    authenticatedFetch: Signal<typeof fetch | undefined>,
+    refreshUser: () => Promise<void>
 }
 
 const AppStateContext = createContext<AppState>(null!);
@@ -41,28 +37,44 @@ function createAppState() {
     return appState;
 }
 
+async function loadUser({ token, user, authenticatedFetch }: AppState) {
+    const value = token.value;
+    if (!value) return;
+
+    try {
+        const _fetch = authenticatedFetch.value;
+        const response = await _fetch!(ENDPOINT_GET_USER, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            token.value = null;
+            return;
+        }
+
+        user.value = await response.json() as User;
+    }
+    catch {
+        token.value = null;
+    }
+}
+
 function createAppStateSignals(): AppState {
     const tokenValue = localStorage.getItem("token") ?? sessionStorage.getItem("token");
 
     const token = new Signal<string | null>(tokenValue);
     const persistent = new Signal(sessionStorage.getItem("token") === null);
     const user = new Signal();
-    const accentStack = new Signal<AccentColor[]>(['red']);
-    const accent = computed(() => accentStack.value[accentStack.value.length - 1]);
 
-    return {
+    const state: AppState = {
         token,
         persistent,
         user,
+        refreshUser: () => loadUser(state),
         isAuthenticated: computed(() => !!token.value),
-        accent,
-        accentStack,
-        accentColor: computed(() => {
-            const name = accent.value === 'zune' ? 'zune1' : accent.value;
-            return getComputedStyle(document.documentElement)
-                .getPropertyValue(`--accent-colour-${name}`)
-                .trim();
-        }),
         authenticatedFetch: computed(() => {
             const value = token.value;
             if (!value)
@@ -85,9 +97,13 @@ function createAppStateSignals(): AppState {
             }
         })
     };
+
+    return state;
 }
 
-function configureAppStateEffects({ token, persistent, user, authenticatedFetch }: AppState) {
+function configureAppStateEffects(state: AppState) {
+    const { token, persistent } = state;
+
     effect(() => {
         const value = token.value;
         if (!value) {
@@ -105,27 +121,7 @@ function configureAppStateEffects({ token, persistent, user, authenticatedFetch 
 
         if (!value) return;
 
-        (async () => {
-            try {
-                const _fetch = authenticatedFetch.value;
-                const response = await _fetch!(ENDPOINT_GET_USER, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                    }
-                });
-
-                if (!response.ok) {
-                    token.value = null;
-                    return;
-                }
-
-                user.value = await response.json() as User;
-            }
-            catch {
-                token.value = null;
-            }
-        })();
+        loadUser(state);
     });
 }
 

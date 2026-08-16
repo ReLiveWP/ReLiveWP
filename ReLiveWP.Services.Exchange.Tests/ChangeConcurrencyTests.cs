@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Exchange.Services;
 using ReLiveWP.Services.Grpc.Mailbox;
@@ -34,12 +35,14 @@ public class ChangeConcurrencyTests
         Contact = new ProtoContactItem { FirstName = firstName },
     };
 
-    private static ItemSyncService NewService(FakeMailboxStoreClient client) =>
-        new(client, NullLogger<ItemSyncService>.Instance);
+    private static ItemSyncService NewService(FakeMailboxStoreClient client,
+                                              bool absentSupportedClearsOmitted = false) =>
+        new(client, NullLogger<ItemSyncService>.Instance,
+            Options.Create(new EasSyncOptions { AbsentSupportedClearsOmitted = absentSupportedClearsOmitted }));
 
     private static Task<int> Change(ItemSyncService svc, SyncChange change) =>
         svc.HandleChangeAsync(User, "Contact", change, new HashSet<string>(),
-            SyncConflict.ServerWins, GhostingPolicy.PreserveAll, CancellationToken.None);
+            SyncConflict.ServerWins, GhostingPolicy.GhostAll, CancellationToken.None);
 
     [Fact]
     public async Task Change_sends_the_version_it_read()
@@ -142,7 +145,7 @@ public class ChangeConcurrencyTests
 
         var status = await svc.HandleChangeAsync(User, "Contact", ChangeWith("Ada B"),
             new HashSet<string> { ServerId }, SyncConflict.ServerWins,
-            GhostingPolicy.PreserveAll, CancellationToken.None);
+            GhostingPolicy.GhostAll, CancellationToken.None);
 
         Assert.Equal(7, status);
         Assert.Equal(0, writes);

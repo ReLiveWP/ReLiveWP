@@ -38,6 +38,9 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
                     b.Property<long>("AvailableCapabilities")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("DPoPKeyId")
                         .HasColumnType("text");
 
@@ -70,6 +73,9 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
 
                     b.Property<string>("ServiceUrl")
                         .HasColumnType("text");
+
+                    b.Property<long>("SharedCapabilities")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("TokenEndpoint")
                         .HasColumnType("text");

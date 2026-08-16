@@ -16,6 +16,9 @@ public class LiveConnectedService
     public required LiveConnectedServiceFlags Flags { get; set; } = LiveConnectedServiceFlags.None;
     public required LiveConnectedServiceCapabilities AvailableCapabilities { get; set; }
     public required LiveConnectedServiceCapabilities EnabledCapabilities { get; set; }
+    public LiveConnectedServiceCapabilities SharedCapabilities { get; set; }
+
+    public DateTimeOffset? CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     [ConcurrencyCheck]
     public uint RowVersion { get; set; }

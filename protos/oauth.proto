@@ -20,6 +20,8 @@ service ConnectedServices {
 
   rpc GetSupportedConnections(google.protobuf.Empty) returns (SupportedConnectionsResponse);
   rpc GetConnections(ConnectionsRequest) returns (stream Connection);
+  
+  rpc GetSharedConnections(SharedConnectionsRequest) returns (SharedConnectionsResponse);
 
   rpc UpdateCapabilities(UpdateCapabilitiesRequest) returns (google.protobuf.Empty);
 }
@@ -31,10 +33,12 @@ message JsonWebKeysResponse {
 message BeginAccountLinkingRequest {
   string service   = 1;
   string identifer = 2;
+  bool transient = 3;
 }
 
 message BeginRelinkRequest {
   string connectionId = 1;
+  optional uint32 requestedCapabilities = 2;
 }
 
 message BeginAccountLinkingResponse {
@@ -60,12 +64,14 @@ message CredentialLinkRequest {
   string          secret       = 4;
   optional string connectionId = 5;
   optional string label        = 6;
+  bool            transient    = 7;
 }
 
 message SupportedConnection {
-  string service      = 1;
-  string displayName  = 2;
-  uint32 capabilities = 3;
+  string service               = 1;
+  string displayName           = 2;
+  uint32 capabilities          = 3;
+  uint32 shareableCapabilities = 4;
 }
 
 message SupportedConnectionsResponse {
@@ -75,6 +81,7 @@ message SupportedConnectionsResponse {
 message ConnectionsRequest {
   repeated string services     = 1;
   optional uint32 capabilities = 2;
+  bool includeTransient = 3;
 }
 
 message Connection {
@@ -88,10 +95,32 @@ message Connection {
   optional string userName     = 7;
   optional string emailAddress = 8;
   optional string label        = 9;
+
+  uint32          sharedCapabilities = 10;
+}
+
+message SharedConnectionsRequest {
+  repeated string userIds      = 1;
+  optional uint32 capabilities = 2;
+}
+
+message SharedConnection {
+  string          ownerUserId        = 1;
+  string          service            = 2;
+  string          userId             = 3;
+  optional string userName           = 4;
+  optional string displayName        = 5;
+  optional string avatarUrl          = 6;
+  uint32          sharedCapabilities = 7;
+}
+
+message SharedConnectionsResponse {
+  repeated SharedConnection connections = 1;
 }
 
 message DeleteConnectionRequest {
   string connectionId = 1;
+  bool deleteData = 2;
 }
 
 // todo: empty?
@@ -100,4 +129,5 @@ message DeleteConnectionResponse { }
 message UpdateCapabilitiesRequest {
   string connectionId = 1;
   uint32 capabilities = 2;
+  optional uint32 sharedCapabilities = 3;
 }

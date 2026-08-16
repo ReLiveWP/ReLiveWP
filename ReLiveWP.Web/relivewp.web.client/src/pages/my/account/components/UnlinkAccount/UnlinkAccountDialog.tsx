@@ -2,7 +2,7 @@ import { useCallback } from "preact/hooks";
 import { type AccountType, useLinkedAccounts } from "../../state/linked-accounts";
 import "../link-account-dialog.scss";
 
-import { Dialog } from "~/components/Dialog";
+import { Dialog } from "@relivewp/ui";
 import { useComputed, useSignal } from "@preact/signals";
 import { useAuthenticatedFetch } from "~/state/app-state";
 
@@ -19,13 +19,17 @@ export default function UnlinkAccountDialog({ onClose, id, service: type }: {
 
     const isEnabled = useSignal(true);
     const error = useSignal<string | null>(null)
+    const deleteData = useSignal(false);
 
     const account = useComputed(() => linkedAccounts.value.connections[type]?.find(i => i.id === id));
     const unlinkAccount = useCallback(async () => {
         isEnabled.value = false;
 
         try {
-            const params = new URLSearchParams([["connectionId", id]])
+            const params = new URLSearchParams([
+                ["connectionId", id],
+                ["deleteData", String(deleteData.value)],
+            ])
             const response = await fetch(ENDPOINT_DELETE_CONNECTION + '?' + params.toString(), {
                 method: 'DELETE',
                 headers: {
@@ -53,6 +57,23 @@ export default function UnlinkAccountDialog({ onClose, id, service: type }: {
         <Dialog class={'unlink-account-dialog' + className} onClose={onClose}>
             <h1>unlinking account</h1>
             <p>are you sure you want to unlink {account.value?.name}?</p>
+
+            <ul class="unlink-choice">
+                <li>
+                    <label>
+                        <input type="radio" name="unlink-data" checked={!deleteData.value}
+                            onChange={() => deleteData.value = false} />
+                        keep anything it put on my phone
+                    </label>
+                </li>
+                <li>
+                    <label>
+                        <input type="radio" name="unlink-data" checked={deleteData.value}
+                            onChange={() => deleteData.value = true} />
+                        remove it as well
+                    </label>
+                </li>
+            </ul>
 
             {error.value && <p class="error">{error.value}</p>}
 

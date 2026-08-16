@@ -15,6 +15,7 @@ public class SkyDriveDbContext : DbContext
     public DbSet<SkyLibrary> Libraries { get; set; }
     public DbSet<SkyAlbumItem> AlbumItems { get; set; }
     public DbSet<SkyProviderAlbum> ProviderAlbums { get; set; }
+    public DbSet<SkyAlbumCover> AlbumCovers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -40,5 +41,8 @@ public class SkyDriveDbContext : DbContext
 
         modelBuilder.Entity<SkyProviderAlbum>()
             .HasKey(a => new { a.OwnerId, a.Album, a.Provider });
+
+        modelBuilder.Entity<SkyAlbumCover>()
+            .HasKey(c => new { c.OwnerId, c.AlbumRef });
     }
 }

@@ -22,7 +22,7 @@ public class UsersController(
     public async Task<ActionResult> Status(long id, [FromBody] LiveEntry entry)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
-        var provider = await activityProvider.GetActivityProviderAsync();
+        var provider = await activityProvider.GetOwnedProviderAsync();
         if (provider == null)
             return NoContent();
 
@@ -57,9 +57,6 @@ public class UsersController(
         [FromQuery(Name = "$xslt")] string? xslt = null)
         => ContactFeedAsync(id, count, "activities_route_for_user");
 
-    // Per-contact feed: resolve the contact CID to its linked external identities, fetch each
-    // identity's author feed, and merge. Every entry binds to this one contact CID so the card's
-    // social tab shows all of the contact's accounts, merged.
     private async Task<ActionResult<LiveFeed>> ContactFeedAsync(string id, int count, string routeName)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
@@ -84,12 +81,9 @@ public class UsersController(
             Links = [new Link(this.Url.Link(routeName, new { provider = "WL", id = cid.ToString(CultureInfo.InvariantCulture) }))]
         };
 
-        var provider = await activityProvider.GetActivityProviderAsync();
-        if (provider == null)
-            return feed;
-
+        var sources = await activityProvider.GetContactFeedSourcesAsync(cid, User.Id()!, HttpContext.RequestAborted);
         feed.Entries.AddRange(
-            await feeds.RenderContactFeedAsync(Url, provider, cid, count, User.Id()!));
+            await feeds.RenderContactFeedAsync(Url, activityProvider.PublicProviders, sources, cid, count));
 
         return feed;
     }

@@ -1,0 +1,24 @@
+{
+  "name": "string-table",
+  "description": "String table plus a STR_T reference. Nothing in EAS emits one and ASWBXML rejects the document outright, but [WBXML1.3] 5.7 allows it and a third-party server is entitled to use it. Decode-only: we always write an empty string table.",
+  "decodeOnly": true,
+  "wbxml": [
+    { "hex": "03 01 6A", "note": "WBXML 1.3, unknown public id, UTF-8" },
+    { "hex": "06", "note": "string table length 6" },
+    { "ascii": "Hello", "note": "string table entry at offset 0" },
+    { "hex": "00", "note": "terminator" },
+    { "hex": "00 07", "note": "SWITCH_PAGE to 7 (FolderHierarchy)" },
+    { "hex": "56", "note": "FolderSync (0x16) with content" },
+    { "hex": "52", "note": "SyncKey (0x12) with content" },
+    { "hex": "83 00", "note": "STR_T, offset 0 into the string table" },
+    { "hex": "01", "note": "END SyncKey" },
+    { "hex": "01", "note": "END FolderSync" }
+  ],
+  "tree": {
+    "ns": "FolderHierarchy",
+    "name": "FolderSync",
+    "children": [
+      { "ns": "FolderHierarchy", "name": "SyncKey", "children": [{ "text": "Hello" }] }
+    ]
+  }
+}

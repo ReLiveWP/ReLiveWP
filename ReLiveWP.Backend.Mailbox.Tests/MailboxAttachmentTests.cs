@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.Data.Sqlite;
@@ -41,7 +42,7 @@ public class MailboxAttachmentTests : IDisposable
     }
 
     private MailboxStoreService NewService(MailboxDbContext db) =>
-        new(db, new MailboxIntegrityService(db), new SyncStateRepairService(db), new MailboxDeletionService(db));
+        new(db, new MailboxIntegrityService(db), new SyncStateRepairService(db), new MailboxDeletionService(db), FakeUserClient.NoLinks(db));
 
     private static ServerCallContext NewCallContext() => new StubCallContext();
 

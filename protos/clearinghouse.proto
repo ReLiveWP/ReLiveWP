@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReLiveWP.Services.Grpc.ClearingHouse";
+
+package clearinghouse;
+
+service ClearingHouse {
+  rpc SyncContactsNow (ContactSyncRequest)    returns (ContactSyncStatus);
+  rpc SetContactSync  (SetContactSyncRequest) returns (ContactSyncStatus);
+  rpc GetContactSync  (GetContactSyncRequest) returns (GetContactSyncResponse);
+}
+
+message ContactSyncRequest {
+  string connection_id = 1;
+}
+
+message SetContactSyncRequest {
+  string connection_id = 1;
+  bool   enabled       = 2;
+}
+
+message GetContactSyncRequest {
+  optional string connection_id = 1;
+}
+
+message GetContactSyncResponse {
+  repeated ContactSyncStatus connections = 1;
+}
+
+message ContactSyncStatus {
+  string connection_id = 1;
+  string service_id    = 2;
+
+  bool   enabled       = 3;
+  bool   running       = 4;
+  bool   queued        = 5;
+
+  optional string last_synced_at = 6;
+  optional string last_failure   = 7;
+
+  int32 created = 8;
+  int32 updated = 9;
+  int32 deleted = 10;
+  int32 skipped = 11;
+}

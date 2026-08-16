@@ -32,6 +32,10 @@ public class AccountCreatedSubscriber(
             using var scope = scopeFactory.CreateScope();
             var provisioner = scope.ServiceProvider.GetRequiredService<MailboxProvisioningService>();
             await provisioner.ProvisionAsync(evt.UserId, evt.Email, evt.Username);
+
+            // the seed only knows the username, so pull the real name and tile over
+            var mirror = scope.ServiceProvider.GetRequiredService<MeContactMirrorService>();
+            await mirror.MirrorFromIdentityAsync(evt.UserId);
         }
         catch (Exception ex)
         {

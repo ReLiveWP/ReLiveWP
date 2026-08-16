@@ -1,0 +1,39 @@
+{
+  "name": "@relivewp/ui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared site chrome and Metro styling for the ReLiveWP web apps",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles/*": "./styles/*",
+    "./logo.svg": "./logo.svg"
+  },
+  "files": [
+    "dist",
+    "styles",
+    "logo.svg"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@preact/signals": "^2.2.1",
+    "preact": "^10.27.0",
+    "preact-iso": "^2.9.2"
+  },
+  "devDependencies": {
+    "@preact/signals": "^2.2.1",
+    "preact": "^10.27.0",
+    "preact-iso": "^2.9.2",
+    "typescript": "^5.9.2"
+  }
+}

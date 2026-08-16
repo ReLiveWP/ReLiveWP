@@ -9,8 +9,8 @@ export default function LinkedAccountsEmptyState() {
 
     return (
         <div class="linked-accounts-empty">
-            <h4>TODO: no accounts linked yet heading</h4>
-            <p>TODO: no accounts linked yet description</p>
+            <h4>start linking</h4>
+            <p>You don't have any accounts linked! Click below to get started.</p>
             <ServicePicker services={services} onSelect={(service) => openDialog({ dialog: 'link', service })} />
         </div>
     );

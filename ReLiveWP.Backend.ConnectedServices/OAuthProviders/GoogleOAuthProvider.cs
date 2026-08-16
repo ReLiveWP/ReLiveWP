@@ -19,7 +19,11 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
 {
     private readonly ConnectedServiceDescription description = connectedServices[SERVICE_NAME];
 
-    public async Task<LivePendingOAuth> BeginAccountLinkAsync(Guid userId, string identifier)
+    public Task<LivePendingOAuth> BeginAccountLinkAsync(Guid userId, string identifier) =>
+        BeginAccountLinkAsync(userId, identifier, LiveConnectedServiceCapabilities.None);
+
+    public async Task<LivePendingOAuth> BeginAccountLinkAsync(
+        Guid userId, string identifier, LiveConnectedServiceCapabilities requested)
     {
         var state = CryptoRandom.CreateUniqueId();
         var codeVerifier = CryptoRandom.CreateUniqueId(32);
@@ -100,7 +104,7 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         service.RefreshToken = tokenResult.RefreshToken!;
         service.ExpiresAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(tokenResult.ExpiresIn);
         service.Flags = LiveConnectedServiceFlags.None;
-        service.EnabledCapabilities = 0;
+        service.EnabledCapabilities &= caps;
         service.AvailableCapabilities = caps;
         service.AuthorizationEndpoint = state.AuthorizationEndpoint;
         service.TokenEndpoint = state.TokenEndpoint!;
@@ -162,22 +166,28 @@ public class GoogleOAuthProvider(IConnectedServicesContainer connectedServices,
         service.ServiceProfile.EmailAddress = response.Email;
     }
 
-    private static LiveConnectedServiceCapabilities GetCapabilitiesFromScopes(string[] scopes)
+    private const string ScopePrefix = "https://www.googleapis.com/auth/";
+
+    internal static LiveConnectedServiceCapabilities GetCapabilitiesFromScopes(string[] scopes)
     {
         LiveConnectedServiceCapabilities caps = 0;
-        foreach (var _scope in scopes)
+
+        foreach (var raw in scopes)
         {
-            var scope = _scope.Trim();
-            if (scope.StartsWith("https://www.googleapis.com/auth/contacts"))
-                caps |= LiveConnectedServiceCapabilities.Contacts;
-            if (scope.StartsWith("https://www.googleapis.com/auth/calendar"))
-                caps |= LiveConnectedServiceCapabilities.Calendar;
-            if (scope.StartsWith("https://www.googleapis.com/auth/drive"))
-                caps |= LiveConnectedServiceCapabilities.FileStorage;
-            if (scope.StartsWith("https://www.googleapis.com/auth/photoslibrary"))
-                caps |= LiveConnectedServiceCapabilities.PhotoSync;
-            if (scope.StartsWith("https://www.googleapis.com/auth/gmail"))
-                caps |= LiveConnectedServiceCapabilities.Email;
+            var scope = raw.Trim();
+            if (!scope.StartsWith(ScopePrefix, StringComparison.Ordinal)) continue;
+
+            var name = scope[ScopePrefix.Length..];
+
+            caps |= name.Split('.')[0] switch
+            {
+                "contacts" => LiveConnectedServiceCapabilities.Contacts,
+                "calendar" => LiveConnectedServiceCapabilities.Calendar,
+                "drive" => LiveConnectedServiceCapabilities.FileStorage,
+                "photoslibrary" => LiveConnectedServiceCapabilities.PhotoSync,
+                "gmail" => LiveConnectedServiceCapabilities.Email,
+                _ => 0,
+            };
         }
 
         return caps;

@@ -30,6 +30,16 @@ public static class IdentityExtensions
     }
 
 
+    public class AddExchangeOrLiveIDAuthenticationOptions
+    {
+        public AddExchangeOrLiveIDAuthenticationOptions() { }
+
+        public Action<GrpcClientFactoryOptions>? IdentityGrpcConfiguration { internal get; set; }
+        public Action<ExchangeAuthOptions>? ExchangeConfiguration { internal get; set; }
+        public Action<LiveIDAuthOptions>? LiveIDConfiguration { internal get; set; }
+        public Action<AuthorizationOptions>? AuthorizationConfiguration { internal get; set; }
+    }
+
     public class AddGrpcAuthenticationOptions
     {
         public AddGrpcAuthenticationOptions() { }
@@ -84,6 +94,53 @@ public static class IdentityExtensions
         collection.AddAuthentication(LiveIDAuthHandler.SchemeName)
                   .AddScheme<LiveIDAuthOptions, LiveIDAuthHandler>(LiveIDAuthHandler.SchemeName, opts.LiveIDConfiguration);
 
+
+        if (opts.AuthorizationConfiguration != null)
+        {
+            collection.AddAuthorization(opts.AuthorizationConfiguration);
+        }
+        else
+        {
+            collection.AddAuthorization();
+        }
+    }
+
+    public const string ExchangeOrLiveIDScheme = "ExchangeOrLiveID";
+
+    public static void AddExchangeOrLiveIDAuthentication(this IServiceCollection collection, Action<AddExchangeOrLiveIDAuthenticationOptions> options)
+    {
+        var opts = new AddExchangeOrLiveIDAuthenticationOptions();
+        options(opts);
+
+        if (opts.IdentityGrpcConfiguration != null)
+        {
+            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient", opts.IdentityGrpcConfiguration);
+        }
+        else
+        {
+            collection.AddGrpcClient<Authentication.AuthenticationClient>("Identity_GrpcClient");
+        }
+
+        collection.AddAuthentication(ExchangeOrLiveIDScheme)
+                  .AddPolicyScheme(ExchangeOrLiveIDScheme, ExchangeOrLiveIDScheme, o =>
+                  {
+                      o.ForwardDefaultSelector = ctx =>
+                      {
+                          var auth = ctx.Request.Headers.Authorization.ToString();
+                          if (auth.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+                              return ExchangeAuthHandler.SchemeName;
+                          if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                              return LiveIDAuthHandler.SchemeName;
+
+                          // with no credentials a device must get WWW-Authenticate: Basic and a browser
+                          // must not, or it raises a native auth modal. Origin is the only signal here.
+                          return string.IsNullOrEmpty(ctx.Request.Headers.Origin)
+                              ? ExchangeAuthHandler.SchemeName
+                              : LiveIDAuthHandler.SchemeName;
+                      };
+                  })
+                  .AddScheme<ExchangeAuthOptions, ExchangeAuthHandler>(ExchangeAuthHandler.SchemeName, opts.ExchangeConfiguration)
+                  .AddScheme<LiveIDAuthOptions, LiveIDAuthHandler>(LiveIDAuthHandler.SchemeName, opts.LiveIDConfiguration);
 
         if (opts.AuthorizationConfiguration != null)
         {

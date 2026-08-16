@@ -7,6 +7,20 @@ package identity;
 service User {
   rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
   rpc ListUsers(ListUsersRequest) returns (stream UserSummary);
+  rpc LookupUsersByEmail(LookupUsersByEmailRequest) returns (LookupUsersByEmailResponse);
+
+  rpc GetUserProfile(GetUserProfileRequest) returns (UserProfile);
+  rpc UpdateUserProfile(UpdateUserProfileRequest) returns (UserProfile);
+  rpc SetUserPicture(SetUserPictureRequest) returns (UserProfile);
+  rpc ClearUserPicture(ClearUserPictureRequest) returns (UserProfile);
+  rpc GetUserPicture(GetUserPictureRequest) returns (GetUserPictureResponse);
+}
+
+
+enum ProfileVisibility {
+    PROFILE_VISIBILITY_PRIVATE = 0;
+    PROFILE_VISIBILITY_MUTUAL = 1;
+    PROFILE_VISIBILITY_PUBLIC = 2;
 }
 
 message GetUserInfoRequest {
@@ -18,6 +32,11 @@ message GetUserInfoResponse {
   string cid          = 2;
   string username     = 3;
   string emailAddress = 4;
+
+  optional string firstName   = 5;
+  optional string lastName    = 6;
+  optional string pictureEtag = 7;
+  optional ProfileVisibility visibility = 8;
 }
 
 message ListUsersRequest {
@@ -27,4 +46,77 @@ message UserSummary {
   string id           = 1;
   string username     = 2;
   string emailAddress = 3;
+  optional ProfileVisibility visibility = 4;
+}
+
+message LookupUsersByEmailRequest {
+  repeated string emails = 1;
+  bool includePrivate = 2;
+}
+
+message DirectoryUser {
+  string queriedEmail = 1;
+  string userId       = 2;
+  string cid          = 3;
+  string emailAddress = 4;
+  ProfileVisibility visibility = 5;
+  optional string pictureEtag  = 6;
+}
+
+message LookupUsersByEmailResponse {
+  repeated DirectoryUser users = 1;
+}
+
+message UserProfile {
+  string userId       = 1;
+  string cid          = 2;
+  int64  puid         = 3;
+  string username     = 4;
+  string emailAddress = 5;
+
+  optional string firstName   = 6;
+  optional string lastName    = 7;
+  optional string pictureEtag = 8;
+  optional ProfileVisibility visibility = 9;
+}
+
+message GetUserProfileRequest {
+  string userId = 1;
+}
+
+message UpdateUserProfileRequest {
+  string userId = 1;
+  optional string firstName = 2;
+  optional string lastName  = 3;
+  optional ProfileVisibility visibility = 4;
+}
+
+message CropRect {
+  int32 x    = 1;
+  int32 y    = 2;
+  int32 size = 3;
+}
+
+message SetUserPictureRequest {
+  string userId = 1;
+  bytes  data   = 2;
+  optional CropRect crop = 3;
+}
+
+message ClearUserPictureRequest {
+  string userId = 1;
+}
+
+message GetUserPictureRequest {
+  oneof owner {
+    string userId = 1;
+    string cid    = 2;
+  }
+  bool thumbnail = 3;
+}
+
+message GetUserPictureResponse {
+  bytes  data        = 1;
+  string contentType = 2;
+  string etag        = 3;
 }

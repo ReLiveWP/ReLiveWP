@@ -1,0 +1,110 @@
+@use "sass:map";
+@use "../../../theme" as config;
+@use "tokens" as t;
+
+.message-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-anchor: none;
+}
+
+.message-list-canvas {
+    position: relative;
+    width: 100%;
+}
+
+.message-group {
+    box-sizing: border-box;
+    padding: 10px 18px 6px;
+    font-size: 9pt;
+    line-height: 14px;
+    font-weight: 500;
+    font-variant: small-caps;
+    text-transform: lowercase;
+    @include t.themed(color, ink-muted);
+    @include t.themed-raw(background-color,
+        map.get(config.$accent-shades, bg-3), var(--accent-colour-bg-3));
+}
+
+.message-row {
+    box-sizing: border-box;
+    appearance: none;
+    font: inherit;
+    border: none;
+    background: transparent;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "from stamp"
+        "subject subject"
+        "preview preview";
+    gap: 1px 12px;
+    padding: 9px 18px;
+    text-align: left;
+    @include t.themed(border-bottom, rule-faint, "1px solid ");
+
+    &:hover {
+        cursor: pointer;
+        @include t.themed(background-color, surface-sunken);
+    }
+
+    &.group-start {
+        @include t.themed(border-top, rule-faint, "1px solid ");
+    }
+
+    .message-from,
+    .message-subject,
+    .message-preview {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .message-from {
+        grid-area: from;
+        font-size: t.$font-size-base;
+        line-height: 18px;
+        @include t.themed(color, ink);
+    }
+
+    .message-stamp {
+        grid-area: stamp;
+        font-size: 9pt;
+        line-height: 18px;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        @include t.themed(color, ink-muted);
+    }
+
+    .message-subject {
+        grid-area: subject;
+        font-size: t.$font-size-base;
+        line-height: 18px;
+        @include t.themed(color, ink-secondary);
+    }
+
+    .message-preview {
+        grid-area: preview;
+        font-size: 9pt;
+        line-height: 16px;
+        @include t.themed(color, ink-muted);
+    }
+
+    &.unread {
+        .message-from {
+            font-weight: 500;
+            @include t.themed(color, ink-strong);
+        }
+
+        .message-subject {
+            @include t.themed-raw(color, config.$accent, var(--accent-ink));
+        }
+    }
+
+    &.on {
+        @include t.themed(background-color, surface);
+    }
+}

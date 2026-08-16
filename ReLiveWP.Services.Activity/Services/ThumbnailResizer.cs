@@ -40,9 +40,11 @@ public class ThumbnailResizer(ILogger<ThumbnailResizer> logger) : IDisposable
         }
     }
 
-    public async Task<Thumbnail?> ResizeAsync(string resourceRef, int maxSize, Stream source, CancellationToken ct = default)
+    // a resourceRef is only unique within an owner, webdav ids are just the file path, so two users
+    // with the same filename would otherwise get each other's photo out of the cache
+    public async Task<Thumbnail?> ResizeAsync(string ownerId, string resourceRef, int maxSize, Stream source, CancellationToken ct = default)
     {
-        var key = $"thumb:{resourceRef}:{maxSize}";
+        var key = $"thumb:{ownerId}:{resourceRef}:{maxSize}";
         if (cache.TryGetValue<Thumbnail>(key, out var cached) && cached != null)
             return cached;
 

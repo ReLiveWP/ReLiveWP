@@ -1,6 +1,6 @@
 import DeviceInfo from "./components/DeviceInfo";
 import { DeviceInfoContext, useDeviceInfoState } from "./state/device-info";
-import { useTitle } from "~/util/effects";
+import { useTitle } from "@relivewp/ui";
 
 export default function DevicePage({ id }: { id?: string }) {
     const deviceInfoState = useDeviceInfoState(id);
