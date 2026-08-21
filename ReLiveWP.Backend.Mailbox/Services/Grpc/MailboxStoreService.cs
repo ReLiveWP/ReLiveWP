@@ -203,17 +203,38 @@ public class MailboxStoreService(
               ?? throw new RpcException(new Status(StatusCode.FailedPrecondition, "No Inbox folder; provision first"));
         }
 
+        var clientId = request.HasClientId ? request.ClientId : null;
+        if (clientId is not null)
+        {
+            var existing = await FindByClientIdAsync(request.UserId, collectionId, clientId, context.CancellationToken);
+            if (existing is not null)
+                return MailboxMapper.ToProto(existing);
+        }
+
         var id = Guid.NewGuid().ToString("N");
         var entity = MailboxMapper.ToEntity(request.UserId, collectionId, request.Email);
         entity.Id = id;
         entity.ServerId = id;
+        entity.ClientId = clientId;
         entity.CreatedAt = DateTime.UtcNow;
         if (entity.DateReceived is null)
             entity.DateReceived = DateTime.UtcNow;
         entity.Attachments = [.. request.Email.Attachments.Select(a => ToAttachmentEntity(id, a))];
 
         db.Items.Add(entity);
-        await db.SaveChangesAsync(context.CancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(context.CancellationToken);
+        }
+        catch (DbUpdateException) when (clientId is not null)
+        {
+            // lost the race for this ClientId, look up whoever won
+            db.Entry(entity).State = EntityState.Detached;
+            var winner = await FindByClientIdAsync(request.UserId, collectionId, clientId, context.CancellationToken);
+            if (winner is null) throw;
+            return MailboxMapper.ToProto(winner);
+        }
+
         return MailboxMapper.ToProto((DbItem)entity);
     }
 

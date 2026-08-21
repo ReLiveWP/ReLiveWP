@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using MimeKit;
@@ -93,10 +94,8 @@ public class OutboundMailService(
         var email = new EmailItem
         {
             MessageClass = "IPM.Note",
-            Read = true, 
-            // Latin1 is a byte-for-byte mapping, so the stored string round-trips the original
-            // octets even for 8-bit content that UTF-8 would re-encode
-            MimeRaw = Encoding.Latin1.GetString(mimeBytes),
+            Read = true,
+            MimeRaw = ByteString.CopyFrom(mimeBytes),
             DateReceived = Timestamp.FromDateTime(DateTime.UtcNow),
         };
 

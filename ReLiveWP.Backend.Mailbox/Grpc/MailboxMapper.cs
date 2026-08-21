@@ -1,3 +1,4 @@
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using ReLiveWP.Backend.Mailbox.Data.Entities;
 using ReLiveWP.Services.Grpc.Mailbox;
@@ -645,7 +646,7 @@ public static class MailboxMapper
         if (e.Body is not null) p.Body = e.Body;
         if (e.BodyType.HasValue) p.BodyType = e.BodyType.Value;
         if (e.NativeBodyType.HasValue) p.NativeBodyType = e.NativeBodyType.Value;
-        if (e.MimeRaw is not null) p.MimeRaw = e.MimeRaw;
+        if (e.MimeRaw is not null) p.MimeRaw = ByteString.CopyFrom(e.MimeRaw);
 
         if (e.FlagStatus.HasValue || e.FlagType is not null || e.FlagSubject is not null)
             p.Flag = ToFlagProto(e);
@@ -732,7 +733,7 @@ public static class MailboxMapper
         e.Body = p.HasBody ? p.Body : null;
         e.BodyType = p.HasBodyType ? (byte)p.BodyType : null;
         e.NativeBodyType = p.HasNativeBodyType ? (byte)p.NativeBodyType : null;
-        e.MimeRaw = p.HasMimeRaw ? p.MimeRaw : null;
+        e.MimeRaw = p.HasMimeRaw ? p.MimeRaw.ToByteArray() : null;
 
         if (p.Flag is { } f)
         {

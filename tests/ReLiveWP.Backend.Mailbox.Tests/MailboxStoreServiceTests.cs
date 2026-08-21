@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -250,5 +251,69 @@ public class MailboxStoreServiceTests : IDisposable
         Assert.False(result.Found);
         Assert.Equal(0, result.FoldersDeleted);
         Assert.Equal(0, result.ItemsDeleted);
+    }
+
+    private static DeliverEmailRequest Delivery(string? clientId = null, ByteString? mime = null)
+    {
+        var request = new DeliverEmailRequest
+        {
+            UserId = UserId,
+            Email = new EmailItem { From = "a@relivewp.net", Subject = "hello" },
+        };
+        if (clientId is not null) request.ClientId = clientId;
+        if (mime is not null) request.Email.MimeRaw = mime;
+        return request;
+    }
+
+    [Fact]
+    public async Task DeliverEmail_with_a_repeated_client_id_lands_once()
+    {
+        string firstId;
+        await using (var db = NewContext())
+        {
+            var first = await NewService(db).DeliverEmail(Delivery(clientId: "submission-1"), NewCallContext());
+            firstId = first.ServerId;
+        }
+
+        await using (var db = NewContext())
+        {
+            var second = await NewService(db).DeliverEmail(Delivery(clientId: "submission-1"), NewCallContext());
+            Assert.Equal(firstId, second.ServerId);
+        }
+
+        await using var verify = NewContext();
+        Assert.Single(await verify.Items.Where(i => i.UserId == UserId).ToListAsync());
+    }
+
+    [Fact]
+    public async Task DeliverEmail_without_a_client_id_is_not_deduped()
+    {
+        await using (var db = NewContext())
+            await NewService(db).DeliverEmail(Delivery(), NewCallContext());
+
+        await using (var db = NewContext())
+            await NewService(db).DeliverEmail(Delivery(), NewCallContext());
+
+        await using var verify = NewContext();
+        Assert.Equal(2, await verify.Items.CountAsync(i => i.UserId == UserId));
+    }
+
+    [Fact]
+    public async Task DeliverEmail_round_trips_eight_bit_mime_bytes()
+    {
+        // 0x00 and 0xFE would both be mangled by a text column
+        var raw = new byte[] { 0x46, 0x72, 0x6f, 0x6d, 0x3a, 0x20, 0x00, 0xfe, 0xff, 0x80, 0x0d, 0x0a };
+
+        string serverId;
+        await using (var db = NewContext())
+        {
+            var item = await NewService(db).DeliverEmail(
+                Delivery(mime: ByteString.CopyFrom(raw)), NewCallContext());
+            serverId = item.ServerId;
+        }
+
+        await using var verify = NewContext();
+        var stored = await verify.Items.OfType<DbEmail>().SingleAsync(i => i.ServerId == serverId);
+        Assert.Equal(raw, stored.MimeRaw);
     }
 }

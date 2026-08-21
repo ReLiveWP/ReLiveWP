@@ -468,7 +468,7 @@ message EmailItem {
   optional string body             = 20;
   optional int32  body_type        = 21;  // 1 plain, 2 html
   optional int32  native_body_type = 22;
-  optional string mime_raw         = 23;  // raw MIME, for ItemOperations Fetch / sent items
+  optional bytes  mime_raw         = 23;  // raw MIME, for ItemOperations Fetch / sent items
 
   optional EmailFlag flag = 30;
 
@@ -621,6 +621,7 @@ message DeliverEmailRequest {
   string          user_id       = 1;
   optional string collection_id = 2;
   EmailItem       email         = 3;
+  optional string client_id     = 4;  // nonce, lets a retried delivery land exactly once
 }
 
 message GetAttachmentContentRequest {

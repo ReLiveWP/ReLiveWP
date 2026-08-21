@@ -1,5 +1,6 @@
 using System.Text;
 using System.Xml;
+using Google.Protobuf;
 using ReLiveWP.Services.Exchange.Extensions;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
@@ -35,6 +36,9 @@ public class BodyNegotiationTests
 
     private static EmailItem Plain(string body) =>
         new() { Subject = "s", Body = body, BodyType = 1, NativeBodyType = 1 };
+
+    private static ByteString Mime(string raw) =>
+        ByteString.CopyFrom(Encoding.Latin1.GetBytes(raw));
 
     [Fact]
     public void Html_item_requested_as_plain_text_is_converted_and_labelled_plain()
@@ -181,7 +185,7 @@ public class BodyNegotiationTests
     [Fact]
     public void Mime_is_returned_when_requested_and_stored()
     {
-        var e = new EmailItem { Subject = "s", Body = "text", BodyType = 1, MimeRaw = "From: a@b\r\n\r\nhi" };
+        var e = new EmailItem { Subject = "s", Body = "text", BodyType = 1, MimeRaw = Mime("From: a@b\r\n\r\nhi") };
 
         var body = Body(e, new BodyPreference { Type = BodyType.MIME })!;
 
@@ -195,7 +199,7 @@ public class BodyNegotiationTests
         var e = new EmailItem
         {
             Subject = "s",
-            MimeRaw = "From: a@b\r\n\r\n" + new string('y', 5000),
+            MimeRaw = Mime("From: a@b\r\n\r\n" + new string('y', 5000)),
         };
 
         var body = Body(e, new BodyPreference { Type = BodyType.MIME, TruncationSize = 50 })!;
