@@ -178,4 +178,6 @@ services:
   support:
     build:
       context: .
-      dockerfile: ReLiveWP.Web/ReLiveWP.Services.Support/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.Support

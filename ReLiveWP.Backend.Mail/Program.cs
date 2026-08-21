@@ -10,7 +10,7 @@ using ReLiveWP.Services.Grpc.Mailbox;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(o => o.MaxReceiveMessageSize = 32 * 1024 * 1024);
 builder.Services.AddGrpcAuthentication();
 
 builder.Services.AddHttpContextAccessor();
@@ -21,7 +21,8 @@ builder.Services.Configure<MailOptions>(builder.Configuration.GetSection(MailOpt
 builder.Services.AddRedis(builder.Configuration);
 
 builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
-    o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!))
+    .ConfigureChannel(ch => ch.MaxSendMessageSize = 32 * 1024 * 1024);
 
 builder.Services.AddGrpcClient<User.UserClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:User"]!));

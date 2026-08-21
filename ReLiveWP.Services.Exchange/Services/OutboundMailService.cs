@@ -1,39 +1,55 @@
 using System.Security.Cryptography;
 using System.Text;
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using ReLiveWP.Mail;
+using ReLiveWP.Services.Exchange.Models;
+using ReLiveWP.Services.Grpc.Mail;
 using ReLiveWP.Services.Grpc.Mailbox;
+using MailClient = ReLiveWP.Services.Grpc.Mail.Mail.MailClient;
 
 namespace ReLiveWP.Services.Exchange.Services;
 
 public class OutboundMailService(
+    MailClient mail,
     MailboxStore.MailboxStoreClient mailbox,
-    MimeIngest ingest)
+    ILogger<OutboundMailService> logger)
 {
     public const int VerbReply = 1;
     public const int VerbReplyAll = 2;
     public const int VerbForward = 3;
 
-    public async Task SendAsync(string userId, string fromAddress, string mime, bool saveInSent, CancellationToken ct)
+    public async Task<int> SubmitAsync(
+        string userId, string? mime, bool saveInSent, string? clientId, CancellationToken ct)
     {
-        if (!saveInSent || string.IsNullOrEmpty(mime))
-            return;
-
-        var sentFolderId = await ResolveFolderAsync(userId, FolderType.SentItemsDefault, ct);
-        if (sentFolderId is null)
-            return;
+        if (string.IsNullOrEmpty(mime))
+            return EasStatus.MailSubmissionFailed;
 
         var mimeBytes = DecodeMime(mime);
-        var email = ingest.ToEmailItem(mimeBytes, fromAddress);
-        email.Read = true;
 
-        // CreateItem's ClientId is store-deduped (unique per user+folder), so a retried SendMail
-        // depositing the same MIME doesn't leave a second copy in Sent Items
-        var clientId = "sentmail:" + Convert.ToHexString(SHA256.HashData(mimeBytes));
-        await mailbox.CreateItemAsync(
-            new CreateItemRequest { UserId = userId, CollectionId = sentFolderId, Email = email, ClientId = clientId },
-            cancellationToken: ct);
+        var request = new SubmitRequest
+        {
+            UserId = userId,
+            Mime = ByteString.CopyFrom(mimeBytes),
+            SaveInSentItems = saveInSent,
+            ClientId = SubmissionKey(mimeBytes, clientId),
+        };
+
+        SubmitResponse response;
+        try
+        {
+            response = await mail.SubmitAsync(request, cancellationToken: ct);
+        }
+        catch (RpcException ex)
+        {
+            logger.LogError(ex, "Mail submission failed for {UserId}", userId);
+            return EasStatus.MailSubmissionFailed;
+        }
+
+        if (response.Status != SubmitStatus.Ok)
+            logger.LogWarning("Submission for {UserId} was rejected with {Status}", userId, response.Status);
+
+        return ToEasStatus(response.Status);
     }
 
     public async Task MarkSourceVerbAsync(string userId, string? serverId, int verb, CancellationToken ct)
@@ -64,18 +80,22 @@ public class OutboundMailService(
             cancellationToken: ct);
     }
 
-    private async Task<string?> ResolveFolderAsync(string userId, FolderType type, CancellationToken ct)
+    // WP7 does not always send ClientId, so fall back to hashing the message: a resend of the same
+    // bytes has to reuse the key or the store cannot tell it apart from a second message
+    private static string SubmissionKey(byte[] mimeBytes, string? clientId) =>
+        string.IsNullOrEmpty(clientId)
+            ? "mime:" + Convert.ToHexString(SHA256.HashData(mimeBytes))
+            : "client:" + clientId;
+
+    private static int ToEasStatus(SubmitStatus status) => status switch
     {
-        using var call = mailbox.ListFolders(
-            new ListFoldersRequest { UserId = userId, IncludeHidden = true, IncludeDeleted = false },
-            cancellationToken: ct);
-
-        await foreach (var f in call.ResponseStream.ReadAllAsync(ct))
-            if (f.Type == type)
-                return f.Id;
-
-        return null;
-    }
+        SubmitStatus.Ok => EasStatus.Success,
+        SubmitStatus.NoRecipients => EasStatus.MessageHasNoRecipient,
+        SubmitStatus.UnresolvedRecipients => EasStatus.MessageRecipientUnresolved,
+        SubmitStatus.SenderNotAllowed => EasStatus.AccessDenied,
+        SubmitStatus.TooLarge => EasStatus.AttachmentIsTooLarge,
+        _ => EasStatus.MailSubmissionFailed,
+    };
 
     private static byte[] DecodeMime(string wire)
     {
@@ -88,5 +108,4 @@ public class OutboundMailService(
             return Encoding.Latin1.GetBytes(wire);
         }
     }
-
 }

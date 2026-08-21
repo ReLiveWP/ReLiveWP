@@ -6,8 +6,12 @@ namespace ReLiveWP.Backend.Mail.Tests;
 
 public class RecipientRouterTests
 {
-    private static RecipientRouter NewRouter(FakeUserClient users) =>
-        new(users, Options.Create(new MailOptions { LocalDomains = ["relivewp.net"] }));
+    private static RecipientRouter NewRouter(FakeUserClient users, bool verifyDomains = true) =>
+        new(users, Options.Create(new MailOptions
+        {
+            LocalDomains = ["relivewp.net"],
+            VerifyLocalDomains = verifyDomains,
+        }));
 
     private static LookupUsersByEmailResponse Found(params (string Email, string UserId)[] users)
     {
@@ -78,6 +82,57 @@ public class RecipientRouterTests
         Assert.Equal(
             [MailRoute.External, MailRoute.Local, MailRoute.Unroutable],
             resolved.Select(r => r.Route));
+    }
+
+    // VerifyLocalDomains=false exists because not every ReLive account sits on @relivewp.net
+    [Fact]
+    public async Task Without_domain_verification_a_mailbox_on_any_domain_routes_local()
+    {
+        var users = new FakeUserClient
+        {
+            OnLookupUsersByEmail = _ => Found(("wam@gmail.com", "user-wam")),
+        };
+
+        var resolved = await NewRouter(users, verifyDomains: false)
+            .ResolveAsync(["wam@gmail.com"], default);
+
+        var recipient = Assert.Single(resolved);
+        Assert.Equal(MailRoute.Local, recipient.Route);
+        Assert.Equal("user-wam", recipient.UserId);
+    }
+
+    // the seam has to survive the escape hatch: an outside address nobody owns is still External,
+    // so registering an SMTP agent in phase 3 picks it up
+    [Fact]
+    public async Task Without_domain_verification_an_unowned_outside_address_is_still_external()
+    {
+        var users = new FakeUserClient { OnLookupUsersByEmail = _ => Found() };
+
+        var resolved = await NewRouter(users, verifyDomains: false)
+            .ResolveAsync(["stranger@gmail.com"], default);
+
+        Assert.Equal(MailRoute.External, Assert.Single(resolved).Route);
+    }
+
+    [Fact]
+    public async Task Without_domain_verification_every_address_is_offered_to_the_directory()
+    {
+        var users = new FakeUserClient { OnLookupUsersByEmail = _ => Found() };
+
+        await NewRouter(users, verifyDomains: false)
+            .ResolveAsync(["ada@relivewp.net", "wam@gmail.com"], default);
+
+        Assert.Equal(["ada@relivewp.net", "wam@gmail.com"], users.LastLookup!.Emails);
+    }
+
+    [Fact]
+    public async Task With_domain_verification_outside_addresses_never_reach_the_directory()
+    {
+        var users = new FakeUserClient { OnLookupUsersByEmail = _ => Found() };
+
+        await NewRouter(users).ResolveAsync(["ada@relivewp.net", "wam@gmail.com"], default);
+
+        Assert.Equal(["ada@relivewp.net"], users.LastLookup!.Emails);
     }
 
     [Fact]

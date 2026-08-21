@@ -11,14 +11,20 @@ public class RecipientRouter(User.UserClient users, IOptions<MailOptions> option
     public async Task<IReadOnlyList<ResolvedRecipient>> ResolveAsync(
         IReadOnlyList<string> addresses, CancellationToken ct)
     {
-        var local = addresses.Where(IsLocalDomain).ToArray();
+        // escape hatch, not all relive users have @relivewp.net addresses, so every recipient has
+        // to be offered to the directory rather than just the ones on a domain we own
+        // BUGBUG: get rid of this, enforce username@relivewp.net
+        var candidates = options.Value.VerifyLocalDomains
+            ? addresses.Where(IsLocalDomain).ToArray()
+            : addresses.ToArray();
+
         var mailboxes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        if (local.Length > 0)
+        if (candidates.Length > 0)
         {
             // a private profile still has a mailbox, so private users have to resolve here
             var request = new LookupUsersByEmailRequest { IncludePrivate = true };
-            request.Emails.AddRange(local);
+            request.Emails.AddRange(candidates);
 
             var response = await users.LookupUsersByEmailAsync(request, cancellationToken: ct);
             foreach (var user in response.Users)
@@ -30,12 +36,14 @@ public class RecipientRouter(User.UserClient users, IOptions<MailOptions> option
 
     private ResolvedRecipient Resolve(string address, IReadOnlyDictionary<string, string> mailboxes)
     {
-        if (!IsLocalDomain(address))
-            return new ResolvedRecipient(address, MailRoute.External, null);
+        if (mailboxes.TryGetValue(address, out var userId))
+            return new ResolvedRecipient(address, MailRoute.Local, userId);
 
-        return mailboxes.TryGetValue(address, out var userId)
-            ? new ResolvedRecipient(address, MailRoute.Local, userId)
-            : new ResolvedRecipient(address, MailRoute.Unroutable, null);
+        // no mailbox on a domain we own means nobody to deliver to; anywhere else is somebody
+        // else's problem to route
+        return IsLocalDomain(address)
+            ? new ResolvedRecipient(address, MailRoute.Unroutable, null)
+            : new ResolvedRecipient(address, MailRoute.External, null);
     }
 
     private bool IsLocalDomain(string address)

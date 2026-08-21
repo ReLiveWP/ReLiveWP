@@ -3,7 +3,6 @@ using ReLiveWP.Identity;
 using ReLiveWP.Services.Exchange.Attributes;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Exchange.Services;
-using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Exchange.Controllers;
 
@@ -13,7 +12,6 @@ namespace ReLiveWP.Services.Exchange.Controllers;
 [Consumes("application/vnd.ms-sync.wbxml", "application/vnd.ms-sync")]
 public class SendMailController(
     ILogger<SendMailController> logger,
-    User.UserClient userClient,
     OutboundMailService outbound) : ActiveSyncCommandController
 {
     [HttpPost]
@@ -25,22 +23,19 @@ public class SendMailController(
 
         if (request?.Mime is null)
         {
-            // 150 = invalid MIME / message could not be sent
-            await WriteWbxmlResponseAsync(new SendMailResponse { Status = 150 }, logger);
+            await WriteWbxmlResponseAsync(new SendMailResponse { Status = EasStatus.MailSubmissionFailed }, logger);
             return;
         }
 
-        var userId = User.Id()!;
-        var fromAddress = await GetPrimaryAddressAsync(userId, ct);
+        var status = await outbound.SubmitAsync(
+            User.Id()!, request.Mime, request.SaveInSentItems is not null, request.ClientId, ct);
 
-        await outbound.SendAsync(userId, fromAddress, request.Mime, request.SaveInSentItems is not null, ct);
+        if (status != EasStatus.Success)
+        {
+            await WriteWbxmlResponseAsync(new SendMailResponse { Status = status }, logger);
+            return;
+        }
 
         HttpContext.Response.StatusCode = 200;
-    }
-
-    private async Task<string> GetPrimaryAddressAsync(string userId, CancellationToken ct)
-    {
-        var info = await userClient.GetUserInfoAsync(new GetUserInfoRequest { UserId = userId }, cancellationToken: ct);
-        return info.EmailAddress;
     }
 }

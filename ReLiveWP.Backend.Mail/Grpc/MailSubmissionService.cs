@@ -50,6 +50,9 @@ public class MailSubmissionService(
 
         if (recipients.Any(r => !deliverable.Contains(r.Route)))
         {
+            logger.LogWarning(
+                "Rejected submission from {UserId}: Not all recipients could be resolved.",
+                request.UserId);
             response.Status = SubmitStatus.UnresolvedRecipients;
             return response;
         }

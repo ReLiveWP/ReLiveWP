@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using ReLiveWP.Identity;
 using ReLiveWP.Identity.Exchange;
-using ReLiveWP.Mail;
+using MailClient = ReLiveWP.Services.Grpc.Mail.Mail.MailClient;
 using ReLiveWP.Services.Exchange.Middleware;
 using ReLiveWP.Services.Exchange.Services;
 using ReLiveWP.Services.Grpc;
@@ -44,6 +44,10 @@ builder.Services.AddGrpcClient<User.UserClient>(
 builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!))
     .ConfigureChannel(ch => ch.MaxReceiveMessageSize = 32 * 1024 * 1024);
+
+builder.Services.AddGrpcClient<MailClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Mail"]!))
+    .ConfigureChannel(ch => ch.MaxSendMessageSize = 32 * 1024 * 1024);
 
 builder.Services.AddControllers();
 
@@ -85,7 +89,6 @@ builder.Services.AddScoped<MeProfileWriteback>();
 builder.Services.AddScoped<ItemSyncService>();
 builder.Services.AddScoped<GetItemEstimateService>();
 builder.Services.AddScoped<SettingsService>();
-builder.Services.AddSingleton<MimeIngest>();
 builder.Services.AddScoped<OutboundMailService>();
 builder.Services.AddScoped<AttachmentService>();
 builder.Services.AddScoped<PushMonitor>();
