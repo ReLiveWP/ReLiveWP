@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ReLiveWP.Backend.Mail.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="../protos/mail.proto" GrpcServices="Server">
+      <Link>Protos\mail.proto</Link>
+    </Protobuf>
+    <Protobuf Include="../protos/user.proto" GrpcServices="Client">
+      <Link>Protos\user.proto</Link>
+    </Protobuf>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Grpc.Net.ClientFactory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Mail\ReLiveWP.Mail.csproj" />
+  </ItemGroup>
+
+</Project>

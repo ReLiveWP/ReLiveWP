@@ -56,6 +56,13 @@ services:
         tmpfs:
           mode: 0o01777
 
+  mail:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.Mail
+
   activation:
     build:
       context: .
