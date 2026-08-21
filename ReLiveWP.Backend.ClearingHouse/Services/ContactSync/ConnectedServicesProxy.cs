@@ -1,3 +1,4 @@
+using ReLiveWP.Dav;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
@@ -15,6 +16,16 @@ public sealed class ConnectedServicesProxy(IHttpClientFactory httpClientFactory,
         request.Headers.TryAddWithoutValidation("X-User-ID", connection.UserId);
 
         return request;
+    }
+
+    public DavClient CreateDavClient(string serviceId, SyncConnection connection)
+    {
+        var client = httpClientFactory.CreateClient();
+
+        client.DefaultRequestHeaders.TryAddWithoutValidation("X-Connection-ID", connection.ConnectionId);
+        client.DefaultRequestHeaders.TryAddWithoutValidation("X-User-ID", connection.UserId);
+
+        return new DavClient(client, $"{_proxyBase}/proxy/{serviceId}");
     }
 
     public Task<HttpResponseMessage> SendAsync(

@@ -13,7 +13,7 @@
 
         >input {
             float: left;
-            margin-top: 3px;
+            margin-top: 0;
             margin-right: 8px;
         }
 
@@ -22,6 +22,7 @@
             text-transform: lowercase;
             font-weight: 500;
             font-variant: small-caps;
+            text-box: cap alphabetic;
         }
 
         .visibility-hint {

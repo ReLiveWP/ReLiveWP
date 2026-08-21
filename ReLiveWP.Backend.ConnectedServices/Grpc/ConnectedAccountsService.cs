@@ -384,6 +384,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         // TODO: move this somewhere that isn't here, it should be validated Everywhere
         LiveConnectedServiceCapabilities[] singleCaps = [
             LiveConnectedServiceCapabilities.PhotoSync,
+            LiveConnectedServiceCapabilities.FileStorage,
             LiveConnectedServiceCapabilities.Xbox,
             LiveConnectedServiceCapabilities.Zune
         ];

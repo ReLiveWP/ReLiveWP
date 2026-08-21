@@ -1,12 +1,11 @@
 using System.Runtime.CompilerServices;
-using System.Xml.Linq;
 using Google.Protobuf.WellKnownTypes;
+using ReLiveWP.Dav;
 using ReLiveWP.Services.Grpc.Mailbox;
 using FolkerKinzel.VCards;
 using FolkerKinzel.VCards.Enums;
 using PCl = FolkerKinzel.VCards.Enums.PCl;
 using FolkerKinzel.VCards.Models.Properties;
-using System.Security;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 
@@ -16,58 +15,26 @@ public class CardDavContactSyncDriver(
 {
     public const string ServiceName = "carddav";
 
-    private static readonly HttpMethod Propfind = new("PROPFIND");
-    private static readonly HttpMethod Report = new("REPORT");
+    private static readonly string SyncTokenBody = DavBody.Propfind(DavProps.SyncToken, DavProps.GetCTag);
 
-    private static readonly XNamespace Dav = "DAV:";
-    private static readonly XNamespace Card = "urn:ietf:params:xml:ns:carddav";
-    private static readonly XNamespace CalendarServer = "http://calendarserver.org/ns/";
+    private static readonly string ListBody = DavBody.Propfind(DavProps.ResourceType, DavProps.DisplayName);
 
-    private const string SyncTokenBody =
-        """
-        <?xml version="1.0" encoding="utf-8"?>
-        <D:propfind xmlns:D="DAV:" xmlns:CS="http://calendarserver.org/ns/"><D:prop>
-          <D:sync-token/><CS:getctag/>
-        </D:prop></D:propfind>
-        """;
-
-    private const string ListBody =
-        """
-        <?xml version="1.0" encoding="utf-8"?>
-        <D:propfind xmlns:D="DAV:"><D:prop>
-          <D:resourcetype/><D:displayname/>
-        </D:prop></D:propfind>
-        """;
-
-    private const string QueryBody =
-        """
-        <?xml version="1.0" encoding="utf-8"?>
-        <C:addressbook-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">
-          <D:prop><D:getetag/><C:address-data/></D:prop>
-        </C:addressbook-query>
-        """;
+    private static readonly string QueryBody = DavBody.AddressbookQuery(DavProps.GetETag, DavProps.AddressData);
 
     public string ServiceId => ServiceName;
 
     public async Task<IReadOnlyList<RemoteContactSource>> ListSourcesAsync(
         SyncConnection connection, CancellationToken ct = default)
     {
-        var multistatus = await SendAsync(connection, Propfind, "", ListBody, depth: "1", ct);
+        var multistatus = await SendAsync(connection, DavMethods.Propfind, "", ListBody, depth: "1", ct);
         var sources = new List<RemoteContactSource>();
 
-        foreach (var response in multistatus.Elements(Dav + "response"))
+        foreach (var response in multistatus.Responses)
         {
-            var href = (string?)response.Element(Dav + "href");
-            if (href is null) continue;
+            if (!response.IsResourceType(DavProps.Addressbook)) continue;
 
-            var isAddressBook = response
-                .Descendants(Dav + "resourcetype")
-                .Any(rt => rt.Element(Card + "addressbook") is not null);
-
-            if (!isAddressBook) continue;
-
-            var relative = Relative(href, connection.ServiceUrl);
-            var name = response.Descendants(Dav + "displayname").Select(x => (string?)x).FirstOrDefault();
+            var relative = DavPath.StripPrefix(response.Href, connection.ServiceUrl);
+            var name = response.DisplayName;
 
             sources.Add(new RemoteContactSource(
                 relative,
@@ -93,7 +60,7 @@ public class CardDavContactSyncDriver(
             }
         }
 
-        var multistatus = await SendAsync(connection, Report, sourceId, QueryBody, depth: "1", ct);
+        var multistatus = await SendAsync(connection, DavMethods.Report, sourceId, QueryBody, depth: "1", ct);
         var (contacts, unreadable) = ReadContacts(multistatus, connection);
         var token = await ReadSyncTokenAsync(connection, sourceId, ct);
 
@@ -103,72 +70,49 @@ public class CardDavContactSyncDriver(
     private async Task<ContactSyncBatch> FetchDeltaAsync(
         SyncConnection connection, string sourceId, string deltaToken, CancellationToken ct)
     {
-        var body = $"""
-            <?xml version="1.0" encoding="utf-8"?>
-            <D:sync-collection xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:carddav">
-              <D:sync-token>{SecurityElement.Escape(deltaToken)}</D:sync-token>
-              <D:sync-level>1</D:sync-level>
-              <D:prop><D:getetag/><C:address-data/></D:prop>
-            </D:sync-collection>
-            """;
+        var body = DavBody.SyncCollection(deltaToken, 1, DavProps.GetETag, DavProps.AddressData);
 
-        var multistatus = await SendAsync(connection, Report, sourceId, body, depth: "1", ct);
+        var multistatus = await SendAsync(connection, DavMethods.Report, sourceId, body, depth: "1", ct);
 
         var (contacts, unreadable) = ReadContacts(multistatus, connection);
-        var deleted = new List<string>();
 
-        foreach (var response in multistatus.Elements(Dav + "response"))
-        {
-            var status = (string?)response.Element(Dav + "status");
-            if (status is null || !status.Contains("404")) continue;
+        var deleted = multistatus.NotFound
+            .Select(r => DavPath.StripPrefix(r.Href, connection.ServiceUrl))
+            .ToList();
 
-            if ((string?)response.Element(Dav + "href") is { } href)
-                deleted.Add(Relative(href, connection.ServiceUrl));
-        }
-
-        var token = (string?)multistatus.Element(Dav + "sync-token");
-
-        return new ContactSyncBatch(contacts, deleted, token, IsFullSync: false);
+        return new ContactSyncBatch(contacts, deleted, multistatus.SyncToken, IsFullSync: false);
     }
 
     private (List<RemoteContact> Contacts, List<string> Unreadable) ReadContacts(
-        XElement multistatus, SyncConnection connection)
+        DavMultiStatus multistatus, SyncConnection connection)
     {
         var contacts = new List<RemoteContact>();
         var unreadable = new List<string>();
 
-        foreach (var response in multistatus.Elements(Dav + "response"))
+        foreach (var response in multistatus.Found)
         {
-            var href = (string?)response.Element(Dav + "href");
-            if (href is null) continue;
-
-            var status = (string?)response.Element(Dav + "status");
-            if (status is not null && status.Contains("404")) continue;
-
-            var externalId = Relative(href, connection.ServiceUrl);
+            var externalId = DavPath.StripPrefix(response.Href, connection.ServiceUrl);
 
             if (externalId.Length == 0 || externalId.EndsWith('/')) continue;
 
-            var data = response.Descendants(Card + "address-data").Select(x => (string?)x).FirstOrDefault();
+            var data = response.Value(DavProps.AddressData);
             if (string.IsNullOrWhiteSpace(data))
             {
-                logger.LogWarning("no address-data returned for {Href}", href);
+                logger.LogWarning("no address-data returned for {Href}", response.Href);
                 unreadable.Add(externalId);
                 continue;
             }
 
-            var etag = response.Descendants(Dav + "getetag").Select(x => (string?)x).FirstOrDefault();
-
             try
             {
-                if (Project(externalId, etag, data) is { } contact)
+                if (Project(externalId, response.ETag, data) is { } contact)
                     contacts.Add(contact);
                 else
                     unreadable.Add(externalId);
             }
             catch (Exception e)
             {
-                logger.LogWarning(e, "could not parse the vCard at {Href}", href);
+                logger.LogWarning(e, "could not parse the vCard at {Href}", response.Href);
                 unreadable.Add(externalId);
             }
         }
@@ -180,10 +124,11 @@ public class CardDavContactSyncDriver(
     {
         try
         {
-            var multistatus = await SendAsync(connection, Propfind, sourceId, SyncTokenBody, depth: "0", ct);
+            var multistatus = await SendAsync(connection, DavMethods.Propfind, sourceId, SyncTokenBody, depth: "0", ct);
 
-            return multistatus.Descendants(Dav + "sync-token").Select(x => (string?)x).FirstOrDefault()
-                ?? multistatus.Descendants(CalendarServer + "getctag").Select(x => (string?)x).FirstOrDefault();
+            return multistatus.SyncToken
+                ?? multistatus.Responses.Select(r => r.Value(DavProps.SyncToken)).FirstOrDefault(v => v is not null)
+                ?? multistatus.Responses.Select(r => r.Value(DavProps.GetCTag)).FirstOrDefault(v => v is not null);
         }
         catch (ContactSyncException e)
         {
@@ -313,59 +258,28 @@ public class CardDavContactSyncDriver(
         }
     }
 
-    private async Task<XElement> SendAsync(
+    private async Task<DavMultiStatus> SendAsync(
         SyncConnection connection, HttpMethod method, string path, string body, string depth, CancellationToken ct)
     {
-        using var request = proxy.Request(method, ServiceName, path, connection);
-        request.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/xml");
-        request.Headers.TryAddWithoutValidation("Depth", depth);
+        using var dav = proxy.CreateDavClient(ServiceName, connection);
 
-        using var response = await proxy.SendAsync(request, HttpCompletionOption.ResponseContentRead, ct);
-        var xml = await response.Content.ReadAsStringAsync(ct);
-
-        if ((int)response.StatusCode == 403 && xml.Contains("valid-sync-token", StringComparison.OrdinalIgnoreCase))
-            throw new DeltaTokenExpiredException($"the server rejected the sync token for {path}");
-
-        if (!response.IsSuccessStatusCode && (int)response.StatusCode != 207)
-            throw new ContactSyncException(
-                $"CardDAV {method} {path} failed ({(int)response.StatusCode}): {ConnectedServicesProxy.Truncate(xml)}");
-
-        return ParseMultistatus(xml);
-    }
-
-    internal static XElement ParseMultistatus(string xml)
-    {
-        XDocument doc;
         try
         {
-            doc = XDocument.Parse(xml);
+            return method == DavMethods.Report
+                ? await dav.ReportAsync(path, body, depth, ct)
+                : await dav.PropfindAsync(path, body, depth, ct);
         }
-        catch (Exception e)
+        catch (DavSyncTokenException e)
         {
-            throw new ContactSyncException($"CardDAV returned unparseable XML: {e.Message}");
+            throw new DeltaTokenExpiredException(e.Message);
         }
-
-        return doc.Root?.Name == Dav + "multistatus"
-            ? doc.Root
-            : throw new ContactSyncException($"CardDAV returned {doc.Root?.Name.LocalName ?? "nothing"}, expected multistatus");
-    }
-    
-    internal static string Relative(string href, string? serviceUrl)
-    {
-        var path = Uri.TryCreate(href, UriKind.Absolute, out var absolute) &&
-                   (absolute.Scheme == Uri.UriSchemeHttp || absolute.Scheme == Uri.UriSchemeHttps)
-            ? absolute.AbsolutePath
-            : href;
-
-        if (!string.IsNullOrEmpty(serviceUrl) &&
-            Uri.TryCreate(serviceUrl, UriKind.Absolute, out var root))
+        catch (DavParseException e)
         {
-            var prefix = root.AbsolutePath.TrimEnd('/');
-            if (prefix.Length > 0 && path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                path = path[prefix.Length..];
+            throw new ContactSyncException($"CardDAV {method} {path}: {e.Message}");
         }
-
-        return path.TrimStart('/');
+        catch (DavException e)
+        {
+            throw new ContactSyncException($"CardDAV {method} {path} failed: {e.Message}");
+        }
     }
-
 }

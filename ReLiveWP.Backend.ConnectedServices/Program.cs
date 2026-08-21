@@ -102,8 +102,11 @@ builder.Services.AddConnectedServices()
         ClientId = builder.Configuration["ConnectedServices:Microsoft:ClientId"]!,
         ClientSecret = builder.Configuration["ConnectedServices:Microsoft:ClientSecret"]!,
         RedirectUri = builder.Configuration["ConnectedServices:Microsoft:RedirectUrl"]!,
-        Scopes = "openid profile email offline_access https://graph.microsoft.com/User.Read https://graph.microsoft.com/Files.ReadWrite",
-        ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
+        Scopes = string.Concat("openid profile email offline_access ",
+            "https://graph.microsoft.com/User.Read ",
+            "https://graph.microsoft.com/Files.ReadWrite ",
+            "https://graph.microsoft.com/Contacts.Read"),
+        ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync | ServiceCaps.Contacts,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MicrosoftOAuthProvider>())
     })
     .AddConnectedService(s => new()

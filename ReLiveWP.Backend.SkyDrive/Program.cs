@@ -21,11 +21,14 @@ builder.Services.AddGrpcClient<ConnectedServices.ConnectedServicesClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!))
     .AddInterceptor<AuthForwardingInterceptor>();
 
+builder.Services.AddSingleton<WebDavProxy>();
+
 builder.Services.AddScoped<IPhotoSyncProxyClient, GooglePhotosProxyClient>();
 builder.Services.AddScoped<IPhotoSyncProxyClient, OneDrivePhotoSyncProxyClient>();
 builder.Services.AddScoped<IPhotoSyncProxyClient, WebDavPhotoSyncClient>();
 
 builder.Services.AddScoped<IFileSyncProxyClient, OneDriveFileSyncProxyClient>();
+builder.Services.AddScoped<IFileSyncProxyClient, WebDavFileSyncProxyClient>();
 
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddSingleton<SyncCursorStore>();

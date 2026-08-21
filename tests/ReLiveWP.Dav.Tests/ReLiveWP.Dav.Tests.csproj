@@ -8,23 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
+    <ProjectReference Include="..\..\Libraries\Dav\Dav.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Backend.SkyDrive\ReLiveWP.Backend.SkyDrive.csproj" />
-    <ProjectReference Include="..\..\ReLiveWP.Backend.ConnectedServices\ReLiveWP.Backend.ConnectedServices.csproj" />
-    <ProjectReference Include="..\..\Libraries\Dav\Dav.csproj" />
+    <Using Include="Xunit" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,7 @@
   </Configurations>
   <Folder Name="/! Libraries/">
     <Project Path="Libraries/Atom/Atom.csproj" />
+    <Project Path="Libraries/Dav/Dav.csproj" />
     <Project Path="ReLiveWP.Grpc.Services/ReLiveWP.Grpc.Services.csproj" />
     <Project Path="ReLiveWP.Identity/ReLiveWP.Identity.csproj" />
     <Project Path="ReLiveWP.Integration/ReLiveWP.Integration.csproj" />
@@ -53,6 +54,7 @@
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="tests/ReLiveWP.Backend.SkyDrive.Tests/ReLiveWP.Backend.SkyDrive.Tests.csproj" />
+    <Project Path="tests/ReLiveWP.Dav.Tests/ReLiveWP.Dav.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Identity.Tests/ReLiveWP.Identity.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Activity.Tests/ReLiveWP.Services.Activity.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Docs.Tests/ReLiveWP.Services.Docs.Tests.csproj" />

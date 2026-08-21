@@ -1,4 +1,3 @@
-using System.Xml.Linq;
 using Google.Protobuf;
 using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 
@@ -87,17 +86,6 @@ public class CardDavProjectionTests
             """)!.Contact;
 
         Assert.Equal("Lovelace, Ada", c.FileAs);
-    }
-
-    // hrefs come back as absolute server paths while the proxy resolves under the stored ServiceUrl
-    [Theory]
-    [InlineData("/addressbooks/wam/personal/", "https://dav.example/", "addressbooks/wam/personal/")]
-    [InlineData("/remote.php/dav/addressbooks/wam/contacts/", "https://dav.example/remote.php/dav/", "addressbooks/wam/contacts/")]
-    [InlineData("https://dav.example/remote.php/dav/addressbooks/wam/c/", "https://dav.example/remote.php/dav", "addressbooks/wam/c/")]
-    [InlineData("/addressbooks/x/", null, "addressbooks/x/")]
-    public void Relative_strips_the_service_url_prefix(string href, string? serviceUrl, string expected)
-    {
-        Assert.Equal(expected, CardDavContactSyncDriver.Relative(href, serviceUrl));
     }
 
     // a real, redacted iCloud card. vCardLib returns nothing at all when an X- property's value contains '=',
@@ -222,21 +210,4 @@ public class CardDavProjectionTests
         Assert.Null(result.PhotoCrop);
     }
 
-    private static XElement Response(string props) =>
-        XElement.Parse($"""<response xmlns="DAV:"><propstat><prop>{props}</prop></propstat></response>""");
-
-    [Fact]
-    public void A_non_multistatus_response_is_reported_rather_than_parsed_as_empty()
-    {
-        var e = Assert.Throws<ContactSyncException>(() =>
-            CardDavContactSyncDriver.ParseMultistatus("""<?xml version="1.0"?><D:error xmlns:D="DAV:"/>"""));
-
-        Assert.Contains("expected multistatus", e.Message);
-    }
-
-    [Fact]
-    public void Unparseable_xml_is_reported_rather_than_throwing_raw()
-    {
-        Assert.Throws<ContactSyncException>(() => CardDavContactSyncDriver.ParseMultistatus("not xml at all"));
-    }
 }

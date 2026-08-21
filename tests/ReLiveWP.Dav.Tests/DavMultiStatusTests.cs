@@ -1,10 +1,10 @@
-using ReLiveWP.Backend.SkyDrive.Services;
+using ReLiveWP.Dav;
 
-namespace ReLiveWP.Backend.SkyDrive.Tests;
+namespace ReLiveWP.Dav.Tests;
 
 // The three servers differ in namespace prefix, href form and how they report content types.
 // Getting any of these wrong silently yields an empty album rather than an error.
-public class WebDavMultiStatusTests
+public class DavMultiStatusTests
 {
     private const string Album = "Windows phone photos";
 
@@ -111,10 +111,9 @@ public class WebDavMultiStatusTests
     [InlineData(Rclone, "/Windows phone photos/clip.mp4", "clip.mp4")]
     public void ParsesFilesFromEveryServerDialect(string xml, string expectedPath, string expectedRelative)
     {
-        var entries = WebDavMultiStatus.Parse(xml);
-        var file = entries.Single(e => !e.IsCollection && e.Path == expectedPath);
+        var file = DavMultiStatus.Parse(xml).Responses.Single(e => !e.IsCollection && e.Path == expectedPath);
 
-        Assert.Equal(expectedRelative, WebDavMultiStatus.RelativeToAlbum(file.Path, Album));
+        Assert.Equal(expectedRelative, DavPath.RelativeTo(file.Path, Album));
     }
 
     [Theory]
@@ -122,16 +121,12 @@ public class WebDavMultiStatusTests
     [InlineData(ApacheModDav)]
     [InlineData(Rclone)]
     public void IdentifiesTheCollectionItself(string xml)
-    {
-        var entries = WebDavMultiStatus.Parse(xml);
-
-        Assert.Single(entries, e => e.IsCollection);
-    }
+        => Assert.Single(DavMultiStatus.Parse(xml).Responses, e => e.IsCollection);
 
     [Fact]
     public void SkipsPropertiesReportedAsNotFound()
     {
-        var file = WebDavMultiStatus.Parse(Nextcloud).Single(e => !e.IsCollection);
+        var file = DavMultiStatus.Parse(Nextcloud).Responses.Single(e => !e.IsCollection);
 
         Assert.Equal("image/jpeg", file.ContentType);
         Assert.Equal(204800, file.Length);
@@ -140,16 +135,12 @@ public class WebDavMultiStatusTests
 
     [Fact]
     public void ReadsCollectionWithoutContentTypeAsNull()
-    {
-        var collection = WebDavMultiStatus.Parse(Nextcloud).Single(e => e.IsCollection);
-
-        Assert.Null(collection.ContentType);
-    }
+        => Assert.Null(DavMultiStatus.Parse(Nextcloud).Responses.Single(e => e.IsCollection).ContentType);
 
     [Fact]
     public void ParsesRfc1123Timestamps()
     {
-        var file = WebDavMultiStatus.Parse(Rclone).Single(e => e.Path.EndsWith("clip.mp4"));
+        var file = DavMultiStatus.Parse(Rclone).Responses.Single(e => e.Path.EndsWith("clip.mp4"));
 
         Assert.Equal(new DateTimeOffset(2026, 1, 15, 12, 0, 0, TimeSpan.Zero), file.Modified);
     }
@@ -157,51 +148,104 @@ public class WebDavMultiStatusTests
     [Fact]
     public void MissingTimestampFallsBackToEpoch()
     {
-        var file = WebDavMultiStatus.Parse(Rclone).Single(e => e.Path.EndsWith("notes.txt"));
+        var file = DavMultiStatus.Parse(Rclone).Responses.Single(e => e.Path.EndsWith("notes.txt"));
 
         Assert.Equal(DateTimeOffset.UnixEpoch, file.Modified);
     }
 
-    [Theory]
-    [InlineData("/dav/Windows phone photos/sub/nested.jpg", "sub/nested.jpg")]
-    [InlineData("/Windows phone photos/top.jpg", "top.jpg")]
-    public void ResolvesPathsBelowTheAlbum(string path, string expected)
+    [Fact]
+    public void MalformedXmlThrows()
     {
-        Assert.Equal(expected, WebDavMultiStatus.RelativeToAlbum(path, Album));
-    }
-
-    [Theory]
-    [InlineData("/dav/Windows phone photos")]
-    [InlineData("/dav/Windows phone photos/")]
-    [InlineData("/dav/some other folder/thing.jpg")]
-    public void ReturnsNullForTheAlbumItselfAndForOutsiders(string path)
-    {
-        Assert.Null(WebDavMultiStatus.RelativeToAlbum(path, Album));
+        Assert.Throws<DavParseException>(() => DavMultiStatus.Parse("""<multistatus xmlns="DAV:"><response>"""));
+        Assert.Throws<DavParseException>(() => DavMultiStatus.Parse(""));
     }
 
     [Fact]
-    public void NormalisesAbsoluteAndRelativeHrefsAlike()
+    public void NonMultiStatusRootThrows()
     {
-        Assert.Equal("/a/b c.jpg", WebDavMultiStatus.NormalisePath("http://host/a/b%20c.jpg"));
-        Assert.Equal("/a/b c.jpg", WebDavMultiStatus.NormalisePath("/a/b%20c.jpg"));
-        Assert.Equal("/a/b", WebDavMultiStatus.NormalisePath("/a/b/"));
-    }
+        var error = Assert.Throws<DavParseException>(
+            () => DavMultiStatus.Parse("""<error xmlns="DAV:"><valid-sync-token/></error>"""));
 
-    // a rooted href is an absolute file: uri on unix, and running it through Uri drops a %25 in
-    // front of every escape, so the space never comes back
-    [Fact]
-    public void RootedHrefsUnescapeWithoutGoingThroughUri()
-    {
-        Assert.Equal("/photos/Windows phone photos/WP_000084.jpg",
-            WebDavMultiStatus.NormalisePath("/photos/Windows%20phone%20photos/WP_000084.jpg"));
-
-        Assert.Equal("/photos/100% done.jpg", WebDavMultiStatus.NormalisePath("/photos/100%25%20done.jpg"));
+        Assert.Contains("expected multistatus", error.Message);
     }
 
     [Fact]
-    public void MalformedXmlYieldsNothingRatherThanThrowing()
+    public void OneUnaddressableResponseIsReportedRatherThanSinkingTheBatch()
     {
-        Assert.Empty(WebDavMultiStatus.Parse("<multistatus xmlns=\"DAV:\"><response>"));
-        Assert.Empty(WebDavMultiStatus.Parse(""));
+        var result = DavMultiStatus.Parse("""
+            <multistatus xmlns="DAV:">
+              <response>
+                <propstat><prop><resourcetype/></prop><status>HTTP/1.1 200 OK</status></propstat>
+              </response>
+              <response>
+                <href>/photos/good.jpg</href>
+                <propstat><prop><getcontenttype>image/jpeg</getcontenttype></prop><status>HTTP/1.1 200 OK</status></propstat>
+              </response>
+            </multistatus>
+            """);
+
+        Assert.Equal(1, result.Skipped);
+        Assert.Equal("/photos/good.jpg", Assert.Single(result.Responses).Path);
+    }
+
+    [Fact]
+    public void AnUnreadableTimestampDegradesOnlyThatEntry()
+    {
+        var file = DavMultiStatus.Parse("""
+            <multistatus xmlns="DAV:">
+              <response>
+                <href>/photos/odd.jpg</href>
+                <propstat>
+                  <prop>
+                    <getcontenttype>image/jpeg</getcontenttype>
+                    <getlastmodified>whenever, really</getlastmodified>
+                  </prop>
+                  <status>HTTP/1.1 200 OK</status>
+                </propstat>
+              </response>
+            </multistatus>
+            """).Responses.Single();
+
+        Assert.Equal("image/jpeg", file.ContentType);
+        Assert.Equal(DateTimeOffset.UnixEpoch, file.Modified);
+    }
+
+    [Fact]
+    public void ReadsResponseLevelNotFoundForDeletions()
+    {
+        var result = DavMultiStatus.Parse("""
+            <multistatus xmlns="DAV:">
+              <sync-token>http://example.com/ns/sync/42</sync-token>
+              <response>
+                <href>/books/default/gone.vcf</href>
+                <status>HTTP/1.1 404 Not Found</status>
+              </response>
+              <response>
+                <href>/books/default/here.vcf</href>
+                <propstat><prop><getetag>"e1"</getetag></prop><status>HTTP/1.1 200 OK</status></propstat>
+              </response>
+            </multistatus>
+            """);
+
+        Assert.Equal("http://example.com/ns/sync/42", result.SyncToken);
+        Assert.Equal("/books/default/gone.vcf", Assert.Single(result.NotFound).Path);
+        Assert.Equal("/books/default/here.vcf", Assert.Single(result.Found).Path);
+    }
+
+    // a propstat with no status at all is malformed, but enough servers send one that dropping the
+    // properties would mean reading nothing off them
+    [Fact]
+    public void PropstatWithoutAStatusIsTreatedAsOk()
+    {
+        var file = DavMultiStatus.Parse("""
+            <multistatus xmlns="DAV:">
+              <response>
+                <href>/photos/loose.jpg</href>
+                <propstat><prop><getcontenttype>image/png</getcontenttype></prop></propstat>
+              </response>
+            </multistatus>
+            """).Responses.Single();
+
+        Assert.Equal("image/png", file.ContentType);
     }
 }

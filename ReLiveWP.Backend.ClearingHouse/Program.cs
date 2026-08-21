@@ -37,6 +37,7 @@ builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
 builder.Services.AddSingleton<ConnectedServicesProxy>();
 builder.Services.AddScoped<IContactSyncDriver, GoogleContactSyncDriver>();
 builder.Services.AddScoped<IContactSyncDriver, CardDavContactSyncDriver>();
+builder.Services.AddScoped<IContactSyncDriver, GraphContactSyncDriver>();
 builder.Services.AddScoped<ContactSyncDriverRegistry>();
 builder.Services.AddScoped<ContactPhotoService>();
 builder.Services.AddScoped<ContactMirrorService>();

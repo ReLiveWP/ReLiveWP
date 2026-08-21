@@ -1,61 +1,32 @@
 using System.Buffers;
 using System.Net;
-using System.Text;
 using Microsoft.Extensions.Caching.Memory;
-using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
+using ReLiveWP.Dav;
 
 namespace ReLiveWP.Backend.SkyDrive.Services;
 
-public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
-                                   IConfiguration configuration,
+public class WebDavPhotoSyncClient(WebDavProxy proxy,
                                    IMemoryCache cache,
                                    WebDavUploadStore uploads,
                                    ILogger<WebDavPhotoSyncClient> logger) : IPhotoSyncProxyClient
 {
-    public const string ServiceName = "webdav";
-
     private const int MaxItems = 5000;
     private const int MaxNameAttempts = 50;
 
     private static readonly TimeSpan ListLifetime = TimeSpan.FromSeconds(30);
 
-    private static readonly HttpMethod Propfind = new("PROPFIND");
-    private static readonly HttpMethod MkCol = new("MKCOL");
+    private static readonly string ListBody = DavBody.Propfind(
+        DavProps.ResourceType, DavProps.GetContentType, DavProps.GetContentLength,
+        DavProps.GetLastModified, DavProps.GetETag);
 
-    private const string ListBody =
-        """
-        <?xml version="1.0" encoding="utf-8"?>
-        <D:propfind xmlns:D="DAV:"><D:prop>
-          <D:resourcetype/><D:getcontenttype/><D:getcontentlength/><D:getlastmodified/><D:getetag/>
-        </D:prop></D:propfind>
-        """;
-
-    public string ServiceId => ServiceName;
-
-    private string ProxyWebDavPath(string path)
-        => $"{configuration["Endpoints:ConnectedServices:Proxy"]!.TrimEnd('/')}/proxy/{ServiceName}/{EncodePath(path)}";
-
-    private static Dictionary<string, string> Credentials(string userId, string connectionId) => new()
-    {
-        ["X-Connection-ID"] = connectionId,
-        ["X-User-ID"] = userId,
-    };
-
-    private static HttpRequestMessage CreateRequest(HttpMethod method, string url, string userId, string connectionId)
-    {
-        var request = new HttpRequestMessage(method, url);
-        request.Headers.TryAddWithoutValidation("X-Connection-ID", connectionId);
-        request.Headers.TryAddWithoutValidation("X-User-ID", userId);
-        return request;
-    }
+    public string ServiceId => WebDavProxy.ServiceName;
 
     public async Task<string> EnsureAlbumAsync(string userId, string connectionId, string title, CancellationToken ct = default)
     {
         var album = SanitiseSegment(title);
 
-        using var client = httpClientFactory.CreateClient();
-        using var request = CreateRequest(MkCol, ProxyWebDavPath(album), userId, connectionId);
-        using var response = await client.SendAsync(request, ct);
+        using var dav = proxy.CreateClient(userId, connectionId);
+        using var response = await dav.MkColAsync(proxy.Url(album), ct);
 
         // 405 is the collection already existing, which is the normal case after the first sync
         if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.MethodNotAllowed)
@@ -72,27 +43,25 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
         if (cache.TryGetValue<IReadOnlyList<ProviderPhoto>>(cacheKey, out var cached) && cached != null)
             return cached;
 
-        using var client = httpClientFactory.CreateClient();
-        using var request = CreateRequest(Propfind, ProxyWebDavPath(albumId), userId, connectionId);
-        request.Headers.TryAddWithoutValidation("Depth", "1");
-        request.Content = new StringContent(ListBody, Encoding.UTF8, "application/xml");
+        using var dav = proxy.CreateClient(userId, connectionId);
 
-        using var response = await client.SendAsync(request, ct);
-        var xml = await response.Content.ReadAsStringAsync(ct);
-
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        DavMultiStatus listing;
+        try
+        {
+            listing = await dav.PropfindAsync(proxy.Url(albumId), ListBody, depth: "1", ct);
+        }
+        catch (DavException e) when (e.Status == (int)HttpStatusCode.NotFound)
+        {
             return [];
-
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"WebDAV PROPFIND '{albumId}' failed ({(int)response.StatusCode}): {xml}");
+        }
 
         var items = new List<ProviderPhoto>();
-        foreach (var entry in WebDavMultiStatus.Parse(xml))
+        foreach (var entry in listing.Responses)
         {
             if (entry.IsCollection || items.Count >= MaxItems)
                 continue;
 
-            var relative = WebDavMultiStatus.RelativeToAlbum(entry.Path, albumId);
+            var relative = DavPath.RelativeTo(entry.Path, albumId);
             if (relative == null)
                 continue;
 
@@ -113,7 +82,8 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
                 contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)));
         }
 
-        logger.LogInformation("WebDAV album {AlbumId}: {Count} media item(s)", albumId, items.Count);
+        logger.LogInformation("WebDAV album {AlbumId}: {Count} media item(s), {Skipped} unaddressable",
+            albumId, items.Count, listing.Skipped);
 
         cache.Set(cacheKey, (IReadOnlyList<ProviderPhoto>)items, ListLifetime);
         return items;
@@ -128,7 +98,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
         var path = await ResolveFreeNameAsync(userId, connectionId, albumId, SanitiseSegment(photo.FileName), ct);
         await uploads.StashAsync(connectionId, albumId, photo.FileName, path);
 
-        return new ProviderUploadTarget("PUT", ProxyWebDavPath(path), Credentials(userId, connectionId), 0);
+        return new ProviderUploadTarget("PUT", proxy.Url(path), WebDavProxy.Credentials(userId, connectionId), 0);
     }
 
     public async Task<ProviderUploadResult> CompleteUploadAsync(string userId, string connectionId, string albumId,
@@ -157,7 +127,7 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
             : 0;
 
         return Task.FromResult<ProviderContentLocation?>(new ProviderContentLocation(
-            ProxyWebDavPath(path), Credentials(userId, connectionId), contentType, 0, null, resizeTo));
+            proxy.Url(path), WebDavProxy.Credentials(userId, connectionId), contentType, 0, null, resizeTo));
     }
 
     private async Task<string> ResolveFreeNameAsync(string userId, string connectionId, string albumId,
@@ -167,15 +137,14 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
         var stem = Path.GetFileNameWithoutExtension(fileName);
         var extension = Path.GetExtension(fileName);
 
-        using var client = httpClientFactory.CreateClient();
+        using var dav = proxy.CreateClient(userId, connectionId);
 
         for (var attempt = 0; attempt < MaxNameAttempts; attempt++)
         {
             var candidate = attempt == 0 ? fileName : $"{stem} ({attempt}){extension}";
             var path = $"{album}/{candidate}";
 
-            using var request = CreateRequest(HttpMethod.Head, ProxyWebDavPath(path), userId, connectionId);
-            using var response = await client.SendAsync(request, ct);
+            using var response = await dav.HeadAsync(proxy.Url(path), ct);
 
             if (response.StatusCode == HttpStatusCode.NotFound)
                 return path;
@@ -191,9 +160,6 @@ public class WebDavPhotoSyncClient(IHttpClientFactory httpClientFactory,
     }
 
     private static string ListCacheKey(string connectionId, string albumId) => $"webdav:list:{connectionId}:{albumId}";
-
-    private static string EncodePath(string path)
-        => string.Join('/', path.Split('/').Select(Uri.EscapeDataString));
 
     private static readonly SearchValues<char> InvalidNameChars = SearchValues.Create("/\\#?%:*\"<>|");
 
