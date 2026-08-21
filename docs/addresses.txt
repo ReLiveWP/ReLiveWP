@@ -5,6 +5,7 @@ ConnectedServices:Proxy = http://127.0.0.4:5001
 Skybox = http://127.0.0.6:5000
 SkyDrive = http://localhost:5225
 Mailbox = http://127.0.0.8:5000
+Mail = http://127.0.0.10:5000
 ClearingHouse = http://localhost:13666
 
 Activation = http://localhost:10000

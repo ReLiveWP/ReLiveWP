@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Libraries\Dav\Dav.csproj" />
   </ItemGroup>
 
   <ItemGroup>

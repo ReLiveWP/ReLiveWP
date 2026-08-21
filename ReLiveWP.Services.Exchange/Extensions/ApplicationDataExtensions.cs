@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using System.Text;
+using System.Xml;
 using System.Xml.Serialization;
 using ReLiveWP.Services.Exchange.Helpers;
 using ReLiveWP.Services.Exchange.Models;
@@ -365,7 +366,8 @@ internal static class ApplicationDataExtensions
 
     private static string Convert(EmailItem e, BodyType native, BodyType target)
     {
-        if (target == BodyType.MIME) return e.HasMimeRaw ? e.MimeRaw : string.Empty;
+        // stored as octets; Latin1 maps them back one-for-one for the WBXML string element
+        if (target == BodyType.MIME) return e.HasMimeRaw ? Encoding.Latin1.GetString(e.MimeRaw.Span) : string.Empty;
 
         var data = e.HasBody ? e.Body : string.Empty;
         if (target == native) return data;

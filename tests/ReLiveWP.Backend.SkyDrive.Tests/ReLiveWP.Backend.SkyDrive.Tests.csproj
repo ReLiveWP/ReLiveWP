@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ReLiveWP.Backend.SkyDrive\ReLiveWP.Backend.SkyDrive.csproj" />
     <ProjectReference Include="..\..\ReLiveWP.Backend.ConnectedServices\ReLiveWP.Backend.ConnectedServices.csproj" />
+    <ProjectReference Include="..\..\Libraries\Dav\Dav.csproj" />
   </ItemGroup>
 
 </Project>

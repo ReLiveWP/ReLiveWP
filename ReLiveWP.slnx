@@ -6,9 +6,11 @@
   </Configurations>
   <Folder Name="/! Libraries/">
     <Project Path="Libraries/Atom/Atom.csproj" />
+    <Project Path="Libraries/Dav/Dav.csproj" />
     <Project Path="ReLiveWP.Grpc.Services/ReLiveWP.Grpc.Services.csproj" />
     <Project Path="ReLiveWP.Identity/ReLiveWP.Identity.csproj" />
     <Project Path="ReLiveWP.Integration/ReLiveWP.Integration.csproj" />
+    <Project Path="ReLiveWP.Mail/ReLiveWP.Mail.csproj" />
     <Project Path="ReLiveWP.Passport/ReLiveWP.Passport.csproj" />
     <Project Path="ReLiveWP.ServiceDefaults/ReLiveWP.ServiceDefaults.csproj" />
   </Folder>
@@ -39,6 +41,7 @@
   </Folder>
   <Folder Name="/Exchange/">
     <Project Path="ReLiveWP.Backend.ClearingHouse/ReLiveWP.Backend.ClearingHouse.csproj" />
+    <Project Path="ReLiveWP.Backend.Mail/ReLiveWP.Backend.Mail.csproj" />
     <Project Path="ReLiveWP.Backend.Mailbox/ReLiveWP.Backend.Mailbox.csproj" />
     <Project Path="ReLiveWP.Services.AddressBook/ReLiveWP.Services.AddressBook.csproj" />
     <Project Path="ReLiveWP.Services.Exchange/ReLiveWP.Services.Exchange.csproj" />
@@ -53,12 +56,15 @@
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="tests/ReLiveWP.Backend.SkyDrive.Tests/ReLiveWP.Backend.SkyDrive.Tests.csproj" />
+    <Project Path="tests/ReLiveWP.Dav.Tests/ReLiveWP.Dav.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Identity.Tests/ReLiveWP.Identity.Tests.csproj" />
+    <Project Path="tests/ReLiveWP.Mail.Tests/ReLiveWP.Mail.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Activity.Tests/ReLiveWP.Services.Activity.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Docs.Tests/ReLiveWP.Services.Docs.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Backend.ClearingHouse.Tests/ReLiveWP.Backend.ClearingHouse.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Backend.ConnectedServices.Tests/ReLiveWP.Backend.ConnectedServices.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Backend.Identity.Tests/ReLiveWP.Backend.Identity.Tests.csproj" />
+    <Project Path="tests/ReLiveWP.Backend.Mail.Tests/ReLiveWP.Backend.Mail.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Backend.Mailbox.Tests/ReLiveWP.Backend.Mailbox.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />
   </Folder>

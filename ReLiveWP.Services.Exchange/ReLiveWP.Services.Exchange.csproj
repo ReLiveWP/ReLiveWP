@@ -4,7 +4,6 @@
     <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="Grpc.Net.Client" />
     <PackageReference Include="Grpc.Net.ClientFactory" />
-    <PackageReference Include="MimeKit" />
     <PackageReference Include="Grpc.Tools">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -18,14 +17,15 @@
   <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\ReLiveWP.Mail\ReLiveWP.Mail.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Protobuf Include="../protos/user.proto" GrpcServices="Client">
       <Link>Protos\user.proto</Link>
     </Protobuf>
-    <Protobuf Include="../protos/mailbox_store.proto" GrpcServices="Client">
-      <Link>Protos\mailbox_store.proto</Link>
+    <Protobuf Include="../protos/mail.proto" GrpcServices="Client">
+      <Link>Protos\mail.proto</Link>
     </Protobuf>
   </ItemGroup>
 </Project>

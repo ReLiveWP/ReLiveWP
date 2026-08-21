@@ -1,0 +1,42 @@
+syntax = "proto3";
+option csharp_namespace = "ReLiveWP.Services.Grpc.Mail";
+package mail;
+
+service Mail {
+  rpc Submit (SubmitRequest) returns (SubmitResponse);
+}
+
+enum SubmitStatus {
+  SUBMIT_STATUS_UNSPECIFIED           = 0;
+  SUBMIT_STATUS_OK                    = 1;
+  SUBMIT_STATUS_MALFORMED             = 2;
+  SUBMIT_STATUS_NO_RECIPIENTS         = 3;
+  SUBMIT_STATUS_UNRESOLVED_RECIPIENTS = 4;
+  SUBMIT_STATUS_SENDER_NOT_ALLOWED    = 5;
+  SUBMIT_STATUS_TOO_LARGE             = 6;
+}
+
+enum RecipientRoute {
+  RECIPIENT_ROUTE_UNSPECIFIED = 0;
+  RECIPIENT_ROUTE_LOCAL       = 1;
+  RECIPIENT_ROUTE_EXTERNAL    = 2;  // reserved for phase 3, nothing routes here yet
+  RECIPIENT_ROUTE_UNROUTABLE  = 3;
+}
+
+message SubmitRequest {
+  string          user_id            = 1;
+  bytes           mime               = 2;  // complete RFC 5322 message as the client composed it
+  optional string client_id          = 3;  // nonce, makes a retried submission land exactly once
+  bool            save_in_sent_items = 4;
+}
+
+message RecipientResult {
+  string         address = 1;
+  RecipientRoute route   = 2;
+}
+
+message SubmitResponse {
+  SubmitStatus             status        = 1;
+  repeated RecipientResult recipients    = 2;
+  optional string          submission_id = 3;
+}

@@ -14,4 +14,17 @@
     h1::before {
         background: var(--danger);
     }
+
+    .unlink-choice {
+        list-style: none;
+        padding: 0;
+
+        input {
+            display: inline;
+            margin-top: 0;
+            margin-right: 8px;
+            margin-bottom: 1px;
+            vertical-align: bottom;
+        }
+    }
 }

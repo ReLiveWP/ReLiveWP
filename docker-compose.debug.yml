@@ -79,6 +79,15 @@ services:
     ports:
       - 15001:5000
 
+  mail:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+    ports:
+      - 15002:5000
+
   activation:
     <<: *debug
     build:
@@ -161,6 +170,13 @@ services:
         CONFIGURATION: Debug
     environment: *dev-env
 
+  appserver:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
   orion:
     <<: *debug
     build:
@@ -169,6 +185,20 @@ services:
     environment: *dev-env
 
   profile:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  messenger:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
+  support:
     <<: *debug
     build:
       args:

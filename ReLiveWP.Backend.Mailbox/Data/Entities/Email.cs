@@ -28,7 +28,7 @@ public class DbEmail : DbItem
     public string? Body { get; set; }
     public byte? BodyType { get; set; }
     public byte? NativeBodyType { get; set; }
-    public string? MimeRaw { get; set; }
+    public byte[]? MimeRaw { get; set; }
 
     // FlagStatus != null marks a flag as present
     public byte? FlagStatus { get; set; }

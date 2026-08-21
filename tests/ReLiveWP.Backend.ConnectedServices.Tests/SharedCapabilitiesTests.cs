@@ -9,6 +9,7 @@ using ReLiveWP.Services.Grpc;
 
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
 using GoogleService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
+using MicrosoftService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Microsoft;
 
 namespace ReLiveWP.Backend.ConnectedServices.Tests;
 
@@ -85,6 +86,37 @@ public class SharedCapabilitiesTests : IDisposable
         await UpdateAsync(db, id, enabled: ServiceCaps.SocialFeed | ServiceCaps.SocialPost);
 
         Assert.Equal(ServiceCaps.SocialFeed, (await db.ConnectedServices.SingleAsync()).SharedCapabilities);
+    }
+
+    // the phone has one document store and one camera roll, so these cannot be split across accounts:
+    // SkyDocs and SkyDrive merge every enabled provider into a single tree
+    [Theory]
+    [InlineData(ServiceCaps.FileStorage)]
+    [InlineData(ServiceCaps.PhotoSync)]
+    public async Task Enabling_a_single_service_capability_turns_it_off_on_the_others(ServiceCaps cap)
+    {
+        using var db = NewContext();
+        var onedrive = AddConnection(db, Owner, MicrosoftService.SERVICE_NAME, enabled: cap);
+        var share = AddConnection(db, Owner, WebDav.SERVICE_NAME, enabled: ServiceCaps.None);
+        await db.SaveChangesAsync();
+
+        await UpdateAsync(db, share, enabled: cap);
+
+        Assert.Equal(cap, (await db.ConnectedServices.SingleAsync(c => c.Id == share)).EnabledCapabilities);
+        Assert.Equal(ServiceCaps.None, (await db.ConnectedServices.SingleAsync(c => c.Id == onedrive)).EnabledCapabilities);
+    }
+
+    [Fact]
+    public async Task A_single_service_capability_does_not_disturb_another_users_connection()
+    {
+        using var db = NewContext();
+        var theirs = AddConnection(db, Other, MicrosoftService.SERVICE_NAME, enabled: ServiceCaps.FileStorage);
+        var mine = AddConnection(db, Owner, WebDav.SERVICE_NAME, enabled: ServiceCaps.None);
+        await db.SaveChangesAsync();
+
+        await UpdateAsync(db, mine, enabled: ServiceCaps.FileStorage);
+
+        Assert.Equal(ServiceCaps.FileStorage, (await db.ConnectedServices.SingleAsync(c => c.Id == theirs)).EnabledCapabilities);
     }
 
     [Fact]
@@ -243,6 +275,19 @@ public class SharedCapabilitiesTests : IDisposable
             ServiceId = GoogleService.SERVICE_NAME,
             DisplayName = "Google",
             ServiceCapabilities = ServiceCaps.PhotoSync,
+        },
+        [MicrosoftService.SERVICE_NAME] = new ConnectedServiceDescription
+        {
+            ServiceId = MicrosoftService.SERVICE_NAME,
+            DisplayName = "Microsoft",
+            ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
+        },
+        [WebDav.SERVICE_NAME] = new ConnectedServiceDescription
+        {
+            ServiceId = WebDav.SERVICE_NAME,
+            DisplayName = "WebDAV",
+            LinkMode = ServiceLinkMode.Credentials,
+            ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync,
         },
     };
 

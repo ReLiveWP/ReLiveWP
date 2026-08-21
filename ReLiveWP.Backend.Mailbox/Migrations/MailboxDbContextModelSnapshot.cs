@@ -1122,8 +1122,8 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Property<string>("MessageClass")
                         .HasColumnType("text");
 
-                    b.Property<string>("MimeRaw")
-                        .HasColumnType("text");
+                    b.Property<byte[]>("MimeRaw")
+                        .HasColumnType("bytea");
 
                     b.Property<byte?>("NativeBodyType")
                         .HasColumnType("smallint")

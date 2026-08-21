@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ReLiveWP.Backend.SkyDrive.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Protobuf Include="../protos/skyphotos.proto" GrpcServices="Server">
       <Link>Protos\skyphotos.proto</Link>
     </Protobuf>
@@ -31,6 +35,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Libraries\Dav\Dav.csproj" />
   </ItemGroup>
 
 </Project>

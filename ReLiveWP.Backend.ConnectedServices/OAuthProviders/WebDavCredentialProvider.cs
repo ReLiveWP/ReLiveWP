@@ -1,8 +1,7 @@
 using System.Net;
-using System.Net.Http.Headers;
-using System.Text;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Services;
+using ReLiveWP.Dav;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
 namespace ReLiveWP.Backend.ConnectedServices.OAuthProviders;
@@ -12,8 +11,7 @@ public class WebDavCredentialProvider(IHttpClientFactory httpClientFactory,
                                       ConnectionSecretProtector protector,
                                       ILogger<WebDavCredentialProvider> logger) : ICredentialLinkProvider
 {
-    private const string PropfindBody =
-        """<?xml version="1.0" encoding="utf-8"?><D:propfind xmlns:D="DAV:"><D:prop><D:resourcetype/></D:prop></D:propfind>""";
+    private static readonly string PropfindBody = DavBody.Propfind(DavProps.ResourceType);
 
     public async Task<LiveConnectedService> LinkAsync(LiveConnectedService connection, CredentialLink credentials,
                                                       CancellationToken ct = default)
@@ -60,33 +58,23 @@ public class WebDavCredentialProvider(IHttpClientFactory httpClientFactory,
 
     private async Task ProbeAsync(Uri baseUri, CredentialLink credentials, CancellationToken ct)
     {
-        using var client = httpClientFactory.CreateClient(OutboundAddressPolicyExtensions.GuardedClientName);
+        using var dav = DavCredentials.CreateClient(httpClientFactory, credentials.Username, credentials.Secret);
 
-        using var request = new HttpRequestMessage(new HttpMethod("PROPFIND"), baseUri)
-        {
-            Content = new StringContent(PropfindBody, Encoding.UTF8, "application/xml"),
-        };
-
-        request.Headers.TryAddWithoutValidation("Depth", "0");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Basic",
-            Convert.ToBase64String(Encoding.UTF8.GetBytes($"{credentials.Username}:{credentials.Secret}")));
-
-        HttpResponseMessage response;
         try
         {
-            response = await client.SendAsync(request, ct);
+            await dav.PropfindAsync(baseUri.ToString(), PropfindBody, depth: "0", ct);
         }
         catch (HttpRequestException ex)
         {
             throw new CredentialLinkException($"Could not reach the server: {ex.Message}");
         }
-
-        using (response)
+        catch (DavParseException)
         {
-            if (response.IsSuccessStatusCode)
-                return;
-
-            throw new CredentialLinkException(response.StatusCode switch
+            // a share that answers a PROPFIND at all is a share; the body only has to arrive
+        }
+        catch (DavException e)
+        {
+            throw new CredentialLinkException((HttpStatusCode?)e.Status switch
             {
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
                     => "The username or password was rejected by the server.",
@@ -94,7 +82,7 @@ public class WebDavCredentialProvider(IHttpClientFactory httpClientFactory,
                     => "That path does not exist on the server.",
                 HttpStatusCode.MethodNotAllowed or HttpStatusCode.NotImplemented
                     => "That address does not appear to be a WebDAV share.",
-                _ => $"The server rejected the connection ({(int)response.StatusCode}).",
+                _ => $"The server rejected the connection ({e.Status}).",
             });
         }
     }

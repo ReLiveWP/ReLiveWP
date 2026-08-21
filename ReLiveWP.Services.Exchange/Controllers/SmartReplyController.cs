@@ -3,7 +3,6 @@ using ReLiveWP.Identity;
 using ReLiveWP.Services.Exchange.Attributes;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Exchange.Services;
-using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Exchange.Controllers;
 
@@ -13,7 +12,6 @@ namespace ReLiveWP.Services.Exchange.Controllers;
 [Consumes("application/vnd.ms-sync.wbxml", "application/vnd.ms-sync")]
 public class SmartReplyController(
     ILogger<SmartReplyController> logger,
-    User.UserClient userClient,
     OutboundMailService outbound) : ActiveSyncCommandController
 {
     [HttpPost]
@@ -25,14 +23,20 @@ public class SmartReplyController(
 
         if (request?.Mime is null)
         {
-            await WriteWbxmlResponseAsync(new SmartReplyResponse { Status = 150 }, logger);
+            await WriteWbxmlResponseAsync(new SmartReplyResponse { Status = EasStatus.MailSubmissionFailed }, logger);
             return;
         }
 
         var userId = User.Id()!;
-        var info = await userClient.GetUserInfoAsync(new GetUserInfoRequest { UserId = userId }, cancellationToken: ct);
+        var status = await outbound.SubmitAsync(
+            userId, request.Mime, request.SaveInSentItems is not null, request.ClientId, ct);
 
-        await outbound.SendAsync(userId, info.EmailAddress, request.Mime, request.SaveInSentItems is not null, ct);
+        if (status != EasStatus.Success)
+        {
+            await WriteWbxmlResponseAsync(new SmartReplyResponse { Status = status }, logger);
+            return;
+        }
+
         await outbound.MarkSourceVerbAsync(userId, request.Source?.ItemId, OutboundMailService.VerbReply, ct);
 
         HttpContext.Response.StatusCode = 200;

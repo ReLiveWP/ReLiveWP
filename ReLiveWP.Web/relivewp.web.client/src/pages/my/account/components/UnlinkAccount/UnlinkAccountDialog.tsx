@@ -63,14 +63,14 @@ export default function UnlinkAccountDialog({ onClose, id, service: type }: {
                     <label>
                         <input type="radio" name="unlink-data" checked={!deleteData.value}
                             onChange={() => deleteData.value = false} />
-                        keep anything it put on my phone
+                        <span>keep anything it put on my phone</span>
                     </label>
                 </li>
                 <li>
                     <label>
                         <input type="radio" name="unlink-data" checked={deleteData.value}
                             onChange={() => deleteData.value = true} />
-                        remove it as well
+                        <span>remove it as well</span>
                     </label>
                 </li>
             </ul>

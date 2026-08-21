@@ -1,3 +1,4 @@
+using System.Net;
 using ReLiveWP.ServiceDefaults.Contacts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -55,6 +56,10 @@ public class ContactPhotoService(
         {
             using var request = proxy.Request(HttpMethod.Get, serviceId, url, connection);
             using var response = await proxy.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+
+            // most contacts simply have no picture, and Graph says so with a 404 per contact
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return null;
 
             if (!response.IsSuccessStatusCode)
             {

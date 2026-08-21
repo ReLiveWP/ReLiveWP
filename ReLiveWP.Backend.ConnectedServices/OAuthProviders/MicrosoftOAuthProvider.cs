@@ -159,14 +159,23 @@ public class MicrosoftOAuthProvider(IConnectedServicesContainer connectedService
             : root.TryGetProperty("userPrincipalName", out var upn) ? upn.GetString() : null;
     }
 
-    private static LiveConnectedServiceCapabilities GetCapabilitiesFromScopes(string[] scopes)
+    private const string ScopePrefix = "https://graph.microsoft.com/";
+
+    internal static LiveConnectedServiceCapabilities GetCapabilitiesFromScopes(string[] scopes)
     {
         LiveConnectedServiceCapabilities caps = 0;
-        foreach (var _scope in scopes)
+
+        foreach (var raw in scopes)
         {
-            var scope = _scope.Trim();
-            if (scope.StartsWith("https://graph.microsoft.com/Files."))
-                caps |= LiveConnectedServiceCapabilities.FileStorage | LiveConnectedServiceCapabilities.PhotoSync;
+            var scope = raw.Trim();
+            if (!scope.StartsWith(ScopePrefix, StringComparison.Ordinal)) continue;
+
+            caps |= scope[ScopePrefix.Length..].Split('.')[0] switch
+            {
+                "Files" => LiveConnectedServiceCapabilities.FileStorage | LiveConnectedServiceCapabilities.PhotoSync,
+                "Contacts" => LiveConnectedServiceCapabilities.Contacts,
+                _ => 0,
+            };
         }
 
         return caps;

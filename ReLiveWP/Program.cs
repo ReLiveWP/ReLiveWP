@@ -24,6 +24,10 @@ var connectedServices = builder.AddProject("ReLiveWP.Backend.ConnectedServices")
 var mailbox = builder.AddProject("ReLiveWP.Backend.Mailbox")
     .DependsOn(identity);
 
+var mail = builder.AddProject("ReLiveWP.Backend.Mail")
+    .DependsOn(identity)
+    .DependsOn(mailbox);
+
 var skybox = builder.AddProject("ReLiveWP.Backend.Skybox")
     .DependsOn(identity);
 

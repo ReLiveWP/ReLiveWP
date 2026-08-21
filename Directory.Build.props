@@ -5,5 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(MSBuildProjectName)</OutputPath>
     <PublishDir>$(MSBuildThisFileDirectory)publish\$(TargetFramework)\$(RuntimeIdentifier)\$(MSBuildProjectName)</PublishDir>
+    <IsPublishable Condition="$(MSBuildProjectName.EndsWith('.Tests'))">false</IsPublishable>
   </PropertyGroup>
 </Project>
