@@ -82,6 +82,11 @@ export const AccountTypes = {
         name: "carddav address book",
         icon: WebDavIcon,
         allowsMany: true
+    },
+    "caldav": {
+        name: "caldav calendar",
+        icon: WebDavIcon,
+        allowsMany: true
     }
 } satisfies Record<string, AccountTypeEntry>;
 

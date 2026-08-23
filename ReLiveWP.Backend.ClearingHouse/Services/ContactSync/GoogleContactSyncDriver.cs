@@ -57,7 +57,7 @@ public class GoogleContactSyncDriver(
             using var response = await proxy.SendAsync(request, HttpCompletionOption.ResponseContentRead, ct);
             var json = await response.Content.ReadAsStringAsync(ct);
 
-            if ((int)response.StatusCode == 410 && deltaToken is not null)
+            if (deltaToken is not null && GooglePeopleErrors.IsSyncTokenRejected((int)response.StatusCode, json))
                 throw new DeltaTokenExpiredException("Google rejected the sync token; a full sync is required.");
 
             if (!response.IsSuccessStatusCode)

@@ -27,4 +27,6 @@ public static class DavProps
     public static readonly XName CalendarHomeSet = CalDav + "calendar-home-set";
     public static readonly XName Calendar = CalDav + "calendar";
     public static readonly XName CalendarData = CalDav + "calendar-data";
+    public static readonly XName SupportedCalendarComponentSet = CalDav + "supported-calendar-component-set";
+    public static readonly XName Comp = CalDav + "comp";
 }

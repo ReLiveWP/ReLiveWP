@@ -37,6 +37,7 @@ public abstract class MirrorRunner(
             throw new MirrorException($"No {Kind} driver for '{source.ServiceId}'");
 
         MirrorBatch batch;
+        var expired = false;
         try
         {
             batch = await driver.FetchChangesAsync(connection, source.SourceId, source.DeltaToken, ct);
@@ -46,12 +47,17 @@ public abstract class MirrorRunner(
             logger.LogInformation("delta token expired for {Service}/{Source}, pulling in full",
                 source.ServiceId, source.SourceId);
 
+            expired = true;
             batch = await driver.FetchChangesAsync(connection, source.SourceId, null, ct);
         }
 
         var result = await ApplyAsync(source, connection, batch, ct);
 
-        source.DeltaToken = batch.DeltaToken ?? source.DeltaToken;
+        // an expired token gets dropped even if the full pull came back without a new one, else we
+        // write the dead one back and do this again next poll
+        if (batch.DeltaToken is not null || expired)
+            source.DeltaToken = batch.DeltaToken;
+
         source.LastSyncedAt = DateTime.UtcNow;
         source.ConsecutiveFailures = 0;
         source.LastFailure = null;

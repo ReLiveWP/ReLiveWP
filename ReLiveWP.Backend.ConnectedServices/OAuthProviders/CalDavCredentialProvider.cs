@@ -4,10 +4,10 @@ using ReLiveWP.Dav;
 
 namespace ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 
-public class CardDavCredentialProvider(DavHomeSetDiscovery discovery,
-                                       IOutboundAddressPolicy addressPolicy,
-                                       ConnectionSecretProtector protector,
-                                       ILogger<CardDavCredentialProvider> logger) : ICredentialLinkProvider
+public class CalDavCredentialProvider(DavHomeSetDiscovery discovery,
+                                      IOutboundAddressPolicy addressPolicy,
+                                      ConnectionSecretProtector protector,
+                                      ILogger<CalDavCredentialProvider> logger) : ICredentialLinkProvider
 {
     public async Task<LiveConnectedService> LinkAsync(LiveConnectedService connection, CredentialLink credentials,
                                                       CancellationToken ct = default)
@@ -19,9 +19,9 @@ public class CardDavCredentialProvider(DavHomeSetDiscovery discovery,
         addressPolicy.ValidateUri(baseUri);
 
         var homeSet = await discovery.DiscoverAsync(
-            baseUri, credentials, DavProps.AddressbookHomeSet, "CardDAV", ct);
+            baseUri, credentials, DavProps.CalendarHomeSet, "CalDAV", ct);
 
-        connection.Service = CardDav.SERVICE_NAME;
+        connection.Service = CalDav.SERVICE_NAME;
         connection.ServiceUrl = homeSet.ToString();
         connection.AccessToken = "";
         connection.RefreshToken = "";
@@ -38,7 +38,7 @@ public class CardDavCredentialProvider(DavHomeSetDiscovery discovery,
                 : credentials.Label.Trim(),
         };
 
-        logger.LogInformation("Linked CardDAV address book at {HomeSet} for {Username}", homeSet, credentials.Username);
+        logger.LogInformation("Linked CalDAV calendar home at {HomeSet} for {Username}", homeSet, credentials.Username);
 
         return connection;
     }

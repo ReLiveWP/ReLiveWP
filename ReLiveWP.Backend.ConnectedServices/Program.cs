@@ -48,14 +48,17 @@ builder.Services.AddScoped<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
 builder.Services.AddScoped<GoogleOAuthProvider>();
 builder.Services.AddScoped<MicrosoftOAuthProvider>();
+builder.Services.AddScoped<DavHomeSetDiscovery>();
 builder.Services.AddScoped<WebDavCredentialProvider>();
 builder.Services.AddScoped<CardDavCredentialProvider>();
+builder.Services.AddScoped<CalDavCredentialProvider>();
 
 builder.Services.AddScoped<IConnectedServiceProxy, AtProtoServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, GoogleServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, MicrosoftServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, WebDavServiceProxy>();
 builder.Services.AddScoped<IConnectedServiceProxy, CardDavServiceProxy>();
+builder.Services.AddScoped<IConnectedServiceProxy, CalDavServiceProxy>();
 
 builder.Services.AddConnectedServices()
     .AddConnectedService(s => new()
@@ -80,8 +83,7 @@ builder.Services.AddConnectedServices()
             "https://www.googleapis.com/auth/userinfo.profile ",
             "https://www.googleapis.com/auth/userinfo.email ",
             "https://www.googleapis.com/auth/contacts.readonly ",
-            // "https://www.googleapis.com/auth/calendar ",
-            // "https://www.googleapis.com/auth/calendar.events ",
+            "https://www.googleapis.com/auth/calendar.readonly ",
             // "https://www.googleapis.com/auth/drive ",
             // "https://www.googleapis.com/auth/gmail.modify ",
             "https://www.googleapis.com/auth/photoslibrary.appendonly ",
@@ -90,7 +92,7 @@ builder.Services.AddConnectedServices()
         ServiceCapabilities = 
             // ServiceCaps.Email | 
             ServiceCaps.Contacts |
-            // ServiceCaps.Calendar | 
+            ServiceCaps.Calendar |
             // ServiceCaps.FileStorage |
             ServiceCaps.PhotoSync,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<GoogleOAuthProvider>())
@@ -105,8 +107,9 @@ builder.Services.AddConnectedServices()
         Scopes = string.Concat("openid profile email offline_access ",
             "https://graph.microsoft.com/User.Read ",
             "https://graph.microsoft.com/Files.ReadWrite ",
-            "https://graph.microsoft.com/Contacts.Read"),
-        ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync | ServiceCaps.Contacts,
+            "https://graph.microsoft.com/Contacts.Read ",
+            "https://graph.microsoft.com/Calendars.Read"),
+        ServiceCapabilities = ServiceCaps.FileStorage | ServiceCaps.PhotoSync | ServiceCaps.Contacts | ServiceCaps.Calendar,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MicrosoftOAuthProvider>())
     })
     .AddConnectedService(s => new()
@@ -124,6 +127,14 @@ builder.Services.AddConnectedServices()
         LinkMode = ServiceLinkMode.Credentials,
         ServiceCapabilities = ServiceCaps.Contacts,
         CredentialHandler = s => Task.FromResult<ICredentialLinkProvider>(s.GetRequiredService<CardDavCredentialProvider>())
+    })
+    .AddConnectedService(s => new()
+    {
+        ServiceId = CalDav.SERVICE_NAME,
+        DisplayName = "CalDAV",
+        LinkMode = ServiceLinkMode.Credentials,
+        ServiceCapabilities = ServiceCaps.Calendar,
+        CredentialHandler = s => Task.FromResult<ICredentialLinkProvider>(s.GetRequiredService<CalDavCredentialProvider>())
     });
 
 builder.Services.AddGrpc();

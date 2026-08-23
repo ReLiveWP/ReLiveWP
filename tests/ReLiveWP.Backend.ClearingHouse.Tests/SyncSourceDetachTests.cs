@@ -1,8 +1,10 @@
+using Grpc.Core;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.Backend.ClearingHouse.Data;
 using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
+using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Backend.ClearingHouse.Tests;
 
@@ -51,6 +53,74 @@ public class SyncSourceDetachTests : IDisposable
 
     // detaching is what turns "kept in step with over there" into "yours". The contacts are somebody
     // else's table entirely, and the point is that nothing here touches them.
+    private sealed class FakeMailbox : MailboxStore.MailboxStoreClient
+    {
+        public List<string> DeletedFolders { get; } = [];
+
+        private static AsyncUnaryCall<T> Call<T>(T value) => new(
+            Task.FromResult(value), Task.FromResult(new Metadata()), () => Status.DefaultSuccess,
+            () => [], () => { });
+
+        public override AsyncUnaryCall<DeleteItemsByOriginResult> DeleteItemsByOriginAsync(
+            DeleteItemsByOriginRequest request, CallOptions options) =>
+            Call(new DeleteItemsByOriginResult { ItemsDeleted = 3 });
+
+        public override AsyncUnaryCall<MutationResult> DeleteFolderAsync(
+            DeleteFolderRequest request, CallOptions options)
+        {
+            DeletedFolders.Add(request.ServerId);
+            return Call(new MutationResult { Found = true });
+        }
+    }
+
+    // the calendar mirror creates a folder per remote calendar, so unlinking with the data has to
+    // take the folder too. leaving it behind is what stacks up a duplicate on every relink.
+    [Fact]
+    public async Task Unlinking_with_the_data_removes_the_folder_the_mirror_made()
+    {
+        var mailbox = new FakeMailbox();
+        var source = Seed();
+        source.Kind = MirrorKind.Calendar;
+        source.FolderId = "folder-1";
+        _db.SaveChanges();
+
+        await new SyncSourceDetach(mailbox, _db, NullLogger<SyncSourceDetach>.Instance)
+            .DeleteAndDetachAsync([source]);
+
+        Assert.Equal(["folder-1"], mailbox.DeletedFolders);
+        Assert.Empty(_db.SyncSources);
+    }
+
+    // contacts merge into the undeletable default folder and never record one, so nothing is removed
+    [Fact]
+    public async Task Unlinking_contacts_touches_no_folder()
+    {
+        var mailbox = new FakeMailbox();
+        var source = Seed();
+
+        await new SyncSourceDetach(mailbox, _db, NullLogger<SyncSourceDetach>.Instance)
+            .DeleteAndDetachAsync([source]);
+
+        Assert.Empty(mailbox.DeletedFolders);
+    }
+
+    // keeping the data means the events are yours now, and they need somewhere to live
+    [Fact]
+    public async Task Unlinking_but_keeping_the_data_leaves_the_folder_alone()
+    {
+        var mailbox = new FakeMailbox();
+        var source = Seed();
+        source.Kind = MirrorKind.Calendar;
+        source.FolderId = "folder-1";
+        _db.SaveChanges();
+
+        await new SyncSourceDetach(mailbox, _db, NullLogger<SyncSourceDetach>.Instance)
+            .DetachAsync([source]);
+
+        Assert.Empty(mailbox.DeletedFolders);
+        Assert.Empty(_db.SyncSources);
+    }
+
     [Fact]
     public async Task Detaching_removes_the_source()
     {

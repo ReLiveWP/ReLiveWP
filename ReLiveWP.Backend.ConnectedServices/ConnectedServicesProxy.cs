@@ -34,7 +34,10 @@ public static class ConnectedServicesProxy
                                            string serviceId,
                                            string? path)
     {
-        path ??= string.Empty;
+        // routing hands the catch-all back decoded, so a '#' in the path (google's holiday calendar
+        // ids carry one) would be read as the start of a fragment when the target url is composed,
+        // truncating everything after it. re-escaping only '#' is a no-op if it arrives encoded.
+        path = (path ?? string.Empty).Replace("#", "%23");
 
         try
         {

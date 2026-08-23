@@ -174,6 +174,7 @@ public class MicrosoftOAuthProvider(IConnectedServicesContainer connectedService
             {
                 "Files" => LiveConnectedServiceCapabilities.FileStorage | LiveConnectedServiceCapabilities.PhotoSync,
                 "Contacts" => LiveConnectedServiceCapabilities.Contacts,
+                "Calendars" => LiveConnectedServiceCapabilities.Calendar,
                 _ => 0,
             };
         }

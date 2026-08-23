@@ -47,11 +47,14 @@ builder.Services.AddScoped<SyncSourceDetach>();
 
 builder.Services.AddSingleton<ContactsFolderResolver>();
 
+builder.Services.AddScoped<IMirrorDriver, CalDavCalendarSyncDriver>();
+builder.Services.AddScoped<IMirrorDriver, GoogleCalendarSyncDriver>();
+builder.Services.AddScoped<IMirrorDriver, GraphCalendarSyncDriver>();
 builder.Services.AddScoped<IMirrorRunner, CalendarMirrorRunner>();
 builder.Services.AddScoped<CalendarFolderResolver>();
 
-builder.Services.AddHostedService(sp => ActivatorUtilities.CreateInstance<MirrorPoller>(sp, MirrorKind.Contacts));
-builder.Services.AddHostedService(sp => ActivatorUtilities.CreateInstance<MirrorPoller>(sp, MirrorKind.Calendar));
+builder.Services.AddMirrorPoller(MirrorKind.Contacts);
+builder.Services.AddMirrorPoller(MirrorKind.Calendar);
 builder.Services.AddHostedService<ConnectionDeletedSubscriber>();
 
 var app = builder.Build();

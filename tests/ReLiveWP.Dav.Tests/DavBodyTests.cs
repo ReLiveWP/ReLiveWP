@@ -68,5 +68,43 @@ public class DavBodyTests
     [Fact]
     public void CalendarQueryIsRootedInTheCalDavNamespace()
         => Assert.Equal(DavNamespaces.CalDav + "calendar-query",
-            Root(DavBody.CalendarQuery(DavProps.GetETag, DavProps.CalendarData)).Name);
+            Root(DavBody.CalendarQuery(DavBody.ComponentFilter("VEVENT"), DavProps.CalendarData)).Name);
+
+    // RFC 4791 9.5 is (DAV:prop, CALDAV:filter) with no optional marker on the filter, so a query
+    // without one is not a calendar-query at all and servers answer 400
+    [Fact]
+    public void CalendarQueryCarriesAFilterAfterTheProp()
+    {
+        var root = Root(DavBody.CalendarQuery(DavBody.ComponentFilter("VEVENT"), DavProps.CalendarData));
+
+        Assert.Equal(
+            [DavNamespaces.WebDav + "prop", DavNamespaces.CalDav + "filter"],
+            root.Elements().Select(e => e.Name));
+    }
+
+    // RFC 4791 9.7: exactly one comp-filter, and components nest inside VCALENDAR
+    [Fact]
+    public void AComponentFilterNestsInsideVcalendar()
+    {
+        var filter = DavBody.ComponentFilter("VTODO");
+        var outer = Assert.Single(filter.Elements(DavNamespaces.CalDav + "comp-filter"));
+
+        Assert.Equal("VCALENDAR", (string)outer.Attribute("name")!);
+        Assert.Equal("VTODO",
+            (string)Assert.Single(outer.Elements(DavNamespaces.CalDav + "comp-filter")).Attribute("name")!);
+    }
+
+    // RFC 4791 9.10: (DAV:prop, DAV:href+)
+    [Fact]
+    public void CalendarMultigetListsEveryHrefAfterTheProp()
+    {
+        var root = Root(DavBody.CalendarMultiget(
+            ["/cal/1.ics", "/cal/2.ics"], DavProps.GetETag, DavProps.CalendarData));
+
+        Assert.Equal(DavNamespaces.CalDav + "calendar-multiget", root.Name);
+        Assert.Equal(DavNamespaces.WebDav + "prop", root.Elements().First().Name);
+        Assert.Equal(
+            ["/cal/1.ics", "/cal/2.ics"],
+            root.Elements(DavProps.Href).Select(e => (string)e));
+    }
 }

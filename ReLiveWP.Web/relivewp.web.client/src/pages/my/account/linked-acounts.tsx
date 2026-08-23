@@ -7,7 +7,7 @@ import { Dialogs } from "./components/Dialogs";
 import { useFetchSignal } from "~/util/use-fetch";
 
 import { AccountEntry } from "./components/AccountEntry/AccountEntry";
-import { ContactSyncContext, useContactSyncList } from "./state/use-contact-sync";
+import { CalendarSyncContext, ContactSyncContext, useCalendarSyncList, useContactSyncList } from "./state/use-sync";
 import LinkAccountButton from "./components/ServicePicker/LinkAccountButton";
 import LinkedAccountsEmptyState from "./components/ServicePicker/LinkedAccountsEmptyState";
 
@@ -17,6 +17,7 @@ export default function LinkedAccounts() {
 
     // one call covers every account on the page, so a row knows where it stands before it is touched
     const { data: contactSync } = useContactSyncList();
+    const { data: calendarSync } = useCalendarSyncList();
 
     if (!linkedAccounts.value) {
         return <span>Fetching your accounts...</span>;
@@ -28,6 +29,7 @@ export default function LinkedAccounts() {
     return (
         <LinkedAccountsContext.Provider value={{ linkedAccounts: linkedAccounts as Signal<Connections>, availableLinks: availableLinks as Signal<AvailableConnectedService[]>, doRefresh }}>
             <ContactSyncContext.Provider value={contactSync}>
+              <CalendarSyncContext.Provider value={calendarSync}>
                 <Dialogs>
                     <div class="linked-accounts">
                         {hasAnyConnection ? (
@@ -44,6 +46,7 @@ export default function LinkedAccounts() {
                         )}
                     </div>
                 </Dialogs>
+              </CalendarSyncContext.Provider>
             </ContactSyncContext.Provider>
         </LinkedAccountsContext.Provider>
     );

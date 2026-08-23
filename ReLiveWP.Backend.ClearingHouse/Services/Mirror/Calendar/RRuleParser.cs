@@ -9,8 +9,16 @@ public static class RRuleParser
     public static RecurrenceSpec Parse(string rrule)
     {
         var value = rrule.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase) ? rrule[6..] : rrule;
-        var pattern = new RecurrencePattern(value);
 
+        return From(new RecurrencePattern(value), value);
+    }
+
+    // Ical.Net has already parsed the rule off a VEVENT, so the raw text is only still needed to
+    // tell an absent WKST from an explicit MO.
+    public static RecurrenceSpec From(RecurrencePattern pattern) => From(pattern, pattern.ToString());
+
+    private static RecurrenceSpec From(RecurrencePattern pattern, string value)
+    {
         return new RecurrenceSpec
         {
             Frequency = Frequency(pattern.Frequency),

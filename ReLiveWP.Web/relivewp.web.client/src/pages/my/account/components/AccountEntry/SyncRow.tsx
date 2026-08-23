@@ -2,11 +2,19 @@ import { ago } from "@relivewp/ui";
 
 import { connectionLabel, isGroupEnabled } from "../../state/linked-accounts";
 import { useConnectionCapabilities } from "../../state/use-connection-capabilities";
-import { ContactSync, useContactSync } from "../../state/use-contact-sync";
+import { Sync } from "../../state/use-sync";
 
 import { CapabilityAction, CapabilityRowProps, CapabilityShell } from "./CapabilityRow";
 
-const lastRun = (status: ContactSync) => {
+export type SyncHook = (connectionId: string) => {
+    status: Sync | undefined;
+    busy: { value: boolean };
+    error: { value: string | null };
+    syncNow: () => void;
+    setEnabled: (enabled: boolean) => void;
+};
+
+const lastRun = (status: Sync) => {
     const parts = [
         status.created && `${status.created} added`,
         status.updated && `${status.updated} updated`,
@@ -16,7 +24,7 @@ const lastRun = (status: ContactSync) => {
     return parts.length > 0 ? parts.join(", ") : "nothing changed";
 };
 
-const note = (status: ContactSync | undefined, error: string | null) => {
+const note = (status: Sync | undefined, error: string | null) => {
     if (error) return error;
     if (status?.running) return "syncing...";
     if (status?.queued) return "queued...";
@@ -26,13 +34,13 @@ const note = (status: ContactSync | undefined, error: string | null) => {
     return `${lastRun(status)}, ${ago(status.last_synced_at)}`;
 };
 
-// People is contacts, so the connection and what it is doing share one row. Nothing about sync is
-// offered while the capability is off, and the backend refuses it too.
-export const ContactsRow = (props: CapabilityRowProps) => {
-    const { account, typeInfo, group } = props;
+// The connection and what it is doing share one row, because the capability is the sync. Nothing
+// about sync is offered while the capability is off, and the backend refuses it too.
+export const SyncRow = (props: CapabilityRowProps & { useSync: SyncHook }) => {
+    const { account, typeInfo, group, useSync } = props;
 
     const { setEnabled: setCapability } = useConnectionCapabilities(account);
-    const { status, busy, error, syncNow, setEnabled } = useContactSync(account.id);
+    const { status, busy, error, syncNow, setEnabled } = useSync(account.id);
 
     const connected = isGroupEnabled(account, group);
     const connectedTo = connectionLabel(typeInfo, group);

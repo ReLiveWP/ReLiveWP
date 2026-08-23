@@ -22,8 +22,20 @@ public static class DavBody
     public static string AddressbookQuery(params XName[] props)
         => Serialise(new XElement(CardDav + "addressbook-query", Prop(props)));
 
-    public static string CalendarQuery(params XName[] props)
-        => Serialise(new XElement(CalDav + "calendar-query", Prop(props)));
+    // RFC 4791 9.5: (DAV:prop, CALDAV:filter), and the filter is not optional
+    public static string CalendarQuery(XElement filter, params XName[] props)
+        => Serialise(new XElement(CalDav + "calendar-query", Prop(props), filter));
+
+    // RFC 4791 9.10: (DAV:prop, DAV:href+)
+    public static string CalendarMultiget(IEnumerable<string> hrefs, params XName[] props)
+        => Serialise(new XElement(CalDav + "calendar-multiget", Prop(props),
+            hrefs.Select(href => new XElement(DavProps.Href, href))));
+
+    // RFC 4791 9.7 allows exactly one comp-filter, and everything nests under VCALENDAR
+    public static XElement ComponentFilter(string component)
+        => new(CalDav + "filter",
+            new XElement(CalDav + "comp-filter", new XAttribute("name", "VCALENDAR"),
+                new XElement(CalDav + "comp-filter", new XAttribute("name", component))));
 
     public static string SyncCollection(string token, int level, params XName[] props)
         => Serialise(new XElement(WebDav + "sync-collection",

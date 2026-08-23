@@ -37,6 +37,14 @@ const CREDENTIAL_SERVICES: Partial<Record<string, CredentialServiceConfig>> = {
         labelTitle: "Name (optional)",
         labelPlaceholder: "my address book",
     },
+    caldav: {
+        urlTitle: "Server address",
+        urlPlaceholder: "https://cloud.example.com/remote.php/dav/",
+        usernameTitle: "Username",
+        secretTitle: "Password",
+        labelTitle: "Name (optional)",
+        labelPlaceholder: "my calendar",
+    },
 };
 
 export function requiresHandle(service: string): boolean {

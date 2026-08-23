@@ -17,6 +17,7 @@ export const ENDPOINT_REQUEST_TOKENS = "https://login.int.relivewp.net/auth/requ
     ENDPOINT_AVAILABLE_LINKS = "https://login.int.relivewp.net/oauth/available-links",
     ENDPOINT_UPDATE_LINK = "https://login.int.relivewp.net/oauth/link",
     ENDPOINT_CONTACT_SYNC = "https://hub.int.relivewp.net/contacts/sync",
+    ENDPOINT_CALENDAR_SYNC = "https://hub.int.relivewp.net/calendar/sync",
     ENDPOINT_SUPPORT = "https://support.int.relivewp.net/",
     ENDPOINT_REFRESH_TOKENS = "https://login.int.relivewp.net/auth/refresh_tokens",
     SSO_AUTHORITY = "https://login.int.relivewp.net",
