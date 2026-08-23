@@ -94,6 +94,28 @@ public class DavBodyTests
             (string)Assert.Single(outer.Elements(DavNamespaces.CalDav + "comp-filter")).Attribute("name")!);
     }
 
+    // RFC 4791 9.9: a time-range narrows the component filter it sits inside, in the same basic
+    // UTC form as everything else on the wire
+    [Fact]
+    public void AComponentFilterCarriesATimeRangeWhenOneIsAskedFor()
+    {
+        var filter = DavBody.ComponentFilter("VEVENT",
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2027, 1, 1, 0, 0, 0, TimeSpan.Zero));
+
+        var vevent = filter.Descendants(DavNamespaces.CalDav + "comp-filter")
+                           .Single(e => (string?)e.Attribute("name") == "VEVENT");
+
+        var range = Assert.Single(vevent.Elements(DavNamespaces.CalDav + "time-range"));
+
+        Assert.Equal("20260101T000000Z", (string?)range.Attribute("start"));
+        Assert.Equal("20270101T000000Z", (string?)range.Attribute("end"));
+    }
+
+    [Fact]
+    public void AComponentFilterWithNoWindowCarriesNoTimeRange()
+        => Assert.Empty(DavBody.ComponentFilter("VEVENT").Descendants(DavNamespaces.CalDav + "time-range"));
+
     // RFC 4791 9.10: (DAV:prop, DAV:href+)
     [Fact]
     public void CalendarMultigetListsEveryHrefAfterTheProp()

@@ -74,7 +74,7 @@ public static class EasTimeZone
 
     private static void WriteName(byte[] buffer, int offset, string name)
     {
-        // null terminaed
+        // one WCHAR is always left for the terminator, and the rest of the array stays zeroed
         var trimmed = name.Length > NameChars - 1 ? name[..(NameChars - 1)] : name;
         Encoding.Unicode.GetBytes(trimmed, 0, trimmed.Length, buffer, offset);
     }

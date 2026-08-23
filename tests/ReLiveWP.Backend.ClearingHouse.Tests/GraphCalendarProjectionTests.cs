@@ -205,6 +205,22 @@ public class GraphCalendarProjectionTests
         Assert.Null(item.RecurrenceUntil);
     }
 
+    // a pattern type we cannot even restate as an RRULE has nothing to expand, and dropping the
+    // event entirely would take the copy already on the phone with it on the next full sync
+    [Fact]
+    public void An_unreadable_pattern_still_yields_the_master()
+    {
+        var projected = Project(Event(Recurring("""{ "type": "everySecondTuesdayIshMaybe", "interval": 1 }""")));
+
+        Assert.NotNull(projected.ExpandedBecause);
+
+        var only = Assert.Single(projected.Events);
+
+        Assert.Equal("evt1", only.ExternalId);
+        Assert.Equal(0u, only.Calendar.RecurrenceType);
+        Assert.Equal(Utc(2026, 6, 15, 14), only.Calendar.StartTime.ToDateTime());
+    }
+
     // an arbitrary relative day set is not one of the three EAS masks, so it falls back
     [Fact]
     public void An_arbitrary_relative_day_set_expands()
@@ -218,17 +234,39 @@ public class GraphCalendarProjectionTests
         Assert.Equal(projected.Events.Count, projected.Events.Select(e => e.ExternalId).Distinct().Count());
     }
 
-    // cancelledOccurrences arrives as master id and instance date joined by a dot
+    // an occurrenceId is OID.{seriesMasterId}.{yyyy-MM-dd}: a bare date, no time of day. the slot it
+    // names is that date at the master's own start time, which is what an EAS exception has to key on.
     [Fact]
     public void A_cancelled_occurrence_becomes_a_deleted_exception()
     {
         var master = Event(Recurring("""{ "type": "weekly", "interval": 1, "daysOfWeek": ["monday"] }"""));
-        master.CancelledOccurrences = ["OID.evt1.20260622T140000Z"];
+        master.CancelledOccurrences = ["OID.AAMkADAGAADDdm4NAAA=.2026-06-22"];
 
         var exception = Assert.Single(Single(master).Exceptions);
 
         Assert.True(exception.Deleted);
         Assert.Equal("20260622T140000Z", exception.ExceptionStartTime);
+    }
+
+    // the master is 09:00 London, so the cancelled slot is 08:00Z in summer rather than midnight
+    [Fact]
+    public void A_cancelled_occurrence_takes_the_masters_time_of_day_in_its_own_zone()
+    {
+        var master = Event("""
+        {
+          "id": "evt1", "showAs": "busy",
+          "start": { "dateTime": "2026-06-15T09:00:00.0000000", "timeZone": "Europe/London" },
+          "end":   { "dateTime": "2026-06-15T10:00:00.0000000", "timeZone": "Europe/London" },
+          "recurrence": {
+            "pattern": { "type": "weekly", "interval": 1, "daysOfWeek": ["monday"] },
+            "range": { "type": "noEnd", "startDate": "2026-06-15" }
+          }
+        }
+        """);
+
+        master.CancelledOccurrences = ["OID.AAMkADAGAADDdm4NAAA=.2026-06-22"];
+
+        Assert.Equal("20260622T080000Z", Assert.Single(Single(master).Exceptions).ExceptionStartTime);
     }
 
     // originalStart is the instance's slot in the series, not where it moved to

@@ -280,6 +280,9 @@ public class RecurrenceMapperTests
     [InlineData("FREQ=DAILY;COUNT=1000")]
     // every n days filtered to weekdays is not a weekly mask
     [InlineData("FREQ=DAILY;BYDAY=MO,TU;INTERVAL=3")]
+    // one BYHOUR/BYMINUTE is the time of day the templates carry, several is several instances a day
+    [InlineData("FREQ=DAILY;BYHOUR=9,13,17")]
+    [InlineData("FREQ=DAILY;BYMINUTE=0,30")]
     public void An_unrepresentable_rule_says_why(string rrule)
     {
         Assert.False(string.IsNullOrWhiteSpace(Reason(rrule)));

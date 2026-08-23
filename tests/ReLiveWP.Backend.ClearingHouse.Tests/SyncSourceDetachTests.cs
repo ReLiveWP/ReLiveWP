@@ -57,6 +57,9 @@ public class SyncSourceDetachTests : IDisposable
     {
         public List<string> DeletedFolders { get; } = [];
 
+        // what the folder still holds once the mirrored items are gone
+        public int LiveItems { get; set; }
+
         private static AsyncUnaryCall<T> Call<T>(T value) => new(
             Task.FromResult(value), Task.FromResult(new Metadata()), () => Status.DefaultSuccess,
             () => [], () => { });
@@ -64,6 +67,10 @@ public class SyncSourceDetachTests : IDisposable
         public override AsyncUnaryCall<DeleteItemsByOriginResult> DeleteItemsByOriginAsync(
             DeleteItemsByOriginRequest request, CallOptions options) =>
             Call(new DeleteItemsByOriginResult { ItemsDeleted = 3 });
+
+        public override AsyncUnaryCall<CountResult> CountLiveItemsAsync(
+            CountLiveItemsRequest request, CallOptions options) =>
+            Call(new CountResult { Count = LiveItems });
 
         public override AsyncUnaryCall<MutationResult> DeleteFolderAsync(
             DeleteFolderRequest request, CallOptions options)
@@ -88,6 +95,24 @@ public class SyncSourceDetachTests : IDisposable
             .DeleteAndDetachAsync([source]);
 
         Assert.Equal(["folder-1"], mailbox.DeletedFolders);
+        Assert.Empty(_db.SyncSources);
+    }
+
+    // DeleteFolder takes every item in the folder with it, and anything still there once the
+    // mirrored rows are gone is the user's own work, which this connection never owned
+    [Fact]
+    public async Task Unlinking_leaves_a_folder_that_still_holds_the_users_own_items()
+    {
+        var mailbox = new FakeMailbox { LiveItems = 2 };
+        var source = Seed();
+        source.Kind = MirrorKind.Calendar;
+        source.FolderId = "folder-1";
+        _db.SaveChanges();
+
+        await new SyncSourceDetach(mailbox, _db, NullLogger<SyncSourceDetach>.Instance)
+            .DeleteAndDetachAsync([source]);
+
+        Assert.Empty(mailbox.DeletedFolders);
         Assert.Empty(_db.SyncSources);
     }
 

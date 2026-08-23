@@ -67,6 +67,19 @@ public class SyncSourceDetach(
 
         try
         {
+            var remaining = await mailbox.CountLiveItemsAsync(
+                new CountLiveItemsRequest { UserId = source.UserId, CollectionId = folderId },
+                cancellationToken: ct);
+
+            if (remaining.Count > 0)
+            {
+                logger.LogInformation(
+                    "keeping the {Kind} folder {Folder} for {Service}/{Source}; it still holds {Count} item(s) we did not put there",
+                    source.Kind, folderId, source.ServiceId, source.SourceId, remaining.Count);
+
+                return;
+            }
+
             await mailbox.DeleteFolderAsync(new DeleteFolderRequest
             {
                 UserId = source.UserId,

@@ -41,15 +41,12 @@ public class GraphCalendarSyncDriver(
                     IsDefault: calendar.IsDefaultCalendar));
             }
 
-            path = response?.NextLink is { Length: > 0 } next ? Proxied(next) : null;
+            path = response?.NextLink is { Length: > 0 } next ? GetProxiedUrl(next) : null;
         }
 
         return sources;
     }
 
-    // graph has no unbounded event delta in v1.0, and calendarView/delta hands back expanded
-    // occurrences with the recurrence thrown away. listing in full every time keeps the series whole,
-    // and the per-event etag means an unchanged calendar still writes nothing.
     public async Task<MirrorBatch> FetchChangesAsync(
         SyncConnection connection, string sourceId, string? deltaToken, CancellationToken ct = default)
     {
@@ -61,7 +58,7 @@ public class GraphCalendarSyncDriver(
             var response = Deserialize<GraphEventsResponse>(await SendAsync(connection, path, ct));
 
             events.AddRange(response?.Value ?? []);
-            path = response?.NextLink is { Length: > 0 } next ? Proxied(next) : null;
+            path = response?.NextLink is { Length: > 0 } next ? GetProxiedUrl(next) : null;
 
             if (path is not null && page == MaxPages - 1)
                 throw new MirrorException($"Graph returned more than {MaxPages} pages of events; refusing to truncate.");
@@ -69,7 +66,7 @@ public class GraphCalendarSyncDriver(
 
         var items = new List<IRemoteItem>();
         var unreadable = new List<string>();
-        var window = Window();
+        var window = GetExpansionWindow();
 
         foreach (var source in events)
         {
@@ -104,13 +101,17 @@ public class GraphCalendarSyncDriver(
         return new MirrorBatch(items, [], null, IsFullSync: true, unreadable);
     }
 
-    // exceptionOccurrences and cancelledOccurrences only come back from a GET on the master itself,
-    // so a series costs one extra request. list does not carry them however it is asked.
+    private const string OccurrenceSelect =
+        "id,cancelledOccurrences,exceptionOccurrences,iCalUId,subject,bodyPreview,start,end," +
+        "originalStart,originalStartTimeZone,isAllDay,isCancelled,showAs,sensitivity,location," +
+        "organizer,attendees,categories,onlineMeetingUrl,lastModifiedDateTime," +
+        "isReminderOn,reminderMinutesBeforeStart";
+
     private async Task<GraphEvent> WithOccurrencesAsync(
         SyncConnection connection, GraphEvent master, CancellationToken ct)
     {
         var path = $"{Host}/v1.0/me/events/{Uri.EscapeDataString(master.Id!)}" +
-                   "?$select=id,cancelledOccurrences&$expand=exceptionOccurrences";
+                   $"?$select={OccurrenceSelect}&$expand=exceptionOccurrences";
 
         var detail = Deserialize<GraphEvent>(await SendAsync(connection, path, ct));
         if (detail is null) return master;
@@ -121,7 +122,7 @@ public class GraphCalendarSyncDriver(
         return master;
     }
 
-    private ExpansionWindow Window()
+    private ExpansionWindow GetExpansionWindow()
     {
         var now = DateTime.UtcNow;
 
@@ -131,7 +132,7 @@ public class GraphCalendarSyncDriver(
             configuration.GetValue("Mirror:Calendar:ExpandMaxInstances", DefaultMaxInstances));
     }
 
-    private static string Proxied(string absolute) =>
+    private static string GetProxiedUrl(string absolute) =>
         absolute.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? absolute[8..] : absolute;
 
     private async Task<string> SendAsync(SyncConnection connection, string path, CancellationToken ct)

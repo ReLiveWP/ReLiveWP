@@ -38,6 +38,8 @@ public static class RecurrenceMapper
         { Frequency: RecurrenceFrequency.Secondly or RecurrenceFrequency.Minutely or RecurrenceFrequency.Hourly } =>
             $"FREQ={spec.Frequency} is below daily",
         { BySecond.Count: > 0 } => "BYSECOND has no EAS equivalent",
+        { ByHour.Count: > 1 } => "BYHOUR must not carry more than one value",
+        { ByMinute.Count: > 1 } => "BYMINUTE must not carry more than one value",
         { ByWeekNo.Count: > 0 } => "BYWEEKNO has no EAS equivalent",
         { ByYearDay.Count: > 0 } => "BYYEARDAY has no EAS equivalent",
         { Count: not null, Until: not null } => "COUNT and UNTIL must not both be present",

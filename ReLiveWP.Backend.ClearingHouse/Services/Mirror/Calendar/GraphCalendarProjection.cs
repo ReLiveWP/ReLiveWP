@@ -27,7 +27,7 @@ public static class GraphCalendarProjection
         mapped.ApplyTo(item);
 
         foreach (var cancelled in master.CancelledOccurrences ?? [])
-            if (OccurrenceStart(cancelled) is { } start)
+            if (OccurrenceStart(cancelled, master, zone) is { } start)
                 item.Exceptions.Add(new CalendarException { Deleted = true, ExceptionStartTime = start });
 
         foreach (var changed in master.ExceptionOccurrences ?? [])
@@ -41,13 +41,17 @@ public static class GraphCalendarProjection
     {
         var start = Utc(master.Start);
         var duration = Utc(master.End) - start;
-        var rrule = GraphRecurrence.ToSpec(master.Recurrence!) is { } spec ? RRule(spec) : null;
 
-        var occurrences = rrule is null ? [] : RecurrenceExpander.Starts(start, [rrule], window);
+        // a pattern we cannot even restate as an RRULE has nothing to expand, so the master goes out
+        // on its own rather than the series vanishing entirely
+        if (GraphRecurrence.ToSpec(master.Recurrence!) is not { } spec)
+            return new ProjectedCalendar([new(master.Id!, ToCalendarItem(master, zone), master.Etag)], reason);
+
+        var occurrences = RecurrenceExpander.Starts(start, [RRule(spec)], window);
         var events = new List<RemoteCalendarEvent>(occurrences.Count);
 
         var cancelled = (master.CancelledOccurrences ?? [])
-            .Select(OccurrenceStart)
+            .Select(id => OccurrenceStart(id, master, zone))
             .OfType<string>()
             .ToHashSet(StringComparer.Ordinal);
 
@@ -59,7 +63,8 @@ public static class GraphCalendarProjection
             item.StartTime = Timestamp.FromDateTime(occurrence);
             item.EndTime = Timestamp.FromDateTime(occurrence + (duration > TimeSpan.Zero ? duration : TimeSpan.Zero));
 
-            events.Add(new($"{master.Id}#{EasCompactTime.From(occurrence)}", item, master.Etag));
+            events.Add(new(
+                $"{master.Id}{MirrorPlanner.InstanceSeparator}{EasCompactTime.From(occurrence)}", item, master.Etag));
         }
 
         return new ProjectedCalendar(events, reason);
@@ -71,7 +76,7 @@ public static class GraphCalendarProjection
         var parts = new List<string> { $"FREQ={spec.Frequency.ToString().ToUpperInvariant()}" };
 
         if (spec.Interval > 1) parts.Add($"INTERVAL={spec.Interval}");
-        if (spec.ByDay.Count > 0) parts.Add($"BYDAY={string.Join(',', spec.ByDay.Select(d => Code(d.Day)))}");
+        if (spec.ByDay.Count > 0) parts.Add($"BYDAY={string.Join(',', spec.ByDay.Select(d => DayCode(d.Day)))}");
         if (spec.ByMonthDay.Count > 0) parts.Add($"BYMONTHDAY={string.Join(',', spec.ByMonthDay)}");
         if (spec.ByMonth.Count > 0) parts.Add($"BYMONTH={string.Join(',', spec.ByMonth)}");
         if (spec.BySetPosition.Count > 0) parts.Add($"BYSETPOS={string.Join(',', spec.BySetPosition)}");
@@ -81,7 +86,7 @@ public static class GraphCalendarProjection
         return "RRULE:" + string.Join(';', parts);
     }
 
-    private static string Code(DayOfWeek day) => day switch
+    private static string DayCode(DayOfWeek day) => day switch
     {
         DayOfWeek.Sunday => "SU",
         DayOfWeek.Monday => "MO",
@@ -228,12 +233,35 @@ public static class GraphCalendarProjection
         }
     }
 
-    // a cancelled occurrence is reported as the master id and the instance date joined by a dot
-    private static string? OccurrenceStart(string occurrenceId)
+    // OID.{masterId}.{yyyy-MM-dd}, so the tail names a day and carries no time of day at all. the
+    // instance it means starts at the master's local time on that date, which is what has to be
+    // matched against.
+    private static string? OccurrenceStart(string occurrenceId, GraphEvent master, TimeZoneInfo? zone)
     {
         var tail = occurrenceId.Split('.')[^1];
 
-        return EasCompactTime.TryParse(tail, out var parsed) ? EasCompactTime.From(parsed) : null;
+        if (!EasCompactTime.TryParse(tail, out var parsed)) return null;
+        if (master.IsAllDay) return EasCompactTime.From(parsed.Date);
+
+        var startUtc = Utc(master.Start);
+        var timeOfDay = (zone is null ? startUtc : TimeZoneInfo.ConvertTimeFromUtc(startUtc, zone)).TimeOfDay;
+
+        return EasCompactTime.From(ToUtc(parsed.Date + timeOfDay, zone));
+    }
+
+    private static DateTime ToUtc(DateTime local, TimeZoneInfo? zone)
+    {
+        if (zone is null) return DateTime.SpecifyKind(local, DateTimeKind.Utc);
+
+        try
+        {
+            return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), zone);
+        }
+        catch (ArgumentException)
+        {
+            // the wall time falls in a DST gap, which no instance can actually start in
+            return DateTime.SpecifyKind(local, DateTimeKind.Utc);
+        }
     }
 
     private static DateTime? Timestamped(string? value) =>

@@ -24,17 +24,17 @@ public static class GoogleCalendarProjection
         var rrules = rules.Where(r => r.StartsWith("RRULE", StringComparison.OrdinalIgnoreCase)).ToList();
 
         if (rrules.Count != 1)
-            return Expand(master, zone, window,
+            return ExpandEntries(master, overrides, zone, window,
                 rrules.Count == 0 ? "the series has no RRULE" : "the series carries more than one RRULE");
 
         // RDATE adds one-off dates to a series, which EAS has no room for
         if (rules.Any(r => r.StartsWith("RDATE", StringComparison.OrdinalIgnoreCase)))
-            return Expand(master, zone, window, "the series carries an RDATE");
+            return ExpandEntries(master, overrides, zone, window, "the series carries an RDATE");
 
         var mapping = RecurrenceMapper.Map(RRuleParser.Parse(rrules[0]), Utc(master.Start));
 
         if (mapping.Recurrence is not { } recurrence)
-            return Expand(master, zone, window, mapping.Reason!);
+            return ExpandEntries(master, overrides, zone, window, mapping.Reason!);
 
         recurrence.ApplyTo(item);
 
@@ -48,23 +48,40 @@ public static class GoogleCalendarProjection
         return new ProjectedCalendar([new(master.Id!, item)], null);
     }
 
-    private static ProjectedCalendar Expand(
-        GoogleEvent master, TimeZoneInfo? zone, ExpansionWindow window, string reason)
+    private static ProjectedCalendar ExpandEntries(
+        GoogleEvent master, IReadOnlyList<GoogleEvent> overrides, TimeZoneInfo? zone,
+        ExpansionWindow window, string reason)
     {
         var start = Utc(master.Start);
         var end = master.EndTimeUnspecified ? start : Utc(master.End);
         var duration = end > start ? end - start : TimeSpan.Zero;
         var occurrences = RecurrenceExpander.Starts(start, master.Recurrence ?? [], window);
 
+        var changed = overrides
+            .Where(o => o.OriginalStartTime is not null)
+            .GroupBy(o => EasCompactTime.From(Utc(o.OriginalStartTime)), StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Last(), StringComparer.Ordinal);
+
         var events = new List<RemoteCalendarEvent>(occurrences.Count);
 
         foreach (var occurrence in occurrences)
         {
+            var slot = EasCompactTime.From(occurrence);
+            var id = $"{master.Id}{MirrorPlanner.InstanceSeparator}{slot}";
+
+            if (changed.TryGetValue(slot, out var moved))
+            {
+                if (IsCancelled(moved)) continue;
+
+                events.Add(new(id, ToCalendarItem(moved, TimeZoneFor(moved) ?? zone)));
+                continue;
+            }
+
             var item = ToCalendarItem(master, zone);
             item.StartTime = Timestamp.FromDateTime(occurrence);
             item.EndTime = Timestamp.FromDateTime(occurrence + duration);
 
-            events.Add(new($"{master.Id}#{EasCompactTime.From(occurrence)}", item));
+            events.Add(new(id, item));
         }
 
         return new ProjectedCalendar(events, reason);
@@ -207,14 +224,8 @@ public static class GoogleCalendarProjection
         }
     }
 
-    private static IEnumerable<string> ExDates(string line)
-    {
-        var value = line.Contains(':') ? line[(line.IndexOf(':') + 1)..] : line;
-
-        foreach (var part in value.Split(',', StringSplitOptions.RemoveEmptyEntries))
-            if (EasCompactTime.TryParse(part.Trim(), out var parsed))
-                yield return EasCompactTime.From(parsed);
-    }
+    private static IEnumerable<string> ExDates(string line) =>
+        RecurrenceExpander.ExtractDates(line).Select(EasCompactTime.From);
 
     private static DateTime? Timestamped(string? value) =>
         DateTime.TryParse(value, CultureInfo.InvariantCulture,

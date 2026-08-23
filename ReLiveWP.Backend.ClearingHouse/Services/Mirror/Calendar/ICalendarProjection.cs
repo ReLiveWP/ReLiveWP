@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Google.Protobuf.WellKnownTypes;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
@@ -23,8 +22,8 @@ public static class ICalendarProjection
         var events = calendar.Events.ToList();
         if (events.Count == 0) return new ProjectedCalendar([], null);
 
-        var master = events.FirstOrDefault(e => e.RecurrenceId is null) ?? events[0];
-        var overrides = events.Where(e => e.RecurrenceId is not null).ToList();
+        var master = events.FirstOrDefault(e => e.RecurrenceIdentifier is null) ?? events[0];
+        var overrides = events.Where(e => e.RecurrenceIdentifier is not null).ToList();
 
         var zone = TimeZoneFor(master);
         var item = ToCalendarItem(master, zone);
@@ -35,14 +34,14 @@ public static class ICalendarProjection
         if (master.RecurrenceRules.Count > 1)
             return Expand(externalId, etag, master, zone, window, "the series carries more than one RRULE");
 
-        var spec = RRuleParser.From(master.RecurrenceRules[0]);
+        var spec = RRuleParser.From(master.RecurrenceRules[0], RRuleParser.StatesWeekStart(ics));
         var mapping = RecurrenceMapper.Map(spec, Utc(master.Start));
 
         if (mapping.Recurrence is not { } recurrence)
             return Expand(externalId, etag, master, zone, window, mapping.Reason!);
 
         // RANGE=THISANDFUTURE moves every later instance too, which an EAS exception cannot say
-        if (HasThisAndFuture(ics))
+        if (HasThisAndFuture(overrides))
             return Expand(externalId, etag, master, zone, window,
                 "an override carries RECURRENCE-ID;RANGE=THISANDFUTURE");
 
@@ -66,7 +65,7 @@ public static class ICalendarProjection
         var occurrences = RecurrenceExpander.Starts(master, window);
 
         var events = new List<RemoteCalendarEvent>(occurrences.Count);
-        var duration = Utc(master.End) - Utc(master.Start);
+        var duration = End(master) - Utc(master.Start);
 
         foreach (var start in occurrences)
         {
@@ -74,7 +73,8 @@ public static class ICalendarProjection
             item.StartTime = Timestamp.FromDateTime(start);
             item.EndTime = Timestamp.FromDateTime(start + duration);
 
-            events.Add(new($"{externalId}#{EasCompactTime.From(start)}", item, etag));
+            events.Add(new(
+                $"{externalId}{MirrorPlanner.InstanceSeparator}{EasCompactTime.From(start)}", item, etag));
         }
 
         return new ProjectedCalendar(events, reason);
@@ -84,11 +84,12 @@ public static class ICalendarProjection
     {
         var start = Utc(source.Start);
         var allDay = source.Start is { HasTime: false };
+        var end = End(source);
 
         var item = new CalendarItem
         {
             StartTime = Timestamp.FromDateTime(allDay ? start.Date : start),
-            EndTime = Timestamp.FromDateTime(allDay ? Utc(source.End).Date : Utc(source.End)),
+            EndTime = Timestamp.FromDateTime(allDay ? end.Date : end),
             AllDayEvent = allDay,
             BusyStatus = BusyStatus(source),
             Sensitivity = Sensitivity(source),
@@ -107,7 +108,7 @@ public static class ICalendarProjection
         }
 
         if (source.Organizer?.CommonName is { Length: > 0 } organiser) item.OrganizerName = organiser;
-        if (Address(source.Organizer?.Value) is { } organiserEmail) item.OrganizerEmail = organiserEmail;
+        if (EmailAddress(source.Organizer?.Value) is { } organiserEmail) item.OrganizerEmail = organiserEmail;
 
         // an all-day event is a date, and a timezone would let the device shift it off that date
         if (!allDay && zone is not null) item.Timezone = EasTimeZone.ToBase64(zone, start);
@@ -116,7 +117,7 @@ public static class ICalendarProjection
 
         foreach (var attendee in source.Attendees)
         {
-            if (Address(attendee.Value) is not { } email) continue;
+            if (EmailAddress(attendee.Value) is not { } email) continue;
 
             item.Attendees.Add(new CalendarAttendee
             {
@@ -137,7 +138,7 @@ public static class ICalendarProjection
 
         var exception = new CalendarException
         {
-            ExceptionStartTime = EasCompactTime.From(Utc(source.RecurrenceId!)),
+            ExceptionStartTime = EasCompactTime.From(Utc(source.RecurrenceIdentifier!.StartTime)),
             StartTime = item.StartTime,
             EndTime = item.EndTime,
             AllDayEvent = item.AllDayEvent,
@@ -157,16 +158,8 @@ public static class ICalendarProjection
     private static IEnumerable<string> DeletedInstances(CalendarEvent master) =>
         master.ExceptionDates.GetAllDates().Select(d => EasCompactTime.From(d.AsUtc));
 
-    // Ical.Net folds RECURRENCE-ID into a CalDateTime and drops RANGE on the way, so this reads the
-    // property off the unfolded source instead
-    private static readonly Regex ThisAndFuture = new(
-        @"^RECURRENCE-ID[^:\r\n]*;RANGE=THISANDFUTURE",
-        RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static bool HasThisAndFuture(string ics) => ThisAndFuture.IsMatch(Unfold(ics));
-
-    // RFC 5545 3.1: a CRLF followed by a space or tab continues the previous line
-    private static string Unfold(string ics) => ics.Replace("\r\n ", "").Replace("\r\n\t", "");
+    private static bool HasThisAndFuture(IEnumerable<CalendarEvent> overrides) =>
+        overrides.Any(e => e.RecurrenceIdentifier?.Range == RecurrenceRange.ThisAndFuture);
 
     private static TimeZoneInfo? TimeZoneFor(CalendarEvent source)
     {
@@ -192,14 +185,8 @@ public static class ICalendarProjection
         _ => 0u,
     };
 
-    // 3 is "a meeting you did not organise". claiming 1 would offer organiser actions this mirror
-    // cannot honour, and 0 is defined as having no attendees at all.
     private static uint MeetingStatus(CalendarEvent source) => source.Attendees.Count > 0 ? 3u : 0u;
 
-    // anchoring against the event start throws on an all-day one, because Apple writes reminders on
-    // those as an offset into the day (TRIGGER:PT9H is 9am, -PT15H is 9am the day before) and hours
-    // cannot be added to a date-only value. EAS only wants a count of minutes, so no anchor is
-    // needed. a positive offset is a reminder after the start, which EAS has no way to say.
     private static uint? Reminder(CalendarEvent source)
     {
         var trigger = source.Alarms
@@ -212,8 +199,7 @@ public static class ICalendarProjection
             : null;
     }
 
-    // a mailto Uri keeps the address in UserInfo and Host, so AbsolutePath comes back empty
-    private static string? Address(Uri? value)
+    private static string? EmailAddress(Uri? value)
     {
         if (value is null) return null;
 
@@ -225,4 +211,15 @@ public static class ICalendarProjection
     }
 
     private static DateTime Utc(CalDateTime? value) => value?.AsUtc ?? DateTime.UnixEpoch;
+
+    private static DateTime End(CalendarEvent source)
+    {
+        if (source.End is { } dtEnd) return dtEnd.AsUtc;
+
+        var start = Utc(source.Start);
+
+        if (source.Duration is { } duration) return start + duration.ToTimeSpanUnspecified();
+
+        return source.Start is { HasTime: false } ? start.AddDays(1) : start;
+    }
 }

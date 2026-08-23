@@ -127,7 +127,11 @@ public class ClearingHouseService(
 
         foreach (var source in discovered)
         {
-            if (existing.Any(s => s.SourceId == source.Id)) continue;
+            if (existing.FirstOrDefault(s => s.SourceId == source.Id) is { } known)
+            {
+                known.RemoteDisplayName = source.DisplayName;
+                continue;
+            }
 
             var added = new DbSyncSource
             {

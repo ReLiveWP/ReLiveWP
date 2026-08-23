@@ -32,10 +32,28 @@ public static class DavBody
             hrefs.Select(href => new XElement(DavProps.Href, href))));
 
     // RFC 4791 9.7 allows exactly one comp-filter, and everything nests under VCALENDAR
-    public static XElement ComponentFilter(string component)
+    public static XElement ComponentFilter(string component, DateTimeOffset? from = null, DateTimeOffset? to = null)
         => new(CalDav + "filter",
             new XElement(CalDav + "comp-filter", new XAttribute("name", "VCALENDAR"),
-                new XElement(CalDav + "comp-filter", new XAttribute("name", component))));
+                new XElement(CalDav + "comp-filter", new XAttribute("name", component),
+                    TimeRange(from, to))));
+
+    // RFC 4791 9.9. A server expands recurrence itself when deciding what overlaps, so a master that
+    // started before the window still comes back if any of its instances land inside it.
+    private static XElement? TimeRange(DateTimeOffset? from, DateTimeOffset? to)
+    {
+        if (from is null && to is null) return null;
+
+        var range = new XElement(CalDav + "time-range");
+
+        if (from is { } start) range.Add(new XAttribute("start", Utc(start)));
+        if (to is { } end) range.Add(new XAttribute("end", Utc(end)));
+
+        return range;
+    }
+
+    private static string Utc(DateTimeOffset value) =>
+        value.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
 
     public static string SyncCollection(string token, int level, params XName[] props)
         => Serialise(new XElement(WebDav + "sync-collection",

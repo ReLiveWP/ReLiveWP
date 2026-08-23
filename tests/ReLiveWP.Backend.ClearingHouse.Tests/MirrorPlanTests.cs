@@ -147,6 +147,32 @@ public class MirrorPlanTests
         Assert.Equal(["c2"], gone);
     }
 
+    // a series EAS cannot carry is stored as one row per instance under "{id}#{start}", but the
+    // provider only ever names the object it holds, so the instances have to go with it
+    [Fact]
+    public void A_delta_delete_takes_the_instances_the_object_was_expanded_into()
+    {
+        var known = Known(
+            Tracked("cal/evt-1.ics#20260615T140000Z"),
+            Tracked("cal/evt-1.ics#20260706T140000Z"),
+            Tracked("cal/evt-2.ics"));
+
+        var gone = Deletes(known, Delta([], "cal/evt-1.ics"));
+
+        Assert.Equal(
+            ["cal/evt-1.ics#20260615T140000Z", "cal/evt-1.ics#20260706T140000Z"],
+            gone.Order());
+    }
+
+    // a bare id that is a prefix of another must not drag it along
+    [Fact]
+    public void A_delta_delete_leaves_a_similarly_named_object_alone()
+    {
+        var gone = Deletes(Known(Tracked("c1"), Tracked("c10")), Delta([], "c1"));
+
+        Assert.Equal(["c1"], gone);
+    }
+
     // the run counters derive the skipped total from this, so every contact has to land on exactly
     // one side of the decision
     [Fact]

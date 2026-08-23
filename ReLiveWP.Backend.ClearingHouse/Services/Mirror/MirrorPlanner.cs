@@ -6,6 +6,8 @@ public sealed record KnownItem(string ServerId, string? Etag, bool IsDeleted, bo
 
 public static class MirrorPlanner
 {
+    public const char InstanceSeparator = '#';
+
     public static List<MirrorWrite> PlanWrites(IReadOnlyDictionary<string, KnownItem> known, MirrorBatch batch)
     {
         var writes = new List<MirrorWrite>(batch.Items.Count);
@@ -40,8 +42,12 @@ public static class MirrorPlanner
         if (!batch.IsFullSync)
         {
             foreach (var id in batch.DeletedExternalIds)
+            {
                 if (known.TryGetValue(id, out var k) && k.RemoteSynced)
                     gone.Add(id);
+
+                gone.AddRange(InstancesOf(known, id));
+            }
 
             return gone;
         }
@@ -59,5 +65,16 @@ public static class MirrorPlanner
         }
 
         return gone;
+    }
+
+    // deleting the object takes every instance it was expanded into, which no delta ever names
+    private static IEnumerable<string> InstancesOf(IReadOnlyDictionary<string, KnownItem> known, string id)
+    {
+        var prefix = id + InstanceSeparator;
+
+        return known
+            .Where(k => k.Key.StartsWith(prefix, StringComparison.Ordinal)
+                     && k.Value is { IsDeleted: false, RemoteSynced: true })
+            .Select(k => k.Key);
     }
 }

@@ -20,8 +20,8 @@ public class CalDavCalendarSyncDriver(
     private static readonly string ListBody = DavBody.Propfind(
         DavProps.ResourceType, DavProps.DisplayName, DavProps.SupportedCalendarComponentSet);
 
-    private static readonly string QueryBody = DavBody.CalendarQuery(
-        DavBody.ComponentFilter(Vevent), DavProps.GetETag, DavProps.CalendarData);
+    private static string QueryBody(ExpansionWindow window) => DavBody.CalendarQuery(
+        DavBody.ComponentFilter(Vevent, window.From, window.To), DavProps.GetETag, DavProps.CalendarData);
 
     public string ServiceId => ServiceName;
 
@@ -65,8 +65,12 @@ public class CalDavCalendarSyncDriver(
             }
         }
 
-        var multistatus = await SendAsync(connection, DavMethods.Report, sourceId, QueryBody, depth: "1", ct);
-        var (events, unreadable) = ReadEvents(multistatus, connection);
+        var window = GetExpansionWindow();
+
+        var multistatus = await SendAsync(
+            connection, DavMethods.Report, sourceId, QueryBody(window), depth: "1", ct);
+
+        var (events, unreadable) = ReadEvents(multistatus, connection, window);
         var token = await ReadSyncTokenAsync(connection, sourceId, ct);
 
         return new MirrorBatch(events, [], token, IsFullSync: true, unreadable);
@@ -79,7 +83,7 @@ public class CalDavCalendarSyncDriver(
 
         var multistatus = await SendAsync(connection, DavMethods.Report, sourceId, body, depth: "1", ct);
 
-        var (events, unreadable) = ReadEvents(multistatus, connection);
+        var (events, unreadable) = ReadEvents(multistatus, connection, GetExpansionWindow());
 
         var deleted = multistatus.NotFound
             .Select(r => DavPath.StripPrefix(r.Href, connection.ServiceUrl))
@@ -89,11 +93,10 @@ public class CalDavCalendarSyncDriver(
     }
 
     private (List<IRemoteItem> Events, List<string> Unreadable) ReadEvents(
-        DavMultiStatus multistatus, SyncConnection connection)
+        DavMultiStatus multistatus, SyncConnection connection, ExpansionWindow window)
     {
         var events = new List<IRemoteItem>();
         var unreadable = new List<string>();
-        var window = Window();
 
         foreach (var response in multistatus.Found)
         {
@@ -135,7 +138,7 @@ public class CalDavCalendarSyncDriver(
         return (events, unreadable);
     }
 
-    private ExpansionWindow Window()
+    private ExpansionWindow GetExpansionWindow()
     {
         var now = DateTime.UtcNow;
 

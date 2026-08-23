@@ -278,6 +278,69 @@ public class CalDavCalendarProjectionTests
         Assert.Equal(1440u, item.Reminder);
     }
 
+    // RFC 5545 3.6.1 makes DTEND optional, and Ical.Net reports no End for either spelling, so
+    // taking it at face value put the event's end in 1970
+    [Fact]
+    public void A_duration_stands_in_for_a_missing_dtend()
+    {
+        var item = Single(Event(
+            "DTSTART:20260615T140000Z", "DURATION:PT45M", "SUMMARY:Duration only"));
+
+        Assert.Equal(Utc(2026, 6, 15, 14), item.StartTime.ToDateTime());
+        Assert.Equal(Utc(2026, 6, 15, 14, 45), item.EndTime.ToDateTime());
+    }
+
+    [Fact]
+    public void A_timed_event_with_no_end_at_all_is_an_instant()
+    {
+        var item = Single(Event("DTSTART:20260615T140000Z", "SUMMARY:No end"));
+
+        Assert.Equal(item.StartTime, item.EndTime);
+    }
+
+    [Fact]
+    public void An_all_day_event_with_no_end_covers_the_day()
+    {
+        var item = Single(Event("DTSTART;VALUE=DATE:20260615", "SUMMARY:No end"));
+
+        Assert.Equal(Utc(2026, 6, 15), item.StartTime.ToDateTime());
+        Assert.Equal(Utc(2026, 6, 16), item.EndTime.ToDateTime());
+    }
+
+    [Fact]
+    public void An_expanded_instance_keeps_a_duration_derived_end()
+    {
+        var projected = Project(Event(
+            "DTSTART:20260615T140000Z", "DURATION:PT90M",
+            "RRULE:FREQ=MONTHLY;BYDAY=MO,WE;BYSETPOS=1;COUNT=2"));
+
+        Assert.All(projected.Events, e => Assert.Equal(
+            TimeSpan.FromMinutes(90),
+            e.Calendar.EndTime.ToDateTime() - e.Calendar.StartTime.ToDateTime()));
+    }
+
+    // Ical.Net resolves an absent WKST to the RFC default of MO and keeps no record of which it saw,
+    // so an explicit MO is only visible in the source text. MS reads absent as SU.
+    [Fact]
+    public void An_explicit_wkst_is_honoured()
+    {
+        var item = Single(Event(
+            "DTSTART:20260615T140000Z", "DTEND:20260615T150000Z",
+            "RRULE:FREQ=WEEKLY;BYDAY=SU,MO;INTERVAL=2;WKST=MO"));
+
+        Assert.Equal(1u, item.RecurrenceFirstDayOfWeek);
+    }
+
+    [Fact]
+    public void An_absent_wkst_still_follows_MS_and_defaults_to_sunday()
+    {
+        var item = Single(Event(
+            "DTSTART:20260615T140000Z", "DTEND:20260615T150000Z",
+            "RRULE:FREQ=WEEKLY;BYDAY=SU,MO;INTERVAL=2"));
+
+        Assert.Equal(0u, item.RecurrenceFirstDayOfWeek);
+    }
+
     [Fact]
     public void An_ics_with_no_events_yields_nothing()
         => Assert.Empty(Project(Ics()).Events);

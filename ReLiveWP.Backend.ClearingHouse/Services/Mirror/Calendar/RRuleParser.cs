@@ -10,14 +10,23 @@ public static class RRuleParser
     {
         var value = rrule.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase) ? rrule[6..] : rrule;
 
-        return From(new RecurrencePattern(value), value);
+        return From(new RecurrencePattern(value), value.Contains("WKST", StringComparison.OrdinalIgnoreCase));
     }
 
-    // Ical.Net has already parsed the rule off a VEVENT, so the raw text is only still needed to
-    // tell an absent WKST from an explicit MO.
-    public static RecurrenceSpec From(RecurrencePattern pattern) => From(pattern, pattern.ToString());
+    public static RecurrenceSpec From(RecurrencePattern pattern, bool statesWeekStart) =>
+        From(pattern, statesWeekStart ? pattern.FirstDayOfWeek : (DayOfWeek?)null);
 
-    private static RecurrenceSpec From(RecurrencePattern pattern, string value)
+    public static bool StatesWeekStart(string ics) =>
+        Unfold(ics)
+            .Split('\n')
+            .Any(line => line.StartsWith("RRULE", StringComparison.OrdinalIgnoreCase)
+                      && line.Contains("WKST", StringComparison.OrdinalIgnoreCase));
+
+    private static string Unfold(string ics) => ics
+        .Replace("\r\n ", "").Replace("\r\n\t", "")
+        .Replace("\n ", "").Replace("\n\t", "");
+
+    private static RecurrenceSpec From(RecurrencePattern pattern, DayOfWeek? weekStart)
     {
         return new RecurrenceSpec
         {
@@ -34,12 +43,7 @@ public static class RRuleParser
             BySecond = [.. pattern.BySecond],
             Count = Occurrences(pattern),
             Until = Until(pattern),
-
-            // Ical.Net fills FirstDayOfWeek in with the RFC default of MO, so an absent WKST is only
-            // visible in the raw rule. MS treats absent as SU, and the mapper is what decides.
-            WeekStart = value.Contains("WKST", StringComparison.OrdinalIgnoreCase)
-                ? pattern.FirstDayOfWeek
-                : null,
+            WeekStart = weekStart,
         };
     }
 

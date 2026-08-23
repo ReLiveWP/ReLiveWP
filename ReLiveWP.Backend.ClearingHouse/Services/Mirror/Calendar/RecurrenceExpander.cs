@@ -3,9 +3,6 @@ using Ical.Net.DataTypes;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.Mirror.Calendar;
 
-// A rule EAS cannot carry becomes one item per instance rather than losing the tail of the series.
-// CalDAV already holds a parsed VEVENT; Google hands over RRULE text, so it gets a synthetic one and
-// both go through the same evaluator.
 public static class RecurrenceExpander
 {
     public static IReadOnlyList<DateTime> Starts(CalendarEvent master, ExpansionWindow window) =>
@@ -28,16 +25,72 @@ public static class RecurrenceExpander
 
         foreach (var line in recurrenceLines)
         {
-            var value = line.Contains(':') ? line[(line.IndexOf(':') + 1)..] : line;
-
             if (line.StartsWith("RRULE", StringComparison.OrdinalIgnoreCase))
-                master.RecurrenceRules.Add(new RecurrencePattern(value));
+                master.RecurrenceRules.Add(new RecurrencePattern(GetLineValue(line)));
             else if (line.StartsWith("EXDATE", StringComparison.OrdinalIgnoreCase))
-                foreach (var part in value.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                    if (EasCompactTime.TryParse(part.Trim(), out var excluded))
-                        master.ExceptionDates.Add(new CalDateTime(excluded, tzId: "UTC"));
+                foreach (var excluded in ExtractDates(line))
+                    master.ExceptionDates.Add(new CalDateTime(excluded, tzId: "UTC"));
         }
 
         return master.RecurrenceRules.Count == 0 ? [] : Starts(master, window);
+    }
+
+    public static IReadOnlyList<DateTime> ExtractDates(string line)
+    {
+        var colon = line.IndexOf(':');
+        var zone = colon < 0 ? null : TimeZoneOf(line[..colon]);
+
+        var dates = new List<DateTime>();
+
+        foreach (var raw in GetLineValue(line).Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var part = raw.Trim();
+
+            if (!EasCompactTime.TryParse(part, out var parsed)) continue;
+
+            var floating = !part.EndsWith('Z') && part.Contains('T');
+
+            dates.Add(zone is not null && floating ? ToUtc(parsed, zone) : parsed);
+        }
+
+        return dates;
+    }
+
+    private static string GetLineValue(string line)
+    {
+        var colon = line.IndexOf(':');
+        return colon < 0 ? line : line[(colon + 1)..];
+    }
+
+    private static TimeZoneInfo? TimeZoneOf(string parameters)
+    {
+        foreach (var part in parameters.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!part.StartsWith("TZID=", StringComparison.OrdinalIgnoreCase)) continue;
+
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(part[5..].Trim().Trim('"'));
+            }
+            catch (Exception e) when (e is TimeZoneNotFoundException or InvalidTimeZoneException)
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    // TryParse hands back the written wall clock labelled UTC, so it has to be re-anchored
+    private static DateTime ToUtc(DateTime wall, TimeZoneInfo zone)
+    {
+        try
+        {
+            return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(wall, DateTimeKind.Unspecified), zone);
+        }
+        catch (ArgumentException)
+        {
+            return DateTime.SpecifyKind(wall, DateTimeKind.Utc);
+        }
     }
 }

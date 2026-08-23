@@ -199,6 +199,104 @@ public class GoogleCalendarProjectionTests
             e.Calendar.EndTime.ToDateTime() - e.Calendar.StartTime.ToDateTime()));
     }
 
+    // once a series is one item per instance there is no master left to hang an exception off, so a
+    // cancelled instance has to drop out of the expansion instead of being written as a live event
+    [Fact]
+    public void An_expanded_series_still_drops_its_cancelled_instances()
+    {
+        var master = Event("""
+        {
+          "id": "evt1", "status": "confirmed", "summary": "Odd",
+          "start": { "dateTime": "2026-06-15T14:00:00Z" },
+          "end":   { "dateTime": "2026-06-15T15:00:00Z" },
+          "recurrence": ["RRULE:FREQ=MONTHLY;BYDAY=MO,WE;BYSETPOS=1;COUNT=4"]
+        }
+        """);
+
+        var all = Project(master);
+        var dropped = all.Events[1].ExternalId.Split('#')[^1];
+
+        var projected = Project(master, Event($$"""
+        {
+          "id": "evt1_x", "status": "cancelled", "recurringEventId": "evt1",
+          "originalStartTime": { "dateTime": "{{Iso(dropped)}}" }
+        }
+        """));
+
+        Assert.NotNull(projected.ExpandedBecause);
+        Assert.Equal(all.Events.Count - 1, projected.Events.Count);
+        Assert.DoesNotContain(projected.Events, e => e.ExternalId.EndsWith(dropped));
+    }
+
+    [Fact]
+    public void An_expanded_series_takes_a_moved_instance_where_it_moved_to()
+    {
+        var master = Event("""
+        {
+          "id": "evt1", "status": "confirmed", "summary": "Odd",
+          "start": { "dateTime": "2026-06-15T14:00:00Z" },
+          "end":   { "dateTime": "2026-06-15T15:00:00Z" },
+          "recurrence": ["RRULE:FREQ=MONTHLY;BYDAY=MO,WE;BYSETPOS=1;COUNT=4"]
+        }
+        """);
+
+        var slot = Project(master).Events[1].ExternalId.Split('#')[^1];
+
+        var projected = Project(master, Event($$"""
+        {
+          "id": "evt1_x", "status": "confirmed", "summary": "Moved",
+          "recurringEventId": "evt1",
+          "originalStartTime": { "dateTime": "{{Iso(slot)}}" },
+          "start": { "dateTime": "2026-07-09T16:00:00Z" },
+          "end":   { "dateTime": "2026-07-09T17:00:00Z" }
+        }
+        """));
+
+        var moved = Assert.Single(projected.Events, e => e.ExternalId.EndsWith(slot));
+
+        Assert.Equal("Moved", moved.Calendar.Subject);
+        Assert.Equal(Utc(2026, 7, 9, 16), moved.Calendar.StartTime.ToDateTime());
+    }
+
+    // "20260706T140000Z" back to "2026-07-06T14:00:00Z"
+    private static string Iso(string compact) =>
+        $"{compact[..4]}-{compact[4..6]}-{compact[6..8]}T{compact[9..11]}:{compact[11..13]}:{compact[13..15]}Z";
+
+    // an EXDATE names its zone in a TZID parameter, so the value alone does not say which instant
+    [Fact]
+    public void An_exdate_in_a_named_zone_is_resolved_through_it()
+    {
+        var item = Single(Event("""
+        {
+          "id": "evt1", "status": "confirmed",
+          "start": { "dateTime": "2026-06-15T09:00:00+01:00", "timeZone": "Europe/London" },
+          "end":   { "dateTime": "2026-06-15T10:00:00+01:00", "timeZone": "Europe/London" },
+          "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO", "EXDATE;TZID=Europe/London:20260622T090000"]
+        }
+        """));
+
+        var exception = Assert.Single(item.Exceptions);
+
+        Assert.True(exception.Deleted);
+        Assert.Equal("20260622T080000Z", exception.ExceptionStartTime);
+    }
+
+    // a trailing Z already stands on its own and must not be shifted again
+    [Fact]
+    public void An_exdate_already_in_utc_is_left_alone()
+    {
+        var item = Single(Event("""
+        {
+          "id": "evt1", "status": "confirmed",
+          "start": { "dateTime": "2026-06-15T09:00:00+01:00", "timeZone": "Europe/London" },
+          "end":   { "dateTime": "2026-06-15T10:00:00+01:00", "timeZone": "Europe/London" },
+          "recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO", "EXDATE;TZID=Europe/London:20260622T080000Z"]
+        }
+        """));
+
+        Assert.Equal("20260622T080000Z", Assert.Single(item.Exceptions).ExceptionStartTime);
+    }
+
     // RDATE bolts extra one-off dates onto a series, which EAS recurrence has no room for
     [Fact]
     public void An_rdate_forces_expansion()
