@@ -69,6 +69,7 @@ export interface EngineState {
 
 export type HostRequest =
     | { kind: 'configure'; id: number; config: WorkerConfig }
+    | { kind: 'credentials'; id: number; credentials: Credentials }
     | { kind: 'sync'; id: number; folderId?: string | undefined }
     | { kind: 'wake'; id: number }
     | { kind: 'setAutoSync'; id: number; enabled: boolean }
@@ -106,6 +107,7 @@ export type ChannelMessage =
 
 export interface ResultOf {
     configure: Account;
+    credentials: void;
     sync: SyncSummary;
     folders: Folder[];
     counts: Record<string, FolderCounts>;

@@ -1,11 +1,20 @@
-@use "sass:map";
 @use "tokens" as t;
 
-:root {
-    color-scheme: dark light;
+@mixin scheme-tokens($theme) {
+    @each $name, $value in $theme {
+        --#{$name}: #{$value};
+    }
+}
 
-    @each $name, $light in t.$theme-light {
-        --#{$name}: light-dark(#{$light}, #{map.get(t.$theme-dark, $name)});
+:root {
+    color-scheme: light dark;
+
+    @include scheme-tokens(t.$theme-light);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-colour-scheme="light"]) {
+        @include scheme-tokens(t.$theme-dark);
     }
 }
 
@@ -15,6 +24,8 @@
 
 :root[data-colour-scheme="dark"] {
     color-scheme: dark;
+
+    @include scheme-tokens(t.$theme-dark);
 }
 
 body {

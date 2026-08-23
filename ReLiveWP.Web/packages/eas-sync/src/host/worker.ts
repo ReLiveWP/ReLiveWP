@@ -8,6 +8,7 @@ import { Leader } from './leader.ts';
 import {
     CHANGE_CHANNEL,
     type ChannelMessage,
+    type Credentials,
     type EngineState,
     type FetchBodyResult,
     type HostEvent,
@@ -22,15 +23,11 @@ interface WorkerScope {
     postMessage(message: unknown): void;
 }
 
-function authorization(config: WorkerConfig): () => string {
-    if (config.credentials.kind === 'bearer') {
-        const { token } = config.credentials;
-        return () => `Bearer ${token}`;
-    }
+function authorization(credentials: Credentials): string {
+    if (credentials.kind === 'bearer') return `Bearer ${credentials.token}`;
 
-    const { user, password } = config.credentials;
-    const encoded = btoa(`${user}:${password}`);
-    return () => `Basic ${encoded}`;
+    const { user, password } = credentials;
+    return `Basic ${btoa(`${user}:${password}`)}`;
 }
 
 class WorkerHost {
@@ -39,6 +36,7 @@ class WorkerHost {
     private readonly holderId = crypto.randomUUID();
 
     private store: EasStore | undefined;
+    private credentials: Credentials | undefined;
     private engine: SyncEngine | undefined;
     private leader: Leader | undefined;
     private scheduler: Scheduler | undefined;
@@ -83,7 +81,12 @@ class WorkerHost {
     }
 
     private async handle(request: HostRequest): Promise<unknown> {
-        if (request.kind === 'configure') return this.configure(request.config);
+        if (request.kind === 'configure') return this.exclusive(() => this.configure(request.config));
+
+        if (request.kind === 'credentials') {
+            this.credentials = request.credentials;
+            return undefined;
+        }
 
         const store = this.require();
 
@@ -136,6 +139,7 @@ class WorkerHost {
 
     private async configure(config: WorkerConfig): Promise<Account> {
         this.patch({ status: 'configuring' });
+        this.credentials = config.credentials;
         await this.leader?.stop();
         await this.scheduler?.stop();
 
@@ -155,7 +159,7 @@ class WorkerHost {
             endpoint: config.endpoint,
             deviceId: account.deviceId,
             deviceType: account.deviceType,
-            authorization: authorization(config),
+            authorization: () => authorization(this.credentials ?? config.credentials),
             ...(config.protocolVersion === undefined
                 ? {}
                 : { protocolVersion: config.protocolVersion }),

@@ -9,7 +9,7 @@ import { createContext } from "preact";
 import { useContext } from "preact/hooks";
 
 import { DEVICE_TYPE, loadDeviceId, requestPersistence, saveDeviceId } from "~/util/device";
-import { ENDPOINT_EAS } from "~/util/endpoints";
+import { ENDPOINT_EAS, SERVICE_TARGET_EAS } from "~/util/endpoints";
 import type { AppState } from "./app-state";
 
 export type SyncState = {
@@ -115,10 +115,12 @@ function createSyncState(appState: AppState): SyncState {
             return;
         }
 
-        const identity = `${userId}\uffff${token}`;
-        if (configured === identity) return;
+        if (configured === userId) {
+            void open().credentials({ kind: "bearer", token });
+            return;
+        }
 
-        configured = identity;
+        configured = userId;
         error.value = null;
         void configure(userId, token);
     });
@@ -134,20 +136,24 @@ function createSyncState(appState: AppState): SyncState {
         }
     };
 
-    const auto = (): void => {
+    const renewEasToken = (): Promise<string | null> =>
+        appState.refresher.accessToken(SERVICE_TARGET_EAS).catch(() => null);
+
+    const auto = async (): Promise<void> => {
+        if (!appState.online.value) return;
+        if (appState.easToken.value === null && await renewEasToken() === null) return;
         if (ready.value === null) return;
-        if (!appState.online.value || appState.easToken.value === null) return;
 
         void open().wake();
     };
 
-    window.addEventListener("online", auto);
+    window.addEventListener("online", () => void auto());
 
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState !== "visible") return;
         if (Date.now() - (engine.value?.lastSyncAt ?? 0) < STALE_MS) return;
 
-        auto();
+        void auto();
     });
 
     const setAutoSync = (enabled: boolean): void => {

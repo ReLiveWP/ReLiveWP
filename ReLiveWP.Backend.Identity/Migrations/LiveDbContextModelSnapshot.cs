@@ -150,6 +150,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("SsoSessionId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasColumnType("text");
@@ -192,6 +195,53 @@ namespace ReLiveWP.Backend.Identity.Migrations
                         .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles", (string)null);
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveSsoSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AbsoluteExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedIp")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Persistent")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LiveSsoSessions");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Identity.Data.LiveUser", b =>

@@ -24,7 +24,14 @@ export const {
     ENDPOINT_UPDATE_LINK,
     ENDPOINT_CONTACT_SYNC,
     ENDPOINT_SUPPORT,
+    ENDPOINT_REFRESH_TOKENS,
+    SSO_AUTHORITY,
+    SSO_CLIENT_ID,
+    SERVICE_TARGET_PORTAL,
 } = endpoints;
+
+export const SSO_REDIRECT_URI = `${window.location.origin}/auth/callback`;
+export const SSO_POST_LOGOUT_REDIRECT_URI = `${window.location.origin}/`;
 
 function populateEndpoint(endpoint: string, params: Record<string, string>) {
     for (const [key, value] of Object.entries(params)) {

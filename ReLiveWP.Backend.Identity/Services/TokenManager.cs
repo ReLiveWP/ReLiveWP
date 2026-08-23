@@ -13,7 +13,7 @@ using ReLiveWP.Services.Grpc;
 namespace ReLiveWP.Backend.Identity.Services;
 
 public record struct SecurityToken(string Token, DateTimeOffset Created, DateTimeOffset Expires);
-public record RefreshTokenRedemption(LiveUser User, string ServiceTarget);
+public record RefreshTokenRedemption(LiveUser User, string ServiceTarget, Guid? SsoSessionId = null);
 public record DeviceAuthToken(string SealedToken, byte[] ProofKey, DateTimeOffset Created, DateTimeOffset Expires);
 public record AuthenticatedUser(LiveUser User, byte[]? SessionKey);
 
@@ -27,6 +27,12 @@ public class TokenManager(
 
     private int RefreshTokenLifetimeDays =>
         int.TryParse(configuration["JWT:RefreshTokenLifetimeDays"], out var days) ? days : 90;
+
+    public TimeSpan WebAccessTokenLifetime =>
+        TimeSpan.FromMinutes(int.TryParse(configuration["JWT:WebAccessTokenLifetimeMinutes"], out var mins) ? mins : 60);
+
+    public TimeSpan WebRefreshTokenLifetime =>
+        TimeSpan.FromDays(int.TryParse(configuration["JWT:WebRefreshTokenLifetimeDays"], out var days) ? days : 14);
 
     private int DaTokenLifetimeDays =>
         int.TryParse(configuration["Passport:DaTokenLifetimeDays"], out var days) ? days : 30;
@@ -54,7 +60,7 @@ public class TokenManager(
     public DaTokenPayload UnsealDeviceAuthToken(string cipherValue)
         => DaToken.Unseal(StsKey, cipherValue);
 
-    public SecurityToken IssueJwtAsync(LiveUser user, string serviceTarget)
+    public SecurityToken IssueJwtAsync(LiveUser user, string serviceTarget, TimeSpan? lifetime = null, Guid? sessionId = null)
     {
         List<Claim> authClaims =
         [
@@ -62,21 +68,22 @@ public class TokenManager(
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iss, JwtIssuer),
 
-            ..BuildIdentityClaims(user)
+            ..BuildIdentityClaims(user, sessionId)
         ];
 
         var created = DateTimeOffset.UtcNow;
-        var expires = created.AddDays(30);
+        var expires = created.Add(lifetime ?? TimeSpan.FromDays(30));
         var token = CreateToken(authClaims, expires);
 
         return new SecurityToken(new JwtSecurityTokenHandler().WriteToken(token), created, expires);
     }
 
-    public IEnumerable<Claim> BuildIdentityClaims(LiveUser user)
+    public IEnumerable<Claim> BuildIdentityClaims(LiveUser user, Guid? sessionId = null)
     {
         return
         [
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            ..(sessionId is { } sid ? new[] { new Claim(JwtRegisteredClaimNames.Sid, sid.ToString()) } : []),
             new Claim("cid", user.Cid),
             new Claim("puid", user.Puid.ToString("X16")),
             new Claim("user_type", ((int)user.Type).ToString()),
@@ -87,11 +94,11 @@ public class TokenManager(
         ];
     }
 
-    public async Task<SecurityToken> IssueRefreshTokenAsync(LiveUser user, string serviceTarget)
+    public async Task<SecurityToken> IssueRefreshTokenAsync(LiveUser user, string serviceTarget, TimeSpan? lifetime = null, Guid? sessionId = null)
     {
         var raw = GenerateRawToken();
         var created = DateTimeOffset.UtcNow;
-        var expires = created.AddDays(RefreshTokenLifetimeDays);
+        var expires = created.Add(lifetime ?? TimeSpan.FromDays(RefreshTokenLifetimeDays));
 
         dbContext.LiveRefreshTokens.Add(new LiveRefreshToken()
         {
@@ -102,6 +109,7 @@ public class TokenManager(
             CreatedAt = created,
             ExpiresAt = expires,
             DeviceId = user.DeviceId,
+            SsoSessionId = sessionId,
         });
         await dbContext.SaveChangesAsync();
 
@@ -114,7 +122,21 @@ public class TokenManager(
         var now = DateTimeOffset.UtcNow;
 
         var token = await dbContext.LiveRefreshTokens.AsNoTracking().FirstOrDefaultAsync(t => t.TokenHash == hash);
-        if (token == null || token.RevokedAt != null || token.ExpiresAt <= now)
+        if (token == null || token.ExpiresAt <= now)
+            return null;
+
+        // rotation revokes on redeem, so a revoked token coming back means it was captured and
+        // replayed. we can't tell the thief from the victim, so drop the whole family.
+        if (token.RevokedAt != null)
+        {
+            logger.LogWarning("Refresh token {Id} replayed after rotation, revoking family for user {User}", token.Id, token.UserId);
+            await RevokeRefreshTokenFamilyAsync(token, now);
+            return null;
+        }
+
+        // the session is what actually authorised this chain, so a revoked or lapsed one stops
+        // rotation even though the token row still looks fine
+        if (token.SsoSessionId is { } session && !await IsSessionLiveAsync(session, now))
             return null;
 
         var affected = await dbContext.LiveRefreshTokens
@@ -129,7 +151,45 @@ public class TokenManager(
         if (user == null)
             return null;
 
-        return new RefreshTokenRedemption(user, token.ServiceTarget);
+        return new RefreshTokenRedemption(user, token.ServiceTarget, token.SsoSessionId);
+    }
+
+    private async Task<bool> IsSessionLiveAsync(Guid sessionId, DateTimeOffset now)
+    {
+        var session = await dbContext.LiveSsoSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+        return session != null && session.RevokedAt == null && session.AbsoluteExpiresAt > now;
+    }
+
+    private async Task RevokeRefreshTokenFamilyAsync(LiveRefreshToken token, DateTimeOffset now)
+    {
+        var family = dbContext.LiveRefreshTokens.Where(t => t.RevokedAt == null);
+
+        family = token.SsoSessionId is { } sessionId
+            ? family.Where(t => t.SsoSessionId == sessionId)
+            : token.DeviceId is { } deviceId
+                ? family.Where(t => t.DeviceId == deviceId)
+                : family.Where(t => t.UserId == token.UserId && t.ServiceTarget == token.ServiceTarget);
+
+        await family.ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
+
+        // the cookie outlives the tokens otherwise, and whoever holds it just mints a new family
+        if (token.SsoSessionId is { } revoked)
+        {
+            await dbContext.LiveSsoSessions
+                .Where(s => s.Id == revoked && s.RevokedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAt, now));
+        }
+    }
+
+    public async Task<int> RevokeTokensForSessionAsync(Guid sessionId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return await dbContext.LiveRefreshTokens
+            .Where(t => t.SsoSessionId == sessionId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
     }
 
     public async Task RevokeTokensForDeviceAsync(string deviceId)
@@ -217,6 +277,7 @@ public class TokenManager(
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = JwtKeyLoader.GetVerifyingKey(configuration, logger),
+            ValidAlgorithms = JwtKeyLoader.GetValidAlgorithms(configuration),
 
             ValidateIssuer = true,
             ValidIssuer = JwtIssuer,

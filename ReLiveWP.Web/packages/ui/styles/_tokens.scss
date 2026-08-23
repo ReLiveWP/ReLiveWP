@@ -136,9 +136,6 @@ $theme-dark: (
         map.get($shades, bg-3) 200px);
 }
 
-// wp7's browser (ie9) has no custom properties and no light-dark(), so it drops
-// any declaration using them. emit the light value first as a floor, then the
-// token; modern browsers take the later declaration and theme normally.
 @mixin themed($property, $token, $before: "", $after: "") {
     #{$property}: #{$before}#{map.get($theme-light, $token)}#{$after};
     #{$property}: #{$before}var(--#{$token})#{$after};
@@ -147,6 +144,21 @@ $theme-dark: (
 @mixin themed-raw($property, $fallback, $value) {
     #{$property}: $fallback;
     #{$property}: $value;
+}
+
+@mixin flex-gap($size, $direction: row) {
+    > * + * {
+        @if $direction == column {
+            margin-top: $size;
+        } @else {
+            margin-left: $size;
+        }
+    }
+}
+
+@mixin grid-gap($size) {
+    grid-gap: $size;
+    gap: $size;
 }
 
 @function accent-gradient-vars() {

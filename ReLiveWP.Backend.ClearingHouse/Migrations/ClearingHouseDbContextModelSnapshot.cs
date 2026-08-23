@@ -37,6 +37,9 @@ namespace ReLiveWP.Backend.ClearingHouse.Migrations
                     b.Property<string>("DeltaToken")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("LastAttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LastFailure")
                         .HasColumnType("text");
 

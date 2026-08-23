@@ -1,6 +1,7 @@
 import { AppStateProvider, createAppState } from "./state/app-state";
-import { ErrorBoundary, LocationProvider, Route, Router, lazy } from "preact-iso";
+import { ErrorBoundary, LocationProvider, Route, Router, lazy, useLocation } from "preact-iso";
 import { SiteFooter, SiteHeader, ThemeProvider, useTitle, type NavItem } from "@relivewp/ui";
+import { useEffect } from "preact/hooks";
 
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
 import { ENDPOINT_SUPPORT } from "./util/endpoints";
@@ -24,6 +25,14 @@ const NotFound = () => {
     return <p>Coming soon :3</p>
 }
 
+// "/my/*" does not match bare "/my", so it needs its own entry rather than a default inside MyRouter
+const GoAccount = () => {
+    const { route } = useLocation();
+    useEffect(() => route("/my/account", true), []);
+
+    return null;
+}
+
 const Main = () => {
     return (
         <ThemeProvider accent="red">
@@ -35,6 +44,7 @@ const Main = () => {
                             <Router>
                                 <Route path="/" component={Home} />
                                 <AuthenticatedRoute path="/auth/*" requiredAuthState={false} component={Auth} />
+                                <Route path="/my" component={GoAccount} />
                                 <AuthenticatedRoute path="/my/*" requiredAuthState={true} component={My} />
                                 <Route default component={NotFound} />
                             </Router>

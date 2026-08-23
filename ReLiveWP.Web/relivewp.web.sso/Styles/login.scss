@@ -1,3 +1,22 @@
+@use "sass:meta";
+@use "config" with ($accent-name: "magenta");
+@use "ui";
+@use "tokens" as t;
+
+:root {
+    --font-family: #{meta.inspect(t.$font-family)};
+    --font-family-monospace: #{meta.inspect(t.$font-family-monospace)};
+}
+
+a {
+    @include t.themed(color, ink-muted);
+}
+
+button {
+    text-box: cap alphabetic;
+    font-size: 9pt;
+}
+
 .auth-form {
     display: block;
 
@@ -30,4 +49,8 @@
         position: relative;
         top: -1px;
     }
+}
+
+.error {
+    @include t.themed(color, danger);
 }

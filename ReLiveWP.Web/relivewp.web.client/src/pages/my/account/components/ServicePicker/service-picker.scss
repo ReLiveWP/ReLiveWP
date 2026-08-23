@@ -1,7 +1,9 @@
+@use "tokens" as t;
+
 .service-picker {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-    gap: 8px;
+    @include t.grid-gap(8px);
 
     max-height: 160px;
     overflow-y: auto;
@@ -13,7 +15,6 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 6px;
 
         width: 100%;
         min-width: 0;
@@ -25,9 +26,10 @@
         border: 1px solid var(--rule);
         color: var(--ink-secondary);
         cursor: pointer;
+        @include t.flex-gap(6px, column);
 
         &:hover,
-        &:focus-visible {
+        &:focus {
             border-color: var(--accent-colour);
             color: var(--ink);
         }

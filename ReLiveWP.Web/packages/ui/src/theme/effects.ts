@@ -19,7 +19,8 @@ export function useColourScheme(): ColourScheme {
         const update = () => setScheme(resolveColourScheme());
 
         const query = matchMedia("(prefers-color-scheme: dark)");
-        query.addEventListener("change", update);
+        if (query.addEventListener) query.addEventListener("change", update);
+        else query.addListener(update);
 
         const observer = new MutationObserver(update);
         observer.observe(document.documentElement, {
@@ -30,7 +31,9 @@ export function useColourScheme(): ColourScheme {
         update();
 
         return () => {
-            query.removeEventListener("change", update);
+            if (query.removeEventListener) query.removeEventListener("change", update);
+            else query.removeListener(update);
+
             observer.disconnect();
         };
     }, []);

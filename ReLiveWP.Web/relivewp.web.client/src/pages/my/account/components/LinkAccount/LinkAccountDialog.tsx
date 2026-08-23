@@ -15,6 +15,7 @@ function initialStage(service?: string): Stage {
 
 export { OAUTH_CHANNEL } from "~/util/oauth";
 import { OAUTH_CHANNEL } from "~/util/oauth";
+import { subscribeBroadcast } from "~/util/broadcast";
 
 export default function LinkAccountDialog({ onClose, service: initialService, initialCaps, existingConnectionId, currentEnabledCaps, relinkConnectionId }: {
     onClose: () => void;
@@ -47,18 +48,10 @@ export default function LinkAccountDialog({ onClose, service: initialService, in
         }
     }, [initialService, existingConnectionId, relinkConnectionId]);
 
-    useEffect(() => {
-        const channel = new BroadcastChannel(OAUTH_CHANNEL);
-        const onMessage = (e: MessageEvent<{ connectionId: string }>) => {
-            connectionId.value = e.data.connectionId;
-            stage.value = 'configure';
-        };
-        channel.addEventListener("message", onMessage);
-        return () => {
-            channel.removeEventListener("message", onMessage);
-            channel.close();
-        };
-    }, []);
+    useEffect(() => subscribeBroadcast<{ connectionId: string }>(OAUTH_CHANNEL, (message) => {
+        connectionId.value = message.connectionId;
+        stage.value = 'configure';
+    }), []);
 
     const renderStage = () => {
         switch (stage.value) {

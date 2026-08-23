@@ -8,6 +8,7 @@ public class LiveDbContext(DbContextOptions<LiveDbContext> options)
 {
     public DbSet<LiveRefreshToken> LiveRefreshTokens => Set<LiveRefreshToken>();
     public DbSet<LiveUserProfile> LiveUserProfiles => Set<LiveUserProfile>();
+    public DbSet<LiveSsoSession> LiveSsoSessions => Set<LiveSsoSession>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

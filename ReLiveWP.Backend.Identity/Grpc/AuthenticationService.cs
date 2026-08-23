@@ -251,8 +251,14 @@ public class AuthenticationService(
 
             user ??= redemption.User;
 
-            var (token, created, expires) = tokenManager.IssueJwtAsync(redemption.User, redemption.ServiceTarget);
-            var refresh = await tokenManager.IssueRefreshTokenAsync(redemption.User, redemption.ServiceTarget);
+            // a session-bound token came from the web SSO flow, so rotation has to keep its
+            // shorter lifetimes rather than falling back to the 30 day device default
+            var session = redemption.SsoSessionId;
+            var accessLifetime = session is null ? null : (TimeSpan?)tokenManager.WebAccessTokenLifetime;
+            var refreshLifetime = session is null ? null : (TimeSpan?)tokenManager.WebRefreshTokenLifetime;
+
+            var (token, created, expires) = tokenManager.IssueJwtAsync(redemption.User, redemption.ServiceTarget, accessLifetime, session);
+            var refresh = await tokenManager.IssueRefreshTokenAsync(redemption.User, redemption.ServiceTarget, refreshLifetime, session);
 
             response.Tokens.Add(new SecurityTokenResponse()
             {

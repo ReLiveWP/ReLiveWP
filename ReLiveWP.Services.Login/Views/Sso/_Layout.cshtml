@@ -1,0 +1,58 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<SsoOptions> SsoOptionsAccessor
+@{
+    var options = SsoOptionsAccessor.Value;
+    var portal = options.PortalUrl.TrimEnd('/');
+    var pageTitle = ViewData["Title"] as string ?? "sign in";
+}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <title>@pageTitle - ReLive</title>
+    <link rel="stylesheet" href="~/sso/login.css" asp-append-version="true" />
+</head>
+
+<body class="accent-magenta">
+    @* mirrors @relivewp/ui SiteHeader so this page matches the portal exactly *@
+    <header>
+        <div class="brand-container">
+            <a class="home-link" href="@portal/">
+                <partial name="_BrandLogo" />
+                <div class="header-container">
+                    <h1 class="header-title">ReLive</h1>
+                    <p class="header-subtitle text-accent">for Windows Phone</p>
+                </div>
+            </a>
+        </div>
+        <nav class="header-nav">
+            <ul class="header-items leading">
+                <li><a href="@portal/">discover</a></li>
+                <li><a href="@portal/downloads">download</a></li>
+                <li><a href="@portal/marketplace">marketplace</a></li>
+                <li><a href="@options.SupportUrl">how-to</a></li>
+                <li><a href="@portal/my/device">my phone</a></li>
+            </ul>
+        </nav>
+        <hr class="header-splitter" />
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer>
+        <div class="site-footer">
+            <p>relive for windows phone &bull; windows phone is a trademark of Microsoft Corp.</p>
+        </div>
+    </footer>
+
+    <script src="~/sso/login.js" asp-append-version="true"></script>
+</body>
+
+</html>

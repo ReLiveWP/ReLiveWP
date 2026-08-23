@@ -3,10 +3,7 @@ import "./sign-out.scss"
 import { useAppState } from "~/state/app-state";
 
 export default function SignOut() {
-    const { token } = useAppState();
-    const signOut = () => {
-        token.value = null!;
-    }
+    const { signOut } = useAppState();
 
     return (
         <div class="sign-out">

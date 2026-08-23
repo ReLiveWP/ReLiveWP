@@ -4,7 +4,8 @@
     "moduleResolution": "nodenext",
     "target": "ES2022",
     "lib": [
-      "ES2022",
+      "ES2017",
+      "ES2020.Intl",
       "DOM",
       "DOM.Iterable"
     ],

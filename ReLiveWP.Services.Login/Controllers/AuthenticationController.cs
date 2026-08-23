@@ -2,6 +2,7 @@ using Google.Protobuf;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ReLiveWP.Identity;
 using ReLiveWP.ServiceDefaults;
 using ReLiveWP.Services.Grpc;
@@ -67,6 +68,7 @@ public class AuthenticationController(
     }
 
     [ActionName("register")]
+    [EnableRateLimiting("AuthTokens")]
     public async Task<IActionResult> CreateAccountAsync([FromBody] CreateAccountModel request)
     {
         await authenticationClient.RegisterAsync(new RegisterRequest()
@@ -81,6 +83,7 @@ public class AuthenticationController(
 
     [ActionName("request_tokens")]
     [HttpPost(Name = "request_tokens")]
+    [EnableRateLimiting("AuthTokens")]
     public async Task<ActionResult<SecurityTokensResponseModel>> RequestTokens([FromBody] SecurityTokensRequestModel request, CancellationToken cancellationToken)
     {
         // TODO oh boy howdy this needs to go away
@@ -126,6 +129,7 @@ public class AuthenticationController(
 
     [ActionName("refresh_tokens")]
     [HttpPost(Name = "refresh_tokens")]
+    [EnableRateLimiting("AuthTokens")]
     public async Task<ActionResult<SecurityTokensResponseModel>> RefreshTokens([FromBody] RefreshTokensRequestModel request, CancellationToken cancellationToken)
     {
         var grpcRequest = new RefreshTokensRequest();
@@ -139,6 +143,8 @@ public class AuthenticationController(
 
         return Ok(ToModel(response));
     }
+
+    public static SecurityTokensResponseModel ToTokensModel(SecurityTokensResponse response) => ToModel(response);
 
     private static SecurityTokensResponseModel ToModel(SecurityTokensResponse response)
     {

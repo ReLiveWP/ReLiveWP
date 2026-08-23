@@ -8,10 +8,12 @@ import LinkedAccounts from "./linked-acounts";
 import SignOut from "./sign-out";
 import Devices from "./devices";
 import Privacy from "./privacy";
+import { useBodyClass } from "~/util/use-body-class";
 
 export default function Account() {
     useTitle("my account");
     useAccentColor('teal');
+    useBodyClass("my-account-page");
 
     return (
         <LocationProvider>

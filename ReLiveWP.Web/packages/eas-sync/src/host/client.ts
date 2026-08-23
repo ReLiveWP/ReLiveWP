@@ -18,6 +18,7 @@ import {
     CHANGE_CHANNEL,
     isResponse,
     type ChannelMessage,
+    type Credentials,
     type EngineState,
     type FetchBodyResult,
     type HostEvent,
@@ -29,6 +30,8 @@ import {
 
 export interface EasClient {
     configure(config: WorkerConfig): Promise<Account>;
+    /** swaps the credentials the transport signs with, without rebuilding anything */
+    credentials(credentials: Credentials): Promise<void>;
     sync(folderId?: string): Promise<SyncSummary>;
     wake(): Promise<void>;
     setAutoSync(enabled: boolean): Promise<void>;
@@ -116,6 +119,7 @@ export function connectWorker(worker: Worker): EasClient {
 
     return {
         configure: (config) => send<Account>({ kind: 'configure', config }),
+        credentials: (credentials) => send<void>({ kind: 'credentials', credentials }),
         sync: (folderId) => send<SyncSummary>({ kind: 'sync', folderId }),
         wake: () => send<void>({ kind: 'wake' }),
         setAutoSync: (enabled) => send<void>({ kind: 'setAutoSync', enabled }),

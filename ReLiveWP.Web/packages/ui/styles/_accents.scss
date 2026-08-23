@@ -1,30 +1,45 @@
 @use "tokens" as t;
 
-:root {
+@mixin accent-scheme-tokens($stops, $dark) {
     @each $name, $base in t.$accents {
-        --accent-colour-#{$name}: #{$base};
-        --accent-colour-#{$name}-ink: light-dark(#{$base}, #{t.accent-ink($base)});
+        --accent-colour-#{$name}-ink: #{if($dark, t.accent-ink($base), $base)};
 
         @each $stop in (bg-1, bg-2, bg-3) {
-            --accent-colour-#{$name}-#{$stop}: light-dark(#{t.shade($base, $stop)},
-                #{t.shade($base, $stop, t.$shades-dark)});
+            --accent-colour-#{$name}-#{$stop}: #{t.shade($base, $stop, $stops)};
         }
     }
 
-    --accent-colour-zune1: #{t.$accent-zune-1};
-    --accent-colour-zune1-ink: light-dark(#{t.$accent-zune-1}, #{t.accent-ink(t.$accent-zune-1)});
+    --accent-colour-zune1-ink: #{if($dark, t.accent-ink(t.$accent-zune-1), t.$accent-zune-1)};
 
     @each $stop in (bg-1, bg-2, bg-3) {
-        --accent-colour-zune1-#{$stop}: light-dark(#{t.shade(t.$accent-zune-2, $stop)},
-            #{t.shade(t.$accent-zune-2, $stop, t.$shades-dark)});
+        --accent-colour-zune1-#{$stop}: #{t.shade(t.$accent-zune-2, $stop, $stops)};
+    }
+}
+
+:root {
+    @each $name, $base in t.$accents {
+        --accent-colour-#{$name}: #{$base};
     }
 
+    --accent-colour-zune1: #{t.$accent-zune-1};
     --accent-colour-zune2: #{t.$accent-zune-2};
+
+    @include accent-scheme-tokens(t.$shades-light, false);
 
     --accent-colour-bg-1: var(--accent-colour-red-bg-1);
     --accent-colour-bg-2: var(--accent-colour-red-bg-2);
     --accent-colour-bg-3: var(--accent-colour-red-bg-3);
     --accent-ink: var(--accent-colour-red-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-colour-scheme="light"]) {
+        @include accent-scheme-tokens(t.$shades-dark, true);
+    }
+}
+
+:root[data-colour-scheme="dark"] {
+    @include accent-scheme-tokens(t.$shades-dark, true);
 }
 
 @each $name, $base in t.$accents {

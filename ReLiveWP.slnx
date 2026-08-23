@@ -67,6 +67,7 @@
     <Project Path="tests/ReLiveWP.Backend.Mail.Tests/ReLiveWP.Backend.Mail.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Backend.Mailbox.Tests/ReLiveWP.Backend.Mailbox.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />
+    <Project Path="tests/ReLiveWP.Services.Login.Tests/ReLiveWP.Services.Login.Tests.csproj" />
   </Folder>
   <Folder Name="/Windows Live/">
     <Project Path="ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />

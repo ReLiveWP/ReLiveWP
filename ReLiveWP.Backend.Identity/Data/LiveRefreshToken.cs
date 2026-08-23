@@ -18,4 +18,5 @@ public class LiveRefreshToken
     public DateTimeOffset? LastUsedAt { get; set; }
 
     public string? DeviceId { get; set; }
+    public Guid? SsoSessionId { get; set; }
 }

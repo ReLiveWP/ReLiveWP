@@ -58,9 +58,9 @@ public class ContactMirrorPoller(
             .Where(s => s.RunRequestedAt != null
                      || (s.SyncEnabled
                          && s.ConsecutiveFailures < MaxConsecutiveFailures
-                         && (s.LastSyncedAt == null || s.LastSyncedAt < due)))
+                         && (s.LastAttemptedAt == null || s.LastAttemptedAt < due)))
             .OrderByDescending(s => s.RunRequestedAt)
-            .ThenBy(s => s.LastSyncedAt)
+            .ThenBy(s => s.LastAttemptedAt)
             .Select(s => s.Id)
             .ToListAsync(ct);
 
@@ -91,9 +91,10 @@ public class ContactMirrorPoller(
         var pull = source.RunRequestedAt is not null
             || (source.SyncEnabled
                 && source.ConsecutiveFailures < MaxConsecutiveFailures
-                && (source.LastSyncedAt is null || source.LastSyncedAt < due));
+                && (source.LastAttemptedAt is null || source.LastAttemptedAt < due));
 
         source.RunStartedAt = DateTime.UtcNow;
+        source.LastAttemptedAt = source.RunStartedAt;
         source.RunRequestedAt = null;
         await db.SaveChangesAsync(ct);
 

@@ -1,6 +1,7 @@
 import "./index.scss"
 
 import Lumia800 from "~/static/lumia-800.webp"
+import Lumia800Fallback from "~/static/lumia-800.png"
 import { useTitle } from "@relivewp/ui";
 
 const Index = () => {
@@ -9,7 +10,10 @@ const Index = () => {
     return (
         <>
             <div class="hero">
-                <img class="hero-img" src={Lumia800} />
+                <picture class="hero-picture">
+                    <source srcset={Lumia800} type="image/webp" />
+                    <img class="hero-img" src={Lumia800Fallback} />
+                </picture>
                 <div class="hero-text-container">
                     <div class="hero-text">
                         <h1>ReLive for Windows Phone</h1>

@@ -287,6 +287,8 @@ services:
         condition: service_healthy
       deviceregistration:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - 10002:10002
     volumes:

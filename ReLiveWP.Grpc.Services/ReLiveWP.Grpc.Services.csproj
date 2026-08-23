@@ -42,6 +42,9 @@
     <Protobuf Include="../protos/skyphotos.proto" GrpcServices="Client" Access="Public">
       <Link>Protos\skyphotos.proto</Link>
     </Protobuf>
+    <Protobuf Include="../protos/sso.proto" GrpcServices="Client" Access="Public">
+      <Link>Protos\sso.proto</Link>
+    </Protobuf>
     <Protobuf Include="../protos/user.proto" GrpcServices="Client" Access="Public">
       <Link>Protos\user.proto</Link>
     </Protobuf>

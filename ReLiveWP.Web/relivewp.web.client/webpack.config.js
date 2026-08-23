@@ -10,15 +10,20 @@ module.exports = [
         entry: {
             "index": "./src/index.tsx",
         },
-        target: "web",
+        target: "browserslist",
         mode,
         devtool: 'source-map',
         module: {
             rules: [
                 {
                     test: /\.tsx?$/,
-                    use: ['ts-loader'],
+                    use: ['babel-loader', 'ts-loader'],
                     exclude: /node_modules/,
+                },
+                {
+                    test: /\.m?js$/,
+                    use: [{ loader: 'babel-loader', options: { sourceType: 'unambiguous' } }],
+                    resolve: { fullySpecified: false },
                 },
                 {
                     test: /\.css$/i,

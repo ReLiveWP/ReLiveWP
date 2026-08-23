@@ -1,7 +1,10 @@
 export const ENDPOINT_REQUEST_TOKENS = "https://login.relivewp.net/auth/request_tokens",
+    ENDPOINT_REFRESH_TOKENS = "https://login.relivewp.net/auth/refresh_tokens",
     ENDPOINT_GET_USER = "https://login.relivewp.net/auth/user/@me",
     ENDPOINT_EAS = "https://sync.relivewp.net/Microsoft-Server-ActiveSync",
     ENDPOINT_HOME = "https://relivewp.net/",
     ENDPOINT_SUPPORT = "https://support.relivewp.net/",
+    SSO_AUTHORITY = "https://login.relivewp.net",
+    SSO_CLIENT_ID = "548b5435-3d80-474c-81be-6fa4a5003471",
     SERVICE_TARGET_PORTAL = "relivewp.net",
     SERVICE_TARGET_EAS = "sync.relivewp.net";

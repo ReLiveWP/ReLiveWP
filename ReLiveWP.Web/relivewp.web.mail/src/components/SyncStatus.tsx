@@ -4,7 +4,7 @@ import type { EngineState } from "@relivewp/eas-sync/host";
 
 import { useAppState } from "~/state/app-state";
 import { useSync } from "~/state/sync";
-import { ago, UNITS, RELATIVE } from "@relivewp/ui";
+import { ago, relative, UNITS } from "@relivewp/ui";
 
 function since(engine: EngineState | null): string {
     return engine === null || engine.lastSyncAt === null ? "" : `, synced ${ago(engine.lastSyncAt)}`;
@@ -14,7 +14,7 @@ function ahead(at: number): string {
     const remaining = at - Date.now();
 
     for (const [unit, size] of UNITS)
-        if (remaining >= size) return RELATIVE.format(Math.round(remaining / size), unit);
+        if (remaining >= size) return relative(Math.round(remaining / size), unit);
 
     return "shortly";
 }

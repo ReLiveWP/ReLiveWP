@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+option csharp_namespace = "ReLiveWP.Services.Grpc";
+
+import "google/protobuf/timestamp.proto";
+import "authentication.proto";
+
+package identity;
+
+service Sso {
+  rpc SignIn (SsoSignInRequest) returns (CreateSessionResponse);
+  rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc RevokeSession (RevokeSessionRequest) returns (RevokeSessionResponse);
+  rpc ListSessions (ListSessionsRequest) returns (ListSessionsResponse);
+
+  rpc IssueAuthorizationCode (IssueAuthorizationCodeRequest) returns (IssueAuthorizationCodeResponse);
+  rpc RedeemAuthorizationCode (RedeemAuthorizationCodeRequest) returns (SecurityTokensResponse);
+}
+
+message SsoSignInRequest {
+  string          username   = 1;
+  string          password   = 2;
+  bool            persistent = 3;
+  optional string userAgent  = 4;
+  optional string createdIp  = 5;
+}
+
+message CreateSessionResponse {
+  uint32                    code          = 1;
+  string                    sessionHandle = 2;
+  string                    sessionId     = 3;
+  google.protobuf.Timestamp expires       = 4;
+}
+
+message ValidateSessionRequest {
+  string sessionHandle = 1;
+}
+
+message ValidateSessionResponse {
+  bool                               valid     = 1;
+  optional string                    userId    = 2;
+  optional string                    sessionId = 3;
+  optional string                    username  = 4;
+  optional google.protobuf.Timestamp expires   = 5;
+}
+
+message RevokeSessionRequest {
+  string sessionHandle = 1;
+}
+
+message RevokeSessionResponse {
+  bool revoked = 1;
+}
+
+message ListSessionsRequest {
+  string userId = 1;
+}
+
+message SessionInfo {
+  string                    id         = 1;
+  google.protobuf.Timestamp createdAt  = 2;
+  google.protobuf.Timestamp lastSeenAt = 3;
+  google.protobuf.Timestamp expiresAt  = 4;
+  optional string           userAgent  = 5;
+  optional string           createdIp  = 6;
+  bool                      current    = 7;
+}
+
+message ListSessionsResponse {
+  repeated SessionInfo sessions = 1;
+}
+
+message IssueAuthorizationCodeRequest {
+  string          sessionHandle       = 1;
+  string          clientId            = 2;
+  string          redirectUri         = 3;
+  repeated string serviceTargets      = 4;
+  optional string codeChallenge       = 5;
+  optional string codeChallengeMethod = 6;
+}
+
+message IssueAuthorizationCodeResponse {
+  uint32 code              = 1;
+  string authorizationCode = 2;
+  bool   persistent        = 3;
+}
+
+message RedeemAuthorizationCodeRequest {
+  string          authorizationCode = 1;
+  string          clientId          = 2;
+  string          redirectUri       = 3;
+  optional string codeVerifier      = 4;
+}

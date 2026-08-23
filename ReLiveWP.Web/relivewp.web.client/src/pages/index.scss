@@ -39,6 +39,14 @@
         }
     }
 
+    .hero-picture {
+        display: none;
+
+        @media screen and (min-width:960px) {
+            display: block;
+        }
+    }
+
     .hero-img {
         display: none;
 

@@ -1,0 +1,16 @@
+{
+  "name": "relivewp.web.sso",
+  "private": true,
+  "description": "Stylesheet for the shared sign-in page served by ReLiveWP.Services.Login. Invoked by the csproj, not by hand.",
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "styles": "sass --no-source-map --load-path=node_modules/@relivewp/ui/styles Styles/login.scss ../../ReLiveWP.Services.Login/wwwroot/sso/login.css",
+    "styles:watch": "sass --watch --no-source-map --load-path=node_modules/@relivewp/ui/styles Styles/login.scss ../../ReLiveWP.Services.Login/wwwroot/sso/login.css"
+  },
+  "dependencies": {
+    "@relivewp/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "sass": "^1.90.0"
+  }
+}

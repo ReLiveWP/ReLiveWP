@@ -18,7 +18,7 @@ export {
     type ThemeState,
 } from "./theme/state.tsx";
 
-export { ago, UNITS, RELATIVE } from "./time/ago.ts";
+export { ago, relative, UNITS } from "./time/ago.ts";
 
 export {
     useAccentColor,

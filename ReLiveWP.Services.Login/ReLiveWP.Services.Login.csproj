@@ -3,6 +3,11 @@
   <PropertyGroup>
     <UserSecretsId>6cc4b98e-30b7-4216-85cd-65ac619f665a</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <SsoStyleDir>$(MSBuildProjectDirectory)/../ReLiveWP.Web/relivewp.web.sso</SsoStyleDir>
+    <UiPackageDir>$(SsoStyleDir)/node_modules/@relivewp/ui</UiPackageDir>
+    <SsoStylesheet>$(MSBuildProjectDirectory)/wwwroot/sso/login.css</SsoStylesheet>
+    <PnpmInstall Condition="'$(OS)' == 'Windows_NT'">pnpm install --silent || (ping -n 11 127.0.0.1 &gt;nul &amp; pnpm install --silent)</PnpmInstall>
+    <PnpmInstall Condition="'$(OS)' != 'Windows_NT'">pnpm install --silent || (sleep 10; pnpm install --silent)</PnpmInstall>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +19,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" />
     <PackageReference Include="Razor.Templating.Core" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
   </ItemGroup>
@@ -40,10 +46,39 @@
     <Protobuf Include="../protos/client_provisioning.proto" GrpcServices="Client">
       <Link>Protos\client_provisioning.proto</Link>
     </Protobuf>
+    <Protobuf Include="../protos/sso.proto" GrpcServices="Client">
+      <Link>Protos\sso.proto</Link>
+    </Protobuf>
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Utilities\" />
   </ItemGroup>
+
+  <ItemGroup>
+    <SassInput Include="$(SsoStyleDir)/Styles/**/*.scss" />
+    <SassInput Include="$(UiPackageDir)/styles/**/*.scss" />
+  </ItemGroup>
+
+  <Target Name="RestoreStyleTools"
+          Inputs="$(SsoStyleDir)/package.json;$(MSBuildProjectDirectory)/../ReLiveWP.Web/pnpm-lock.yaml"
+          Outputs="$(SsoStyleDir)/node_modules/.modules.yaml">
+    <Exec Command="$(PnpmInstall)" WorkingDirectory="$(SsoStyleDir)" />
+  </Target>
+
+  <Target Name="BuildLoginStyles"
+          DependsOnTargets="RestoreStyleTools"
+          Inputs="@(SassInput)"
+          Outputs="$(SsoStylesheet)">
+    <Exec Command="pnpm run styles" WorkingDirectory="$(SsoStyleDir)" />
+  </Target>
+
+  <Target Name="IncludeLoginStyles"
+          DependsOnTargets="BuildLoginStyles"
+          BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <Content Include="$(SsoStylesheet)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 
 </Project>

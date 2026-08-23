@@ -1,6 +1,6 @@
 @use "controls";
 
-main:has(.my-account) {
+body.my-account-page main {
     display: flex;
     flex-direction: column;
 }

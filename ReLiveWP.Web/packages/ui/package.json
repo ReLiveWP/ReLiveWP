@@ -35,5 +35,8 @@
     "preact": "^10.27.0",
     "preact-iso": "^2.9.2",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "dialog-polyfill": "^0.5.6"
   }
 }

@@ -92,6 +92,7 @@ internal class LiveIDAuthHandler(
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = JwtKeyLoader.GetVerifyingKey(configuration, logger),
+            ValidAlgorithms = JwtKeyLoader.GetValidAlgorithms(configuration),
 
             ValidateIssuer = true,
             ValidIssuer = JwtKeyLoader.Issuer,

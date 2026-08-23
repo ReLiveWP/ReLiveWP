@@ -5,6 +5,8 @@
     <UiPackageDir>$(MSBuildProjectDirectory)/node_modules/@relivewp/ui</UiPackageDir>
     <SupportStylesheet>$(MSBuildProjectDirectory)/wwwroot/support.css</SupportStylesheet>
     <SupportLogo>$(MSBuildProjectDirectory)/wwwroot/logo.svg</SupportLogo>
+    <PnpmInstall Condition="'$(OS)' == 'Windows_NT'">pnpm install --silent || (ping -n 11 127.0.0.1 &gt;nul &amp; pnpm install --silent)</PnpmInstall>
+    <PnpmInstall Condition="'$(OS)' != 'Windows_NT'">pnpm install --silent || (sleep 10; pnpm install --silent)</PnpmInstall>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,9 +29,9 @@
   </ItemGroup>
 
   <Target Name="RestoreStyleTools"
-          Inputs="package.json"
+          Inputs="package.json;$(MSBuildProjectDirectory)/../pnpm-lock.yaml"
           Outputs="node_modules/.modules.yaml">
-    <Exec Command="pnpm install --silent" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="$(PnpmInstall)" WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 
   <Target Name="BuildSupportStyles"

@@ -30,6 +30,8 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<TokenManager>();
+builder.Services.AddScoped<SsoSessionManager>();
+builder.Services.AddSingleton<ISsoAuthorizationCodeStore, RedisSsoAuthorizationCodeStore>();
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();
 builder.Services.AddScoped<RootCACertificateProvider>();
 builder.Services.AddSingleton<AvatarStore>();
@@ -55,6 +57,7 @@ if (JwtKeyLoader.GetVerifyingKey(app.Configuration) is ECDsaSecurityKey publicKe
 
 app.MapGrpcService<AuthenticationService>();
 app.MapGrpcService<UserService>();
+app.MapGrpcService<SsoService>();
 
 app.MapDefaultEndpoints();
 

@@ -1,116 +1,24 @@
-import "./login.scss"
-
-import { ENDPOINT_REQUEST_TOKENS, SERVICE_TARGET_EAS, SERVICE_TARGET_PORTAL } from "~/util/endpoints";
-import { useAppState } from "~/state/app-state";
-import { useLocation } from "preact-iso";
 import { useSignal } from "@preact/signals";
+import { useEffect } from "preact/hooks";
 import { useTitle } from "@relivewp/ui";
-import { toString } from "~/util/hresult";
-import type { SecurityTokensResponse } from "~/util/auth-types";
+
+import { startSignIn } from "~/util/sso";
 
 export default function Login() {
     useTitle("sign in");
 
-    const username = useSignal("");
-    const password = useSignal("");
-    const rememberMe = useSignal(true);
-    const isDisabled = useSignal(false);
-    const error = useSignal<string | null>(null)
-    const helpUrl = useSignal<string | null>(null)
+    const error = useSignal<string | null>(null);
 
-    const appState = useAppState();
-    const location = useLocation();
-
-    const signIn = async (e: SubmitEvent) => {
-        e.preventDefault();
-
-        isDisabled.value = true;
-        error.value = null;
-        helpUrl.value = null;
-        try {
-            const payload = {
-                identity: username.value,
-                credentials: {
-                    "ps:password": password.value
-                },
-                token_requests: [{
-                    service_policy: "MBI",
-                    service_target: SERVICE_TARGET_PORTAL
-                }, {
-                    service_policy: "MBI",
-                    service_target: SERVICE_TARGET_EAS
-                }]
-            };
-
-            const payloadText = JSON.stringify(payload);
-            const response = await fetch(ENDPOINT_REQUEST_TOKENS, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: payloadText
-            });
-
-            if (!response.ok) {
-                const { error_code, help_url }: { error_code: number, help_url?: string } = await response.json();
-                error.value = toString(error_code);
-                helpUrl.value = help_url ?? null;
-                return;
-            }
-
-            const { security_tokens } = await response.json() as SecurityTokensResponse;
-            appState.signIn(security_tokens, rememberMe.value);
-
-            location.route("/");
-        } catch (e: any) {
-            error.value = e.message;
-        } finally {
-            isDisabled.value = false;
-        }
-    };
+    useEffect(() => {
+        startSignIn().catch((e: Error) => { error.value = e.message; });
+    }, []);
 
     return (
         <div>
             <h1>sign in</h1>
-            <form class="auth-form" onSubmit={signIn}>
-                <label htmlFor="username">ReLive ID:</label>
-                <input id="username"
-                    type="text"
-                    autoComplete="username,email"
-                    class="textbox"
-                    placeholder="example555@example.com"
-                    value={username}
-                    onChange={(e) => username.value = e.currentTarget.value}
-                    disabled={isDisabled} />
-
-                <label htmlFor="password">Password:</label>
-                <input id="password"
-                    type="password"
-                    class="textbox"
-                    value={password}
-                    onChange={(e) => password.value = e.currentTarget.value}
-                    disabled={isDisabled} />
-
-                <label class="remember-me" htmlFor="remember-me">
-                    <input id="remember-me"
-                        type="checkbox"
-                        class="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => rememberMe.value = e.currentTarget.checked}
-                        disabled={isDisabled}></input>
-                    <span class="remember-me-text">Remember me</span>
-                </label>
-
-                {error.value && (
-                    <p class="error">
-                        {error.value}
-                        {helpUrl.value && <> <a href={helpUrl.value} class="help-link">Learn more</a></>}
-                    </p>
-                )}
-
-                <input type="submit" class="submit" value="Sign in" disabled={isDisabled} />
-            </form>
+            {error.value
+                ? <p class="error">{error.value}</p>
+                : <p>Taking you to sign in...</p>}
         </div>
-    )
+    );
 }

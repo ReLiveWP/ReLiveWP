@@ -1,8 +1,18 @@
 import { Signal, computed, effect, type ReadonlySignal } from "@preact/signals";
 import { createContext } from "preact";
 import { useContext } from "preact/hooks";
+import { createRefresher, signOutUrl, type Refresher } from "@relivewp/auth";
 
-import { ENDPOINT_GET_USER, SERVICE_TARGET_EAS, SERVICE_TARGET_PORTAL } from "~/util/endpoints";
+import {
+    ENDPOINT_GET_USER,
+    ENDPOINT_REFRESH_TOKENS,
+    SERVICE_TARGET_EAS,
+    SERVICE_TARGET_PORTAL,
+    SSO_AUTHORITY,
+    SSO_CLIENT_ID,
+    SSO_POST_LOGOUT_REDIRECT_URI,
+    SSO_REDIRECT_URI,
+} from "~/util/endpoints";
 import { bootstrapUser } from "~/util/bootstrap";
 import type { SecurityToken, User } from "~/util/auth-types";
 
@@ -19,6 +29,7 @@ export type AppState = {
     isAuthenticated: ReadonlySignal<boolean>,
     hasIdentity: ReadonlySignal<boolean>,
     authenticatedFetch: ReadonlySignal<typeof fetch | undefined>,
+    refresher: Refresher,
     signIn: (tokens: SecurityToken[], persistent: boolean) => void,
     signOut: () => void,
 }
@@ -112,39 +123,43 @@ function createAppStateSignals(): AppState {
     const token = computed(() => live(tokens.value, SERVICE_TARGET_PORTAL));
     const easToken = computed(() => live(tokens.value, SERVICE_TARGET_EAS));
 
+    const refresher = createRefresher({
+        endpoint: ENDPOINT_REFRESH_TOKENS,
+        read: () => tokens.value,
+        write: (set) => { tokens.value = set; },
+        onSignedOut: () => { tokens.value = {}; user.value = undefined; },
+        reload: readTokens,
+    });
+
     return {
+        refresher,
         tokens,
         persistent,
         user,
         online,
         token,
         easToken,
-        // survives expiry so the worker still opens the local mailbox offline
         storedEasToken: computed(() => stored(tokens.value, SERVICE_TARGET_EAS)),
         isAuthenticated: computed(() => token.value !== null),
         hasIdentity: computed(() => tokens.value[SERVICE_TARGET_PORTAL] !== undefined),
-        authenticatedFetch: computed(() => {
-            const value = token.value;
-            if (value === null)
-                return undefined;
-
-            return async (url, opts) => {
-                const options = { ...opts };
-                options.headers = {
-                    ...options.headers,
-                    'Authorization': `Bearer ${value}`
-                };
-
-                return await fetch(url, options);
-            }
-        }),
+        authenticatedFetch: computed(() =>
+            tokens.value[SERVICE_TARGET_PORTAL] === undefined
+                ? undefined
+                : refresher.authenticatedFetch(SERVICE_TARGET_PORTAL)),
         signIn: (issued, remember) => {
             persistent.value = remember;
             tokens.value = Object.fromEntries(issued.map((t) => [t.service_target, t]));
         },
         signOut: () => {
-            tokens.value = {};
-            user.value = undefined;
+            write(STORAGE_KEY, undefined, persistent.peek());
+            write(USER_KEY, undefined, persistent.peek());
+
+            window.location.assign(signOutUrl({
+                authority: SSO_AUTHORITY,
+                clientId: SSO_CLIENT_ID,
+                redirectUri: SSO_REDIRECT_URI,
+                serviceTargets: [],
+            }, SSO_POST_LOGOUT_REDIRECT_URI));
         },
     };
 }
@@ -172,10 +187,9 @@ function configureAppStateEffects(
             return;
         }
 
-        // an expired token cannot be refreshed here, so keep the cached identity and let
-        // the session read locally until the user signs in again
-        if (token.value === null) return;
-
+        // an expired token now goes through the refresher rather than stalling. offline, the
+        // refresh fetch throws, bootstrapUser reports unreachable, and the cached identity
+        // survives so the session still reads locally.
         (async () => {
             const _fetch = authenticatedFetch.value;
             if (_fetch === undefined) return;

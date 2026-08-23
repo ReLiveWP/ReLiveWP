@@ -1,4 +1,5 @@
 @use "controls";
+@use "tokens" as t;
 
 dialog {
     border: none;
@@ -86,7 +87,7 @@ dialog {
         right: 30px;
 
         display: flex;
-        gap: 8px;
+        @include t.flex-gap(8px);
 
         button,
         .submit,
@@ -95,4 +96,25 @@ dialog {
         }
     }
 
+}
+
+// without native <dialog> the element is just a block, so it would sit in the page always visible
+dialog:not([open]) {
+    display: none;
+}
+
+dialog[data-polyfilled] {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: auto;
+
+    + .backdrop {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background-color: var(--scrim);
+    }
 }

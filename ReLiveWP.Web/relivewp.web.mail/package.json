@@ -18,6 +18,7 @@
   "packageManager": "pnpm@10.13.1",
   "dependencies": {
     "@preact/signals": "^2.2.1",
+    "@relivewp/auth": "workspace:*",
     "@relivewp/calendar": "workspace:*",
     "@relivewp/eas-store": "workspace:*",
     "@relivewp/eas-sync": "workspace:*",

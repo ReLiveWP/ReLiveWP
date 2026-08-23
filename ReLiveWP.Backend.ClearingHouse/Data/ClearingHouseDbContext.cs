@@ -14,6 +14,7 @@ public class DbContactSyncSource
     public string? DeltaToken { get; set; }
 
     public DateTime? LastSyncedAt { get; set; }
+    public DateTime? LastAttemptedAt { get; set; }
     public DateTime? LastFailureAt { get; set; }
     public string? LastFailure { get; set; }
     public int ConsecutiveFailures { get; set; }

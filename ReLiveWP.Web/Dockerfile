@@ -14,7 +14,10 @@ COPY ReLiveWP.Web/package.json \
      ReLiveWP.Web/pnpm-lock.yaml ./
 COPY ReLiveWP.Web/relivewp.web.client/package.json relivewp.web.client/
 COPY ReLiveWP.Web/relivewp.web.mail/package.json relivewp.web.mail/
+COPY ReLiveWP.Web/relivewp.web.sso/package.json relivewp.web.sso/
 COPY ReLiveWP.Web/ReLiveWP.Services.Support/package.json ReLiveWP.Services.Support/
+COPY ReLiveWP.Web/packages/auth/package.json packages/auth/
+COPY ReLiveWP.Web/packages/calendar/package.json packages/calendar/
 COPY ReLiveWP.Web/packages/eas-client/package.json packages/eas-client/
 COPY ReLiveWP.Web/packages/eas-store/package.json packages/eas-store/
 COPY ReLiveWP.Web/packages/eas-sync/package.json packages/eas-sync/

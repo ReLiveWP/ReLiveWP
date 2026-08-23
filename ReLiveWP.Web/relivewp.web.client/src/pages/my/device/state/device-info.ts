@@ -5,7 +5,7 @@ import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 import { ExtendedDeviceInfo } from "~/util/device-types";
 import { ENDPOINT_DEVICE_EVENTS, ENDPOINT_DEVICE_LOCATE, ENDPOINT_GET_EXTENDED_DEVICE_INFO, populateEndpoint } from "~/util/endpoints";
-import { useAppState, useAuthenticatedFetch } from "~/state/app-state";
+import { useAuthenticatedFetch } from "~/state/app-state";
 import { useFetchSignal } from "~/util/use-fetch";
 
 type DeviceInfoContextType = {
@@ -30,8 +30,6 @@ export function useDeviceInfoState(id?: string) {
     const fetch = useAuthenticatedFetch();
     const { data, error } = useFetchSignal<ExtendedDeviceInfo>(url);
 
-    const { token } = useAppState();
-
     const deviceInfo = useSignal(data.value);
     useSignalEffect(() => {
         deviceInfo.value = data.value;
@@ -39,12 +37,15 @@ export function useDeviceInfoState(id?: string) {
 
     useEffect(() => {
         if (!deviceInfo.value?.id) return;
+        if (typeof AbortController === "undefined") return;
 
         const url = populateEndpoint(ENDPOINT_DEVICE_EVENTS, { deviceId: deviceInfo.value.id });
         const abortController = new AbortController();
 
+        // the stream outlives an access token, so every connect and reconnect goes back through
+        // the refresher for a live one rather than pinning the token we happened to hold here
         fetchEventSource(url, {
-            headers: { "Authorization": `Bearer ${token.value}` },
+            fetch,
             signal: abortController.signal,
             openWhenHidden: true,
             onmessage: (event) => {

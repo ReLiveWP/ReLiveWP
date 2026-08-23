@@ -6,12 +6,12 @@
     .header {
         display: flex;
         align-items: flex-start;
-        gap: 10px;
 
         margin-bottom: 4px;
         padding-bottom: 4px;
         margin-top: 12px;
         margin-left: 10px;
+        @include t.flex-gap(10px);
 
         >div:first-of-type {
             flex: 1;
@@ -19,12 +19,12 @@
 
         .account-actions {
             display: flex;
-            gap: 20px;
             white-space: nowrap;
             font-weight: 500;
             font-variant: small-caps;
             text-transform: lowercase;
             align-self: flex-end;
+            @include t.flex-gap(20px);
 
             .error {
                 color: var(--danger);
@@ -111,7 +111,7 @@
     .capability {
         display: grid;
         grid-template-columns: 120px 1fr;
-        gap: 0 12px;
+        @include t.grid-gap(0 12px);
 
         padding-top: 8px;
         padding-bottom: 8px;
@@ -147,8 +147,8 @@
         .capability-actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
             margin-top: 7px;
+            @include t.flex-gap(20px);
 
             .text-button:disabled {
                 opacity: 0.5;

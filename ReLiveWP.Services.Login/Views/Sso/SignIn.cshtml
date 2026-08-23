@@ -1,0 +1,48 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<SsoOptions> SsoOptionsAccessor
+@model SignInViewModel
+@{
+    ViewData["Title"] = "sign in";
+    var portal = SsoOptionsAccessor.Value.PortalUrl.TrimEnd('/');
+}
+
+<h1>sign in</h1>
+
+<form class="auth-form" method="post" action="/sso/signin">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="PendingId" value="@Model.PendingId" />
+
+    <label for="username">ReLive ID:</label>
+    <input id="username"
+           name="Username"
+           type="text"
+           autocomplete="username"
+           class="textbox"
+           placeholder="example555@@example.com"
+           value="@Model.Username" />
+
+    <label for="password">Password:</label>
+    <input id="password"
+           name="Password"
+           type="password"
+           autocomplete="current-password"
+           class="textbox" />
+    <a href="@portal/auth/forgor" class="forgot-link">Forgot your password?</a>
+
+    <label class="remember-me" for="remember-me">
+        <input id="remember-me"
+               name="RememberMe"
+               type="checkbox"
+               class="checkbox"
+               value="true"
+               @(Model.RememberMe ? "checked" : null) />
+        <span class="remember-me-text">Remember me</span>
+    </label>
+
+    @if (Model.Error is { Length: > 0 })
+    {
+        <p class="error">@Model.Error</p>
+    }
+
+    <input type="submit" class="submit" value="Sign in" />
+</form>

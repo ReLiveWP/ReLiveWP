@@ -47,6 +47,11 @@ export function useFetchSignal<T>(url: string, onData?: (data: T) => void): Fetc
     }, [url]);
 
     useEffect(() => {
+        if (typeof AbortController === "undefined") {
+            refresh();
+            return;
+        }
+
         const controller = new AbortController();
         refresh(controller.signal);
         return () => controller.abort();
