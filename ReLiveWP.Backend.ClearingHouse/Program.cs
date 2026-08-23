@@ -5,6 +5,7 @@ using ReLiveWP.Backend.ClearingHouse.Data;
 using ReLiveWP.Backend.ClearingHouse.Grpc;
 using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror.Calendar;
 using ReLiveWP.Identity;
 using ReLiveWP.Identity.Grpc;
 using ReLiveWP.Services.Grpc;
@@ -46,7 +47,11 @@ builder.Services.AddScoped<SyncSourceDetach>();
 
 builder.Services.AddSingleton<ContactsFolderResolver>();
 
+builder.Services.AddScoped<IMirrorRunner, CalendarMirrorRunner>();
+builder.Services.AddScoped<CalendarFolderResolver>();
+
 builder.Services.AddHostedService(sp => ActivatorUtilities.CreateInstance<MirrorPoller>(sp, MirrorKind.Contacts));
+builder.Services.AddHostedService(sp => ActivatorUtilities.CreateInstance<MirrorPoller>(sp, MirrorKind.Calendar));
 builder.Services.AddHostedService<ConnectionDeletedSubscriber>();
 
 var app = builder.Build();

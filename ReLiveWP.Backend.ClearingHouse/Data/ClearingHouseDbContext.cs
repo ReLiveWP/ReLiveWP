@@ -17,7 +17,11 @@ public class DbSyncSource
 
     // calendar mirrors one remote collection onto one folder; contacts merge into the default one
     public string? FolderId { get; set; }
+
+    // what the remote calls it, versus what we last pushed to the folder. comparing the folder's
+    // live name instead cannot tell a remote rename from one the user made on the phone.
     public string? RemoteDisplayName { get; set; }
+    public string? FolderDisplayName { get; set; }
 
     public DateTime? LastSyncedAt { get; set; }
     public DateTime? LastAttemptedAt { get; set; }

@@ -10,6 +10,7 @@
     <PackageVersion Include="FishyFlip" Version="4.1.0-alpha.2" />
     <PackageVersion Include="FolkerKinzel.VCards" Version="8.2.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.75.0" />
+    <PackageVersion Include="Ical.Net" Version="5.2.3" />
     <PackageVersion Include="Google.Apis.Oauth2.v2" Version="1.74.0.1869" />
     <PackageVersion Include="Google.Protobuf" Version="3.35.0" />
     <PackageVersion Include="Grpc.AspNetCore" Version="2.80.0" />
