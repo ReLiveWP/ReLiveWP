@@ -1,12 +1,13 @@
 using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 
 public class GraphContactSyncDriver(
     ConnectedServicesProxy proxy,
-    ILogger<GraphContactSyncDriver> logger) : IContactSyncDriver
+    ILogger<GraphContactSyncDriver> logger) : IMirrorDriver
 {
     public const string ServiceName = "microsoft";
 
@@ -21,10 +22,12 @@ public class GraphContactSyncDriver(
 
     public string ServiceId => ServiceName;
 
-    public async Task<IReadOnlyList<RemoteContactSource>> ListSourcesAsync(
+    public MirrorKind Kind => MirrorKind.Contacts;
+
+    public async Task<IReadOnlyList<RemoteSource>> ListSourcesAsync(
         SyncConnection connection, CancellationToken ct = default)
     {
-        var sources = new List<RemoteContactSource>
+        var sources = new List<RemoteSource>
         {
             new(DefaultSourceId, "Contacts", IsDefault: true),
         };
@@ -39,7 +42,7 @@ public class GraphContactSyncDriver(
             foreach (var folder in response?.Value ?? [])
             {
                 if (folder.Id is { Length: > 0 } id)
-                    sources.Add(new RemoteContactSource(id, folder.DisplayName ?? id));
+                    sources.Add(new RemoteSource(id, folder.DisplayName ?? id));
             }
 
             path = response?.NextLink is { Length: > 0 } next ? Proxied(next) : null;
@@ -48,7 +51,7 @@ public class GraphContactSyncDriver(
         return sources;
     }
 
-    public async Task<ContactSyncBatch> FetchChangesAsync(
+    public async Task<MirrorBatch> FetchChangesAsync(
         SyncConnection connection, string sourceId, string? deltaToken, CancellationToken ct = default)
     {
         var contacts = new List<RemoteContact>();
@@ -64,7 +67,7 @@ public class GraphContactSyncDriver(
         while (path is not null)
         {
             if (++pages > MaxPages)
-                throw new ContactSyncException($"Graph returned more than {MaxPages} pages of contacts; refusing to truncate.");
+                throw new MirrorException($"Graph returned more than {MaxPages} pages of contacts; refusing to truncate.");
 
             var json = await SendAsync(connection, path, ct, deltaToken is { Length: > 0 }, PageSize);
             var response = Deserialize<GraphDeltaResponse>(json);
@@ -97,7 +100,7 @@ public class GraphContactSyncDriver(
             path = response?.NextLink is { Length: > 0 } next ? Proxied(next) : null;
         }
 
-        return new ContactSyncBatch(contacts, deleted, deltaLink, IsFullSync: deltaToken is not { Length: > 0 }, unreadable);
+        return new MirrorBatch(contacts, deleted, deltaLink, IsFullSync: deltaToken is not { Length: > 0 }, unreadable);
     }
 
     private static string CollectionPath(string sourceId) =>
@@ -136,11 +139,11 @@ public class GraphContactSyncDriver(
         // adding Contacts to the Microsoft provider offers the capability to connections whose token
         // predates the scope, and the only fix is a relink
         if (status is 401 or 403)
-            throw new ContactSyncException(
+            throw new MirrorException(
                 "this Microsoft account needs relinking to grant contacts access");
 
         if (!response.IsSuccessStatusCode)
-            throw new ContactSyncException(
+            throw new MirrorException(
                 $"Graph {path} failed ({status}): {ConnectedServicesProxy.Truncate(json)}");
 
         return json;
@@ -154,7 +157,7 @@ public class GraphContactSyncDriver(
         }
         catch (JsonException e)
         {
-            throw new ContactSyncException($"Graph returned unreadable JSON: {e.Message}");
+            throw new MirrorException($"Graph returned unreadable JSON: {e.Message}");
         }
     }
 

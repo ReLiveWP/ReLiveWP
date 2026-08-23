@@ -1,6 +1,6 @@
 using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Services.Grpc.Mailbox;
-using KnownItem = ReLiveWP.Backend.ClearingHouse.Services.ContactSync.ContactMirrorService.KnownItem;
 
 namespace ReLiveWP.Backend.ClearingHouse.Tests;
 
@@ -12,10 +12,10 @@ public class MirrorPlanTests
     private static RemoteContact Remote(string id, string first = "Ada", string? etag = null) =>
         new(id, new ContactItem { FirstName = first, FileAs = first }, etag ?? $"etag-{id}");
 
-    private static ContactSyncBatch FullSync(params RemoteContact[] contacts) =>
+    private static MirrorBatch FullSync(params RemoteContact[] contacts) =>
         new(contacts, [], null, IsFullSync: true);
 
-    private static ContactSyncBatch Delta(RemoteContact[] contacts, params string[] deleted) =>
+    private static MirrorBatch Delta(RemoteContact[] contacts, params string[] deleted) =>
         new(contacts, deleted, "token", IsFullSync: false);
 
     private static Dictionary<string, KnownItem> Known(params KnownItem[] items) =>
@@ -30,12 +30,12 @@ public class MirrorPlanTests
     private static KnownItem Deleted(string id) =>
         new($"server-{id}", $"etag-{id}", IsDeleted: true, RemoteSynced: true);
 
-    private static List<ContactMirrorService.MirrorWrite> Writes(
-        Dictionary<string, KnownItem> known, ContactSyncBatch batch) =>
-        ContactMirrorService.PlanWrites(known, batch);
+    private static List<MirrorWrite> Writes(
+        Dictionary<string, KnownItem> known, MirrorBatch batch) =>
+        MirrorPlanner.PlanWrites(known, batch);
 
-    private static List<string> Deletes(Dictionary<string, KnownItem> known, ContactSyncBatch batch) =>
-        ContactMirrorService.PlanDeletes(known, batch);
+    private static List<string> Deletes(Dictionary<string, KnownItem> known, MirrorBatch batch) =>
+        MirrorPlanner.PlanDeletes(known, batch);
 
     [Fact]
     public void A_new_remote_contact_is_created()
@@ -128,7 +128,7 @@ public class MirrorPlanTests
     [Fact]
     public void An_unreadable_card_is_not_treated_as_a_deletion()
     {
-        var batch = new ContactSyncBatch([], [], null, IsFullSync: true, UnreadableExternalIds: ["c1"]);
+        var batch = new MirrorBatch([], [], null, IsFullSync: true, UnreadableExternalIds: ["c1"]);
 
         Assert.Empty(Deletes(Known(Tracked("c1")), batch));
     }
@@ -156,6 +156,6 @@ public class MirrorPlanTests
         var writes = Writes(Known(Edited("c1"), Tracked("c2")), batch);
 
         Assert.Single(writes);
-        Assert.Equal(3, batch.Contacts.Count - writes.Count);
+        Assert.Equal(3, batch.Items.Count - writes.Count);
     }
 }

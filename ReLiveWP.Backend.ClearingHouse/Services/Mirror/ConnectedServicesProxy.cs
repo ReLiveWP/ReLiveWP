@@ -1,7 +1,7 @@
 using ReLiveWP.Dav;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
-namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+namespace ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 
 public sealed class ConnectedServicesProxy(IHttpClientFactory httpClientFactory, IConfiguration configuration)
 {

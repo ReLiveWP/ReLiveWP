@@ -11,32 +11,29 @@ namespace ReLiveWP.Services.Hub.Controllers;
 [Route("contacts/[action]")]
 public class ContactsController(ClearingHouseClient clearingHouse) : Controller
 {
+    private const SyncKind Kind = SyncKind.Contacts;
+
     [HttpGet]
     [ActionName("sync")]
-    public async Task<ActionResult<ContactSyncListResponse>> Get([FromQuery] string? connectionId)
+    public async Task<ActionResult<SyncListResponse>> Get([FromQuery] string? connectionId)
     {
-        var request = new GetContactSyncRequest();
+        var request = new GetSyncRequest { Kind = Kind };
         if (!string.IsNullOrWhiteSpace(connectionId)) request.ConnectionId = connectionId;
 
-        var result = await clearingHouse.GetContactSyncAsync(request);
+        var result = await clearingHouse.GetSyncAsync(request);
 
-        return new ContactSyncListResponse([.. result.Connections.Select(Model)]);
+        return new SyncListResponse([.. result.Connections.Select(SyncModel.From)]);
     }
 
     [HttpPost]
     [ActionName("sync")]
-    public async Task<ActionResult<ContactSyncModel>> SyncNow([FromBody] ContactSyncNowModel model) =>
-        Model(await clearingHouse.SyncContactsNowAsync(new() { ConnectionId = model.ConnectionId }));
+    public async Task<ActionResult<SyncModel>> SyncNow([FromBody] SyncNowModel model) =>
+        SyncModel.From(await clearingHouse.SyncNowAsync(
+            new() { Kind = Kind, ConnectionId = model.ConnectionId }));
 
     [HttpPut]
     [ActionName("sync")]
-    public async Task<ActionResult<ContactSyncModel>> SetEnabled([FromBody] SetContactSyncModel model) =>
-        Model(await clearingHouse.SetContactSyncAsync(
-            new() { ConnectionId = model.ConnectionId, Enabled = model.Enabled }));
-
-    private static ContactSyncModel Model(ContactSyncStatus s) => new(
-        s.ConnectionId, s.ServiceId, s.Enabled, s.Running, s.Queued,
-        s.HasLastSyncedAt ? s.LastSyncedAt : null,
-        s.HasLastFailure ? s.LastFailure : null,
-        s.Created, s.Updated, s.Deleted, s.Skipped);
+    public async Task<ActionResult<SyncModel>> SetEnabled([FromBody] SetSyncModel model) =>
+        SyncModel.From(await clearingHouse.SetSyncAsync(
+            new() { Kind = Kind, ConnectionId = model.ConnectionId, Enabled = model.Enabled }));
 }

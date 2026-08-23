@@ -2,7 +2,7 @@ using System.Text.Json;
 using ReLiveWP.ServiceDefaults.Events;
 using StackExchange.Redis;
 
-namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+namespace ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 
 public sealed class ConnectionDeletedSubscriber(
     IConnectionMultiplexer redis,
@@ -30,7 +30,7 @@ public sealed class ConnectionDeletedSubscriber(
             if (evt is null) return;
 
             using var scope = scopeFactory.CreateScope();
-            var detach = scope.ServiceProvider.GetRequiredService<ContactSourceDetach>();
+            var detach = scope.ServiceProvider.GetRequiredService<SyncSourceDetach>();
 
             var sources = await detach.ForConnectionAsync(evt.UserId, evt.ConnectionId);
             if (sources.Count == 0) return;
@@ -38,14 +38,14 @@ public sealed class ConnectionDeletedSubscriber(
             if (evt.DeleteData)
             {
                 var removed = await detach.DeleteAndDetachAsync(sources);
-                logger.LogInformation("{Connection} was unlinked and removed {Count} contact(s)",
+                logger.LogInformation("{Connection} was unlinked and removed {Count} item(s)",
                     evt.ConnectionId, removed);
 
                 return;
             }
 
             await detach.DetachAsync(sources);
-            logger.LogInformation("{Connection} was unlinked; its contacts stay and are now the user's own",
+            logger.LogInformation("{Connection} was unlinked; its items stay and are now the user's own",
                 evt.ConnectionId);
         }
         catch (Exception ex)

@@ -4,6 +4,7 @@ using RedLockNet.SERedis.Configuration;
 using ReLiveWP.Backend.ClearingHouse.Data;
 using ReLiveWP.Backend.ClearingHouse.Grpc;
 using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Identity;
 using ReLiveWP.Identity.Grpc;
 using ReLiveWP.Services.Grpc;
@@ -35,17 +36,17 @@ builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));
 
 builder.Services.AddSingleton<ConnectedServicesProxy>();
-builder.Services.AddScoped<IContactSyncDriver, GoogleContactSyncDriver>();
-builder.Services.AddScoped<IContactSyncDriver, CardDavContactSyncDriver>();
-builder.Services.AddScoped<IContactSyncDriver, GraphContactSyncDriver>();
-builder.Services.AddScoped<ContactSyncDriverRegistry>();
+builder.Services.AddScoped<IMirrorDriver, GoogleContactSyncDriver>();
+builder.Services.AddScoped<IMirrorDriver, CardDavContactSyncDriver>();
+builder.Services.AddScoped<IMirrorDriver, GraphContactSyncDriver>();
+builder.Services.AddScoped<MirrorDriverRegistry>();
 builder.Services.AddScoped<ContactPhotoService>();
-builder.Services.AddScoped<ContactMirrorService>();
-builder.Services.AddScoped<ContactSourceDetach>();
+builder.Services.AddScoped<IMirrorRunner, ContactMirrorService>();
+builder.Services.AddScoped<SyncSourceDetach>();
 
 builder.Services.AddSingleton<ContactsFolderResolver>();
 
-builder.Services.AddHostedService<ContactMirrorPoller>();
+builder.Services.AddHostedService(sp => ActivatorUtilities.CreateInstance<MirrorPoller>(sp, MirrorKind.Contacts));
 builder.Services.AddHostedService<ConnectionDeletedSubscriber>();
 
 var app = builder.Build();

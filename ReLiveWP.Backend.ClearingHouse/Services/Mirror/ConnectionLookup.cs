@@ -2,12 +2,19 @@ using Grpc.Core;
 using ReLiveWP.ServiceDefaults.Contacts;
 using ReLiveWP.Services.Grpc;
 
-namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+namespace ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 
 public sealed record ResolvedConnection(
     string ServiceId, SyncConnection? Usable, bool IsTransient, uint Capabilities)
 {
-    public bool SuppliesContacts => (Capabilities & ConnectionConsts.ContactsCapability) != 0;
+    public bool Supplies(MirrorKind kind) => (Capabilities & CapabilityFor(kind)) != 0;
+
+    private static uint CapabilityFor(MirrorKind kind) => kind switch
+    {
+        MirrorKind.Contacts => ConnectionConsts.ContactsCapability,
+        MirrorKind.Calendar => ConnectionConsts.CalendarCapability,
+        _ => 0,
+    };
 }
 
 public static class ConnectionLookup

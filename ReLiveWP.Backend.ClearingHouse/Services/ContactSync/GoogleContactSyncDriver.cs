@@ -1,13 +1,14 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 
 public class GoogleContactSyncDriver(
     ConnectedServicesProxy proxy,
-    ILogger<GoogleContactSyncDriver> logger) : IContactSyncDriver
+    ILogger<GoogleContactSyncDriver> logger) : IMirrorDriver
 {
     public const string ServiceName = "google";
     public const string DefaultSourceId = "people/me/connections";
@@ -24,12 +25,14 @@ public class GoogleContactSyncDriver(
 
     public string ServiceId => ServiceName;
 
-    public Task<IReadOnlyList<RemoteContactSource>> ListSourcesAsync(
-        SyncConnection connection, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<RemoteContactSource>>(
-            [new RemoteContactSource(DefaultSourceId, "Google Contacts", IsDefault: true)]);
+    public MirrorKind Kind => MirrorKind.Contacts;
 
-    public async Task<ContactSyncBatch> FetchChangesAsync(
+    public Task<IReadOnlyList<RemoteSource>> ListSourcesAsync(
+        SyncConnection connection, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<RemoteSource>>(
+            [new RemoteSource(DefaultSourceId, "Google Contacts", IsDefault: true)]);
+
+    public async Task<MirrorBatch> FetchChangesAsync(
         SyncConnection connection, string sourceId, string? deltaToken, CancellationToken ct = default)
     {
         var contacts = new List<RemoteContact>();
@@ -58,7 +61,7 @@ public class GoogleContactSyncDriver(
                 throw new DeltaTokenExpiredException("Google rejected the sync token; a full sync is required.");
 
             if (!response.IsSuccessStatusCode)
-                throw new ContactSyncException(
+                throw new MirrorException(
                     $"Google People connections.list failed ({(int)response.StatusCode}): {ConnectedServicesProxy.Truncate(json)}");
 
             GooglePeopleResponse? page;
@@ -68,7 +71,7 @@ public class GoogleContactSyncDriver(
             }
             catch (JsonException e)
             {
-                throw new ContactSyncException($"Google People returned unreadable JSON: {e.Message}");
+                throw new MirrorException($"Google People returned unreadable JSON: {e.Message}");
             }
 
             foreach (var element in page?.Connections ?? [])
@@ -89,12 +92,12 @@ public class GoogleContactSyncDriver(
             if (pages >= MaxPages && pageToken is not null)
             {
                 logger.LogWarning("Google contact fetch for {User} hit {Pages} pages with more available", connection.UserId, pages);
-                throw new ContactSyncException($"Google returned more than {MaxPages} pages of contacts; refusing to truncate.");
+                throw new MirrorException($"Google returned more than {MaxPages} pages of contacts; refusing to truncate.");
             }
         }
         while (pageToken is not null);
 
-        return new ContactSyncBatch(contacts, deleted, nextSyncToken, IsFullSync: deltaToken is null);
+        return new MirrorBatch(contacts, deleted, nextSyncToken, IsFullSync: deltaToken is null);
     }
 
     private static bool IsDeleted(JsonElement element) =>

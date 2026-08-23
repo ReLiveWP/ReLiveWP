@@ -2,23 +2,23 @@ using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.ClearingHouse.Data;
 using ReLiveWP.Services.Grpc.Mailbox;
 
-namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+namespace ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 
-public class ContactSourceDetach(
+public class SyncSourceDetach(
     MailboxStore.MailboxStoreClient mailbox,
     ClearingHouseDbContext db,
-    ILogger<ContactSourceDetach> logger)
+    ILogger<SyncSourceDetach> logger)
 {
-    public async Task<int> DetachAsync(IReadOnlyList<DbContactSyncSource> sources, CancellationToken ct = default)
+    public async Task<int> DetachAsync(IReadOnlyList<DbSyncSource> sources, CancellationToken ct = default)
     {
         if (sources.Count == 0) return 0;
 
         foreach (var source in sources)
         {
-            db.ContactSyncSources.Remove(source);
+            db.SyncSources.Remove(source);
 
-            logger.LogInformation("detached {Service}/{Source} for {User}; its contacts stay",
-                source.ServiceId, source.SourceId, source.UserId);
+            logger.LogInformation("detached {Kind} {Service}/{Source} for {User}; its items stay",
+                source.Kind, source.ServiceId, source.SourceId, source.UserId);
         }
 
         await db.SaveChangesAsync(ct);
@@ -26,7 +26,7 @@ public class ContactSourceDetach(
     }
 
     public async Task<int> DeleteAndDetachAsync(
-        IReadOnlyList<DbContactSyncSource> sources, CancellationToken ct = default)
+        IReadOnlyList<DbSyncSource> sources, CancellationToken ct = default)
     {
         var deleted = 0;
 
@@ -43,12 +43,12 @@ public class ContactSourceDetach(
 
                 deleted += result.ItemsDeleted;
 
-                logger.LogInformation("removed {Count} contact(s) from {Service}/{Source} for {User}",
-                    result.ItemsDeleted, source.ServiceId, source.SourceId, source.UserId);
+                logger.LogInformation("removed {Count} {Kind} item(s) from {Service}/{Source} for {User}",
+                    result.ItemsDeleted, source.Kind, source.ServiceId, source.SourceId, source.UserId);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                logger.LogWarning(e, "could not remove contacts for {Service}/{Source}; detaching regardless",
+                logger.LogWarning(e, "could not remove items for {Service}/{Source}; detaching regardless",
                     source.ServiceId, source.SourceId);
             }
         }
@@ -57,9 +57,9 @@ public class ContactSourceDetach(
         return deleted;
     }
 
-    public Task<List<DbContactSyncSource>> ForConnectionAsync(
+    public Task<List<DbSyncSource>> ForConnectionAsync(
         string userId, string connectionId, CancellationToken ct = default) =>
-        db.ContactSyncSources
+        db.SyncSources
             .Where(s => s.UserId == userId && s.ConnectionId == connectionId)
             .ToListAsync(ct);
 }

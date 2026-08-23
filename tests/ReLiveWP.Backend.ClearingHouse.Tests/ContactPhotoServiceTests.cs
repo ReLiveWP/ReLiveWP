@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Services.Grpc.Mailbox;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;

@@ -5,41 +5,50 @@ option csharp_namespace = "ReLiveWP.Services.Grpc.ClearingHouse";
 package clearinghouse;
 
 service ClearingHouse {
-  rpc SyncContactsNow (ContactSyncRequest)    returns (ContactSyncStatus);
-  rpc SetContactSync  (SetContactSyncRequest) returns (ContactSyncStatus);
-  rpc GetContactSync  (GetContactSyncRequest) returns (GetContactSyncResponse);
+  rpc SyncNow (SyncNowRequest) returns (SyncStatus);
+  rpc SetSync (SetSyncRequest) returns (SyncStatus);
+  rpc GetSync (GetSyncRequest) returns (GetSyncResponse);
 }
 
-message ContactSyncRequest {
-  string connection_id = 1;
+enum SyncKind {
+  SYNC_KIND_CONTACTS = 0;
+  SYNC_KIND_CALENDAR = 1;
 }
 
-message SetContactSyncRequest {
-  string connection_id = 1;
-  bool   enabled       = 2;
+message SyncNowRequest {
+  SyncKind kind          = 1;
+  string   connection_id = 2;
 }
 
-message GetContactSyncRequest {
-  optional string connection_id = 1;
+message SetSyncRequest {
+  SyncKind kind          = 1;
+  string   connection_id = 2;
+  bool     enabled       = 3;
 }
 
-message GetContactSyncResponse {
-  repeated ContactSyncStatus connections = 1;
+message GetSyncRequest {
+  optional SyncKind kind          = 1;
+  optional string   connection_id = 2;
 }
 
-message ContactSyncStatus {
-  string connection_id = 1;
-  string service_id    = 2;
+message GetSyncResponse {
+  repeated SyncStatus connections = 1;
+}
 
-  bool   enabled       = 3;
-  bool   running       = 4;
-  bool   queued        = 5;
+message SyncStatus {
+  SyncKind kind          = 1;
+  string   connection_id = 2;
+  string   service_id    = 3;
 
-  optional string last_synced_at = 6;
-  optional string last_failure   = 7;
+  bool     enabled       = 4;
+  bool     running       = 5;
+  bool     queued        = 6;
 
-  int32 created = 8;
-  int32 updated = 9;
-  int32 deleted = 10;
-  int32 skipped = 11;
+  optional string last_synced_at = 7;
+  optional string last_failure   = 8;
+
+  int32 created = 9;
+  int32 updated = 10;
+  int32 deleted = 11;
+  int32 skipped = 12;
 }

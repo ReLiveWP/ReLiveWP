@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Grpc.Core;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
@@ -24,7 +25,7 @@ public class ContactsFolderResolver(IServiceScopeFactory scopeFactory)
                 id = folder.Id;
 
         if (id is null)
-            throw new ContactSyncException($"User {userId} has no default Contacts folder");
+            throw new MirrorException($"User {userId} has no default Contacts folder");
 
         return _byUser[userId] = id;
     }

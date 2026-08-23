@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Google.Protobuf.WellKnownTypes;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Dav;
 using ReLiveWP.Services.Grpc.Mailbox;
 using FolkerKinzel.VCards;
@@ -11,7 +12,7 @@ namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 
 public class CardDavContactSyncDriver(
     ConnectedServicesProxy proxy,
-    ILogger<CardDavContactSyncDriver> logger) : IContactSyncDriver
+    ILogger<CardDavContactSyncDriver> logger) : IMirrorDriver
 {
     public const string ServiceName = "carddav";
 
@@ -23,11 +24,13 @@ public class CardDavContactSyncDriver(
 
     public string ServiceId => ServiceName;
 
-    public async Task<IReadOnlyList<RemoteContactSource>> ListSourcesAsync(
+    public MirrorKind Kind => MirrorKind.Contacts;
+
+    public async Task<IReadOnlyList<RemoteSource>> ListSourcesAsync(
         SyncConnection connection, CancellationToken ct = default)
     {
         var multistatus = await SendAsync(connection, DavMethods.Propfind, "", ListBody, depth: "1", ct);
-        var sources = new List<RemoteContactSource>();
+        var sources = new List<RemoteSource>();
 
         foreach (var response in multistatus.Responses)
         {
@@ -36,7 +39,7 @@ public class CardDavContactSyncDriver(
             var relative = DavPath.StripPrefix(response.Href, connection.ServiceUrl);
             var name = response.DisplayName;
 
-            sources.Add(new RemoteContactSource(
+            sources.Add(new RemoteSource(
                 relative,
                 string.IsNullOrWhiteSpace(name) ? relative : name));
         }
@@ -44,7 +47,7 @@ public class CardDavContactSyncDriver(
         return sources;
     }
 
-    public async Task<ContactSyncBatch> FetchChangesAsync(
+    public async Task<MirrorBatch> FetchChangesAsync(
         SyncConnection connection, string sourceId, string? deltaToken, CancellationToken ct = default)
     {
         if (deltaToken is not null)
@@ -64,10 +67,10 @@ public class CardDavContactSyncDriver(
         var (contacts, unreadable) = ReadContacts(multistatus, connection);
         var token = await ReadSyncTokenAsync(connection, sourceId, ct);
 
-        return new ContactSyncBatch(contacts, [], token, IsFullSync: true, unreadable);
+        return new MirrorBatch(contacts, [], token, IsFullSync: true, unreadable);
     }
 
-    private async Task<ContactSyncBatch> FetchDeltaAsync(
+    private async Task<MirrorBatch> FetchDeltaAsync(
         SyncConnection connection, string sourceId, string deltaToken, CancellationToken ct)
     {
         var body = DavBody.SyncCollection(deltaToken, 1, DavProps.GetETag, DavProps.AddressData);
@@ -80,7 +83,7 @@ public class CardDavContactSyncDriver(
             .Select(r => DavPath.StripPrefix(r.Href, connection.ServiceUrl))
             .ToList();
 
-        return new ContactSyncBatch(contacts, deleted, multistatus.SyncToken, IsFullSync: false);
+        return new MirrorBatch(contacts, deleted, multistatus.SyncToken, IsFullSync: false);
     }
 
     private (List<RemoteContact> Contacts, List<string> Unreadable) ReadContacts(
@@ -130,7 +133,7 @@ public class CardDavContactSyncDriver(
                 ?? multistatus.Responses.Select(r => r.Value(DavProps.SyncToken)).FirstOrDefault(v => v is not null)
                 ?? multistatus.Responses.Select(r => r.Value(DavProps.GetCTag)).FirstOrDefault(v => v is not null);
         }
-        catch (ContactSyncException e)
+        catch (MirrorException e)
         {
             logger.LogInformation("CardDAV collection {Source} reports no sync token ({Reason}); every poll will be a full pull",
                 sourceId, e.Message);
@@ -275,11 +278,11 @@ public class CardDavContactSyncDriver(
         }
         catch (DavParseException e)
         {
-            throw new ContactSyncException($"CardDAV {method} {path}: {e.Message}");
+            throw new MirrorException($"CardDAV {method} {path}: {e.Message}");
         }
         catch (DavException e)
         {
-            throw new ContactSyncException($"CardDAV {method} {path} failed: {e.Message}");
+            throw new MirrorException($"CardDAV {method} {path} failed: {e.Message}");
         }
     }
 }

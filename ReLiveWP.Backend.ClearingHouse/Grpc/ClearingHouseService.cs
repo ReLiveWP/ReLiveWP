@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.ClearingHouse.Data;
-using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.ClearingHouse;
 using ClearingHouseBase = ReLiveWP.Services.Grpc.ClearingHouse.ClearingHouse.ClearingHouseBase;
@@ -12,33 +12,34 @@ namespace ReLiveWP.Backend.ClearingHouse.Grpc;
 public class ClearingHouseService(
     ConnectedServices.ConnectedServicesClient connectedServices,
     ClearingHouseDbContext db,
-    ContactSyncDriverRegistry drivers,
+    MirrorDriverRegistry drivers,
     ILogger<ClearingHouseService> logger)
     : ClearingHouseBase
 {
-    public override async Task<ContactSyncStatus> SyncContactsNow(
-        ContactSyncRequest request, ServerCallContext context)
+    public override async Task<SyncStatus> SyncNow(SyncNowRequest request, ServerCallContext context)
     {
-        var connection = await ResolveConnectionAsync(request.ConnectionId, context);
-        var sources = await EnrolAsync(connection, context.CancellationToken);
+        var kind = Kind(request.Kind);
+        var connection = await ResolveConnectionAsync(kind, request.ConnectionId, context);
+        var sources = await EnrolAsync(kind, connection, context.CancellationToken);
 
         foreach (var source in sources) Request(source);
 
         await db.SaveChangesAsync(context.CancellationToken);
 
-        logger.LogInformation("queued a {Service} contact sync for {User}",
-            connection.ServiceId, connection.Connection.UserId);
+        logger.LogInformation("queued a {Service} {Kind} sync for {User}",
+            connection.ServiceId, kind, connection.Connection.UserId);
 
-        return Aggregate(connection.ConnectionId, connection.ServiceId, sources);
+        return Aggregate(kind, connection.ConnectionId, connection.ServiceId, sources);
     }
 
-    public override async Task<ContactSyncStatus> SetContactSync(
-        SetContactSyncRequest request, ServerCallContext context)
+    public override async Task<SyncStatus> SetSync(SetSyncRequest request, ServerCallContext context)
     {
-        if (!request.Enabled) return await DisableAsync(request.ConnectionId, context);
+        var kind = Kind(request.Kind);
 
-        var connection = await ResolveConnectionAsync(request.ConnectionId, context);
-        var sources = await EnrolAsync(connection, context.CancellationToken);
+        if (!request.Enabled) return await DisableAsync(kind, request.ConnectionId, context);
+
+        var connection = await ResolveConnectionAsync(kind, request.ConnectionId, context);
+        var sources = await EnrolAsync(kind, connection, context.CancellationToken);
 
         foreach (var source in sources)
         {
@@ -48,66 +49,79 @@ public class ClearingHouseService(
 
         await db.SaveChangesAsync(context.CancellationToken);
 
-        logger.LogInformation("enabled {Service} contact sync for {User}",
-            connection.ServiceId, connection.Connection.UserId);
+        logger.LogInformation("enabled {Service} {Kind} sync for {User}",
+            connection.ServiceId, kind, connection.Connection.UserId);
 
-        return Aggregate(connection.ConnectionId, connection.ServiceId, sources);
+        return Aggregate(kind, connection.ConnectionId, connection.ServiceId, sources);
     }
 
-    private async Task<ContactSyncStatus> DisableAsync(string connectionId, ServerCallContext context)
+    private async Task<SyncStatus> DisableAsync(MirrorKind kind, string connectionId, ServerCallContext context)
     {
         if (string.IsNullOrWhiteSpace(connectionId))
             throw new RpcException(new Status(StatusCode.InvalidArgument, "connection_id is required"));
 
-        var sources = await ExistingAsync(GetUserId(context), connectionId, context.CancellationToken);
+        var sources = await ExistingAsync(kind, GetUserId(context), connectionId, context.CancellationToken);
 
         foreach (var source in sources) source.SyncEnabled = false;
 
         await db.SaveChangesAsync(context.CancellationToken);
 
-        return Aggregate(connectionId, sources.FirstOrDefault()?.ServiceId ?? string.Empty, sources);
+        return Aggregate(kind, connectionId, sources.FirstOrDefault()?.ServiceId ?? string.Empty, sources);
     }
 
-    public override async Task<GetContactSyncResponse> GetContactSync(
-        GetContactSyncRequest request, ServerCallContext context)
+    public override async Task<GetSyncResponse> GetSync(GetSyncRequest request, ServerCallContext context)
     {
         var userId = GetUserId(context);
 
-        var query = db.ContactSyncSources.AsNoTracking().Where(s => s.UserId == userId);
+        var query = db.SyncSources.AsNoTracking().Where(s => s.UserId == userId);
+
+        if (request.HasKind)
+        {
+            var kind = Kind(request.Kind);
+            query = query.Where(s => s.Kind == kind);
+        }
+
         if (request.HasConnectionId)
             query = query.Where(s => s.ConnectionId == request.ConnectionId);
 
-        var response = new GetContactSyncResponse();
+        var response = new GetSyncResponse();
 
-        foreach (var group in (await query.ToListAsync(context.CancellationToken)).GroupBy(s => s.ConnectionId))
-            response.Connections.Add(Aggregate(group.Key, group.First().ServiceId, [.. group]));
+        var groups = (await query.ToListAsync(context.CancellationToken))
+            .GroupBy(s => (s.Kind, s.ConnectionId));
+
+        foreach (var group in groups)
+            response.Connections.Add(
+                Aggregate(group.Key.Kind, group.Key.ConnectionId, group.First().ServiceId, [.. group]));
 
         return response;
     }
 
-    private Task<List<DbContactSyncSource>> ExistingAsync(string userId, string connectionId, CancellationToken ct) =>
-        db.ContactSyncSources
-            .Where(s => s.UserId == userId && s.ConnectionId == connectionId)
+    private Task<List<DbSyncSource>> ExistingAsync(
+        MirrorKind kind, string userId, string connectionId, CancellationToken ct) =>
+        db.SyncSources
+            .Where(s => s.UserId == userId && s.ConnectionId == connectionId && s.Kind == kind)
             .ToListAsync(ct);
 
-    private static void Request(DbContactSyncSource source)
+    private static void Request(DbSyncSource source)
     {
         source.RunRequestedAt = DateTime.UtcNow;
         source.ConsecutiveFailures = 0;
         source.LastFailure = null;
     }
 
-    private async Task<List<DbContactSyncSource>> EnrolAsync(
-        (string ServiceId, string ConnectionId, SyncConnection Connection) connection, CancellationToken ct)
+    private async Task<List<DbSyncSource>> EnrolAsync(
+        MirrorKind kind,
+        (string ServiceId, string ConnectionId, SyncConnection Connection) connection,
+        CancellationToken ct)
     {
-        if (!drivers.TryGet(connection.ServiceId, out var driver))
+        if (!drivers.TryGet(kind, connection.ServiceId, out var driver))
             throw new RpcException(new Status(
-                StatusCode.Unimplemented, $"No contact driver for '{connection.ServiceId}'"));
+                StatusCode.Unimplemented, $"No {kind} driver for '{connection.ServiceId}'"));
 
         var userId = connection.Connection.UserId;
         var connectionId = connection.ConnectionId;
 
-        var existing = await ExistingAsync(userId, connectionId, ct);
+        var existing = await ExistingAsync(kind, userId, connectionId, ct);
         var discovered = await driver.ListSourcesAsync(connection.Connection, ct);
         var enabled = existing.Count > 0 && existing.All(s => s.SyncEnabled);
 
@@ -115,28 +129,31 @@ public class ClearingHouseService(
         {
             if (existing.Any(s => s.SourceId == source.Id)) continue;
 
-            var added = new DbContactSyncSource
+            var added = new DbSyncSource
             {
                 Id = Guid.NewGuid().ToString("N"),
                 UserId = userId,
                 ConnectionId = connectionId,
+                Kind = kind,
                 ServiceId = connection.ServiceId,
                 SourceId = source.Id,
+                RemoteDisplayName = source.DisplayName,
                 SyncEnabled = enabled,
             };
 
-            db.ContactSyncSources.Add(added);
+            db.SyncSources.Add(added);
             existing.Add(added);
         }
 
         return existing;
     }
 
-    private static ContactSyncStatus Aggregate(
-        string connectionId, string serviceId, IReadOnlyList<DbContactSyncSource> sources)
+    private static SyncStatus Aggregate(
+        MirrorKind kind, string connectionId, string serviceId, IReadOnlyList<DbSyncSource> sources)
     {
-        var status = new ContactSyncStatus
+        var status = new SyncStatus
         {
+            Kind = Kind(kind),
             ConnectionId = connectionId,
             ServiceId = serviceId,
             Enabled = sources.Count > 0 && sources.All(s => s.SyncEnabled),
@@ -158,7 +175,7 @@ public class ClearingHouseService(
     }
 
     private async Task<(string ServiceId, string ConnectionId, SyncConnection Connection)> ResolveConnectionAsync(
-        string connectionId, ServerCallContext context)
+        MirrorKind kind, string connectionId, ServerCallContext context)
     {
         if (string.IsNullOrWhiteSpace(connectionId))
             throw new RpcException(new Status(StatusCode.InvalidArgument, "connection_id is required"));
@@ -169,15 +186,29 @@ public class ClearingHouseService(
                 connectedServices, userId, connectionId, ct: context.CancellationToken)
             ?? throw new RpcException(new Status(StatusCode.NotFound, $"Connection {connectionId} not found"));
 
-        if (!resolved.SuppliesContacts)
+        if (!resolved.Supplies(kind))
             throw new RpcException(new Status(
-                StatusCode.FailedPrecondition, $"Contacts are turned off for connection {connectionId}"));
+                StatusCode.FailedPrecondition, $"{kind} is turned off for connection {connectionId}"));
 
         return resolved.Usable is { } usable
             ? (resolved.ServiceId, connectionId, usable)
             : throw new RpcException(new Status(
                 StatusCode.FailedPrecondition, $"Connection {connectionId} needs relinking"));
     }
+
+    private static MirrorKind Kind(SyncKind kind) => kind switch
+    {
+        SyncKind.Contacts => MirrorKind.Contacts,
+        SyncKind.Calendar => MirrorKind.Calendar,
+        _ => throw new RpcException(new Status(StatusCode.InvalidArgument, $"Unknown sync kind {kind}")),
+    };
+
+    private static SyncKind Kind(MirrorKind kind) => kind switch
+    {
+        MirrorKind.Contacts => SyncKind.Contacts,
+        MirrorKind.Calendar => SyncKind.Calendar,
+        _ => throw new RpcException(new Status(StatusCode.Internal, $"Unknown mirror kind {kind}")),
+    };
 
     private static string GetUserId(ServerCallContext context) =>
         context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier)

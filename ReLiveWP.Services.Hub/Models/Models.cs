@@ -1,10 +1,12 @@
+using ReLiveWP.Services.Grpc.ClearingHouse;
+
 namespace ReLiveWP.Services.Hub.Models;
 
-public record ContactSyncNowModel(string ConnectionId);
+public record SyncNowModel(string ConnectionId);
 
-public record SetContactSyncModel(string ConnectionId, bool Enabled);
+public record SetSyncModel(string ConnectionId, bool Enabled);
 
-public record ContactSyncModel(
+public record SyncModel(
     string ConnectionId,
     string ServiceId,
     bool Enabled,
@@ -15,6 +17,13 @@ public record ContactSyncModel(
     int Created,
     int Updated,
     int Deleted,
-    int Skipped);
+    int Skipped)
+{
+    public static SyncModel From(SyncStatus s) => new(
+        s.ConnectionId, s.ServiceId, s.Enabled, s.Running, s.Queued,
+        s.HasLastSyncedAt ? s.LastSyncedAt : null,
+        s.HasLastFailure ? s.LastFailure : null,
+        s.Created, s.Updated, s.Deleted, s.Skipped);
+}
 
-public record ContactSyncListResponse(IReadOnlyList<ContactSyncModel> Connections);
+public record SyncListResponse(IReadOnlyList<SyncModel> Connections);

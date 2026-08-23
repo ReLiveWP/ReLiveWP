@@ -2,16 +2,16 @@ using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using RedLockNet.SERedis;
 using ReLiveWP.Backend.ClearingHouse.Data;
-using ReLiveWP.ServiceDefaults.Contacts;
 using ReLiveWP.Services.Grpc;
 
-namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+namespace ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 
-public class ContactMirrorPoller(
+public class MirrorPoller(
+    MirrorKind kind,
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
     RedLockFactory locks,
-    ILogger<ContactMirrorPoller> logger) : BackgroundService
+    ILogger<MirrorPoller> logger) : BackgroundService
 {
     private static readonly TimeSpan DefaultInterval = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(10);
@@ -41,7 +41,7 @@ public class ContactMirrorPoller(
             }
             catch (Exception e)
             {
-                logger.LogError(e, "contact mirror sweep failed; will retry next interval");
+                logger.LogError(e, "{Kind} mirror sweep failed; will retry next interval", kind);
             }
         } while (await timer.WaitForNextTickAsync(stoppingToken));
     }
@@ -51,14 +51,15 @@ public class ContactMirrorPoller(
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ClearingHouseDbContext>();
 
-        var interval = configuration.GetValue("Mirror:Contacts:Interval", DefaultInterval);
+        var interval = configuration.GetValue($"Mirror:{kind}:Interval", DefaultInterval);
         var due = DateTime.UtcNow - interval;
 
-        var sources = await db.ContactSyncSources
-            .Where(s => s.RunRequestedAt != null
+        var sources = await db.SyncSources
+            .Where(s => s.Kind == kind
+                    && (s.RunRequestedAt != null
                      || (s.SyncEnabled
                          && s.ConsecutiveFailures < MaxConsecutiveFailures
-                         && (s.LastAttemptedAt == null || s.LastAttemptedAt < due)))
+                         && (s.LastAttemptedAt == null || s.LastAttemptedAt < due))))
             .OrderByDescending(s => s.RunRequestedAt)
             .ThenBy(s => s.LastAttemptedAt)
             .Select(s => s.Id)
@@ -80,12 +81,14 @@ public class ContactMirrorPoller(
 
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ClearingHouseDbContext>();
-        var mirror = scope.ServiceProvider.GetRequiredService<ContactMirrorService>();
         var connected = scope.ServiceProvider.GetRequiredService<ConnectedServices.ConnectedServicesClient>();
 
-        var detach = scope.ServiceProvider.GetRequiredService<ContactSourceDetach>();
+        var detach = scope.ServiceProvider.GetRequiredService<SyncSourceDetach>();
 
-        var source = await db.ContactSyncSources.FirstOrDefaultAsync(s => s.Id == sourceId, ct);
+        var runner = scope.ServiceProvider.GetServices<IMirrorRunner>().FirstOrDefault(r => r.Kind == kind)
+            ?? throw new MirrorException($"No mirror runner registered for {kind}");
+
+        var source = await db.SyncSources.FirstOrDefaultAsync(s => s.Id == sourceId, ct);
         if (source is null) return;
 
         var pull = source.RunRequestedAt is not null
@@ -104,15 +107,15 @@ public class ContactMirrorPoller(
 
             if (resolved is null)
             {
-                logger.LogInformation("connection {Connection} is gone; detaching {Service}/{Source} and keeping its contacts",
+                logger.LogInformation("connection {Connection} is gone; detaching {Service}/{Source} and keeping its items",
                     source.ConnectionId, source.ServiceId, source.SourceId);
 
                 await detach.DetachAsync([source], ct);
                 return;
             }
 
-            // turning People off on the connection stops the pull, whatever the source row says
-            if (!resolved.SuppliesContacts)
+            // turning the capability off on the connection stops the pull, whatever the source row says
+            if (!resolved.Supplies(kind))
             {
                 source.SyncEnabled = false;
                 return;
@@ -120,8 +123,8 @@ public class ContactMirrorPoller(
 
             if (resolved.Usable is not { } connection)
             {
-                logger.LogInformation("connection {Connection} is unusable, leaving {Service} contacts in place",
-                    source.ConnectionId, source.ServiceId);
+                logger.LogInformation("connection {Connection} is unusable, leaving {Service} {Kind} in place",
+                    source.ConnectionId, source.ServiceId, kind);
 
                 source.LastFailure = "the connection needs relinking";
                 return;
@@ -129,7 +132,7 @@ public class ContactMirrorPoller(
 
             if (!pull) return;
 
-            var result = await mirror.RunAsync(source, connection, ct);
+            var result = await runner.RunAsync(source, connection, ct);
 
             source.LastRunCreated = result.Created;
             source.LastRunUpdated = result.Updated;
@@ -163,11 +166,8 @@ public class ContactMirrorPoller(
         }
     }
 
-    private const ulong BustedFlag = ConnectionConsts.BustedFlag;
-    private const ulong TransientFlag = ConnectionConsts.TransientFlag;
-
     private async Task DiscardConnectionAsync(
-        ConnectedServices.ConnectedServicesClient connected, DbContactSyncSource source, CancellationToken ct)
+        ConnectedServices.ConnectedServicesClient connected, DbSyncSource source, CancellationToken ct)
     {
         try
         {
@@ -182,14 +182,14 @@ public class ContactMirrorPoller(
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            // the sweeper in ConnectedServices expires it anyway; the contacts are already safe
+            // the sweeper in ConnectedServices expires it anyway; the items are already safe
             logger.LogWarning(e, "could not discard the transient connection {Connection}", source.ConnectionId);
         }
     }
 
     // an import runs on a connection nothing else is allowed to see
     private static Task<ResolvedConnection?> ResolveConnectionAsync(
-        ConnectedServices.ConnectedServicesClient connected, DbContactSyncSource source, CancellationToken ct) =>
+        ConnectedServices.ConnectedServicesClient connected, DbSyncSource source, CancellationToken ct) =>
         ConnectionLookup.ResolveAsync(connected, source.UserId, source.ConnectionId,
             headers: new Metadata { { "X-User-Id", source.UserId } }, includeTransient: true, ct);
 }

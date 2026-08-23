@@ -2,16 +2,16 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.Backend.ClearingHouse.Data;
-using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
+using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
 
 namespace ReLiveWP.Backend.ClearingHouse.Tests;
 
-public class ContactSourceDetachTests : IDisposable
+public class SyncSourceDetachTests : IDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly ClearingHouseDbContext _db;
 
-    public ContactSourceDetachTests()
+    public SyncSourceDetachTests()
     {
         _connection = new SqliteConnection("Filename=:memory:");
         _connection.Open();
@@ -29,21 +29,22 @@ public class ContactSourceDetachTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private ContactSourceDetach Detach() =>
-        new(null!, _db, NullLogger<ContactSourceDetach>.Instance);
+    private SyncSourceDetach Detach() =>
+        new(null!, _db, NullLogger<SyncSourceDetach>.Instance);
 
-    private DbContactSyncSource Seed(string sourceId = "card/", string connectionId = "conn-1")
+    private DbSyncSource Seed(string sourceId = "card/", string connectionId = "conn-1")
     {
-        var source = new DbContactSyncSource
+        var source = new DbSyncSource
         {
             Id = Guid.NewGuid().ToString("N"),
             UserId = "user-1",
             ConnectionId = connectionId,
+            Kind = MirrorKind.Contacts,
             ServiceId = "carddav",
             SourceId = sourceId,
         };
 
-        _db.ContactSyncSources.Add(source);
+        _db.SyncSources.Add(source);
         _db.SaveChanges();
         return source;
     }
@@ -58,7 +59,7 @@ public class ContactSourceDetachTests : IDisposable
         var count = await Detach().DetachAsync([source]);
 
         Assert.Equal(1, count);
-        Assert.Empty(_db.ContactSyncSources);
+        Assert.Empty(_db.SyncSources);
     }
 
     [Fact]
@@ -69,8 +70,8 @@ public class ContactSourceDetachTests : IDisposable
 
         await Detach().DetachAsync([first]);
 
-        Assert.Single(_db.ContactSyncSources);
-        Assert.Equal("card/work/", _db.ContactSyncSources.Single().SourceId);
+        Assert.Single(_db.SyncSources);
+        Assert.Equal("card/work/", _db.SyncSources.Single().SourceId);
     }
 
     [Fact]
@@ -79,7 +80,7 @@ public class ContactSourceDetachTests : IDisposable
         Seed();
 
         Assert.Equal(0, await Detach().DetachAsync([]));
-        Assert.Single(_db.ContactSyncSources);
+        Assert.Single(_db.SyncSources);
     }
 
     [Fact]
