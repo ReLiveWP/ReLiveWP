@@ -35,7 +35,7 @@ builder.Services.AddExchangeOrLiveIDAuthentication(opts =>
     };
 
     opts.LiveIDConfiguration = c => c.ValidServiceTargets =
-        ["http://Passport.NET/tb", "relivewp.net", "sync.relivewp.net", "sync.int.relivewp.net"];
+        ["http://Passport.NET/tb", "relivewp.net", "sync.relivewp.net", "sync.int.relivewp.net", "ssl.live.com"];
 });
 
 builder.Services.AddGrpcClient<User.UserClient>(

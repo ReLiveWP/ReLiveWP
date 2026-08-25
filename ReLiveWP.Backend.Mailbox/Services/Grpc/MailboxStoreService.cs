@@ -578,6 +578,31 @@ public class MailboxStoreService(
             await stream.WriteAsync(MailboxMapper.ToProto(item));
     }
 
+    public override async Task<Item> GetMeContact(GetMeContactRequest request, ServerCallContext context)
+    {
+        var contact = await db.Items.AsNoTracking().OfType<DbContactItem>()
+            .FirstOrDefaultAsync(c => c.UserId == request.UserId
+                                   && c.DeletedAt == null
+                                   && c.Annotation!.ContactType == "Me",
+                                context.CancellationToken)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "no me contact"));
+
+        await LoadChildrenAsync([contact], context.CancellationToken, noTracking: true);
+        return MailboxMapper.ToProto((DbItem)contact);
+    }
+
+    public override async Task ListNetworks(
+        ListNetworksRequest request, IServerStreamWriter<Network> stream, ServerCallContext context)
+    {
+        var networks = await db.Networks.AsNoTracking()
+            .Where(n => n.UserId == request.UserId)
+            .OrderBy(n => n.DomainId).ThenBy(n => n.UserEmail)
+            .ToListAsync(context.CancellationToken);
+
+        foreach (var n in networks)
+            await stream.WriteAsync(MailboxMapper.ToProto(n));
+    }
+
     public override async Task<CountResult> CountLiveItems(CountLiveItemsRequest request, ServerCallContext context)
     {
         var count = await db.Items.CountAsync(
@@ -1272,6 +1297,10 @@ public class MailboxStoreService(
             existing.UserTileHash = proto.HasUserTileHash ? proto.UserTileHash : null;
             existing.TrustLevel = proto.HasTrustLevel ? proto.TrustLevel : null;
             existing.FavoriteOrder = proto.HasFavoriteOrder ? proto.FavoriteOrder : null;
+            existing.SourceId = proto.HasSourceId ? proto.SourceId : null;
+            existing.ShellContactType = proto.HasShellContactType ? proto.ShellContactType : null;
+            existing.OtherMri = proto.HasOtherMri ? proto.OtherMri : null;
+            existing.MobileIMEnabled = proto.HasMobileImEnabled ? proto.MobileImEnabled : null;
         }
     }
 }

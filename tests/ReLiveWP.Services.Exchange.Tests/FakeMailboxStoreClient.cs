@@ -41,12 +41,12 @@ public class FakeMailboxStoreClient : MailboxStore.MailboxStoreClient
         return Unary(() => OnUpdateItem(request));
     }
 
-    public override AsyncUnaryCall<Folder> GetFolderAsync(GetFolderRequest request, CallOptions options)
-    {
-        if (OnGetFolder is null)
-            throw new InvalidOperationException($"{nameof(OnGetFolder)} not configured");
-        return Unary(() => OnGetFolder(request));
-    }
+    // every sync resolves the collection's folder now, so an unconfigured stub answers with a
+    // generic folder rather than failing tests that never cared about the type
+    public override AsyncUnaryCall<Folder> GetFolderAsync(GetFolderRequest request, CallOptions options) =>
+        Unary(() => OnGetFolder is null
+            ? new Folder { Id = request.ServerId, Type = FolderType.Generic }
+            : OnGetFolder(request));
 
     public override AsyncUnaryCall<Item> GetItemAsync(GetItemRequest request, CallOptions options)
     {
@@ -78,6 +78,26 @@ public class FakeMailboxStoreClient : MailboxStore.MailboxStoreClient
 
     public Func<CreateItemRequest, Item>? OnCreateItem { get; set; }
     public Func<GetItemsRequest, IEnumerable<Item>>? OnGetItems { get; set; }
+    public Func<ListFoldersRequest, IEnumerable<Folder>>? OnListFolders { get; set; }
+    public Func<FolderEventTipRequest, Watermark>? OnGetFolderEventTip { get; set; }
+    public Func<ListNetworksRequest, IEnumerable<Network>>? OnListNetworks { get; set; }
+    public Func<GetMeContactRequest, Item>? OnGetMeContact { get; set; }
+
+    public override AsyncServerStreamingCall<Network> ListNetworks(ListNetworksRequest request, CallOptions options) =>
+        ServerStreaming(OnListNetworks?.Invoke(request) ?? []);
+
+    public override AsyncUnaryCall<Item> GetMeContactAsync(GetMeContactRequest request, CallOptions options)
+    {
+        if (OnGetMeContact is null)
+            throw new InvalidOperationException($"{nameof(OnGetMeContact)} not configured");
+        return Unary(() => OnGetMeContact(request));
+    }
+
+    public override AsyncServerStreamingCall<Folder> ListFolders(ListFoldersRequest request, CallOptions options) =>
+        ServerStreaming(OnListFolders?.Invoke(request) ?? []);
+
+    public override AsyncUnaryCall<Watermark> GetFolderEventTipAsync(FolderEventTipRequest request, CallOptions options) =>
+        Unary(() => OnGetFolderEventTip?.Invoke(request) ?? new Watermark { Value = 0 });
 
     public override AsyncUnaryCall<Item> CreateItemAsync(CreateItemRequest request, CallOptions options)
     {

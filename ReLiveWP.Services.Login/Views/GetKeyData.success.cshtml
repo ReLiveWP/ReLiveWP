@@ -1,0 +1,20 @@
+@model ReLiveWP.Services.Login.Models.Ppsecure.GetKeyDataModel
+<?xml version="1.0" encoding="utf-8" ?>
+<S:Envelope xmlns:S="http://www.w3.org/2003/05/soap-envelope"
+            xmlns:ps="http://schemas.microsoft.com/Passport/SoapServices/PPCRL">
+    <S:Body>
+        <ps:GetKeyDataResponse>
+            <ps:KeyPurposes>
+@foreach (var purpose in Model.Purposes)
+{
+                <ps:KeyPurpose name="@purpose.Purpose">
+                    <ps:KeyData>
+                        <ps:Property name="KeyMaterial">@purpose.KeyMaterial</ps:Property>
+                        <ps:Property name="TimeStamp">@purpose.TimeStamp</ps:Property>
+                    </ps:KeyData>
+                </ps:KeyPurpose>
+}
+            </ps:KeyPurposes>
+        </ps:GetKeyDataResponse>
+    </S:Body>
+</S:Envelope>

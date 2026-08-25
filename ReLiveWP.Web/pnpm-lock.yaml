@@ -195,6 +195,12 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2(webpack-cli@6.0.1)(webpack@5.101.2)
 
+  relivewp.web.login:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
   relivewp.web.mail:
     dependencies:
       '@preact/signals':

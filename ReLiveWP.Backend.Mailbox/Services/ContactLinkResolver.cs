@@ -279,6 +279,9 @@ public class ContactLinkResolver(
             annotation.ImMri = null;
             annotation.UserTileUrl = null;
             annotation.UserTileHash = null;
+            annotation.SourceId = null;
+            annotation.ShellContactType = null;
+            annotation.MobileIMEnabled = null;
             return true;
         }
 
@@ -309,6 +312,12 @@ public class ContactLinkResolver(
         Set(annotation.ImMri, "1:" + link.Email, v => annotation.ImMri = v);
         Set(annotation.UserTileUrl, tileUrl, v => annotation.UserTileUrl = v);
         Set(annotation.UserTileHash, link.PictureEtag, v => annotation.UserTileHash = v);
+
+        // WL is the source id 8.1 maps to imType windowsLive with mriFormat "1:{0}", so it is what
+        // makes the contact messageable; ABCH would render a card with no IM
+        Set(annotation.SourceId, "WL", v => annotation.SourceId = v);
+        Set(annotation.ShellContactType, "Regular", v => annotation.ShellContactType = v);
+        Set(annotation.MobileIMEnabled, (bool?)true, v => annotation.MobileIMEnabled = v);
 
         return changed;
     }

@@ -1,0 +1,28 @@
+@using System.Text.Json
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@model ReLiveWP.Services.Login.Models.InlineLoginSuccessModel
+@{
+    Layout = null;
+
+    var hostData = JsonSerializer.Serialize(new { properties = Model.Properties });
+}<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=10">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, minimum-scale=1.0">
+    <title>Signing you in</title>
+    <link rel="stylesheet" href="~/ppsecure/segoe.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/ppsecure/wpwiz.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/ppsecure/background.css" asp-append-version="true">
+    <script>window.__INLINE__ = @(new Microsoft.AspNetCore.Html.HtmlString(hostData));</script>
+</head>
+<body class="light">
+    <div class="wpBluePage">
+        <div class="pageContent">
+            <div class="row">Signing you in...</div>
+        </div>
+    </div>
+    <script src="~/ppsecure/inline.js" asp-append-version="true"></script>
+</body>
+</html>

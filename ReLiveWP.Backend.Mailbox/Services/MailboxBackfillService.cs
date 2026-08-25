@@ -26,10 +26,13 @@ public class MailboxBackfillService(
             using var call = users.ListUsers(new ListUsersRequest(), cancellationToken: stoppingToken);
             await foreach (var user in call.ResponseStream.ReadAllAsync(stoppingToken))
             {
+                // still called for existing mailboxes: it tops up default folders added since they
+                // were provisioned, and returns without touching anything else
+                await provisioner.ProvisionAsync(user.Id, user.EmailAddress, user.Username, stoppingToken);
+
                 if (provisioned.Contains(user.Id))
                     continue;
 
-                await provisioner.ProvisionAsync(user.Id, user.EmailAddress, user.Username, stoppingToken);
                 await mirror.MirrorFromIdentityAsync(user.Id, stoppingToken);
                 count++;
             }

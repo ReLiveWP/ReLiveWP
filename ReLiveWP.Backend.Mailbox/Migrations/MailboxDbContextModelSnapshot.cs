@@ -255,7 +255,19 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.Property<bool>("LinkIsManual")
                         .HasColumnType("boolean");
 
+                    b.Property<bool?>("MobileIMEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("ObjectId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OtherMri")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ShellContactType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceId")
                         .HasColumnType("text");
 
                     b.Property<int?>("TrustLevel")
@@ -650,6 +662,63 @@ namespace ReLiveWP.Backend.Mailbox.Migrations
                     b.HasIndex("UserId", "CollectionId", "CommitId", "Id");
 
                     b.ToTable("ItemEvents");
+                });
+
+            modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbNetwork", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AccountName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClientPublishSecret")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClientToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClientToken2")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DomainId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DomainTag")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastSync")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("Offers")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PartnerOffers")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PsaLastChanged")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PsaState")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserEmail")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "DomainId", "UserEmail")
+                        .IsUnique();
+
+                    b.ToTable("Networks");
                 });
 
             modelBuilder.Entity("ReLiveWP.Backend.Mailbox.Data.Entities.DbNoteCategory", b =>

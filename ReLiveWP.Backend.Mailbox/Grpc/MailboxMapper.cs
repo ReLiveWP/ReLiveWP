@@ -327,6 +327,24 @@ public static class MailboxMapper
         return c;
     }
 
+    public static Network ToProto(DbNetwork n)
+    {
+        var p = new Network { DomainId = n.DomainId, UserEmail = n.UserEmail };
+
+        if (n.DisplayName is not null) p.DisplayName = n.DisplayName;
+        if (n.AccountName is not null) p.AccountName = n.AccountName;
+        if (n.DomainTag is not null) p.DomainTag = n.DomainTag;
+        if (n.LastSync.HasValue) p.LastSync = ToProtoTs(n.LastSync);
+        if (n.PsaState is not null) p.PsaState = n.PsaState;
+        if (n.PsaLastChanged.HasValue) p.PsaLastChanged = ToProtoTs(n.PsaLastChanged);
+        if (n.Offers.HasValue) p.Offers = n.Offers.Value;
+        if (n.PartnerOffers.HasValue) p.PartnerOffers = n.PartnerOffers.Value;
+        if (n.ClientToken is not null) p.ClientToken = n.ClientToken;
+        if (n.ClientToken2 is not null) p.ClientToken2 = n.ClientToken2;
+        if (n.ClientPublishSecret is not null) p.ClientPublishSecret = n.ClientPublishSecret;
+        return p;
+    }
+
     public static ContactAnnotation ToProto(DbContactAnnotation a)
     {
         var p = new ContactAnnotation { ContactItemId = a.ContactItemId };
@@ -340,6 +358,10 @@ public static class MailboxMapper
         if (a.UserTileHash is not null) p.UserTileHash = a.UserTileHash;
         if (a.TrustLevel.HasValue) p.TrustLevel = a.TrustLevel.Value;
         if (a.FavoriteOrder.HasValue) p.FavoriteOrder = a.FavoriteOrder.Value;
+        if (a.SourceId is not null) p.SourceId = a.SourceId;
+        if (a.ShellContactType is not null) p.ShellContactType = a.ShellContactType;
+        if (a.OtherMri is not null) p.OtherMri = a.OtherMri;
+        if (a.MobileIMEnabled.HasValue) p.MobileImEnabled = a.MobileIMEnabled.Value;
         return p;
     }
 
@@ -355,6 +377,10 @@ public static class MailboxMapper
         UserTileHash = p.HasUserTileHash ? p.UserTileHash : null,
         TrustLevel = p.HasTrustLevel ? p.TrustLevel : null,
         FavoriteOrder = p.HasFavoriteOrder ? p.FavoriteOrder : null,
+        SourceId = p.HasSourceId ? p.SourceId : null,
+        ShellContactType = p.HasShellContactType ? p.ShellContactType : null,
+        OtherMri = p.HasOtherMri ? p.OtherMri : null,
+        MobileIMEnabled = p.HasMobileImEnabled ? p.MobileImEnabled : null,
     };
 
     public static CalendarItem ToProto(DbCalendarItem cal)

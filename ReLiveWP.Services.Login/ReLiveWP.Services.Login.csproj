@@ -6,6 +6,8 @@
     <SsoStyleDir>$(MSBuildProjectDirectory)/../ReLiveWP.Web/relivewp.web.sso</SsoStyleDir>
     <UiPackageDir>$(SsoStyleDir)/node_modules/@relivewp/ui</UiPackageDir>
     <SsoStylesheet>$(MSBuildProjectDirectory)/wwwroot/sso/login.css</SsoStylesheet>
+    <LoginBridgeDir>$(MSBuildProjectDirectory)/../ReLiveWP.Web/relivewp.web.login</LoginBridgeDir>
+    <LoginBridgeScript>$(MSBuildProjectDirectory)/wwwroot/ppsecure/inline.js</LoginBridgeScript>
     <PnpmInstall Condition="'$(OS)' == 'Windows_NT'">pnpm install --silent || (ping -n 11 127.0.0.1 &gt;nul &amp; pnpm install --silent)</PnpmInstall>
     <PnpmInstall Condition="'$(OS)' != 'Windows_NT'">pnpm install --silent || (sleep 10; pnpm install --silent)</PnpmInstall>
   </PropertyGroup>
@@ -52,10 +54,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Utilities\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <SassInput Include="$(SsoStyleDir)/Styles/**/*.scss" />
     <SassInput Include="$(UiPackageDir)/styles/**/*.scss" />
   </ItemGroup>
@@ -78,6 +76,31 @@
           BeforeTargets="AssignTargetPaths">
     <ItemGroup>
       <Content Include="$(SsoStylesheet)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <LoginBridgeInput Include="$(LoginBridgeDir)/src/**/*.ts" />
+  </ItemGroup>
+
+  <Target Name="RestoreLoginBridgeTools"
+          Inputs="$(LoginBridgeDir)/package.json;$(MSBuildProjectDirectory)/../ReLiveWP.Web/pnpm-lock.yaml"
+          Outputs="$(LoginBridgeDir)/node_modules/.modules.yaml">
+    <Exec Command="$(PnpmInstall)" WorkingDirectory="$(LoginBridgeDir)" />
+  </Target>
+
+  <Target Name="BuildLoginBridge"
+          DependsOnTargets="RestoreLoginBridgeTools"
+          Inputs="@(LoginBridgeInput)"
+          Outputs="$(LoginBridgeScript)">
+    <Exec Command="pnpm run build" WorkingDirectory="$(LoginBridgeDir)" />
+  </Target>
+
+  <Target Name="IncludeLoginBridge"
+          DependsOnTargets="BuildLoginBridge"
+          BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <Content Include="$(LoginBridgeScript)" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
 

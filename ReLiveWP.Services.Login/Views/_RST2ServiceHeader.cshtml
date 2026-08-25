@@ -1,3 +1,4 @@
+@using System.Security.Cryptography
 @model ReLiveWP.Services.Login.Models.RST2.RST2Model
 <psf:pp xmlns:psf="http://schemas.microsoft.com/Passport/SoapServices/SOAPFault">
     <psf:serverVersion>1</psf:serverVersion>
@@ -9,6 +10,7 @@
     <psf:authstate>0x48803</psf:authstate>
     <psf:reqstatus>0x0</psf:reqstatus>
     <psf:authreq>0x0</psf:authreq>
+    <psf:returnToCaller>true</psf:returnToCaller>
     <psf:serverInfo Path="Live1" RollingUpgradeState="ExclusiveNew" LocVersion="0"
                     ServerTime="@Model.TimeZ">XYZPPLOGN1A23 2017.09.28.12.44.07</psf:serverInfo>
     <psf:cookies />
@@ -33,6 +35,7 @@
         <psf:credProperty Name="FlagsV2">00000000</psf:credProperty>
         <psf:credProperty Name="IP">@Model.IP</psf:credProperty>
         <psf:credProperty Name="AssociatedForStrongAuth">0</psf:credProperty>
+        <psf:credProperty Name="PWID" ReturnToCaller="true">@RandomNumberGenerator.GetHexString(16)</psf:credProperty>
     </psf:credProperties>
     <psf:extProperties>
         <psf:extProperty Name="LastUsedCredType">1</psf:extProperty>

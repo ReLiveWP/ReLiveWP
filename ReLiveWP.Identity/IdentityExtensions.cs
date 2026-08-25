@@ -131,6 +131,8 @@ public static class IdentityExtensions
                               return ExchangeAuthHandler.SchemeName;
                           if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                               return LiveIDAuthHandler.SchemeName;
+                          if (auth.StartsWith("RPSToken ", StringComparison.OrdinalIgnoreCase))
+                              return LiveIDAuthHandler.SchemeName;
 
                           // with no credentials a device must get WWW-Authenticate: Basic and a browser
                           // must not, or it raises a native auth modal. Origin is the only signal here.

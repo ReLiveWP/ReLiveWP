@@ -113,7 +113,7 @@ public class AddressBookService : IAddressBookService
                         new() { Name = "Live.Network.PSAState", Value = "Accept" },
                         // TODO: this parses with LOCALE_SYSTEM_DEFAULT on device, which feels like the footgun of all time
                         new() { Name = "Live.Network.LastSync", Value = DateTime.Now.ToString() },
-                        // Capability bitmask, TODO: figure out what this means
+                        // 0x851: ContactAgg | DashboardAgg | StatusPublish | CommentPublish
                         new() { Name = "Live.Network.Offers", Value = "2129" }
                     ]
                 }

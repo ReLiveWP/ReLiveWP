@@ -53,6 +53,29 @@ public class ContactLinkResolverTests : IDisposable
         Assert.Equal("1:" + EmailB, annotation.ImMri);
     }
 
+    // WL is what 8.1 maps to imType windowsLive, so it is what makes the contact messageable there
+    [Fact]
+    public async Task Linking_sets_the_81_annotations_and_unlinking_clears_them()
+    {
+        using var db = NewContext();
+        AddPeerContact(db, "a-sees-b", UserA, EmailB);
+        await db.SaveChangesAsync();
+
+        await ResolveAsync(db, "a-sees-b", ProfileVisibility.Public);
+
+        var linked = await db.ContactAnnotations.SingleAsync(a => a.ContactItemId == "a-sees-b");
+        Assert.Equal("WL", linked.SourceId);
+        Assert.Equal("Regular", linked.ShellContactType);
+        Assert.True(linked.MobileIMEnabled);
+
+        await ResolveAsync(db, "a-sees-b", ProfileVisibility.Private);
+
+        var unlinked = await db.ContactAnnotations.SingleAsync(a => a.ContactItemId == "a-sees-b");
+        Assert.Null(unlinked.SourceId);
+        Assert.Null(unlinked.ShellContactType);
+        Assert.Null(unlinked.MobileIMEnabled);
+    }
+
     [Fact]
     public async Task Mutual_target_links_only_when_reciprocated()
     {

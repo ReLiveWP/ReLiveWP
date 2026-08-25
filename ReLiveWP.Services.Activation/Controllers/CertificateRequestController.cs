@@ -1,10 +1,5 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Google.Protobuf;
+﻿using Google.Protobuf;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Pkcs;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.DeviceRegistration;
@@ -13,6 +8,7 @@ namespace ReLiveWP.Services.Activation.Controllers;
 
 [ApiController]
 [Route("dcs/certificaterequest")]
+[Route("/certificaterequest")]
 public class CertificateRequestController(
     ILogger<CertificateRequestController> logger,
     ClientProvisioning.ClientProvisioningClient clientProvisioning,
@@ -35,11 +31,11 @@ public class CertificateRequestController(
             return BadRequest("No device info header specified.");
 
         var version = protocolVersionHeader[0];
-        if (version != "1.0") // TODO: WP8 support
+        if (version != "1.0" && version != "2.0")
             return BadRequest("Unsupported protocol version.");
 
         var activationCode = activationCodeHeader[0];
-        var deviceInfo = deviceInfoHeader[0].Split(',')
+        var deviceInfo = deviceInfoHeader[0]!.Split(',')
                                             .Select(s => s.Split(':'))
                                             .ToDictionary(k => k[0], v => v.ElementAtOrDefault(1));
 
@@ -81,12 +77,10 @@ public class CertificateRequestController(
 
         var response = await deviceRegistration.RegisterDeviceAsync(registrationRequest);
         if (!response.Succeeded)
-        {
             return Unauthorized();
-        }
 
-        var provisioningRequest = new WP7ProvisioningRequest() { CertificateRequest = ByteString.CopyFrom(encoded) };
-        var provisioningResponse = await clientProvisioning.ProvisionWP7DeviceAsync(provisioningRequest);
+        var provisioningRequest = new DeviceProvisioningRequest() { CertificateRequest = ByteString.CopyFrom(encoded), Version = version };
+        var provisioningResponse = await clientProvisioning.ProvisionDeviceAsync(provisioningRequest);
         if (provisioningResponse.Succeeded)
         {
             var base64 = provisioningResponse.Certificate.ToBase64();

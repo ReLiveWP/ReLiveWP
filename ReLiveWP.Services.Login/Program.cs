@@ -13,6 +13,7 @@ using ReLiveWP.Identity.Grpc;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.DeviceRegistration;
 using ReLiveWP.Services.Login;
+using ReLiveWP.Services.Login.Models;
 using ReLiveWP.Services.Login.Models.Sso;
 using ReLiveWP.Services.Login.Services;
 using StackExchange.Redis;
@@ -46,6 +47,7 @@ builder.Services.AddSingleton<AuthForwardingInterceptor>();
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddSingleton<PendingAuthorizeStore>();
 builder.Services.Configure<SsoOptions>(builder.Configuration.GetSection(SsoOptions.SectionName));
+builder.Services.Configure<InlineLoginOptions>(builder.Configuration.GetSection(InlineLoginOptions.SectionName));
 
 builder.Services.AddDataProtection().SetApplicationName("relivewp");
 builder.Services.AddOptions<KeyManagementOptions>()
@@ -55,7 +57,11 @@ builder.Services.AddOptions<KeyManagementOptions>()
 builder.Services.AddAntiforgery(o =>
 {
     o.Cookie.Name = "__Host-RPSXsrf";
+#if DEBUG
+    o.Cookie.SecurePolicy = CookieSecurePolicy.None;
+#else
     o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+#endif
     o.Cookie.SameSite = SameSiteMode.Lax;
 });
 

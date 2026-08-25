@@ -1,0 +1,13 @@
+@model ReLiveWP.Services.Login.Models.Ppsecure.PpsecureFaultModel
+<?xml version="1.0" encoding="utf-8" ?>
+<S:Envelope xmlns:S="http://www.w3.org/2003/05/soap-envelope"
+            xmlns:ps="http://schemas.microsoft.com/Passport/SoapServices/PPCRL">
+    <S:Body>
+        <ps:GetKeyDataResponse>
+            <ServerInfo ServerTime="@Model.ServerTime">relivewp</ServerInfo>
+            <Error Code="@Model.ErrorCode">
+                <ErrorSubcode>@Model.ErrorSubcode</ErrorSubcode>
+            </Error>
+        </ps:GetKeyDataResponse>
+    </S:Body>
+</S:Envelope>

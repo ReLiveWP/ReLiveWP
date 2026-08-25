@@ -22,4 +22,12 @@ public class EasSyncOptions
     /// </para>
     /// </summary>
     public bool AbsentSupportedClearsOmitted { get; set; }
+
+    /// <summary>
+    /// Serve the MeContact collection (folder type 27) and the Network annotations that ride on it.
+    /// Off by default: Windows Mail on 8.1 ignores the folder outright, its folder-type whitelist
+    /// being {1,2,4,5,8,9,12,13,14}, and nothing populates DbNetwork yet, so it reaches no client
+    /// and carries nothing. 
+    /// </summary>
+    public bool ServeMeContactFolder { get; set; }
 }

@@ -110,6 +110,11 @@ public class DbContactAnnotation
     public int? TrustLevel { get; set; }
     public int? FavoriteOrder { get; set; }
     public bool LinkIsManual { get; set; }
+
+    public string? SourceId { get; set; }
+    public string? ShellContactType { get; set; }
+    public string? OtherMri { get; set; }
+    public bool? MobileIMEnabled { get; set; }
 }
 
 // one row per email address on a contact, so a live user can be found from an address without

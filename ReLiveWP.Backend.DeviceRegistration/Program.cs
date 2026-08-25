@@ -8,7 +8,7 @@ builder.AddServiceEndpoints();
 
 // Add services to the container.
 builder.Services.AddGrpc();
-builder.Services.AddSingleton<ICertificateService, WP7CertificateService>();
+builder.Services.AddSingleton<ICertificateService, WindowsPhoneCertificateService>();
 builder.Services.AddSingleton<RootCACertificateProvider>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

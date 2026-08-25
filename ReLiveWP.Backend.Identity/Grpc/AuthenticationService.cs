@@ -149,6 +149,11 @@ public class AuthenticationService(
             EmailAddress = user.Email,
         };
 
+        if (user.DeviceId is { } deviceId)
+        {
+            response.DeviceId = deviceId;
+        }
+
         if (authenticated.SessionKey is { } sk)
         {
             response.SessionKey = ByteString.CopyFrom(sk);

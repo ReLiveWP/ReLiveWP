@@ -14,6 +14,7 @@ COPY ReLiveWP.Web/package.json \
      ReLiveWP.Web/pnpm-lock.yaml ./
 COPY ReLiveWP.Web/relivewp.web.client/package.json relivewp.web.client/
 COPY ReLiveWP.Web/relivewp.web.mail/package.json relivewp.web.mail/
+COPY ReLiveWP.Web/relivewp.web.login/package.json relivewp.web.login/
 COPY ReLiveWP.Web/relivewp.web.sso/package.json relivewp.web.sso/
 COPY ReLiveWP.Web/ReLiveWP.Services.Support/package.json ReLiveWP.Services.Support/
 COPY ReLiveWP.Web/packages/auth/package.json packages/auth/

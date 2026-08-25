@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Xml.Serialization;
 using Grpc.Core;
 using Microsoft.Extensions.Options;
+using ReLiveWP.Services.Exchange.Helpers;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
 using ProtoFolderType = ReLiveWP.Services.Grpc.Mailbox.FolderType;
@@ -20,6 +22,7 @@ public class ItemSyncService(
 
     // read once per scope: a monitor would let the flag flip between two collections of one request
     private readonly bool absentSupportedClearsOmitted = options.Value.AbsentSupportedClearsOmitted;
+    private readonly bool serveMeContactFolder = options.Value.ServeMeContactFolder;
 
     // bounded so a genuinely contended item still resolves to a conflict rather than spinning
     private const int MaxChangeWriteAttempts = 3;
@@ -81,6 +84,11 @@ public class ItemSyncService(
         {
             state = null;
         }
+
+        // one lookup serves both the me-contact check and the item class the command path needs
+        var folderType = await GetFolderTypeAsync(userId, collectionId, ct);
+        if (serveMeContactFolder && folderType == ProtoFolderType.MeContact)
+            return await MeContactSyncAsync(userId, deviceId, collectionId, request, state, ct);
 
         SyncCollection result;
         IReadOnlySet<string> serverChangedIds;
@@ -147,7 +155,7 @@ public class ItemSyncService(
         if (request.Commands is { } cmds &&
             (cmds.Add.Count > 0 || cmds.Change.Count > 0 || cmds.Delete.Count > 0 || cmds.Fetch.Count > 0))
         {
-            var itemClass = await GetItemClassAsync(userId, collectionId, ct);
+            var itemClass = ItemClassFor(folderType);
             var bodyPrefs = SelectBodyPreference(request.Options);
             var conflictPolicy = request.Options?.Conflict ?? SyncConflict.ServerWins;
             var responses = await ProcessClientCommandsAsync(userId, collectionId, itemClass, cmds, bodyPrefs, serverChangedIds, conflictPolicy, ghosting, ct);
@@ -983,6 +991,146 @@ public class ItemSyncService(
         return appData;
     }
 
+    // watermark doubles as "has the device been sent the me contact yet": -1 is what the SyncKey=0
+    // priming writes, so anything else means it has had its Add
+    private const long MeContactUnsent = -1;
+
+    private async Task<ProtoFolderType?> GetFolderTypeAsync(string userId, string collectionId, CancellationToken ct)
+    {
+        try
+        {
+            var folder = await mailbox.GetFolderAsync(
+                new GetFolderRequest { UserId = userId, ServerId = collectionId }, cancellationToken: ct);
+            return folder.Type;
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    // folder 27 is unlike any other collection: exactly one item, the me contact, re-sent on every
+    // sync with no real change tracking, carrying the connected networks as suffixed annotations.
+    private async Task<SyncCollection> MeContactSyncAsync(string userId,
+                                                          string deviceId,
+                                                          string collectionId,
+                                                          SyncCollection request,
+                                                          SyncState? state,
+                                                          CancellationToken ct)
+    {
+        var requested = request.Options?.Annotations?.RequestedNames();
+        var cached = requested is { Count: > 0 }
+            ? string.Join(",", requested)
+            : string.IsNullOrEmpty(state?.CachedAnnotationNames) ? null : state.CachedAnnotationNames;
+
+        Task<SyncState> UpsertAsync(string syncKey, long watermark) =>
+            mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
+            {
+                UserId = userId,
+                DeviceId = deviceId,
+                CollectionId = collectionId,
+                SyncKey = syncKey,
+                Watermark = watermark,
+                CachedAnnotationNames = cached ?? string.Empty,
+                PreviousSyncKey = state?.SyncKey ?? "0",
+                PreviousWatermark = state?.Watermark ?? 0,
+            }, cancellationToken: ct).ResponseAsync;
+
+        if (request.SyncKey == "0")
+        {
+            await UpsertAsync("1", MeContactUnsent);
+            return new SyncCollection { CollectionId = collectionId, SyncKey = "1", Status = 1 };
+        }
+
+        if (state is null || state.SyncKey != request.SyncKey)
+            return new SyncCollection { CollectionId = collectionId, SyncKey = "0", Status = 3 };
+
+        Item me;
+        try
+        {
+            me = await mailbox.GetMeContactAsync(
+                new GetMeContactRequest { UserId = userId }, cancellationToken: ct);
+        }
+        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
+        {
+            // Exchange faults the whole collection here; an empty one keeps the rest of the sync alive
+            logger.LogWarning("no me contact for {User}, collection {Collection} has nothing to serve",
+                userId, collectionId);
+            await UpsertAsync(state.SyncKey, state.Watermark);
+            return new SyncCollection { CollectionId = collectionId, SyncKey = state.SyncKey, Status = 1 };
+        }
+
+        var names = ParseCachedAnnotationNames(cached) ?? EmptyServerIds;
+        var appData = me.Contact.ToApplicationData();
+
+        var annotations = BuildAnnotations(me.Contact.Annotation ?? new ContactAnnotation(), names)
+                          ?? new Annotations();
+        await AppendNetworkAnnotationsAsync(userId, annotations, names, ct);
+
+        // the client hangs the network annotations off this element, so it has to exist
+        if (names.Count > 0)
+            InjectAnnotations(appData, annotations);
+
+        var newKey = SyncEngine.NextSyncKey(state.SyncKey);
+        var commands = new SyncCommands();
+        if (state.Watermark == MeContactUnsent)
+            commands.Add.Add(new SyncAdd { ServerId = me.ServerId, ApplicationData = appData });
+        else
+            commands.Change.Add(new SyncChange { ServerId = me.ServerId, ApplicationData = appData });
+
+        await UpsertAsync(newKey, 0);
+
+        return new SyncCollection
+        {
+            CollectionId = collectionId,
+            SyncKey = newKey,
+            Status = 1,
+            Commands = commands,
+        };
+    }
+
+    private async Task AppendNetworkAnnotationsAsync(string userId, Annotations annotations,
+                                                     IReadOnlySet<string> requested, CancellationToken ct)
+    {
+        if (!requested.Any(n => n.StartsWith("Network", StringComparison.Ordinal)
+                             || n == "DomainTag" || n == "PartnerOffers"))
+            return;
+
+        var index = 0;
+        using var call = mailbox.ListNetworks(new ListNetworksRequest { UserId = userId }, cancellationToken: ct);
+        await foreach (var n in call.ResponseStream.ReadAllAsync(ct))
+        {
+            // a name already ending in a digit takes an underscore, or the suffix would run into it
+            void Add(string name, string? value)
+            {
+                if (!requested.Contains(name) || string.IsNullOrEmpty(value))
+                    return;
+
+                var suffixed = char.IsAsciiDigit(name[^1]) ? $"{name}_{index}" : $"{name}{index}";
+                annotations.Items.Add(new Annotation { Name = suffixed, Value = value });
+            }
+
+            Add("NetworkSourceId", ContactDomains.ByDomain(n.DomainId)?.SourceId);
+            Add("NetworkAccountName", n.HasAccountName ? n.AccountName : null);
+            Add("NetworkDisplayName", n.HasDisplayName ? n.DisplayName : null);
+            Add("DomainTag", n.HasDomainTag ? n.DomainTag : null);
+            Add("NetworkLastSync", FormatNetworkTime(n.LastSync));
+            Add("NetworkPSAState", n.HasPsaState ? n.PsaState : null);
+            Add("NetworkPSALastChange", FormatNetworkTime(n.PsaLastChanged));
+            Add("NetworkOffers", n.HasOffers ? n.Offers.ToString() : null);
+            Add("PartnerOffers", n.HasPartnerOffers ? n.PartnerOffers.ToString() : null);
+            Add("NetworkClientToken", n.HasClientToken ? n.ClientToken : null);
+            Add("NetworkClientToken2", n.HasClientToken2 ? n.ClientToken2 : null);
+            Add("NetworkClientPublishSecret", n.HasClientPublishSecret ? n.ClientPublishSecret : null);
+
+            index++;
+        }
+    }
+
+    // ExDateTime.ToString("u") on the Exchange side
+    private static string? FormatNetworkTime(Google.Protobuf.WellKnownTypes.Timestamp? ts) =>
+        ts is null ? null : ts.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
     private static Annotations? BuildAnnotations(ContactAnnotation ann, IReadOnlySet<string> requested)
     {
         var items = new List<Annotation>();
@@ -1000,6 +1148,23 @@ public class ItemSyncService(
         Add("UserTileHash", ann.HasUserTileHash ? ann.UserTileHash : null);
         Add("TrustLevel", ann.HasTrustLevel ? ann.TrustLevel.ToString() : null);
         Add("FavoriteOrder", ann.HasFavoriteOrder ? ann.FavoriteOrder.ToString() : null);
+        Add("SID", ann.HasSourceId ? ann.SourceId : null);
+        Add("ShellContactType", ann.HasShellContactType ? ann.ShellContactType : null);
+        Add("OtherMRI", ann.HasOtherMri ? ann.OtherMri : null);
+        Add("MobileIMEnabled", ann.HasMobileImEnabled ? (ann.MobileImEnabled ? "True" : "False") : null);
+
+        // multi-valued, so the names go out suffixed while the client only ever asks for "MRI"
+        if (requested.Contains("MRI"))
+        {
+            var mris = ContactMri.Derive(
+                ann.HasWlId ? ann.WlId : null,
+                ann.HasSourceId ? ann.SourceId : null,
+                ann.HasObjectId ? ann.ObjectId : null,
+                ann.HasShellContactType ? ann.ShellContactType : null);
+
+            for (var i = 0; i < mris.Count; i++)
+                items.Add(new Annotation { Name = $"MRI_{i}", Value = mris[i] });
+        }
 
         bool isSelf = ann.HasContactType &&
               string.Equals(ann.ContactType, "Me", StringComparison.OrdinalIgnoreCase);
@@ -1042,27 +1207,14 @@ public class ItemSyncService(
     }
 
 
-    private async Task<string> GetItemClassAsync(string userId, string collectionId, CancellationToken ct)
+    private static string ItemClassFor(ProtoFolderType? type) => type switch
     {
-        try
-        {
-            var folder = await mailbox.GetFolderAsync(
-                new GetFolderRequest { UserId = userId, ServerId = collectionId },
-                cancellationToken: ct);
-            return folder.Type switch
-            {
-                ProtoFolderType.CalendarDefault or ProtoFolderType.Calendar => "Calendar",
-                ProtoFolderType.ContactsDefault or ProtoFolderType.Contacts or ProtoFolderType.MeContact => "Contact",
-                ProtoFolderType.TasksDefault or ProtoFolderType.Task => "Task",
-                ProtoFolderType.NotesDefault or ProtoFolderType.Notes => "Note",
-                _ => "Email",
-            };
-        }
-        catch (RpcException e) when (e.StatusCode == StatusCode.NotFound)
-        {
-            return "Email";
-        }
-    }
+        ProtoFolderType.CalendarDefault or ProtoFolderType.Calendar => "Calendar",
+        ProtoFolderType.ContactsDefault or ProtoFolderType.Contacts or ProtoFolderType.MeContact => "Contact",
+        ProtoFolderType.TasksDefault or ProtoFolderType.Task => "Task",
+        ProtoFolderType.NotesDefault or ProtoFolderType.Notes => "Note",
+        _ => "Email",
+    };
 
     private static IReadOnlySet<string>? ParseCachedAnnotationNames(string? cached)
     {

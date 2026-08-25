@@ -1,0 +1,74 @@
+@using System.Text.Json
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@model ReLiveWP.Services.Login.Models.InlineLoginModel
+@{
+    Layout = null;
+
+    // default System.Text.Json escaping renders < > & as \uXXXX, so no </script> breakout
+    var hostData = JsonSerializer.Serialize(new
+    {
+        form = new
+        {
+            formId = "idForm_WP_Window",
+            submitId = "idSIButton9",
+            headerText = "Sign in"
+        },
+        error = Model.ErrorCode is { } code
+            ? new { code = code, message = Model.Error, url = Model.HelpUrl }
+            : null
+    });
+}<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=10">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, minimum-scale=1.0">
+    <title>Sign in to your ReLive account</title>
+    <link rel="stylesheet" href="~/ppsecure/segoe.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/ppsecure/wpwiz.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/ppsecure/background.css" asp-append-version="true">
+    <script>window.__INLINE__ = @(new Microsoft.AspNetCore.Html.HtmlString(hostData));</script>
+</head>
+<body class="light">
+    <form id="idForm_WP_Window" method="post" action="/ppsecure/post.srf" target="_top" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Id" value="@Model.Context.Id">
+        <input type="hidden" name="Platform" value="@Model.Context.Platform">
+        <input type="hidden" name="Mkt" value="@Model.Context.Mkt">
+        <input type="hidden" name="Lc" value="@Model.Context.Lc">
+        <input type="hidden" name="Ctc" value="@Model.Context.Ctc">
+        <input type="hidden" name="Cmn" value="@Model.Context.Cmn">
+        <input type="hidden" name="Opid" value="@Model.Context.Opid">
+        <input type="hidden" name="Uaid" value="@Model.Context.Uaid">
+        <input type="hidden" name="Win8Colors" value="@Model.Context.Win8Colors">
+        <div class="wpBluePage">
+            <div class="pageTitleContainer"><div>Sign in</div></div>
+            <div class="pageContent">
+                <div class="row">Sign in with your ReLive account to get your email, photos, files and settings on all your devices.</div>
+                <div class="row">
+                    <div class="inlineLabel"><label for="idTxtBx_WPIL_Username">ReLive account</label></div>
+                    <div>
+                        <input type="email" name="loginfmt" id="idTxtBx_WPIL_Username" maxlength="113"
+                               placeholder="Email or phone" autocomplete="username" autocorrect="off"
+                               value="@Model.Username">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="inlineLabel"><label for="idTxtBx_WPIL_Password">Password</label></div>
+                    <div>
+                        <input type="password" name="passwd" id="idTxtBx_WPIL_Password" maxlength="127"
+                               autocomplete="off">
+                    </div>
+                    @if (Model.Error is not null)
+                    {
+                        <div class="error" role="alert">@Model.Error</div>
+                    }
+                </div>
+            </div>
+        </div>
+        <input type="submit" id="idSIButton9" class="hiddenSubmit" value="" aria-hidden="true">
+    </form>
+    <noscript>ReLive requires JavaScript to sign in.</noscript>
+    <script src="~/ppsecure/inline.js" asp-append-version="true"></script>
+</body>
+</html>

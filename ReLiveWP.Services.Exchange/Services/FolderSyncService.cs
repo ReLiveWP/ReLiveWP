@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Grpc.Core;
+using Microsoft.Extensions.Options;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
 using EasFolderType = ReLiveWP.Services.Exchange.Models.FolderType;
@@ -10,8 +11,11 @@ namespace ReLiveWP.Services.Exchange.Services;
 public class FolderSyncService(
     MailboxStore.MailboxStoreClient mailbox,
     OrphanFolderTracker orphans,
-    ILogger<FolderSyncService> logger)
+    ILogger<FolderSyncService> logger,
+    IOptions<EasSyncOptions>? options = null)
 {
+    private readonly bool serveMeContactFolder = options?.Value.ServeMeContactFolder ?? false;
+
     public const int StatusSuccess = 1;
     public const int StatusNameExistsOrSpecial = 2;
     public const int StatusSpecialFolder = 3;
@@ -39,6 +43,12 @@ public class FolderSyncService(
         clientSyncKey ??= "0";
 
         var state = await GetHierarchyStateAsync(userId, deviceId, ct);
+
+        // a device that sent its annotation names once shouldn't lose them by omitting them on a
+        // later FolderSync, or folder 27 would vanish from the hierarchy mid-session
+        requestedAnnotations = requestedAnnotations is { Count: > 0 }
+            ? requestedAnnotations
+            : ParseAnnotationNames(state?.CachedAnnotationNames);
 
         if (clientSyncKey == "0")
             return await InitialSyncAsync(userId, deviceId, state, requestedAnnotations, ct);
@@ -259,6 +269,7 @@ public class FolderSyncService(
             CollectionId = HierarchyCollectionId,
             SyncKey = newKey,
             Watermark = state.Watermark,
+            CachedAnnotationNames = state.CachedAnnotationNames,
         }, cancellationToken: ct);
         return newKey;
     }
@@ -318,6 +329,22 @@ public class FolderSyncService(
         requested is not null &&
         (requested.Contains("SID") || requested.Contains("AN") || requested.Contains("DomainId"));
 
+    // WP7 asks for SID too, so SID can't tell the clients apart. 8.1 asks for exactly
+    // SID/AN/Permission/InternalFolderType and WP7 asks for neither of the latter two; showing WP7
+    // a second contacts collection holding its own me contact gives it a duplicate "me"
+    private static bool MeContactRequested(IReadOnlySet<string>? requested) =>
+        requested is not null &&
+        (requested.Contains("Permission") || requested.Contains("InternalFolderType"));
+
+    private static IReadOnlySet<string>? ParseAnnotationNames(string? cached) =>
+        string.IsNullOrEmpty(cached)
+            ? null
+            : cached.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToHashSet(StringComparer.Ordinal);
+
+    private static string JoinAnnotationNames(IReadOnlySet<string>? requested) =>
+        requested is { Count: > 0 } ? string.Join(",", requested) : string.Empty;
+
     private async Task<FolderSync> InitialSyncAsync(string userId,
                                                     string deviceId,
                                                     SyncState? state,
@@ -327,10 +354,8 @@ public class FolderSyncService(
         var tip = (await mailbox.GetFolderEventTipAsync(
             new FolderEventTipRequest { UserId = userId }, cancellationToken: ct)).Value;
 
-        bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
-
         var changes = new Changes();
-        await foreach (var f in ReadFoldersAsync(userId, includeHidden: abchRequested, ct))
+        await foreach (var f in ReadSyncableFoldersAsync(userId, requestedAnnotations, ct))
             changes.Add.Add(ToFolderChange(f, requestedAnnotations));
         changes.Count = changes.Add.Count;
 
@@ -341,6 +366,7 @@ public class FolderSyncService(
             CollectionId = HierarchyCollectionId,
             SyncKey = "1",
             Watermark = tip,
+            CachedAnnotationNames = JoinAnnotationNames(requestedAnnotations),
         }, cancellationToken: ct);
 
         return new FolderSync { Status = StatusSuccess, SyncKey = "1", Changes = changes };
@@ -367,6 +393,7 @@ public class FolderSyncService(
                 CollectionId = HierarchyCollectionId,
                 SyncKey = state.SyncKey,
                 Watermark = state.Watermark,
+                CachedAnnotationNames = JoinAnnotationNames(requestedAnnotations),
             }, cancellationToken: ct);
             return new FolderSync { Status = StatusSuccess, SyncKey = state.SyncKey, Changes = new Changes() };
         }
@@ -379,10 +406,9 @@ public class FolderSyncService(
             var delta = SyncEngine.Collapse(events);
             watermark = delta.Watermark;
 
-            bool abchRequested = AbchAnnotationsRequested(requestedAnnotations);
             var wanted = delta.Added.Concat(delta.Updated).ToHashSet();
             var folders = new Dictionary<string, Folder>();
-            await foreach (var f in ReadFoldersAsync(userId, abchRequested, ct))
+            await foreach (var f in ReadSyncableFoldersAsync(userId, requestedAnnotations, ct))
                 if (wanted.Contains(f.Id))
                     folders[f.Id] = f;
 
@@ -405,6 +431,7 @@ public class FolderSyncService(
             CollectionId = HierarchyCollectionId,
             SyncKey = newKey,
             Watermark = watermark,
+            CachedAnnotationNames = JoinAnnotationNames(requestedAnnotations),
         }, cancellationToken: ct);
 
         return new FolderSync { Status = StatusSuccess, SyncKey = newKey, Changes = changes };
@@ -417,6 +444,22 @@ public class FolderSyncService(
         { UserId = userId, IncludeHidden = includeHidden, IncludeDeleted = false }, cancellationToken: ct);
         await foreach (var f in call.ResponseStream.ReadAllAsync(ct))
             yield return f;
+    }
+
+    // folder integrity checks still walk every folder; only the two sync paths filter
+    private async IAsyncEnumerable<Folder> ReadSyncableFoldersAsync(string userId,
+        IReadOnlySet<string>? requestedAnnotations,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        bool meContact = serveMeContactFolder && MeContactRequested(requestedAnnotations);
+
+        await foreach (var f in ReadFoldersAsync(userId, AbchAnnotationsRequested(requestedAnnotations), ct))
+        {
+            if (f.Type == ProtoFolderType.MeContact && !meContact)
+                continue;
+
+            yield return f;
+        }
     }
 
     private async IAsyncEnumerable<FolderEvent> ReadFolderEventsAsync(string userId, long afterWatermark,

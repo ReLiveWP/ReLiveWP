@@ -129,7 +129,88 @@ public class LinkedContactDeliveryTests
                 Cid = unchecked((long)0x15fe5d7a6d8d65ff),
                 WlId = "amy@relivewp.net",
                 ImMri = "1:amy@relivewp.net",
+                SourceId = "WL",
+                ShellContactType = "Regular",
+                MobileImEnabled = true,
             },
         },
     };
+
+    // the real 8.1 annotation set, captured off the wire: no IMMRI, MRI/OtherMRI instead
+    private const string EightOneNames =
+        "CID,WLID,Type,ShellContactType,SID,OID,MRI,OtherMRI,MobileIMEnabled,UserTileUrl,UserTileHash";
+
+    private static async Task<Dictionary<string, string>> AnnotationsFor(string cachedNames)
+    {
+        var client = new FakeMailboxStoreClient
+        {
+            OnGetSyncState = _ => new SyncState
+            {
+                UserId = User,
+                DeviceId = Device,
+                CollectionId = Collection,
+                SyncKey = "1",
+                Watermark = 5,
+                CachedAnnotationNames = cachedNames,
+                PreviousSyncKey = "0",
+                PreviousWatermark = 0,
+            },
+            OnGetItemEvents = _ => [new ItemEvent { Id = 6, CommitId = 6, ServerId = ServerId, EventType = ChangeEventType.Add }],
+            OnGetItems = _ => [Linked()],
+            OnUpsertSyncState = _ => new SyncState { UserId = User, DeviceId = Device, CollectionId = Collection },
+        };
+
+        var response = await NewService(client).SyncAsync(User, Device, new SyncCollection
+        {
+            CollectionId = Collection,
+            SyncKey = "1",
+            GetChanges = true,
+        });
+
+        var data = response.Commands!.Add.Single(a => a.ServerId == ServerId).ApplicationData;
+        var annotations = data.Elements.Single(e => e.LocalName == "Annotations");
+
+        return annotations.ChildNodes.Cast<System.Xml.XmlNode>().ToDictionary(
+            n => n.SelectSingleNode("*[local-name()='Name']")!.InnerText,
+            n => n.SelectSingleNode("*[local-name()='Value']")?.InnerText ?? string.Empty);
+    }
+
+    [Fact]
+    public async Task The_81_annotation_set_gets_a_suffixed_passport_mri()
+    {
+        var annotations = await AnnotationsFor(EightOneNames);
+
+        Assert.Equal("1:amy@relivewp.net", annotations["MRI_0"]);
+        Assert.False(annotations.ContainsKey("MRI"), "MRI goes out suffixed, never bare");
+    }
+
+    [Fact]
+    public async Task Booleans_go_out_as_True_not_1()
+    {
+        var annotations = await AnnotationsFor(EightOneNames);
+
+        Assert.Equal("True", annotations["MobileIMEnabled"]);
+    }
+
+    [Fact]
+    public async Task The_81_set_carries_the_new_names_and_not_immri()
+    {
+        var annotations = await AnnotationsFor(EightOneNames);
+
+        Assert.Equal("WL", annotations["SID"]);
+        Assert.Equal("Regular", annotations["ShellContactType"]);
+
+        // 8.1 never asks for IMMRI, so it must not appear even though the contact has one
+        Assert.False(annotations.ContainsKey("IMMRI"));
+    }
+
+    [Fact]
+    public async Task The_wp7_set_still_gets_immri_and_no_mri()
+    {
+        var annotations = await AnnotationsFor("CID,OID,WLID,IMMRI,Type,UserTileUrl");
+
+        Assert.Equal("1:amy@relivewp.net", annotations["IMMRI"]);
+        Assert.DoesNotContain(annotations.Keys, k => k.StartsWith("MRI"));
+        Assert.False(annotations.ContainsKey("SID"));
+    }
 }

@@ -16,6 +16,8 @@ service MailboxStore {
   rpc GetItem         (GetItemRequest)         returns (Item);
   rpc GetItems        (GetItemsRequest)        returns (stream Item);
   rpc ListItems       (ListItemsRequest)       returns (stream Item);
+  rpc ListNetworks    (ListNetworksRequest)    returns (stream Network);
+  rpc GetMeContact    (GetMeContactRequest)    returns (Item);
   rpc CountLiveItems  (CountLiveItemsRequest)  returns (CountResult);
   rpc MoveItem        (MoveItemRequest)        returns (MoveItemResult);
   rpc MoveConversation (MoveConversationRequest) returns (MoveConversationResult);
@@ -283,6 +285,11 @@ message ContactAnnotation {
   optional string user_tile_hash  = 8;
   optional int32  trust_level     = 9;
   optional int32  favorite_order  = 10;
+
+  optional string source_id          = 11;
+  optional string shell_contact_type = 12;
+  optional string other_mri          = 13;
+  optional bool   mobile_im_enabled  = 14;
 }
 
 message CalendarItem {
@@ -650,6 +657,31 @@ message ListItemsRequest {
   string user_id         = 1;
   string collection_id   = 2;
   bool   include_deleted = 3;
+}
+
+message ListNetworksRequest {
+  string user_id = 1;
+}
+
+message GetMeContactRequest {
+  string user_id = 1;
+}
+
+// a connected social/mail network. rides on the me contact as suffixed WindowsLive annotations
+message Network {
+  int32                              domain_id             = 1;
+  string                             user_email            = 2;
+  optional string                    display_name          = 3;
+  optional string                    account_name          = 4;
+  optional string                    domain_tag            = 5;
+  optional google.protobuf.Timestamp last_sync             = 6;
+  optional string                    psa_state             = 7;
+  optional google.protobuf.Timestamp psa_last_changed      = 8;
+  optional int32                     offers                = 9;
+  optional int32                     partner_offers        = 10;
+  optional string                    client_token          = 11;
+  optional string                    client_token2         = 12;
+  optional string                    client_publish_secret = 13;
 }
 
 message CountLiveItemsRequest {

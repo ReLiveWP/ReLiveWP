@@ -1,0 +1,7 @@
+/* Pink accent gradient from web.client (--accent-gradient-pink), inlined for IE11.
+   Overrides the flat `background-color: Background` wpwiz.css sets on these elements. */
+html,
+body,
+form {
+    background: linear-gradient(to bottom, #ffe0f3, #fff0f9 80px, #fffcfe 200px);
+}

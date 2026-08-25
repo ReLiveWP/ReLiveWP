@@ -1,0 +1,14 @@
+{
+  "name": "relivewp.web.login",
+  "private": true,
+  "description": "Host bridge for the WP8.1 InlineLogin.srf page served by ReLiveWP.Services.Login. Invoked by the csproj, not by hand.",
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

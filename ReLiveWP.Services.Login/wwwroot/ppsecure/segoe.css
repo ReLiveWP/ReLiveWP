@@ -1,0 +1,19 @@
+/* Local-only font resolution. On device 'Segoe WP' is installed; elsewhere fall back to
+   Segoe UI. No external URLs, so the device never blocks on a font fetch. */
+@font-face {
+    font-family: 'Segoe WP';
+    font-weight: 300;
+    src: local('Segoe WP SemiLight'), local('Segoe UI Semilight');
+}
+
+@font-face {
+    font-family: 'Segoe WP';
+    font-weight: 400;
+    src: local('Segoe WP'), local('Segoe UI');
+}
+
+@font-face {
+    font-family: 'Segoe WP Semibold';
+    font-weight: 600;
+    src: local('Segoe WP Semibold'), local('Segoe UI Semibold');
+}

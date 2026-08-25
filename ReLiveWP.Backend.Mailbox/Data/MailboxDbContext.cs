@@ -28,6 +28,7 @@ public class MailboxDbContext : DbContext
     public DbSet<DbContactAnnotation> ContactAnnotations { get; set; }
     public DbSet<DbContactEmail> ContactEmails { get; set; }
     public DbSet<DbContactIdentity> ContactIdentities { get; set; }
+    public DbSet<DbNetwork> Networks { get; set; }
     public DbSet<DbContactCategory> ContactCategories { get; set; }
     public DbSet<DbContactChild> ContactChildren { get; set; }
 
@@ -172,6 +173,13 @@ public class MailboxDbContext : DbContext
             e.HasOne(x => x.ContactItem)
              .WithMany()
              .HasForeignKey(x => x.ContactItemId);
+        });
+
+        modelBuilder.Entity<DbNetwork>(e =>
+        {
+            e.HasKey(x => x.Id);
+            // matches Exchange's NetworkHelperInternal lookup, which keys on (DomainId, UserEmail)
+            e.HasIndex(x => new { x.UserId, x.DomainId, x.UserEmail }).IsUnique();
         });
 
         modelBuilder.Entity<DbContactIdentity>(e =>

@@ -18,12 +18,16 @@ public class MailboxProvisioningService(MailboxDbContext db, ILogger<MailboxProv
         ("Contacts",      DbFolderType.ContactsDefault),
         ("Notes",         DbFolderType.NotesDefault),
         ("Journal",       DbFolderType.JournalDefault),
+        ("MeContact",     DbFolderType.MeContact),
     ];
 
     public async Task ProvisionAsync(string userId, string email, string username, CancellationToken ct = default)
     {
         if (await db.Folders.AnyAsync(f => f.UserId == userId, ct))
+        {
+            await BackfillExistingAsync(userId, ct);
             return;
+        }
 
         var folders = DefaultFolders.Select(f => new DbFolder
         {
@@ -32,6 +36,10 @@ public class MailboxProvisioningService(MailboxDbContext db, ILogger<MailboxProv
             DisplayName = f.Name,
             Type = f.Type,
             CreatedAt = DateTime.UtcNow,
+            // matches what Exchange's MeContactFolderCreator stamps
+            SourceId = f.Type == DbFolderType.MeContact ? "ABCH" : null,
+            AccountName = f.Type == DbFolderType.MeContact ? string.Empty : null,
+            IsHidden = f.Type == DbFolderType.MeContact,
         }).ToList();
 
         db.Folders.AddRange(folders);
@@ -47,6 +55,63 @@ public class MailboxProvisioningService(MailboxDbContext db, ILogger<MailboxProv
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation("provisioned mailbox for {User}", userId);
+    }
+
+    // a mailbox provisioned before folder 27 and the 8.1 annotations existed still needs both. the
+    // link resolver tops up ordinary contacts on its own pass, but it skips the me contact.
+    private async Task BackfillExistingAsync(string userId, CancellationToken ct)
+    {
+        var folders = await AddMissingDefaultFoldersAsync(userId, ct);
+        var me = await TopUpMeContactAnnotationAsync(userId, ct);
+
+        if (folders || me)
+            await db.SaveChangesAsync(ct);
+    }
+
+    private async Task<bool> TopUpMeContactAnnotationAsync(string userId, CancellationToken ct)
+    {
+        var annotation = await db.ContactAnnotations
+            .FirstOrDefaultAsync(a => a.ContactItem.UserId == userId
+                                   && a.ContactItem.DeletedAt == null
+                                   && a.ContactType == "Me", ct);
+
+        if (annotation is null || annotation.SourceId is not null)
+            return false;
+
+        annotation.SourceId = "WL";
+        annotation.ShellContactType = "Regular";
+        annotation.MobileIMEnabled = true;
+        logger.LogInformation("topped up the me contact annotation for {User}", userId);
+        return true;
+    }
+
+    private async Task<bool> AddMissingDefaultFoldersAsync(string userId, CancellationToken ct)
+    {
+        var have = await db.Folders.Where(f => f.UserId == userId && f.DeletedAt == null)
+                                   .Select(f => f.Type)
+                                   .ToHashSetAsync(ct);
+
+        var missing = DefaultFolders.Where(f => !have.Contains(f.Type)).ToList();
+        if (missing.Count == 0)
+            return false;
+
+        foreach (var f in missing)
+        {
+            db.Folders.Add(new DbFolder
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                UserId = userId,
+                DisplayName = f.Name,
+                Type = f.Type,
+                CreatedAt = DateTime.UtcNow,
+                SourceId = f.Type == DbFolderType.MeContact ? "ABCH" : null,
+                AccountName = f.Type == DbFolderType.MeContact ? string.Empty : null,
+                IsHidden = f.Type == DbFolderType.MeContact,
+            });
+        }
+
+        logger.LogInformation("added {Count} missing default folder(s) for {User}", missing.Count, userId);
+        return true;
     }
 
     private void SeedMeContact(string userId, string contactsFolderId, string email, string username)
@@ -78,6 +143,9 @@ public class MailboxProvisioningService(MailboxDbContext db, ILogger<MailboxProv
             ObjectId = userId,
             ImMri = mri,
             ContactType = "Me",
+            SourceId = "WL",
+            ShellContactType = "Regular",
+            MobileIMEnabled = true,
         });
     }
 
