@@ -12,7 +12,7 @@ public class ThumbnailResizerTests
 {
     private const string Owner = "user-a";
 
-    private static ThumbnailResizer CreateResizer() => new(NullLogger<ThumbnailResizer>.Instance);
+    private static ThumbnailService CreateResizer() => new(NullLogger<ThumbnailService>.Instance);
 
     private static MemoryStream CreateJpeg(int width, int height)
     {

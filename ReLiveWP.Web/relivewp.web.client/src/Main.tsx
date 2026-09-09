@@ -4,7 +4,7 @@ import { SiteFooter, SiteHeader, ThemeProvider, useTitle, type NavItem } from "@
 import { useEffect } from "preact/hooks";
 
 import AuthenticatedRoute from "./components/AuthenticatedRoute";
-import { ENDPOINT_SUPPORT } from "./util/endpoints";
+import { ENDPOINT_MAIL, ENDPOINT_SUPPORT } from "./util/endpoints";
 import Home from "./pages/index"
 import NavLoginLink from "./components/NavLoginLink"
 
@@ -15,8 +15,12 @@ const NAV_ITEMS: NavItem[] = [
     { href: "/", label: "discover", exact: true },
     { href: "/downloads", label: "download" },
     { href: "/marketplace", label: "marketplace" },
+    { href: ENDPOINT_MAIL, label: "mail" },
     { href: ENDPOINT_SUPPORT, label: "how-to" },
     { href: "/my/device", label: "my phone" },
+];
+
+const TRAILING_ITEMS: NavItem[] = [
 ];
 
 const NotFound = () => {
@@ -38,7 +42,7 @@ const Main = () => {
         <ThemeProvider accent="red">
             <AppStateProvider value={createAppState()}>
                 <LocationProvider>
-                    <SiteHeader items={NAV_ITEMS} trailing={<NavLoginLink />} />
+                    <SiteHeader items={NAV_ITEMS} trailing={TRAILING_ITEMS} account={<NavLoginLink />} />
                     <main>
                         <ErrorBoundary>
                             <Router>

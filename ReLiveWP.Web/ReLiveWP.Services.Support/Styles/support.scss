@@ -23,12 +23,6 @@ a {
     @include t.themed-raw(color, t.accent("purple"), var(--accent-ink));
 }
 
-.brand-container {
-    .header-container {
-        margin-left: 4px !important;
-    }
-}
-
 // article furniture
 
 .article-type {

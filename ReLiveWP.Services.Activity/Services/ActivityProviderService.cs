@@ -1,6 +1,8 @@
 using Grpc.Core;
 using Microsoft.Extensions.Caching.Memory;
 using ReLiveWP.Identity;
+using ReLiveWP.Services.Activity.Providers;
+using ReLiveWP.Services.Activity.Providers.Bluesky;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.Mailbox;
 
@@ -27,6 +29,9 @@ public class ActivityProviderService(
 
     public IReadOnlyList<PublicActivityProviderBase> PublicProviders =>
         publicProviders ??= [new PublicBlueskyActivityProvider(loggerFactory, cache)];
+
+    public PublicActivityProviderBase? FindPublicProvider(string identityProvider)
+        => PublicProviders.FirstOrDefault(p => string.Equals(p.IdentityProvider, identityProvider, StringComparison.OrdinalIgnoreCase));
 
     public async Task<OwnedActivityProviderBase?> GetOwnedProviderAsync()
     {

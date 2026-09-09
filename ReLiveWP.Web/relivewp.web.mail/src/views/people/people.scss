@@ -2,6 +2,16 @@
 @use "../../theme" as config;
 @use "tokens" as t;
 
+@mixin chromeless {
+    padding: 0;
+    border: none;
+    background: none;
+    appearance: none;
+    font: inherit;
+    min-width: 0;
+    cursor: pointer;
+}
+
 // 8a is a 300 / 1fr / 340 hub. Page already lays out sidebar, content and detail in a row, so the
 // two fixed columns are set here and the middle takes what is left
 .people-page .page-sidebar {
@@ -55,7 +65,7 @@
     @include t.themed(color, ink-muted);
 }
 
-.me-card {
+.contact-card {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -64,12 +74,13 @@
     height: calc(100% - 16px);
     margin-top: 8px;
     margin-bottom: 8px;
+    overflow-y: auto;
     background: radial-gradient(circle at top 30px right 30px,
             var(--accent-colour-bg-2), var(--surface) 60%);
     @include t.themed(border, rule, "1px solid ");
 }
 
-.me-accent {
+.card-accent {
     position: absolute;
     top: 0;
     width: 110px;
@@ -77,7 +88,138 @@
     @include t.themed-raw(background-color, config.$accent, var(--accent-colour));
 }
 
-.me-identity {
+.card-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 1em;
+}
+
+.card-action {
+    @include chromeless;
+    font-size: 9pt;
+    text-transform: lowercase;
+    @include t.themed(color, ink-muted);
+
+    &:hover {
+        @include t.themed(color, ink-strong);
+    }
+
+    &:last-child:not(:first-child) {
+        margin-left: auto;
+    }
+}
+
+.card-back::before {
+    content: "\2190\00a0";
+}
+
+.card-edit {
+    input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 4px 6px;
+        font: inherit;
+        @include t.themed(color, ink-muted);
+        @include t.themed(background-color, surface-sunken);
+        @include t.themed(border, rule-faint, "1px solid ");
+    }
+
+    dd {
+        white-space: normal;
+        overflow: visible;
+    }
+}
+
+.card-accounts {
+    margin-top: 18px;
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    @include t.themed(border-top, rule-faint, "1px solid ");
+
+    .note,
+    .error {
+        margin: 0;
+        font-size: 9pt;
+    }
+}
+
+.card-account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.card-account-tile {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    @include t.themed(background-color, surface-sunken);
+    @include t.themed(color, ink-faint);
+}
+
+.card-account-live {
+    @include t.themed-raw(background-color, config.$accent, var(--accent-colour-bg-2));
+}
+
+.card-account-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    @include t.themed(color, ink);
+}
+
+.card-account-auto {
+    font-size: 8pt;
+    @include t.themed(color, ink-faint);
+}
+
+.card-account-remove {
+    @include chromeless;
+    flex: none;
+    padding: 0 4px;
+    font-size: 12pt;
+    line-height: 1;
+    @include t.themed(color, ink-muted);
+
+    &:hover {
+        @include t.themed(color, danger);
+    }
+}
+
+.card-account-add {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+
+    input {
+        flex: 1;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: 4px 6px;
+        font: inherit;
+        @include t.themed(color, ink);
+        @include t.themed(background-color, surface);
+        @include t.themed(border, rule, "1px solid ");
+
+        &:focus {
+            outline: none;
+            @include t.themed-raw(border-color, config.$accent, var(--accent-colour));
+        }
+    }
+}
+
+.card-identity {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -85,7 +227,7 @@
     margin-top: 14px;
 }
 
-.me-tile {
+.card-tile {
     width: 100%;
     max-width: 170px;
     aspect-ratio: 1;
@@ -99,14 +241,14 @@
     @include t.themed(color, ink-faint);
 }
 
-.me-heading {
+.card-heading {
     font-size: 18pt;
     font-weight: 200;
     line-height: 1.1;
     @include t.themed(color, ink-strong);
 }
 
-.me-name {
+.card-name {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -116,19 +258,55 @@
     @include t.themed(color, ink);
 }
 
-.me-email {
+.card-role {
     font-size: 9pt;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
     @include t.themed(color, ink-muted);
 }
 
-.me-rule {
-    width: 100%;
-    border: none;
-    height: 1px;
-    margin: 20px 0 16px;
-    @include t.themed(background-color, rule-faint);
+// one line per field, clipped rather than wrapped, the full value sits in the title
+.card-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 18px 0 0;
+
+    div {
+        min-width: 0;
+    }
+
+    dt {
+        font-size: 9pt;
+        font-variant: small-caps;
+        text-transform: lowercase;
+        @include t.themed(color, ink-muted);
+    }
+
+    dd {
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        @include t.themed(color, ink);
+
+        a {
+            text-decoration: none;
+            @include t.themed(color, ink);
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    dd.card-lines {
+        display: flex;
+        flex-direction: column;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
 }
 
 .favourites {
@@ -191,8 +369,371 @@
     @include t.themed(color, ink);
 }
 
-.whats-new .note {
+.whats-new .note,
+.whats-new .error,
+.photos .note,
+.photos .error {
     margin-top: 12px;
+}
+
+// the pivot header from the hub: the current page in ink, the others faded beside it
+.panel-tabs {
+    display: flex;
+    gap: 18px;
+    min-width: 0;
+
+    a {
+        font-size: 18pt;
+        font-weight: 200;
+        text-transform: lowercase;
+        text-decoration: none;
+        white-space: nowrap;
+        @include t.themed(color, ink-faint);
+
+        &:hover {
+            @include t.themed(color, ink-muted);
+        }
+
+        &.on {
+            @include t.themed(color, ink-strong);
+        }
+    }
+}
+
+.album-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.album-tile {
+    position: relative;
+    display: block;
+    height: 124px;
+    min-width: 0;
+    overflow: hidden;
+    text-decoration: none;
+    @include t.themed(background-color, surface-sunken);
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+}
+
+.album-blank {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.album-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 3px 8px;
+    font-size: 9pt;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    @include t.themed(background-color, scrim);
+    @include t.themed(color, ink);
+}
+
+.album-head {
+    margin-top: 14px;
+}
+
+.album-info {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.album-back {
+    font-size: 9pt;
+    text-decoration: none;
+    white-space: nowrap;
+    @include t.themed(color, ink-muted);
+
+    &::before {
+        content: "\2190\00a0";
+    }
+
+    &:hover {
+        @include t.themed(color, ink-strong);
+    }
+}
+
+.album-title {
+    margin: 0;
+    font-size: 14pt;
+    font-weight: 200;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    @include t.themed(color, ink-strong);
+}
+
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.photo-tile {
+    position: relative;
+    display: block;
+    aspect-ratio: 1;
+    min-width: 0;
+    overflow: hidden;
+    @include t.themed(background-color, surface-sunken);
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+}
+
+.photo-badge {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 2px 6px;
+    font-size: 8pt;
+    text-transform: lowercase;
+    @include t.themed(background-color, scrim);
+    @include t.themed(color, ink);
+}
+
+.panel-action {
+    @include chromeless;
+    margin-left: auto;
+    font-size: 9pt;
+    @include t.themed(color, ink-muted);
+
+    &:hover:not(:disabled) {
+        @include t.themed(color, ink-strong);
+    }
+
+    &:disabled {
+        cursor: default;
+        @include t.themed(color, ink-faint);
+    }
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+}
+
+.activity-card {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px 0;
+    @include t.themed(border-bottom, rule-faint, "1px solid ");
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.activity-tile,
+.reply-tile {
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 200;
+    @include t.themed(background-color, surface-sunken);
+    @include t.themed(color, ink-faint);
+}
+
+.activity-tile {
+    width: 48px;
+    height: 48px;
+    font-size: 16pt;
+}
+
+.reply-tile {
+    width: 32px;
+    height: 32px;
+    font-size: 12pt;
+}
+
+.activity-body {
+    min-width: 0;
+}
+
+.activity-author {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+    font-size: 9pt;
+    @include t.themed(color, ink-muted);
+}
+
+.activity-name {
+    font-size: t.$font-size-base;
+    @include t.themed(color, ink-strong);
+}
+
+.activity-contact {
+    @include chromeless;
+    font-size: t.$font-size-base;
+    text-align: left;
+    @include t.themed(color, ink-strong);
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.activity-handle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.activity-time {
+    margin-left: auto;
+    white-space: nowrap;
+    text-decoration: none;
+    @include t.themed(color, ink-faint);
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.activity-text {
+    margin: 6px 0 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+    @include t.themed(color, ink);
+}
+
+.activity-photos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+
+    a {
+        display: block;
+        width: 120px;
+        height: 120px;
+        overflow: hidden;
+        @include t.themed(background-color, surface-sunken);
+    }
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+}
+
+.activity-toggle {
+    @include chromeless;
+    margin: 8px 0 0;
+    font-size: 9pt;
+    @include t.themed(color, ink-muted);
+
+    &::before {
+        content: "\25b8\00a0";
+    }
+
+    &.open::before {
+        content: "\25be\00a0";
+    }
+
+    &:hover {
+        @include t.themed(color, ink-strong);
+    }
+}
+
+.replies {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    padding-left: 12px;
+    @include t.themed(border-left, rule-faint, "2px solid ");
+
+    .note,
+    .error {
+        margin: 0;
+        font-size: 9pt;
+    }
+}
+
+.reply {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+
+    .activity-text {
+        margin-top: 2px;
+    }
+}
+
+.reply-box {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-top: 4px;
+
+    textarea {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 6px 8px;
+        resize: vertical;
+        font: inherit;
+        line-height: 1.4;
+        @include t.themed(color, ink);
+        @include t.themed(background-color, surface);
+        @include t.themed(border, rule, "1px solid ");
+
+        &:focus {
+            outline: none;
+            @include t.themed-raw(border-color, config.$accent, var(--accent-colour));
+        }
+    }
+
+    .error {
+        grid-column: 1 / -1;
+    }
+}
+
+.reply-box-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.reply-count {
+    font-size: 8pt;
+    font-variant-numeric: tabular-nums;
+    @include t.themed(color, ink-faint);
+
+    &.over {
+        @include t.themed(color, danger);
+    }
 }
 
 .contact-rail {
@@ -303,15 +844,11 @@
     height: 14px;
 }
 
-// clipped rather than spilling: twenty seven letters are taller than a short window can give the
-// rail, and in normal flow that overflow makes the whole page scroll. the track slides instead
 .contact-index {
     min-height: 0;
     overflow: hidden;
 }
 
-// the padding rides on the track, not the frame, so the measured height and the scrolled height
-// are the same box and the last letter lands flush
 .contact-index-track {
     display: flex;
     flex-direction: column;
@@ -357,6 +894,14 @@
     }
 
     .people-page .page-content {
+        order: 3;
+    }
+
+    .people-page.people-open .page-content {
+        order: 2;
+    }
+
+    .people-page.people-open .page-detail {
         order: 3;
     }
 

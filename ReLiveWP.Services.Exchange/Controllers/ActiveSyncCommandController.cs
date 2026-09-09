@@ -26,6 +26,8 @@ public abstract class ActiveSyncCommandController : ControllerBase
     protected async Task WriteWbxmlResponseAsync<T>(T response, ILogger? logger = null)
         where T : class
     {
+        ExchangeMetrics.RecordResponse(EasContext.Command, response);
+
         var serializer = new XmlSerializer(typeof(T));
 
         using var xmlWriter = new StringWriter();
@@ -52,6 +54,8 @@ public abstract class ActiveSyncCommandController : ControllerBase
     protected async Task WriteMultiPartResponseAsync<T>(T response, IReadOnlyList<byte[]> parts, ILogger? logger = null)
         where T : class
     {
+        ExchangeMetrics.RecordResponse(EasContext.Command, response);
+
         var serializer = new XmlSerializer(typeof(T));
 
         using var xmlWriter = new StringWriter();

@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Net;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
@@ -210,7 +211,22 @@ public class SkyboxDeviceService(
         var record = await registry.CreateAsync(device.DeviceGuid, ownerId, command.Action);
         command.RequestId = record.RequestId;
 
-        await deviceCommand.SendAsync(device.NotificationChannelUrl, command);
+        try
+        {
+            await deviceCommand.SendAsync(device.NotificationChannelUrl, command);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            logger.LogWarning("Push no longer knows the channel for {DeviceId}, it needs to re-register", deviceId);
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, "Device notification channel is no longer registered."));
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Push rejected {Action} for {DeviceId}", command.Action, deviceId);
+            throw new RpcException(new Status(StatusCode.Unavailable, "Push service unavailable."));
+        }
+
+        SkyboxMetrics.RecordCommandDispatched(command.Action);
 
         // TODO: other requests
         if (request.Command == DeviceCommandRequestType.CommandRing)
@@ -241,6 +257,7 @@ public class SkyboxDeviceService(
         if (record == null)
         {
             logger.LogWarning("Status for unknown command {DeviceId}/{RequestId}", deviceGuid, request.RequestId);
+            SkyboxMetrics.RecordStatusReport("unknown_command");
             return new ReportCommandStatusResponse() { Code = 1 };
         }
 
@@ -269,6 +286,7 @@ public class SkyboxDeviceService(
 
         await statusHub.PublishAsync(deviceGuid, evt);
         await registry.SetStateAsync(record, request.Final ? CommandState.Final : CommandState.Active);
+        SkyboxMetrics.RecordStatusReport("recorded");
 
         return new ReportCommandStatusResponse() { Code = 0 };
     }

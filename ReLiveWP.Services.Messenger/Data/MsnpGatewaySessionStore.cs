@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using ReLiveWP.Services.Messenger.Msnp;
 using StackExchange.Redis;
@@ -43,17 +44,29 @@ public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
     public Task DeleteAsync(string sessionId, CancellationToken ct = default) =>
         db.KeyDeleteAsync([SessionKey(sessionId), OutboxKey(sessionId)]);
 
+    // sessions mostly end by TTL rather than an explicit OUT, so live count has to be sampled
+    public static async Task<long> CountSessionsAsync(IConnectionMultiplexer redis, CancellationToken ct = default)
+    {
+        var server = redis.GetServer(redis.GetEndPoints()[0]);
+        long count = 0;
+        await foreach (var _ in server.KeysAsync(pattern: SessionKey("*")).WithCancellation(ct))
+            count++;
+        return count;
+    }
+
     private record OutboxEntry(string Verb, string TrId, string[] Arguments, string? Payload);
 
     public async Task EnqueueAsync(string sessionId, IEnumerable<MsnpCommand> commands, CancellationToken ct = default)
     {
-        var values = commands
+        var entries = commands.ToArray();
+        var values = entries
             .Select(c => (RedisValue)JsonSerializer.Serialize(new OutboxEntry(c.Verb, c.TrId, c.Arguments, c.Payload)))
             .ToArray();
         if (values.Length == 0)
             return;
 
-        await db.ListRightPushAsync(OutboxKey(sessionId), values);
+        var depth = await db.ListRightPushAsync(OutboxKey(sessionId), values);
+        MessengerMetrics.RecordOutboxEnqueue(entries, depth);
         await db.KeyExpireAsync(OutboxKey(sessionId), DefaultTtl);
 
         await subscriber.PublishAsync(NotifyChannel(sessionId), RedisValue.EmptyString);
@@ -84,36 +97,49 @@ public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
 
     public async Task<IReadOnlyList<MsnpCommand>> WaitAndDrainAsync(string sessionId, TimeSpan timeout, CancellationToken ct = default)
     {
+        var started = Stopwatch.GetTimestamp();
         var pending = await DrainAsync(sessionId, ct);
         if (pending.Count > 0 || timeout <= TimeSpan.Zero)
+        {
+            MessengerMetrics.RecordPollWait(started, "immediate");
             return pending;
+        }
 
         var channel = NotifyChannel(sessionId);
         var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         void Handler(RedisChannel _, RedisValue __) => signal.TrySetResult();
 
         await subscriber.SubscribeAsync(channel, Handler);
+        MessengerMetrics.PollsActive.Add(1);
+        var outcome = "aborted";
         try
         {
             pending = await DrainAsync(sessionId, ct);
             if (pending.Count > 0)
+            {
+                outcome = "immediate";
                 return pending;
+            }
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(timeout);
             try
             {
                 await signal.Task.WaitAsync(timeoutCts.Token);
+                outcome = "woken";
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 // Lifespan elapsed with nothing queued - a legitimate empty long-poll result.
+                outcome = "timed_out";
             }
 
             return await DrainAsync(sessionId, ct);
         }
         finally
         {
+            MessengerMetrics.PollsActive.Add(-1);
+            MessengerMetrics.RecordPollWait(started, outcome);
             await subscriber.UnsubscribeAsync(channel, Handler);
         }
     }

@@ -56,10 +56,12 @@ builder.Services.AddOptions<KeyManagementOptions>()
 
 builder.Services.AddAntiforgery(o =>
 {
-    o.Cookie.Name = "__Host-RPSXsrf";
 #if DEBUG
+    // browsers drop a __Host- cookie that isn't Secure, so plain http testing needs the bare name
+    o.Cookie.Name = "RPSXsrf";
     o.Cookie.SecurePolicy = CookieSecurePolicy.None;
 #else
+    o.Cookie.Name = "__Host-RPSXsrf";
     o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 #endif
     o.Cookie.SameSite = SameSiteMode.Lax;

@@ -32,10 +32,12 @@ public class AccountProfileChangedSubscriber(
             using var scope = scopeFactory.CreateScope();
             await scope.ServiceProvider.GetRequiredService<MeContactMirrorService>().MirrorAsync(evt);
             await scope.ServiceProvider.GetRequiredService<ContactLinkResolver>().ReconcileForOwnerAsync(evt);
+            MailboxMetrics.RecordAccountEvent("profile_changed", succeeded: true);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "failed mirroring from account.profile-changed");
+            MailboxMetrics.RecordAccountEvent("profile_changed", succeeded: false);
         }
     }
 }

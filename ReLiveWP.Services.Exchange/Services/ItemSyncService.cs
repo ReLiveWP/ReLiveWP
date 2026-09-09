@@ -108,6 +108,7 @@ public class ItemSyncService(
         }
         else if (state is not null && request.SyncKey == state.PreviousSyncKey && request.SyncKey != state.SyncKey)
         {
+            ExchangeMetrics.RecordSyncKeyMismatch(EasCommand.Sync, "rollback_replay");
             state = new SyncState
             {
                 UserId = userId,
@@ -127,6 +128,7 @@ public class ItemSyncService(
         }
         else if (state is null || state.SyncKey != request.SyncKey)
         {
+            ExchangeMetrics.RecordSyncKeyMismatch(EasCommand.Sync, "full_reset");
             if (state is not null)
             {
                 await mailbox.UpsertSyncStateAsync(new UpsertSyncStateRequest
@@ -152,10 +154,12 @@ public class ItemSyncService(
             (result, serverChangedIds) = await IncrementalSyncAsync(userId, collectionId, state, getChanges, hasClientCommands, annotationNames, bodyPrefs, windowSize, windowSizeSent, ct);
         }
 
+        var itemClass = ItemClassFor(folderType);
+        ExchangeMetrics.RecordServerItems(itemClass, result.Commands);
+
         if (request.Commands is { } cmds &&
             (cmds.Add.Count > 0 || cmds.Change.Count > 0 || cmds.Delete.Count > 0 || cmds.Fetch.Count > 0))
         {
-            var itemClass = ItemClassFor(folderType);
             var bodyPrefs = SelectBodyPreference(request.Options);
             var conflictPolicy = request.Options?.Conflict ?? SyncConflict.ServerWins;
             var responses = await ProcessClientCommandsAsync(userId, collectionId, itemClass, cmds, bodyPrefs, serverChangedIds, conflictPolicy, ghosting, ct);
@@ -313,6 +317,7 @@ public class ItemSyncService(
         foreach (var add in cmds.Add)
         {
             var (serverId, status) = await HandleAddAsync(userId, collectionId, itemClass, add.ClientId, add.ApplicationData, ct);
+            ExchangeMetrics.RecordClientCommand(itemClass, "add", status);
             responses.Add.Add(new SyncResponseAdd
             {
                 ClientId = add.ClientId ?? string.Empty,
@@ -324,6 +329,7 @@ public class ItemSyncService(
         foreach (var change in cmds.Change)
         {
             int status = await HandleChangeAsync(userId, itemClass, change, serverChangedIds, conflictPolicy, ghosting, ct);
+            ExchangeMetrics.RecordClientCommand(itemClass, "change", status);
             if (status != 1)
                 responses.Change.Add(new SyncResponseChange { ServerId = change.ServerId, Status = status });
         }
@@ -333,12 +339,17 @@ public class ItemSyncService(
             var result = await mailbox.DeleteItemAsync(
                 new DeleteItemRequest { UserId = userId, ServerId = delete.ServerId },
                 cancellationToken: ct);
+            ExchangeMetrics.RecordClientCommand(itemClass, "delete", result.Found ? 1 : 8);
             if (!result.Found)
                 responses.Delete.Add(new SyncResponseDelete { ServerId = delete.ServerId, Status = 8 });
         }
 
         foreach (var fetch in cmds.Fetch)
-            responses.Fetch.Add(await HandleFetchAsync(userId, fetch.ServerId, bodyPrefs, ct));
+        {
+            var response = await HandleFetchAsync(userId, fetch.ServerId, bodyPrefs, ct);
+            ExchangeMetrics.RecordClientCommand(itemClass, "fetch", response.Status);
+            responses.Fetch.Add(response);
+        }
 
         bool any = responses.Add.Count + responses.Change.Count + responses.Delete.Count + responses.Fetch.Count > 0;
         return any ? responses : null;
@@ -962,6 +973,7 @@ public class ItemSyncService(
         catch (Exception e)
         {
             logger.LogWarning(e, "dropping unserializable item {ServerId} from sync", item.ServerId);
+            ExchangeMetrics.RecordItemDropped(item.BodyCase.ToString(), "unserializable");
             return null;
         }
     }
@@ -981,9 +993,9 @@ public class ItemSyncService(
         };
 
         if (appData is not null && item.BodyCase == Item.BodyOneofCase.Contact
-            && item.Contact.Annotation is not null && requestedAnnotations is { Count: > 0 })
+            && requestedAnnotations is { Count: > 0 })
         {
-            var annotations = BuildAnnotations(item.Contact.Annotation, requestedAnnotations);
+            var annotations = BuildAnnotations(item.Contact.Annotation ?? new ContactAnnotation(), requestedAnnotations, item.Origin);
             if (annotations is not null)
                 InjectAnnotations(appData, annotations);
         }
@@ -1131,7 +1143,7 @@ public class ItemSyncService(
     private static string? FormatNetworkTime(Google.Protobuf.WellKnownTypes.Timestamp? ts) =>
         ts is null ? null : ts.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 
-    private static Annotations? BuildAnnotations(ContactAnnotation ann, IReadOnlySet<string> requested)
+    private static Annotations? BuildAnnotations(ContactAnnotation ann, IReadOnlySet<string> requested, ItemOrigin? origin = null)
     {
         var items = new List<Annotation>();
 
@@ -1140,6 +1152,10 @@ public class ItemSyncService(
             if (requested.Contains(name) && value is not null)
                 items.Add(new Annotation { Name = name, Value = value });
         }
+
+        // only the webmail asks for these, a phone never sees them
+        Add("OriginService", origin?.ServiceId);
+        Add("OriginCollection", origin is null || origin.CollectionId.Length == 0 ? null : origin.CollectionId);
 
         Add("WLID", ann.HasWlId ? ann.WlId : null);
         Add("IMMRI", ann.HasImMri ? ann.ImMri : null);

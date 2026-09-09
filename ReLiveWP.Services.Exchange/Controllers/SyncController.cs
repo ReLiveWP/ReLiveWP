@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using Grpc.Core;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
+using ReLiveWP.ServiceDefaults;
 using ReLiveWP.Services.Exchange.Attributes;
 using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Exchange.Services;
@@ -83,6 +86,16 @@ public class SyncController : ActiveSyncCommandController
         }
     }
 
+    private static Activity? StartSpan(string name, int? collections = null, string? itemClass = null)
+    {
+        var activity = ServiceTelemetry.ActivitySource.StartActivity(name);
+        if (collections is { } count)
+            activity?.SetTag("eas.collections", count);
+        if (!string.IsNullOrEmpty(itemClass))
+            activity?.SetTag("eas.item_class", itemClass);
+        return activity;
+    }
+
     // Unavailable/DeadlineExceeded/Aborted/ResourceExhausted are worth a client retry (Status 16);
     // anything else is a genuine server error (Status 5)
     private static bool IsTransient(RpcException e) =>
@@ -109,8 +122,12 @@ public class SyncController : ActiveSyncCommandController
             // replay is armed only while nothing has moved, so the cached keys are still the
             // client's current ones
             if (cached is not { Replayable: true, Collections.Count: > 0 })
+            {
+                ExchangeMetrics.RecordSyncRequestCache("replay", "unavailable");
                 return new Resolved(null, 13);
+            }
 
+            ExchangeMetrics.RecordSyncRequestCache("replay", "ok");
             var replay = new Sync { Wait = cached.Wait, HeartbeatInterval = cached.HeartbeatInterval };
             return new Resolved(
                 new Effective(replay, [.. cached.Collections.Select(SyncRequestCacheMapping.ToRequest)], FromCache: true), 0);
@@ -173,7 +190,11 @@ public class SyncController : ActiveSyncCommandController
             await _cache.DisarmAsync(userId, EasContext.DeviceId, ct);
 
         // stale folder tree (e.g. after a mailbox rebuild): tell the client to FolderSync and retry
-        if (await _itemSync.ResolveStaleHierarchyAsync(userId, EasContext.DeviceId, effective.Collections, ct))
+        bool stale;
+        using (StartSpan("eas.sync.resolve_hierarchy", effective.Collections.Count))
+            stale = await _itemSync.ResolveStaleHierarchyAsync(userId, EasContext.DeviceId, effective.Collections, ct);
+
+        if (stale)
         {
             await WriteWbxmlResponseAsync(new Sync { Status = 12 }, _logger);
             return;
@@ -181,7 +202,10 @@ public class SyncController : ActiveSyncCommandController
 
         var results = new List<SyncCollection>();
         foreach (var c in effective.Collections)
+        {
+            using var span = StartSpan("eas.sync.collection", itemClass: c.Class);
             results.Add(await _itemSync.SyncAsync(userId, EasContext.DeviceId, c, ct));
+        }
 
         var quiet = IsLogicallyEmpty(effective.Collections, results);
 
@@ -192,15 +216,23 @@ public class SyncController : ActiveSyncCommandController
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
 
+            if (HttpContext.Features.Get<IHttpMetricsTagsFeature>() is { } httpMetrics)
+                httpMetrics.MetricsDisabled = true;
+
             var deadline = DateTimeOffset.UtcNow.AddSeconds(heartbeatSeconds.Value);
-            var changed = await _monitor.WaitForChangesAsync(userId, EasContext.DeviceId, monitored, deadline, ct);
+            List<string> changed;
+            using (StartSpan("eas.sync.wait", monitored.Count))
+                changed = await _monitor.WaitForChangesAsync(userId, EasContext.DeviceId, monitored, deadline, EasCommand.Sync, ct);
 
             if (ct.IsCancellationRequested)
                 return; // client disconnected, no response to write
 
             results = [];
             foreach (var c in effective.Collections.Where(c => changed.Contains(c.CollectionId)))
+            {
+                using var span = StartSpan("eas.sync.resync", itemClass: c.Class);
                 results.Add(await _itemSync.SyncAsync(userId, EasContext.DeviceId, c, ct));
+            }
 
             quiet = IsLogicallyEmpty(effective.Collections, results);
         }

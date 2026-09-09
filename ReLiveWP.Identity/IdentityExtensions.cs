@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Globalization;
+using System.Security.Claims;
 using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -172,8 +173,18 @@ public static class IdentityExtensions
         }
     }
 
+    public const string LiveIDScheme = LiveIDAuthHandler.SchemeName;
+
     public static string? Id(this ClaimsPrincipal? identity)
         => identity?.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+
+    public static long? Cid(this ClaimsPrincipal? identity)
+    {
+        var value = identity?.Claims.FirstOrDefault(c => c.Type == "cid")?.Value;
+        return value is not null && long.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var cid)
+            ? cid
+            : null;
+    }
 
     /// <summary>
     /// Returns the user's Windows Live PUID (Passport Unique ID), which is the

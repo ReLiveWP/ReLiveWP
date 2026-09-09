@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Activity.Models;
 using ReLiveWP.Services.Activity.Models.Atom;
+using ReLiveWP.Services.Activity.Providers;
 using ReLiveWP.Services.Activity.Services;
+using ReLiveWP.Services.Activity.Utilities;
 using ReLiveWP.Services.Grpc;
 using Link = Atom.Xml.Link;
 
@@ -31,7 +33,7 @@ public class Identifier
 public class ActivitiesController(
     ILogger<ActivitiesController> logger,
     User.UserClient userClient,
-    FeedRenderer feeds,
+    FeedRendererService feeds,
     ActivityProviderService activityProvider) : Controller
 {
     [HttpPost]
@@ -145,8 +147,8 @@ public class ActivitiesController(
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
-        var providerId = id[..id.IndexOf(':')];
-        var stringId = id[(id.IndexOf(':') + 1)..];
+        if (!ActivityIds.TrySplit(id, out var providerId, out var stringId))
+            return BadRequest();
 
         var activityInfo = new { id };
         var feed = new LiveCommentsFeed()
@@ -198,8 +200,8 @@ public class ActivitiesController(
 
         Response.Headers.Append("X-QueriedServices", "WL");
 
-        var providerId = id[..id.IndexOf(':')];
-        var stringId = id[(id.IndexOf(':') + 1)..];
+        if (!ActivityIds.TrySplit(id, out var providerId, out var stringId))
+            return BadRequest();
 
         var activityProviderInstance = await activityProvider.GetOwnedProviderAsync();
         if (activityProviderInstance == null)

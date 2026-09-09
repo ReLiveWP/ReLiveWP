@@ -33,10 +33,12 @@ public class DeviceStatusMiddleware(RequestDelegate next, ILogger<DeviceStatusMi
                 request.ClientVersion = clientVersion;
 
             await findMyPhone.ReportDeviceStatusAsync(request, deadline: DateTime.UtcNow.AddSeconds(5));
+            FindMyPhoneMetrics.RecordAmbientStatusUpdate(succeeded: true);
         }
         catch (Exception ex)
         {
             logger.LogDebug(ex, "ambient device-status update failed for {DeviceId}", deviceId);
+            FindMyPhoneMetrics.RecordAmbientStatusUpdate(succeeded: false);
         }
     }
 }

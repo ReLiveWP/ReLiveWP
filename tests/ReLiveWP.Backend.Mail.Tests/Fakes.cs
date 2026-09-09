@@ -63,6 +63,8 @@ internal sealed class FakeMailQueue : IMailQueue
         Task.FromResult<IReadOnlyList<QueuedMail>>([]);
 
     public Task CompleteAsync(QueuedMail item, CancellationToken ct) => Task.CompletedTask;
+
+    public Task DeadLetterAsync(QueuedMail item, string reason, CancellationToken ct) => Task.CompletedTask;
 }
 
 internal sealed class FakeSentItemsWriter : ISentItemsWriter

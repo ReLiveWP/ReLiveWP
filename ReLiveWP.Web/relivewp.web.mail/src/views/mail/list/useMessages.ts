@@ -3,6 +3,7 @@ import type { Message, MessageKey } from "@relivewp/eas-store";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 
 import { useFolderChanges } from "~/hooks/useFolderChanges";
+import { reason } from "~/util/reason";
 
 const PAGE_SIZE = 50;
 
@@ -17,10 +18,6 @@ type State = {
 export type Messages = State & { loadMore: () => void };
 
 const EMPTY: State = { messages: [], next: null, exhausted: false, loading: false, error: null };
-
-function reason(thrown: unknown): string {
-    return thrown instanceof Error ? thrown.message : String(thrown);
-}
 
 export function useMessages(client: EasClient | null, folderId: string | null): Messages {
     const [state, setState] = useState<State>(EMPTY);

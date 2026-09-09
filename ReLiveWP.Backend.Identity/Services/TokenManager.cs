@@ -123,7 +123,7 @@ public class TokenManager(
 
         var token = await dbContext.LiveRefreshTokens.AsNoTracking().FirstOrDefaultAsync(t => t.TokenHash == hash);
         if (token == null || token.ExpiresAt <= now)
-            return null;
+            return Denied("expired_or_missing");
 
         // rotation revokes on redeem, so a revoked token coming back means it was captured and
         // replayed. we can't tell the thief from the victim, so drop the whole family.
@@ -131,13 +131,13 @@ public class TokenManager(
         {
             logger.LogWarning("Refresh token {Id} replayed after rotation, revoking family for user {User}", token.Id, token.UserId);
             await RevokeRefreshTokenFamilyAsync(token, now);
-            return null;
+            return Denied("replay_detected");
         }
 
         // the session is what actually authorised this chain, so a revoked or lapsed one stops
         // rotation even though the token row still looks fine
         if (token.SsoSessionId is { } session && !await IsSessionLiveAsync(session, now))
-            return null;
+            return Denied("session_not_live");
 
         var affected = await dbContext.LiveRefreshTokens
             .Where(t => t.Id == token.Id && t.RevokedAt == null)
@@ -145,13 +145,20 @@ public class TokenManager(
                 .SetProperty(t => t.RevokedAt, now)
                 .SetProperty(t => t.LastUsedAt, now));
         if (affected == 0)
-            return null;
+            return Denied("race_lost");
 
         var user = await userManager.FindByIdAsync(token.UserId.ToString());
         if (user == null)
-            return null;
+            return Denied("user_not_found");
 
+        IdentityMetrics.RecordRefreshTokenRedemption("redeemed");
         return new RefreshTokenRedemption(user, token.ServiceTarget, token.SsoSessionId);
+
+        static RefreshTokenRedemption? Denied(string outcome)
+        {
+            IdentityMetrics.RecordRefreshTokenRedemption(outcome);
+            return null;
+        }
     }
 
     private async Task<bool> IsSessionLiveAsync(Guid sessionId, DateTimeOffset now)
@@ -226,13 +233,13 @@ public class TokenManager(
             {
                 user = await userManager.FindByNameAsync(request.Username);
                 if (user == null)
-                    return null;
+                    return Denied("password", "user_not_found");
             }
 
             if (!await userManager.CheckPasswordAsync(user, request.Password))
-                return null;
+                return Denied("password", "bad_password");
 
-            return new AuthenticatedUser(user, null);
+            return Authenticated("password", user, null);
         }
 
         if (!string.IsNullOrWhiteSpace(request.DeviceAuthToken))
@@ -241,12 +248,14 @@ public class TokenManager(
             {
                 var payload = UnsealDeviceAuthToken(request.DeviceAuthToken);
                 var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Puid == payload.Puid);
-                return user is null ? null : new AuthenticatedUser(user, payload.SessionKey);
+                return user is null
+                    ? Denied("da_token", "user_not_found")
+                    : Authenticated("da_token", user, payload.SessionKey);
             }
             catch (DaTokenException ex)
             {
                 logger.LogWarning(ex, "Presented DA token could not be unsealed");
-                return null;
+                return Denied("da_token", "token_invalid");
             }
         }
 
@@ -255,20 +264,30 @@ public class TokenManager(
             TokenValidationResult result = await ValidateJwtAsync(request.AuthToken, ["http://Passport.NET/tb"]);
 
             if (!result.IsValid)
-            {
-                return null;
-            }
+                return Denied("jwt", "token_invalid");
 
             if (!result.Claims.TryGetValue(ClaimTypes.NameIdentifier, out var userId))
-            {
-                return null;
-            }
+                return Denied("jwt", "token_invalid");
 
             var user = await userManager.FindByIdAsync(userId.ToString()!);
-            return user is null ? null : new AuthenticatedUser(user, null);
+            return user is null
+                ? Denied("jwt", "user_not_found")
+                : Authenticated("jwt", user, null);
         }
 
-        return null;
+        return Denied("none", "no_credential");
+
+        static AuthenticatedUser? Denied(string method, string outcome)
+        {
+            IdentityMetrics.RecordAuthAttempt(method, outcome);
+            return null;
+        }
+
+        static AuthenticatedUser Authenticated(string method, LiveUser user, byte[]? sessionKey)
+        {
+            IdentityMetrics.RecordAuthAttempt(method, "ok");
+            return new AuthenticatedUser(user, sessionKey);
+        }
     }
 
     public async Task<TokenValidationResult> ValidateJwtAsync(string token, string[] audiences)

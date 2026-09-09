@@ -1,4 +1,5 @@
 @inject Microsoft.Extensions.Options.IOptions<SupportOptions> SupportOptionsAccessor
+@inject IConfiguration Configuration
 @{
     var origin = SupportOptionsAccessor.Value.BaseUrl is { Length: > 0 } configured
         ? configured.TrimEnd('/')
@@ -7,6 +8,14 @@
     var canonical = origin + (ViewData["Canonical"] as string ?? Context.Request.Path.Value);
     var pageTitle = ViewData["Title"] as string;
     var description = ViewData["Description"] as string;
+
+    var portal = (Configuration["PublicUrls:Portal"] ?? "https://relivewp.net").TrimEnd('/');
+    var path = Context.Request.Path.Value ?? "/";
+
+    string NavClass(string href, bool exact = false) =>
+        (exact ? path == href : path == href || path.StartsWith($"{href}/"))
+            ? "active text-accent"
+            : "";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -54,8 +63,9 @@
                 </form>
             </div>
             <a class="home-link" href="/">
-                <img class="brand-logo" src="~/logo.svg" alt="" width="36" height="36" />
+                <partial name="_BrandLogo" />
                 <div class="header-container">
+                    @* a div, not the h1 SiteHeader uses: the article title is this page's h1 *@
                     <div class="header-title">ReLive</div>
                     <p class="header-subtitle text-accent">for Windows Phone</p>
                 </div>
@@ -63,8 +73,11 @@
         </div>
         <nav class="header-nav">
             <ul class="header-items leading">
-                <li><a href="/kb">all articles</a></li>
-                <li> <a href="https://relivewp.net/">home</a></li>
+                <li><a class="@NavClass("/", exact: true)" href="/">support</a></li>
+                <li><a class="@NavClass("/kb")" href="/kb">all articles</a></li>
+            </ul>
+            <ul class="header-items trailing">
+                <li><a href="@portal/">home</a></li>
             </ul>
         </nav>
         <hr class="header-splitter" />
@@ -78,7 +91,7 @@
         <div class="site-footer">
             <p>
                 <a href="/kb">all articles</a> &bull;
-                <a href="https://relivewp.net/">relivewp.net</a>
+                <a href="@portal/">relivewp.net</a>
             </p>
             <p>relive for windows phone &bull; windows phone is a trademark of Microsoft Corp.</p>
         </div>

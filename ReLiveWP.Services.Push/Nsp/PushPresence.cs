@@ -6,6 +6,11 @@ public class PushPresence
 {
     private readonly ConcurrentDictionary<string, NspSession> sessions = new();
 
+    public PushPresence()
+    {
+        PushMetrics.ObserveActiveConnections(() => sessions.Count);
+    }
+
     public void Add(string deviceId, NspSession session) => sessions[deviceId] = session;
 
     public void Remove(string deviceId, NspSession session)

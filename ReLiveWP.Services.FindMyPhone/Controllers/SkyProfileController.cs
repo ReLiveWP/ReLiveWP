@@ -37,6 +37,7 @@ public class SkyProfileController(FindMyPhoneClient findMyPhone) : ControllerBas
         request.DeviceProps.Add(dict);
 
         var response = await findMyPhone.RegisterDeviceAsync(request);
+        FindMyPhoneMetrics.RecordDeviceResponse("RegisterDevice", response.Code);
         return new RegisterDeviceResponseModel()
         {
             ResponseCode = response.Code,
@@ -49,7 +50,12 @@ public class SkyProfileController(FindMyPhoneClient findMyPhone) : ControllerBas
     public async Task<UpdateDeviceInfoResponseModel> RegisterDeviceAsync([FromBody] UpdateDeviceInfoRequestModel model)
     {
         var userId = User.Id();
-        var deviceGuid = Request.Headers["X-WM-DeviceId"][0];
+        var deviceGuid = Request.Headers["X-WM-DeviceId"].FirstOrDefault();
+        if (string.IsNullOrEmpty(deviceGuid))
+        {
+            FindMyPhoneMetrics.RecordDeviceResponse("UpdateDeviceInfo", 1);
+            return new UpdateDeviceInfoResponseModel() { ResponseCode = 1, ResponseMessage = "Missing X-WM-DeviceId header" };
+        }
 
         var dict = new Dictionary<string, string>();
         foreach (var item in model.Properties)
@@ -64,6 +70,7 @@ public class SkyProfileController(FindMyPhoneClient findMyPhone) : ControllerBas
         request.DeviceProps.Add(dict);
 
         var response = await findMyPhone.UpdateDeviceInfoAsync(request);
+        FindMyPhoneMetrics.RecordDeviceResponse("UpdateDeviceInfo", response.Code);
         return new UpdateDeviceInfoResponseModel()
         {
             ResponseCode = response.Code,

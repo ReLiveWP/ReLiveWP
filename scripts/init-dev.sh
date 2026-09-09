@@ -42,6 +42,13 @@ if [ ! -f "$SECRETS_DIR/connection_secret_key" ]; then
     echo "  Written: deploy/secrets/connection_secret_key"
 fi
 
+# -- Media ticket secret --------------------------------------------------------
+# HMAC key behind the signed photo urls the web client loads media through. Only Activity holds it.
+if [ ! -f "$SECRETS_DIR/media_ticket_secret" ]; then
+    openssl rand -base64 32 | tr -d '\n' > "$SECRETS_DIR/media_ticket_secret"
+    echo "  Written: deploy/secrets/media_ticket_secret"
+fi
+
 # -- Passport STS key ----------------------------------------------------------
 # 3DES key sealing the DA token Identity hands back to wlidsvc. Must be 24 bytes, Identity
 # throws on startup without it.

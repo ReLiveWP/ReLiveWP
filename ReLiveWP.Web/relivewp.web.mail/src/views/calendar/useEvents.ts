@@ -1,7 +1,8 @@
 import type { EasClient } from "@relivewp/eas-sync/host";
 import type { Event } from "@relivewp/eas-store";
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useMemo } from "preact/hooks";
 
+import { useAsync } from "~/hooks/useAsync";
 import { useFolderChanges } from "~/hooks/useFolderChanges";
 
 const LIMIT = 5000;
@@ -12,11 +13,7 @@ export type Events = {
     error: string | null,
 };
 
-const EMPTY: Events = { events: [], loading: false, error: null };
-
-function reason(thrown: unknown): string {
-    return thrown instanceof Error ? thrown.message : String(thrown);
-}
+const NONE: Event[] = [];
 
 function localMidnight(at: number): number {
     const date = new Date(at);
@@ -31,36 +28,20 @@ function floating(event: Event): Event {
 }
 
 export function useEvents(client: EasClient | null, folderIds: string[]): Events {
-    const [state, setState] = useState<Events>(EMPTY);
-    const generation = useRef(0);
-
     const key = folderIds.join("\uffff");
     const ids = useMemo(() => (key === "" ? [] : key.split("\uffff")), [key]);
 
-    const load = useCallback(() => {
-        generation.current += 1;
-        const mine = generation.current;
+    const { value, loading, error, reload } = useAsync(
+        client === null || ids.length === 0
+            ? null
+            : async () => {
+                const pages = await Promise.all(ids.map((folderId) => client.listEvents({ folderId, limit: LIMIT })));
+                return pages.flat().map(floating);
+            },
+        [client, ids],
+        { keep: true });
 
-        if (client === null || ids.length === 0) {
-            setState(EMPTY);
-            return;
-        }
+    useFolderChanges(client, ids, reload);
 
-        setState((prev) => ({ ...prev, loading: true, error: null }));
-
-        Promise.all(ids.map((folderId) => client.listEvents({ folderId, limit: LIMIT }))).then((pages) => {
-            if (mine !== generation.current) return;
-
-            setState({ events: pages.flat().map(floating), loading: false, error: null });
-        }).catch((thrown: unknown) => {
-            if (mine !== generation.current) return;
-
-            setState({ events: [], loading: false, error: reason(thrown) });
-        });
-    }, [client, ids]);
-
-    useEffect(load, [load]);
-    useFolderChanges(client, ids, load);
-
-    return state;
+    return { events: error === null ? value ?? NONE : NONE, loading, error };
 }

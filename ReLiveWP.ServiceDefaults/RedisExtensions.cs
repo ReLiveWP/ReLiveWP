@@ -13,6 +13,13 @@ public static class RedisExtensions
 
         services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(options));
         services.AddStackExchangeRedisCache(o => o.ConfigurationOptions = options);
+
+        services.AddReadinessCheck("redis", async (sp, _) =>
+        {
+            await sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase().PingAsync();
+            return true;
+        });
+
         return services;
     }
 }

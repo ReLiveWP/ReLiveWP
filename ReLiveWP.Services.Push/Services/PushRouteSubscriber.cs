@@ -30,11 +30,13 @@ public class PushRouteSubscriber(
             var msg = JsonSerializer.Deserialize<RoutedNotification>((byte[])value);
 
             // device on this instance right now? straight down the socket
+            var notificationClass = (NspNotificationClass)msg.Class;
             if (presence.TryGet(msg.DeviceId, out var session)
-                && session.TrySend(msg.ChannelId, (NspNotificationClass)msg.Class, msg.Payload))
+                && session.TrySend(msg.ChannelId, notificationClass, msg.Payload))
             {
                 logger.LogInformation("routed {Class} to {DeviceId} channel {Id}",
-                    (NspNotificationClass)msg.Class, msg.DeviceId, msg.ChannelId);
+                    notificationClass, msg.DeviceId, msg.ChannelId);
+                PushMetrics.RecordDelivery("delivered_routed", notificationClass);
                 return;
             }
 
@@ -43,6 +45,7 @@ public class PushRouteSubscriber(
             var queue = scope.ServiceProvider.GetRequiredService<NotificationQueue>();
             await queue.EnqueueAsync(msg.DeviceId, msg.ChannelId, msg.Payload, msg.Class);
             logger.LogInformation("routed miss, queued for {DeviceId} channel {Id}", msg.DeviceId, msg.ChannelId);
+            PushMetrics.RecordDelivery("routed_miss", notificationClass);
         }
         catch (Exception ex)
         {

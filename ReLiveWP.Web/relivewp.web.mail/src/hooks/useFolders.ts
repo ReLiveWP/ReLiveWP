@@ -1,6 +1,8 @@
 import type { EasClient } from "@relivewp/eas-sync/host";
 import type { Folder } from "@relivewp/eas-store";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect } from "preact/hooks";
+
+import { useAsync } from "~/hooks/useAsync";
 
 export type Folders = {
     folders: Folder[],
@@ -8,44 +10,21 @@ export type Folders = {
     error: string | null,
 };
 
+const NONE: Folder[] = [];
+
 export function useFolders(client: EasClient | null): Folders {
-    const [folders, setFolders] = useState<Folder[]>([]);
-    const [loaded, setLoaded] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { value, error, reload } = useAsync(
+        client === null ? null : () => client.folders(),
+        [client],
+        { keep: true });
 
     useEffect(() => {
-        if (client === null) {
-            setFolders([]);
-            setLoaded(false);
-            return;
-        }
+        if (client === null) return;
 
-        let live = true;
-
-        const load = () => {
-            client.folders().then((all) => {
-                if (!live) return;
-
-                setFolders(all);
-                setLoaded(true);
-                setError(null);
-            }).catch((thrown: unknown) => {
-                if (!live) return;
-
-                setError(thrown instanceof Error ? thrown.message : String(thrown));
-            });
-        };
-
-        load();
-        const unsubscribe = client.on((event) => {
-            if (event.kind === "folders") load();
+        return client.on((event) => {
+            if (event.kind === "folders") reload();
         });
+    }, [client, reload]);
 
-        return () => {
-            live = false;
-            unsubscribe();
-        };
-    }, [client]);
-
-    return { folders, loaded, error };
+    return { folders: value ?? NONE, loaded: value !== undefined, error };
 }

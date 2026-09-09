@@ -57,6 +57,7 @@ public class FolderSyncService(
         {
             logger.LogWarning("FolderSync invalid SyncKey for {User}/{Device}: client={Client} server={Server}",
                 userId, deviceId, clientSyncKey, state?.SyncKey ?? "<none>");
+            ExchangeMetrics.RecordSyncKeyMismatch(EasCommand.FolderSync, "full_reset");
 
             if (state is not null)
             {
@@ -93,6 +94,7 @@ public class FolderSyncService(
         {
             logger.LogWarning("FolderCreate invalid SyncKey for {User}/{Device}: client={Client} server={Server}",
                 userId, deviceId, request.SyncKey, state?.SyncKey ?? "<none>");
+            ExchangeMetrics.RecordSyncKeyMismatch(EasCommand.FolderCreate, "rejected");
             return new FolderCreateResponse { Status = StatusInvalidSyncKey };
         }
 
@@ -142,6 +144,7 @@ public class FolderSyncService(
         {
             logger.LogWarning("FolderUpdate invalid SyncKey for {User}/{Device}: client={Client} server={Server}",
                 userId, deviceId, request.SyncKey, state?.SyncKey ?? "<none>");
+            ExchangeMetrics.RecordSyncKeyMismatch(EasCommand.FolderUpdate, "rejected");
             return new FolderUpdateResponse { Status = StatusInvalidSyncKey };
         }
 
@@ -210,6 +213,7 @@ public class FolderSyncService(
         {
             logger.LogWarning("FolderDelete invalid SyncKey for {User}/{Device}: client={Client} server={Server}",
                 userId, deviceId, request.SyncKey, state?.SyncKey ?? "<none>");
+            ExchangeMetrics.RecordSyncKeyMismatch(EasCommand.FolderDelete, "rejected");
             return new FolderDeleteResponse { Status = StatusInvalidSyncKey };
         }
 

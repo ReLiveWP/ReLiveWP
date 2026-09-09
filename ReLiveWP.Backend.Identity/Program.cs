@@ -15,6 +15,7 @@ builder.AddServiceEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<LiveDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddReadinessCheck("postgres", (sp, ct) => sp.GetRequiredService<LiveDbContext>().Database.CanConnectAsync(ct));
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 {

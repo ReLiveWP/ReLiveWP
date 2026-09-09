@@ -32,10 +32,12 @@ public class AccountDeletedSubscriber(
             using var scope = scopeFactory.CreateScope();
             var deletion = scope.ServiceProvider.GetRequiredService<MailboxDeletionService>();
             await deletion.DeleteAsync(evt.UserId);
+            MailboxMetrics.RecordAccountEvent("deleted", succeeded: true);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "failed deleting mailbox from account.deleted");
+            MailboxMetrics.RecordAccountEvent("deleted", succeeded: false);
         }
     }
 }

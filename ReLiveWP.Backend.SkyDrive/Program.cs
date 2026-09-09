@@ -36,6 +36,8 @@ builder.Services.AddSingleton<WebDavUploadStore>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<SkyDriveDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddReadinessCheck("postgres", 
+    (sp, ct) => sp.GetRequiredService<SkyDriveDbContext>().Database.CanConnectAsync(ct));
 
 var app = builder.Build();
 

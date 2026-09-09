@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Grpc.Core;
+using ReLiveWP.Services.Exchange.Models;
 using ReLiveWP.Services.Grpc.Mailbox;
 
 namespace ReLiveWP.Services.Exchange.Services;
@@ -53,23 +55,41 @@ public class PushMonitor(
                                                         string deviceId,
                                                         IReadOnlySet<string> collectionIds,
                                                         DateTimeOffset deadline,
+                                                        EasCommand command,
                                                         CancellationToken requestAborted)
     {
-        var changed = await GetChangedCollectionsAsync(userId, deviceId, collectionIds, requestAborted);
-
-        while (changed.Count == 0 && DateTimeOffset.UtcNow < deadline && !requestAborted.IsCancellationRequested)
+        var started = Stopwatch.GetTimestamp();
+        var outcome = "error";
+        var commandTag = ExchangeMetrics.CommandTag(command);
+        ExchangeMetrics.LongPollActive.Add(1, commandTag);
+        try
         {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(requestAborted);
-            cts.CancelAfter(deadline - DateTimeOffset.UtcNow);
+            var changed = await GetChangedCollectionsAsync(userId, deviceId, collectionIds, requestAborted);
 
-            await notifier.WaitForChangeAsync(userId, collectionIds, cts.Token);
+            while (changed.Count == 0 && DateTimeOffset.UtcNow < deadline && !requestAborted.IsCancellationRequested)
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(requestAborted);
+                cts.CancelAfter(deadline - DateTimeOffset.UtcNow);
 
-            if (requestAborted.IsCancellationRequested)
-                break;
+                await notifier.WaitForChangeAsync(userId, collectionIds, cts.Token);
 
-            changed = await GetChangedCollectionsAsync(userId, deviceId, collectionIds, requestAborted);
+                if (requestAborted.IsCancellationRequested)
+                    break;
+
+                changed = await GetChangedCollectionsAsync(userId, deviceId, collectionIds, requestAborted);
+            }
+
+            outcome = changed.Count > 0 ? "changed" : "timeout";
+            return changed;
         }
+        finally
+        {
+            if (requestAborted.IsCancellationRequested)
+                outcome = "aborted";
 
-        return changed;
+            ExchangeMetrics.LongPollActive.Add(-1, commandTag);
+            ExchangeMetrics.LongPollDuration.Record(Stopwatch.GetElapsedTime(started).TotalSeconds,
+                commandTag, new KeyValuePair<string, object?>("outcome", outcome));
+        }
     }
 }

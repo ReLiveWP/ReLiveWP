@@ -55,6 +55,21 @@ export function mailPath(slug: string, messageId?: string | null | undefined): s
         : `${folder}/${encodeURIComponent(messageId)}`;
 }
 
+export function peoplePath(contactId?: string | null | undefined): string {
+    return contactId === null || contactId === undefined
+        ? "/people"
+        : `/people/${encodeURIComponent(contactId)}`;
+}
+
+// "albums" is reserved as a first segment, contact ids are eas item ids so nothing collides
+export function peopleAlbumsPath(contactId: string | null, albumId?: string | null): string {
+    const albums = `${peoplePath(contactId)}/albums`;
+
+    return albumId === null || albumId === undefined
+        ? albums
+        : `${albums}/${encodeURIComponent(albumId)}`;
+}
+
 export function calendarPath(mode: Mode, anchor: number): string {
     return `/calendar/${mode}/${formatDate(anchor)}`;
 }

@@ -1,4 +1,6 @@
 using System.Reflection;
+using Grpc.AspNetCore.Server;
+using Grpc.Net.ClientFactory;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
@@ -11,6 +13,8 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Resources;
+using ReLiveWP.ServiceDefaults;
+using ClientInterceptorRegistration = Grpc.Net.ClientFactory.InterceptorRegistration;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -23,25 +27,29 @@ public static class ServiceDefaultsExtensions
     public static IHostApplicationBuilder AddServiceEndpoints(this IHostApplicationBuilder builder)
     {
         ApplyEndpointSources(builder.Configuration);
-
         builder.ConfigureOpenTelemetry();
-
         builder.AddDefaultHealthChecks();
-
-        builder.Services.ConfigureHttpClientDefaults(http =>
-        {
-            http.AddStandardResilienceHandler();
-        });
-
-        builder.Services.Configure<ReLiveWP.ServiceDefaults.SupportOptions>(
-            builder.Configuration.GetSection(ReLiveWP.ServiceDefaults.SupportOptions.SectionName));
-        builder.Services.AddSingleton<ReLiveWP.ServiceDefaults.SupportLinks>();
-
+        AddServiceDefaults(builder.Services, builder.Configuration);
         return builder;
     }
 
+    // classic Startup hosts register their health checks by hand, everything else matches the overload above
     public static IHostBuilder AddServiceEndpoints(this IHostBuilder builder) =>
-        builder.ConfigureAppConfiguration((_, config) => ApplyEndpointSources(config));
+        builder.ConfigureAppConfiguration((_, config) => ApplyEndpointSources(config))
+            .ConfigureLogging(AddOpenTelemetryLogging)
+            .ConfigureServices((context, services) =>
+            {
+                AddOpenTelemetry(services, context.Configuration);
+                AddServiceDefaults(services, context.Configuration);
+            });
+
+    private static void AddServiceDefaults(IServiceCollection services, IConfiguration configuration)
+    {
+        services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
+
+        services.Configure<SupportOptions>(configuration.GetSection(SupportOptions.SectionName));
+        services.AddSingleton<SupportLinks>();
+    }
 
     private static void ApplyEndpointSources(IConfigurationBuilder config)
     {
@@ -68,29 +76,39 @@ public static class ServiceDefaultsExtensions
     private const string AlivenessEndpointPath = "/alive";
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        var serviceName = Assembly.GetEntryAssembly()!.GetName().Name!.ToLowerInvariant();
+        AddOpenTelemetryLogging(builder.Logging);
+        AddOpenTelemetry(builder.Services, builder.Configuration);
+        return builder;
+    }
 
+    private static void AddOpenTelemetryLogging(ILoggingBuilder logging)
+    {
         var resourceBuilder = ResourceBuilder.CreateDefault()
-            .AddService(serviceName: serviceName, serviceVersion: "1.0.0");
+            .AddService(ServiceTelemetry.ServiceName, serviceVersion: ServiceTelemetry.ServiceVersion);
 
-        builder.Logging.AddOpenTelemetry(logging =>
+        logging.AddOpenTelemetry(options =>
         {
-            logging.SetResourceBuilder(resourceBuilder);
-            logging.IncludeFormattedMessage = true;
-            logging.IncludeScopes = true;
+            options.SetResourceBuilder(resourceBuilder);
+            options.IncludeFormattedMessage = true;
+            options.IncludeScopes = true;
         });
+    }
 
-        builder.Services.AddOpenTelemetry()
-            .ConfigureResource(r => r.AddService(serviceName))
+    private static void AddOpenTelemetry(IServiceCollection services, IConfiguration configuration)
+    {
+        var telemetry = services.AddOpenTelemetry()
+            .ConfigureResource(r => r.AddService(ServiceTelemetry.ServiceName, serviceVersion: ServiceTelemetry.ServiceVersion))
             .WithMetrics(metrics =>
             {
-                metrics.AddAspNetCoreInstrumentation()
+                metrics.AddMeter(ServiceTelemetry.ServiceName)
+                    .AddMeter("Npgsql")
+                    .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(serviceName)
+                tracing.AddSource(ServiceTelemetry.ServiceName)
                     .AddAspNetCoreInstrumentation(tracing =>
                         tracing.Filter = context =>
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
@@ -100,22 +118,13 @@ public static class ServiceDefaultsExtensions
                     .AddHttpClientInstrumentation();
             });
 
-        builder.AddOpenTelemetryExporters();
+        if (!string.IsNullOrWhiteSpace(configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+            telemetry.UseOtlpExporter();
 
-        return builder;
-    }
-
-    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
-    {
-        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
-
-        if (useOtlpExporter)
-        {
-            builder.Services.AddOpenTelemetry()
-                .UseOtlpExporter();
-        }
-
-        return builder;
+        services.AddSingleton<GrpcTelemetryInterceptor>();
+        services.Configure<GrpcServiceOptions>(o => o.Interceptors.Add<GrpcTelemetryInterceptor>());
+        services.ConfigureAll<GrpcClientFactoryOptions>(o => o.InterceptorRegistrations.Add(
+            new ClientInterceptorRegistration(InterceptorScope.Channel, sp => sp.GetRequiredService<GrpcTelemetryInterceptor>())));
     }
 
     public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
@@ -124,8 +133,6 @@ public static class ServiceDefaultsExtensions
         return builder;
     }
 
-    // overload for classic Startup-based hosts, which only get the config-source
-    // wiring from the IHostBuilder AddServiceEndpoints and register checks by hand.
     public static IServiceCollection AddDefaultHealthChecks(this IServiceCollection services)
     {
         services.AddHealthChecks()

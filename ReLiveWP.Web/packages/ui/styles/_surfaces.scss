@@ -28,17 +28,18 @@
         margin: 0;
         padding-left: 20px;
     }
+
+    .panel-title {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        @include t.themed(color, ink-secondary);
+        border: none;
+        margin: 0 0 6px 0;
+        padding: 0;
+    }
 }
 
-.panel-title {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    @include t.themed(color, ink-secondary);
-    border: none;
-    margin: 0 0 6px 0;
-    padding: 0;
-}
 
 .property-list {
     @include t.themed(color, ink-muted);

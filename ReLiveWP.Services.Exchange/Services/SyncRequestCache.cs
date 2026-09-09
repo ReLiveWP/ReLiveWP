@@ -67,39 +67,47 @@ public sealed class RedisSyncRequestCache(
         try
         {
             var values = await redis.GetDatabase().HashGetAsync(Key(userId, deviceId), [SkeletonField, ArmedField]);
-            if (values[0].IsNullOrEmpty) return null;
+            if (values[0].IsNullOrEmpty)
+            {
+                ExchangeMetrics.RecordSyncRequestCache("get", "miss");
+                return null;
+            }
 
             var skeleton = JsonSerializer.Deserialize<CachedSyncRequest>((byte[])values[0]!);
+            ExchangeMetrics.RecordSyncRequestCache("get", skeleton is null ? "discarded" : "hit");
             return skeleton is null ? null : skeleton with { Replayable = values[1] == "1" };
         }
         catch (Exception e) when (e is JsonException or RedisException)
         {
             logger.LogWarning(e, "discarding cached Sync request for {Device}", deviceId);
+            ExchangeMetrics.RecordSyncRequestCache("get", "discarded");
             return null;
         }
     }
 
     public Task StoreAsync(string userId, string deviceId, CachedSyncRequest request, CancellationToken ct = default) =>
-        WriteAsync(deviceId, (db, key) => db.HashSetAsync(key,
+        WriteAsync("store", deviceId, (db, key) => db.HashSetAsync(key,
         [
             new HashEntry(SkeletonField, JsonSerializer.SerializeToUtf8Bytes(request)),
             new HashEntry(ArmedField, request.Replayable ? "1" : "0"),
         ]), Key(userId, deviceId));
 
     public Task DisarmAsync(string userId, string deviceId, CancellationToken ct = default) =>
-        WriteAsync(deviceId, (db, key) => db.HashSetAsync(key, ArmedField, "0"), Key(userId, deviceId));
+        WriteAsync("disarm", deviceId, (db, key) => db.HashSetAsync(key, ArmedField, "0"), Key(userId, deviceId));
 
-    private async Task WriteAsync(string deviceId, Func<IDatabase, RedisKey, Task> write, RedisKey key)
+    private async Task WriteAsync(string op, string deviceId, Func<IDatabase, RedisKey, Task> write, RedisKey key)
     {
         try
         {
             var db = redis.GetDatabase();
             await write(db, key);
             await db.KeyExpireAsync(key, Ttl);
+            ExchangeMetrics.RecordSyncRequestCache(op, "ok");
         }
         catch (RedisException e)
         {
             logger.LogWarning(e, "could not update the cached Sync request for {Device}", deviceId);
+            ExchangeMetrics.RecordSyncRequestCache(op, "error");
         }
     }
 }

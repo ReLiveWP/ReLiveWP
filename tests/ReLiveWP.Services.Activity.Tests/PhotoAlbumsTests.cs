@@ -1,4 +1,4 @@
-using ReLiveWP.Services.Activity.Services;
+using ReLiveWP.Services.Activity.Utilities;
 
 namespace ReLiveWP.Services.Activity.Tests;
 

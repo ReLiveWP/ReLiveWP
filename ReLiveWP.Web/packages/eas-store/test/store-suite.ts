@@ -12,6 +12,7 @@ function annotated(id: string, patch: Partial<Contact['annotation']> = {}): Cont
         annotation: {
             cid: null, objectId: null, wlid: null, imMri: null, type: null,
             userTileUrl: null, userTileHash: null, trustLevel: null, favouriteOrder: null,
+            originService: null, originCollection: null,
             ...patch,
         },
     });

@@ -31,6 +31,14 @@ public class AttachmentService(MailboxStore.MailboxStoreClient mailbox, ILogger<
     public async Task<AttachmentResolveResult> ResolveAsync(
         string userId, string? fileReference, string? range, CancellationToken ct)
     {
+        var result = await ResolveCoreAsync(userId, fileReference, range, ct);
+        ExchangeMetrics.RecordAttachmentFetch(result.Status, result.Data?.Content.Length);
+        return result;
+    }
+
+    private async Task<AttachmentResolveResult> ResolveCoreAsync(
+        string userId, string? fileReference, string? range, CancellationToken ct)
+    {
         if (string.IsNullOrEmpty(fileReference))
             return new(AttachmentResolveStatus.NotFound, null);
 

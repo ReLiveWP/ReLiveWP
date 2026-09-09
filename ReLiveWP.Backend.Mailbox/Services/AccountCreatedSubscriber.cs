@@ -36,10 +36,12 @@ public class AccountCreatedSubscriber(
             // the seed only knows the username, so pull the real name and tile over
             var mirror = scope.ServiceProvider.GetRequiredService<MeContactMirrorService>();
             await mirror.MirrorFromIdentityAsync(evt.UserId);
+            MailboxMetrics.RecordAccountEvent("created", succeeded: true);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "failed provisioning from account.created");
+            MailboxMetrics.RecordAccountEvent("created", succeeded: false);
         }
     }
 }

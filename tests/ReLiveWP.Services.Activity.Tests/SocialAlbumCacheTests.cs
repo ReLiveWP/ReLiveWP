@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using ReLiveWP.Services.Activity.Services;
+using ReLiveWP.Services.Activity.Providers;
+using ReLiveWP.Services.Activity.Providers.Bluesky;
 using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Activity.Tests;

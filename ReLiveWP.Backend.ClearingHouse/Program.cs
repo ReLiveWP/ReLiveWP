@@ -24,6 +24,7 @@ builder.Services.AddHttpClient();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ClearingHouseDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddReadinessCheck("postgres", (sp, ct) => sp.GetRequiredService<ClearingHouseDbContext>().Database.CanConnectAsync(ct));
 
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddSingleton(sp =>

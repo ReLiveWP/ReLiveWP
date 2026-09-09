@@ -6,6 +6,7 @@ public class MailDeliveryWorker(
 {
     private static readonly TimeSpan IdleDelay = TimeSpan.FromSeconds(1);
     private const int BatchSize = 16;
+    private const int MaxAttempts = 5;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -40,7 +41,21 @@ public class MailDeliveryWorker(
         foreach (var item in batch)
         {
             if (await TryDeliverAsync(agents, item, ct))
+            {
                 await queue.CompleteAsync(item, ct);
+                MailMetrics.RecordDelivery("delivered");
+            }
+            else if (item.Attempts >= MaxAttempts)
+            {
+                logger.LogError("Giving up on submission {SubmissionId} after {Attempts} attempts",
+                    item.Envelope.SubmissionId, item.Attempts);
+                await queue.DeadLetterAsync(item, $"delivery failed {item.Attempts} times", ct);
+                MailMetrics.RecordDelivery("dead_lettered");
+            }
+            else
+            {
+                MailMetrics.RecordDelivery("retry");
+            }
         }
 
         return batch.Count;
@@ -71,8 +86,8 @@ public class MailDeliveryWorker(
             {
                 delivered = false;
                 logger.LogError(
-                    ex, "Delivery failed for submission {SubmissionId} via {Route}",
-                    item.Envelope.SubmissionId, group.Key);
+                    ex, "Delivery failed for submission {SubmissionId} via {Route} (attempt {Attempt})",
+                    item.Envelope.SubmissionId, group.Key, item.Attempts);
             }
         }
 

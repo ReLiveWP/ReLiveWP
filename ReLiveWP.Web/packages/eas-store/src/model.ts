@@ -95,6 +95,9 @@ export interface ContactAnnotation {
     userTileHash: string | null;
     trustLevel: number | null;
     favouriteOrder: number | null;
+    // the account a mirrored contact came from, both null for one the phone or the web wrote
+    originService: string | null;
+    originCollection: string | null;
 }
 
 export interface Contact {

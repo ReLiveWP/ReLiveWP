@@ -4,7 +4,6 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <UiPackageDir>$(MSBuildProjectDirectory)/node_modules/@relivewp/ui</UiPackageDir>
     <SupportStylesheet>$(MSBuildProjectDirectory)/wwwroot/support.css</SupportStylesheet>
-    <SupportLogo>$(MSBuildProjectDirectory)/wwwroot/logo.svg</SupportLogo>
     <PnpmInstall Condition="'$(OS)' == 'Windows_NT'">pnpm install --silent || (ping -n 11 127.0.0.1 &gt;nul &amp; pnpm install --silent)</PnpmInstall>
     <PnpmInstall Condition="'$(OS)' != 'Windows_NT'">pnpm install --silent || (sleep 10; pnpm install --silent)</PnpmInstall>
   </PropertyGroup>
@@ -39,7 +38,6 @@
           Inputs="@(SassInput)"
           Outputs="$(SupportStylesheet)">
     <Exec Command="pnpm run styles" WorkingDirectory="$(MSBuildProjectDirectory)" />
-    <Copy SourceFiles="$(UiPackageDir)/logo.svg" DestinationFiles="$(SupportLogo)" />
   </Target>
 
   <Target Name="IncludeSupportStyles"
@@ -47,7 +45,6 @@
           BeforeTargets="AssignTargetPaths">
     <ItemGroup>
       <Content Include="$(SupportStylesheet)" CopyToPublishDirectory="PreserveNewest" />
-      <Content Include="$(SupportLogo)" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
 

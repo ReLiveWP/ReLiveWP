@@ -19,6 +19,7 @@ export const ENDPOINT_REQUEST_TOKENS = "https://login.relivewp.net/auth/request_
     ENDPOINT_CONTACT_SYNC = "https://hub.relivewp.net/contacts/sync",
     ENDPOINT_CALENDAR_SYNC = "https://hub.relivewp.net/calendar/sync",
     ENDPOINT_SUPPORT = "https://support.relivewp.net/",
+    ENDPOINT_MAIL = "https://mail.relivewp.net/",
     ENDPOINT_REFRESH_TOKENS = "https://login.relivewp.net/auth/refresh_tokens",
     SSO_AUTHORITY = "https://login.relivewp.net",
     SSO_CLIENT_ID = "98fe90cf-dd7f-4cef-9aaa-87087637eba2",

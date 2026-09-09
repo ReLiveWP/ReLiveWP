@@ -14,6 +14,7 @@ const Mail = lazy(() => import("~/views/mail"));
 const People = lazy(() => import("~/views/people"));
 const Calendar = lazy(() => import("~/views/calendar"));
 const Todo = lazy(() => import("~/views/todo"));
+const Settings = lazy(() => import("~/views/settings"));
 const Auth = lazy(() => import("~/pages/auth"));
 
 const NAV_ITEMS: NavItem[] = [
@@ -21,6 +22,10 @@ const NAV_ITEMS: NavItem[] = [
     { href: "/people", label: "people" },
     { href: "/calendar", label: "calendar" },
     { href: "/todo", label: "to-do" },
+];
+
+const TRAILING_ITEMS: NavItem[] = [
+    { href: ENDPOINT_HOME, label: "home" },
 ];
 
 function AppHeader() {
@@ -38,7 +43,8 @@ function AppHeader() {
         <SiteHeader
             items={NAV_ITEMS}
             search={search}
-            trailing={<NavAccount />}
+            trailing={TRAILING_ITEMS}
+            account={<NavAccount />}
         />
     );
 }
@@ -66,8 +72,11 @@ export default function App() {
                                     <Router>
                                         <AuthenticatedRoute path="/mail/:slug?/:messageId?" requiredAuthState={true} component={Mail} />
                                         <AuthenticatedRoute path="/calendar/:mode?/:date?" requiredAuthState={true} component={Calendar} />
-                                        <AuthenticatedRoute path="/people" requiredAuthState={true} component={People} />
+                                        <AuthenticatedRoute path="/people/albums/:albumId?" requiredAuthState={true} component={People} tab="albums" />
+                                        <AuthenticatedRoute path="/people/:contactId/albums/:albumId?" requiredAuthState={true} component={People} tab="albums" />
+                                        <AuthenticatedRoute path="/people/:contactId?" requiredAuthState={true} component={People} />
                                         <AuthenticatedRoute path="/todo" requiredAuthState={true} component={Todo} />
+                                        <AuthenticatedRoute path="/settings" requiredAuthState={true} component={Settings} />
                                         <AuthenticatedRoute path="/auth/*" requiredAuthState={false} component={Auth} />
                                         <Route default component={GoHome} />
                                     </Router>

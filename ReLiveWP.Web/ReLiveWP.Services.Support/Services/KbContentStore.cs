@@ -169,6 +169,18 @@ public partial class KbContentStore : ContentStore<KbContentStore.Snapshot>
             type = KbArticleType.Info;
         }
 
+        string html, plainText;
+        try
+        {
+            html = Markdown.ToHtml(body, Pipeline);
+            plainText = Markdown.ToPlainText(body, Pipeline);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "KB{Id} body failed to render, skipping", front.Id);
+            return null;
+        }
+
         return new KbArticle
         {
             Id = front.Id,
@@ -183,8 +195,8 @@ public partial class KbContentStore : ContentStore<KbContentStore.Snapshot>
             Revision = front.Revision,
             LastReview = front.LastReview,
             SeeAlso = front.SeeAlso,
-            Html = Markdown.ToHtml(body, Pipeline),
-            PlainText = Markdown.ToPlainText(body, Pipeline)
+            Html = html,
+            PlainText = plainText
         };
     }
 

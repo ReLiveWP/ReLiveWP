@@ -26,6 +26,7 @@ builder.Services.AddHttpClient("AtProtoClient", c =>
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ConnectedServicesDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddReadinessCheck("postgres", (sp, ct) => sp.GetRequiredService<ConnectedServicesDbContext>().Database.CanConnectAsync(ct));
 
 builder.Services.AddGrpcAuthentication();
 builder.Services.AddAuthorization();

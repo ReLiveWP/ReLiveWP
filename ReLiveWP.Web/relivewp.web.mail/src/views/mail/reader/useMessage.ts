@@ -2,6 +2,8 @@ import type { EasClient } from "@relivewp/eas-sync/host";
 import type { Message } from "@relivewp/eas-store";
 import { useCallback, useEffect, useState } from "preact/hooks";
 
+import { reason } from "~/util/reason";
+
 export type Reading = {
     message: Message | undefined,
     loading: boolean,
@@ -9,11 +11,6 @@ export type Reading = {
     error: string | null,
     retry: () => void,
 };
-
-function reason(thrown: unknown): string {
-    return thrown instanceof Error ? thrown.message : String(thrown);
-}
-
 
 export function useMessage(
     client: EasClient | null, folderId: string | null, messageId: string | null,

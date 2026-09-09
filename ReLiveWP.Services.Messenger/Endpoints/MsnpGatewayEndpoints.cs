@@ -57,6 +57,7 @@ public static class MsnpGatewayEndpoints
             if (string.IsNullOrEmpty(sessionIdValue))
             {
                 logger.LogWarning("Rejecting gateway request: unknown/missing Action '{Action}'", actionValue);
+                MessengerMetrics.RecordGatewayRequest("unknown", "bad_request");
                 return Results.BadRequest("Unknown or missing Action.");
             }
 
@@ -65,6 +66,7 @@ public static class MsnpGatewayEndpoints
         else if (!Enum.TryParse(actionValue, ignoreCase: true, out action))
         {
             logger.LogWarning("Rejecting gateway request: unknown/missing Action '{Action}'", actionValue);
+            MessengerMetrics.RecordGatewayRequest("unknown", "bad_request");
             return Results.BadRequest("Unknown or missing Action.");
         }
 
@@ -82,6 +84,7 @@ public static class MsnpGatewayEndpoints
 
         logger.LogInformation("Echoing GW-IP={GwIp} (request Host {RequestHost}) for {Action}", gwIp, requestHost, action);
 
+        var actionName = action.ToString();
         switch (action)
         {
             case MsnpGatewayAction.Open:
@@ -89,6 +92,7 @@ public static class MsnpGatewayEndpoints
                 if (!MsnpMessage.TryParse(rawBody, out var message))
                 {
                     logger.LogWarning("Rejecting open: malformed MSNP body:\n{Body}", rawBody);
+                    MessengerMetrics.RecordGatewayRequest(actionName, "bad_request");
                     return Results.BadRequest("Malformed MSNP body.");
                 }
 
@@ -96,17 +100,22 @@ public static class MsnpGatewayEndpoints
                 int? sessionTimeout = int.TryParse(query["SessionTimeout"], out var t) ? t : null;
 
                 var (openSessionId, reply) = await gateway.OpenAsync(message, notificationUri, sessionTimeout, ct);
+                MessengerMetrics.RecordGatewayRequest(actionName, "ok");
                 return MsnpGatewayResult.Open(openSessionId, gwIp, moreData: false, reply);
             }
 
             case MsnpGatewayAction.Poll:
             {
                 if (string.IsNullOrEmpty(sessionId))
+                {
+                    MessengerMetrics.RecordGatewayRequest(actionName, "bad_request");
                     return Results.BadRequest("Missing SessionID.");
+                }
 
                 if (!MsnpMessage.TryParse(rawBody, out var pollMessage))
                 {
                     logger.LogWarning("Rejecting poll: malformed MSNP body:\n{Body}", rawBody);
+                    MessengerMetrics.RecordGatewayRequest(actionName, "bad_request");
                     return Results.BadRequest("Malformed MSNP body.");
                 }
 
@@ -115,6 +124,7 @@ public static class MsnpGatewayEndpoints
                     : TimeSpan.Zero;
 
                 var reply = await gateway.PollAsync(sessionId, pollMessage, lifespan, ct);
+                MessengerMetrics.RecordGatewayRequest(actionName, reply is not null ? "ok" : "session_closed");
                 return reply is not null
                     ? MsnpGatewayResult.Poll(sessionId, gwIp, moreData: false, reply)
                     : MsnpGatewayResult.SessionClosed(sessionId);
@@ -123,13 +133,18 @@ public static class MsnpGatewayEndpoints
             case MsnpGatewayAction.Close:
             {
                 if (string.IsNullOrEmpty(sessionId))
+                {
+                    MessengerMetrics.RecordGatewayRequest(actionName, "bad_request");
                     return Results.BadRequest("Missing SessionID.");
+                }
 
                 await gateway.CloseAsync(sessionId, ct);
+                MessengerMetrics.RecordGatewayRequest(actionName, "ok");
                 return Results.Ok();
             }
 
             default:
+                MessengerMetrics.RecordGatewayRequest(actionName, "bad_request");
                 return Results.BadRequest("Unknown Action.");
         }
     }

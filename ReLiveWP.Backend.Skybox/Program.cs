@@ -18,6 +18,8 @@ builder.Services.AddSingleton<CommandStatusHub>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<SkyDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddReadinessCheck("postgres", 
+    (sp, ct) => sp.GetRequiredService<SkyDbContext>().Database.CanConnectAsync(ct));
 
 builder.Services.AddGrpcClient<Email.EmailClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));

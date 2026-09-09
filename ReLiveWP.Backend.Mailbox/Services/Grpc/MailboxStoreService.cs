@@ -168,6 +168,7 @@ public class MailboxStoreService(
             db.Entry(entity).State = EntityState.Detached;
             var winner = await FindByClientIdAsync(request.UserId, request.CollectionId, clientId, context.CancellationToken);
             if (winner is null) throw;
+            MailboxMetrics.RecordDedupHits("clientid_race");
             return MailboxMapper.ToProto(winner);
         }
 
@@ -232,6 +233,7 @@ public class MailboxStoreService(
             db.Entry(entity).State = EntityState.Detached;
             var winner = await FindByClientIdAsync(request.UserId, collectionId, clientId, context.CancellationToken);
             if (winner is null) throw;
+            MailboxMetrics.RecordDedupHits("clientid_race");
             return MailboxMapper.ToProto(winner);
         }
 
@@ -739,6 +741,7 @@ public class MailboxStoreService(
             catch (Exception ex) when (attempt < MaxSyncStateWriteAttempts &&
                 (ex is DbUpdateConcurrencyException || (isNew && ex is DbUpdateException)))
             {
+                MailboxMetrics.SyncStateWriteRetries.Add(1);
                 db.Entry(state).State = EntityState.Detached;
             }
         }
@@ -790,7 +793,10 @@ public class MailboxStoreService(
         }
 
         if (deleted > 0)
+        {
             await db.SaveChangesAsync(context.CancellationToken);
+            MailboxMetrics.RecordDedupHits("reconcile_sweep", deleted);
+        }
 
         return new ReconcileDuplicateItemsResult { GroupsCollapsed = groups, ItemsDeleted = deleted };
     }
@@ -931,6 +937,107 @@ public class MailboxStoreService(
         await db.SaveChangesAsync(context.CancellationToken);
         return new MutationResult { Found = true };
     }
+
+    public override async Task<ResolveContactIdentitiesResponse> ListContactIdentities(ListContactIdentitiesRequest request, ServerCallContext context)
+    {
+        var contact = await LoadContactAsync(request.UserId, request.ServerId, context.CancellationToken);
+
+        var rows = await db.ContactIdentities.AsNoTracking()
+            .Where(x => x.UserId == request.UserId && x.ContactItemId == contact.Id)
+            .ToListAsync(context.CancellationToken);
+
+        var response = new ResolveContactIdentitiesResponse();
+        foreach (var row in rows)
+            response.Identities.Add(ToProto(row));
+
+        return response;
+    }
+
+    public override async Task<ContactIdentity> BindContactIdentity(BindContactIdentityRequest request, ServerCallContext context)
+    {
+        var contact = await LoadContactAsync(request.UserId, request.ServerId, context.CancellationToken);
+        var annotation = await db.ContactAnnotations.SingleOrDefaultAsync(a => a.ContactItemId == contact.Id, context.CancellationToken);
+
+        var cid = annotation?.Cid ?? request.ContactCid;
+
+        var existing = await db.ContactIdentities.SingleOrDefaultAsync(
+            x => x.UserId == request.UserId && x.Provider == request.Provider && x.ExternalId == request.ExternalId,
+            context.CancellationToken);
+
+        if (existing is null)
+        {
+            existing = new DbContactIdentity
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                UserId = request.UserId,
+                ContactItemId = contact.Id,
+                ContactCid = cid,
+                Provider = request.Provider,
+                ExternalId = request.ExternalId,
+            };
+            db.ContactIdentities.Add(existing);
+        }
+        else
+        {
+            existing.ContactItemId = contact.Id;
+            existing.ContactCid = cid;
+        }
+
+        if (annotation is null)
+        {
+            db.ContactAnnotations.Add(new DbContactAnnotation { ContactItemId = contact.Id, ContactItem = contact, Cid = cid });
+        }
+        else if (annotation.Cid is null)
+        {
+            annotation.Cid = cid;
+        }
+
+        await db.SaveChangesAsync(context.CancellationToken);
+        return ToProto(existing);
+    }
+
+    public override async Task<MutationResult> UnbindContactIdentity(UnbindContactIdentityRequest request, ServerCallContext context)
+    {
+        var contact = await LoadContactAsync(request.UserId, request.ServerId, context.CancellationToken);
+
+        var existing = await db.ContactIdentities.SingleOrDefaultAsync(
+            x => x.UserId == request.UserId && x.ContactItemId == contact.Id && x.Provider == request.Provider,
+            context.CancellationToken);
+
+        if (existing is null)
+            return new MutationResult { Found = false };
+
+        db.ContactIdentities.Remove(existing);
+
+        // the cid only came from a binding, so the last one leaving takes it with it. a live-user
+        // link owns its cid and keeps it
+        var remaining = await db.ContactIdentities.AnyAsync(
+            x => x.UserId == request.UserId && x.ContactItemId == contact.Id && x.Id != existing.Id,
+            context.CancellationToken);
+
+        var annotation = await db.ContactAnnotations.SingleOrDefaultAsync(a => a.ContactItemId == contact.Id, context.CancellationToken);
+        if (!remaining && annotation is { WLId: null, Cid: not null })
+            annotation.Cid = null;
+
+        await db.SaveChangesAsync(context.CancellationToken);
+        return new MutationResult { Found = true };
+    }
+
+    private async Task<DbContactItem> LoadContactAsync(string userId, string serverId, CancellationToken ct)
+    {
+        var item = await db.Items.OfType<DbContactItem>()
+            .SingleOrDefaultAsync(i => i.UserId == userId && i.ServerId == serverId && i.DeletedAt == null, ct);
+
+        return item ?? throw new RpcException(new Status(StatusCode.NotFound, "Contact not found"));
+    }
+
+    private static ContactIdentity ToProto(DbContactIdentity row) => new()
+    {
+        ContactItemId = row.ContactItemId,
+        ContactCid = row.ContactCid,
+        Provider = row.Provider,
+        ExternalId = row.ExternalId,
+    };
 
     public override async Task<ResolveAuthorsToContactsResponse> ResolveAuthorsToContacts(ResolveAuthorsToContactsRequest request, ServerCallContext context)
     {

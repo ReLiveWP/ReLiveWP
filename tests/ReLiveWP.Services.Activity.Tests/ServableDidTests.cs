@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using ReLiveWP.Services.Activity.Providers.Bluesky;
 using ReLiveWP.Services.Activity.Services;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.Mailbox;
@@ -123,7 +124,7 @@ public class ServableDidTests
         Assert.False(albums.TryResolveAlbum(Did, out _, out _));
     }
 
-    private static SocialAlbums NewAlbums() =>
+    private static SocialAlbumsService NewAlbums() =>
         new([new BlueskyAlbumProvider(null!, TestCache.New(), NullLoggerFactory.Instance)]);
 
     private static ResolveFeedSubjectsResponse LiveUser() =>

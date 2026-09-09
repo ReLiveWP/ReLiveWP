@@ -13,21 +13,24 @@ namespace ReLiveWP.Services.Activity.Controllers;
 [Route("/Users({provider}:{id})/[action]")]
 [Produces("application/atom+xml")]
 public class UsersController(
-    FeedRenderer feeds,
+    FeedRendererService feeds,
     ActivityProviderService activityProvider) : Controller
 {
     [HttpPost]
     [Authorize]
     [Route("/Users({id})/Status")] // TODO: Move
-    public async Task<ActionResult> Status(long id, [FromBody] LiveEntry entry)
+    public async Task<ActionResult> Status(long id, [FromBody] LiveEntry? entry)
     {
+        if (entry?.Title?.Value is not { } text || !ModelState.IsValid)
+            return BadRequest();
+
         Response.Headers.Append("X-QueriedServices", "WL");
         var provider = await activityProvider.GetOwnedProviderAsync();
         if (provider == null)
             return NoContent();
 
         // todo: attachments, etc.
-        await provider.CreatePostAsync(entry.Title.Value);
+        await provider.CreatePostAsync(text);
 
         return NoContent();
     }

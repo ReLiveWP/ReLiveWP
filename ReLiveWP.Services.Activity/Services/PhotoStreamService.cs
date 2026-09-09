@@ -5,10 +5,10 @@ using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 namespace ReLiveWP.Services.Activity.Services;
 
 public class PhotoStreamService(PhotoLibraryService library,
-                                SocialAlbums socialAlbums,
+                                SocialAlbumsService socialAlbums,
                                 SocialAlbumService social,
-                                FilesViewer viewer,
-                                ThumbnailResizer thumbnails,
+                                FileViewerService viewer,
+                                ThumbnailService thumbnails,
                                 IHttpClientFactory httpClientFactory)
 {
     public async Task<bool> WriteAsync(HttpContext context, string id, string resourceRef, int maxSize,
@@ -19,7 +19,7 @@ public class PhotoStreamService(PhotoLibraryService library,
 
         if (socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
         {
-            var subjectCid = await viewer.SubjectCidAsync(id, userId, ct);
+            var subjectCid = await viewer.SubjectCidAsync(id, context.User, ct);
             if (!await social.IsServableAsync(provider, externalId, subjectCid, userId, ct))
                 return false;
 

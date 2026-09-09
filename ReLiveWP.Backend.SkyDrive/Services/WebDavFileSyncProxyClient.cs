@@ -83,12 +83,22 @@ public class WebDavFileSyncProxyClient(WebDavProxy proxy,
     private async Task CollectAsync(DavClient dav, string path, bool recursive, int depth,
                                     List<ProviderEntry> items, HashSet<string> seen, CancellationToken ct)
     {
-        if (depth >= MaxDepth || items.Count >= MaxEntries)
+        if (items.Count >= MaxEntries)
             return;
+
+        if (depth >= MaxDepth)
+        {
+            logger.LogWarning("WebDAV listing hit the {Max} depth cap, not descending into {Path}", MaxDepth, path);
+            return;
+        }
 
         var listing = await PropfindAsync(dav, path, depth: "1", ct);
         if (listing is null)
             return;
+
+        if (listing.Skipped > 0)
+            logger.LogWarning("WebDAV listing of {Path} had {Skipped} response(s) with no href, they will be missing from the sync",
+                path, listing.Skipped);
 
         var folders = new List<string>();
 

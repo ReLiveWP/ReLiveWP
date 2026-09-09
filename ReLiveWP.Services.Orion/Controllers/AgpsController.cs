@@ -40,7 +40,23 @@ public class AgpsController(ILogger<AgpsController> logger, IHttpClientFactory h
                 targetRequest.Content.Headers.TryAddWithoutValidation("Content-Type", contentType);
         }
 
-        using var resp = await client.SendAsync(targetRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+        HttpResponseMessage resp;
+        try
+        {
+            resp = await client.SendAsync(targetRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning(ex, "AGPS upstream {Host} unreachable", targetUrl.Host);
+            return StatusCode(StatusCodes.Status502BadGateway);
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning("AGPS upstream {Host} timed out", targetUrl.Host);
+            return StatusCode(StatusCodes.Status504GatewayTimeout);
+        }
+
+        using var _ = resp;
 
         context.Response.StatusCode = (int)resp.StatusCode;
 

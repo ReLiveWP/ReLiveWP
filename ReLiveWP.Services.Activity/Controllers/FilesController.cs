@@ -2,18 +2,20 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Activity.Models.Atom;
+using ReLiveWP.Services.Activity.Providers;
 using ReLiveWP.Services.Activity.Services;
+using ReLiveWP.Services.Activity.Utilities;
 
 namespace ReLiveWP.Services.Activity.Controllers;
 
 [Controller]
 [Authorize]
 [Produces("application/atom+xml")]
-public class FilesController(FilesViewer viewer,
+public class FilesController(FileViewerService viewer,
                              PhotoLibraryService libraries,
-                             SocialAlbums socialAlbums,
+                             SocialAlbumsService socialAlbums,
                              SocialAlbumService social,
-                             ConnectionLookup connections,
+                             ConnectionLookupService connections,
                              PhotoUploadService uploads,
                              PhotoStreamService streams) : Controller
 {
@@ -26,10 +28,10 @@ public class FilesController(FilesViewer viewer,
     public async Task<ActionResult> GetFiles(string id)
     {
         var urls = Urls(id);
-        var feed = PhotoFeedRenderer.Listing(urls);
+        var feed = PhotoFeedRenderer.CreateListing(urls);
 
         // a contact only ever has the albums they chose to share, never anything of ours
-        if (await viewer.SubjectCidAsync(id, UserId, Aborted) is { } subjectCid)
+        if (await viewer.SubjectCidAsync(id, User, Aborted) is { } subjectCid)
         {
             await AddSocialAlbumsAsync(feed, urls, await social.SharedAlbumsAsync(subjectCid, UserId, Aborted));
             return Ok(feed);
@@ -39,7 +41,7 @@ public class FilesController(FilesViewer viewer,
         if (await connections.HasPhotoSyncAsync(Aborted))
         {
             foreach (var library in owned)
-                feed.Entries.Add(PhotoFeedRenderer.LibraryEntry(urls, library));
+                feed.Entries.Add(PhotoFeedRenderer.CreateLibraryEntry(urls, library));
         }
 
         await AddSocialAlbumsAsync(feed, urls, await social.OwnedAlbumsAsync(UserId, Aborted));
@@ -58,7 +60,7 @@ public class FilesController(FilesViewer viewer,
     [Route(PhotoAlbums.AlbumRoute)]
     public async Task<ActionResult> GetAlbum(string id, string album)
     {
-        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
+        if (await viewer.SubjectCidAsync(id, User, Aborted) != null)
             return NotFound();
 
         var listing = await libraries.ListByCategoryAsync(UserId, album, Aborted);
@@ -66,14 +68,17 @@ public class FilesController(FilesViewer viewer,
             return NotFound();
 
         var urls = Urls(id);
-        return Ok(PhotoFeedRenderer.AlbumFeed(urls, urls.Album(album), listing.Library, listing.Photos));
+        return Ok(PhotoFeedRenderer.CreateAlbumFeed(urls, urls.ForAlbum(album), listing.Library, listing.Photos));
     }
 
     [HttpPut]
     [Route(PhotoAlbums.AlbumRoute)]
-    public async Task<ActionResult> PutAlbum(string id, string album, [FromBody] LiveLibraryEntry entry)
+    public async Task<ActionResult> PutAlbum(string id, string album, [FromBody] LiveLibraryEntry? entry)
     {
-        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
+        if (entry is null || !ModelState.IsValid)
+            return BadRequest();
+
+        if (await viewer.SubjectCidAsync(id, User, Aborted) != null)
             return NotFound();
 
         var library = await libraries.CreateOrUpdateAsync(UserId, album, new LibraryUpdate(
@@ -83,14 +88,14 @@ public class FilesController(FilesViewer viewer,
             entry.Summary?.Value ?? "",
             entry.EmailKeyword ?? ""), Aborted);
 
-        return Ok(PhotoFeedRenderer.LibraryEntry(Urls(id), library));
+        return Ok(PhotoFeedRenderer.CreateLibraryEntry(Urls(id), library));
     }
 
     [HttpPost]
     [Route(PhotoAlbums.AlbumRoute)]
     public async Task<ActionResult> UploadPhoto(string id, string album)
     {
-        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
+        if (await viewer.SubjectCidAsync(id, User, Aborted) != null)
             return NotFound();
 
         if (!PhotoUploadReader.IsMultipartRelated(Request.ContentType, out var boundary))
@@ -109,7 +114,7 @@ public class FilesController(FilesViewer viewer,
             if (created == null)
                 return BadRequest();
 
-            return Ok(PhotoFeedRenderer.UploadedEntry(Urls(id), created));
+            return Ok(PhotoFeedRenderer.CreateUploadedEntry(Urls(id), created));
         }
         catch (IOException)
         {
@@ -124,7 +129,7 @@ public class FilesController(FilesViewer viewer,
         if (socialAlbums.TryResolveAlbum(folderId, out var provider, out var externalId))
             return await GetSocialFolderAsync(id, folderId, provider, externalId);
 
-        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
+        if (await viewer.SubjectCidAsync(id, User, Aborted) != null)
             return NotFound();
 
         var listing = await libraries.ListByFolderAsync(UserId, folderId, Aborted);
@@ -132,7 +137,7 @@ public class FilesController(FilesViewer viewer,
             return NotFound();
 
         var urls = Urls(id);
-        return Ok(PhotoFeedRenderer.AlbumFeed(urls, urls.Folder(folderId), listing.Library, listing.Photos));
+        return Ok(PhotoFeedRenderer.CreateAlbumFeed(urls, urls.ForFolder(folderId), listing.Library, listing.Photos));
     }
 
     [HttpGet]
@@ -143,17 +148,18 @@ public class FilesController(FilesViewer viewer,
 
         if (socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
         {
-            var subjectCid = await viewer.SubjectCidAsync(id, UserId, Aborted);
+            var subjectCid = await viewer.SubjectCidAsync(id, User, Aborted);
             if (!await social.IsServableAsync(provider, externalId, subjectCid, UserId, Aborted))
                 return NotFound();
 
             title = provider.FileNameFor(mediaId);
         }
 
-        return Ok(PhotoFeedRenderer.PhotoFeed(Urls(id), resourceRef, title));
+        return Ok(PhotoFeedRenderer.CreatePhotoFeed(Urls(id), resourceRef, title));
     }
 
     [HttpGet]
+    [Authorize(AuthenticationSchemes = MediaTicketAuthHandler.OrLiveID)]
     [Route("/Users({id})/Files/files('{resourceRef}')/thumbnail/{size:int}")]
     public Task<ActionResult> GetThumbnail(string id, string resourceRef, int size)
     {
@@ -161,6 +167,7 @@ public class FilesController(FilesViewer viewer,
     }
 
     [HttpGet]
+    [Authorize(AuthenticationSchemes = MediaTicketAuthHandler.OrLiveID)]
     [Route("/Users({id})/Files/files('{resourceRef}')/media")]
     public Task<ActionResult> GetMedia(string id, string resourceRef)
     {
@@ -171,7 +178,7 @@ public class FilesController(FilesViewer viewer,
     [Route("/Users({id})/Files/provision")]
     public async Task<ActionResult> Provision(string id)
     {
-        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
+        if (await viewer.SubjectCidAsync(id, User, Aborted) != null)
             return NotFound();
 
         await libraries.ProvisionAsync(UserId, Aborted);
@@ -182,7 +189,7 @@ public class FilesController(FilesViewer viewer,
     [Route(PhotoAlbums.PermissionsRoute)]
     public async Task<ActionResult> SetPermissions(string id, string album)
     {
-        if (await viewer.SubjectCidAsync(id, UserId, Aborted) != null)
+        if (await viewer.SubjectCidAsync(id, User, Aborted) != null)
             return NotFound();
 
         await libraries.ShareAsync(UserId, album, Aborted);
@@ -192,14 +199,14 @@ public class FilesController(FilesViewer viewer,
     private async Task<ActionResult> GetSocialFolderAsync(
         string id, string folderId, SocialAlbumProviderBase provider, string externalId)
     {
-        var subjectCid = await viewer.SubjectCidAsync(id, UserId, Aborted);
+        var subjectCid = await viewer.SubjectCidAsync(id, User, Aborted);
         if (!await social.IsServableAsync(provider, externalId, subjectCid, UserId, Aborted))
             return NotFound();
 
         var folder = await social.FolderAsync(provider, externalId, UserId, Aborted);
         await libraries.RememberCoverAsync(UserId, folderId, folder.Photos.FirstOrDefault()?.ResourceRef, Aborted);
 
-        return Ok(PhotoFeedRenderer.SocialAlbumFeed(Urls(id), folderId, folder.Title, folder.Photos));
+        return Ok(PhotoFeedRenderer.CreateSocialAlbumFeed(Urls(id), folderId, folder.Title, folder.Photos));
     }
 
     private async Task AddSocialAlbumsAsync(LiveLibraryFeed feed, FilesUrls urls, IReadOnlyList<SocialAlbum> albums)
@@ -207,7 +214,7 @@ public class FilesController(FilesViewer viewer,
         var covers = await libraries.CoversAsync(UserId, [.. albums.Select(a => a.ResourceId)], Aborted);
 
         foreach (var album in albums)
-            feed.Entries.Add(PhotoFeedRenderer.SocialAlbumEntry(urls, album, covers.GetValueOrDefault(album.ResourceId)));
+            feed.Entries.Add(PhotoFeedRenderer.CreateSocialAlbumEntry(urls, album, covers.GetValueOrDefault(album.ResourceId)));
     }
 
     private async Task<ActionResult> StreamPhotoAsync(string id, string resourceRef, int maxSize)

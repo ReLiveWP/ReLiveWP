@@ -33,7 +33,9 @@ describe('live annotations', () => {
             annotation('UserTileUrl', 'https://example.invalid/t.jpg'),
             annotation('UserTileHash', 'abc123'),
             annotation('TrustLevel', '3'),
-            annotation('FavoriteOrder', '7'))));
+            annotation('FavoriteOrder', '7'),
+            annotation('OriginService', 'google'),
+            annotation('OriginCollection', 'people/me/connections'))));
 
         assert.deepEqual(read, {
             cid: '000f00c0deadbeef',
@@ -45,6 +47,8 @@ describe('live annotations', () => {
             userTileHash: 'abc123',
             trustLevel: 3,
             favouriteOrder: 7,
+            originService: 'google',
+            originCollection: 'people/me/connections',
         });
     });
 

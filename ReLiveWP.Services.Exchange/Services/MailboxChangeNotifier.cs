@@ -35,18 +35,24 @@ public sealed class MailboxChangeNotifier(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "failed to decode mailbox.changed payload");
+            ExchangeMetrics.RecordChangeNotification("decode_failed");
             return;
         }
 
-        if (evt is null)
-            return;
+        var matched = false;
+        if (evt is not null && _waiters.TryGetValue(evt.UserId, out var userWaiters))
+        {
+            foreach (var w in userWaiters.Values)
+            {
+                if (!w.Collections.Contains(evt.CollectionId))
+                    continue;
 
-        if (!_waiters.TryGetValue(evt.UserId, out var userWaiters))
-            return;
-
-        foreach (var w in userWaiters.Values)
-            if (w.Collections.Contains(evt.CollectionId))
+                matched = true;
                 w.Signal.TrySetResult();
+            }
+        }
+
+        ExchangeMetrics.RecordChangeNotification(matched ? "signalled" : "no_waiter");
     }
 
     public async Task WaitForChangeAsync(string userId, IReadOnlySet<string> collections, CancellationToken ct)

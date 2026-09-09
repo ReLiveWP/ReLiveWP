@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -18,9 +19,13 @@ public class PushSession
     private const ushort ErrorSessionInvalid = 0x4101;
 
     private readonly X509Certificate2 serverCert;
+    private readonly TimeSpan handshakeTimeout;
+    private readonly TimeSpan idleTimeout;
 
     private byte[] sessionToken;
     private PushSessionStateType state = PushSessionStateType.Connecting;
+    private string disconnectReason;
+    private long lastKeepAliveAt;
 
     private uint sendSequence = 0; // pre-auth fallback only; real traffic uses the per-device Redis counter
     private uint lastReceivedDataSeq = 0;
@@ -51,7 +56,8 @@ public class PushSession
         ILogger<PushSession> logger,
         Authentication.AuthenticationClient authenticationClient,
         SessionStore sessions,
-        IConnectionMultiplexer redis)
+        IConnectionMultiplexer redis,
+        PushServerCertificate serverCertificate)
     {
         this.client = client;
         this.sslStream = sslStream;
@@ -60,7 +66,9 @@ public class PushSession
         this.sessions = sessions;
         this.redis = redis;
 
-        this.serverCert = X509CertificateLoader.LoadPkcs12FromFile(configuration["Push:ServerCertPath"], configuration["Push:ServerCertPassword"]);
+        serverCert = serverCertificate.Certificate;
+        handshakeTimeout = TimeSpan.FromSeconds(configuration.GetValue("Push:HandshakeTimeoutSeconds", 30));
+        idleTimeout = TimeSpan.FromSeconds(configuration.GetValue("Push:IdleTimeoutSeconds", 3600));
     }
 
     // completes the moment the device is authenticated and Connected, so the app layer
@@ -91,6 +99,9 @@ public class PushSession
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var token = cts.Token;
 
+        var started = Stopwatch.GetTimestamp();
+        PushMetrics.SocketsOpen.Add(1);
+
         Task receive = null, handle = null, send = null;
         try
         {
@@ -100,7 +111,8 @@ public class PushSession
 #pragma warning disable SYSLIB0039 // Type or member is obsolete
                 enabledSslProtocols: SslProtocols.Tls,
 #pragma warning restore SYSLIB0039 // Type or member is obsolete
-                checkCertificateRevocation: false);
+                checkCertificateRevocation: false)
+                .WaitAsync(handshakeTimeout, token);
 
             logger.LogInformation("SSL handshake complete");
 
@@ -110,8 +122,14 @@ public class PushSession
 
             await Task.WhenAny(receive, handle, send);
         }
+        catch (TimeoutException)
+        {
+            disconnectReason ??= "handshake_timeout";
+            logger.LogWarning("No TLS handshake within {Timeout}, closing", handshakeTimeout);
+        }
         catch (Exception ex)
         {
+            disconnectReason ??= "handshake_error";
             logger.LogError(ex, "Exception in Push run loop!");
         }
         finally
@@ -121,8 +139,14 @@ public class PushSession
             pduOutgoingChannel.Writer.TryComplete();
             try { await Task.WhenAll(receive, handle, send); } catch { /* shutting down, dont care */ }
             client.Close();
-            connectedTcs.TrySetCanceled(); 
+            connectedTcs.TrySetCanceled();
             acknowledgedChannel.Writer.TryComplete();
+
+            if (ct.IsCancellationRequested)
+                disconnectReason ??= "shutdown";
+
+            PushMetrics.SocketsOpen.Add(-1);
+            PushMetrics.RecordDisconnect(started, disconnectReason ?? "unknown");
         }
     }
 
@@ -136,7 +160,7 @@ public class PushSession
                     if (authHeader == null)
                     {
                         logger.LogWarning("Connect with no Authenticate header");
-                        EndSession(); // malformed connect; tear the session down
+                        EndSession("malformed_connect"); // malformed connect; tear the session down
                         return true;
                     }
 
@@ -144,7 +168,7 @@ public class PushSession
                     if (!await ValidateCertificateAsync())
                     {
                         logger.LogError("Unable to validate certificate for push client!!");
-                        EndSession();
+                        EndSession("auth_failed");
                         return true;
                     }
 
@@ -181,7 +205,7 @@ public class PushSession
         if (authHeader == null)
         {
             logger.LogWarning("Reconnect with no Authenticate header");
-            EndSession();
+            EndSession("malformed_connect");
             return true;
         }
 
@@ -189,7 +213,7 @@ public class PushSession
         if (!await ValidateCertificateAsync())
         {
             logger.LogError("Unable to validate certificate for push client!!");
-            EndSession();
+            EndSession("auth_failed");
             return true;
         }
 
@@ -201,11 +225,13 @@ public class PushSession
         if (!await TryResumeSessionAsync(presentedToken))
         {
             logger.LogWarning("Unknown reconnect token; rejecting (0x4101) to force re-Connect");
+            PushMetrics.RecordSessionResume(accepted: false);
             await writer.WriteAsync(BuildReconnectRejection(pdu), ct);
             state = PushSessionStateType.Connecting;
             return true;
         }
 
+        PushMetrics.RecordSessionResume(accepted: true);
         sessionToken = presentedToken;
 
         await writer.WriteAsync(BuildReconnectResponse(pdu), ct);
@@ -219,8 +245,15 @@ public class PushSession
         switch (pdu.Command)
         {
             case PDUCommand.KeepAlive:
-                await writer.WriteAsync(BuildKeepAliveResponse(pdu), ct);
-                break;
+                {
+                    var now = Stopwatch.GetTimestamp();
+                    if (lastKeepAliveAt != 0)
+                        PushMetrics.KeepAliveInterval.Record(Stopwatch.GetElapsedTime(lastKeepAliveAt, now).TotalSeconds);
+                    lastKeepAliveAt = now;
+
+                    await writer.WriteAsync(BuildKeepAliveResponse(pdu), ct);
+                    break;
+                }
 
             case PDUCommand.Data:
                 {
@@ -250,7 +283,7 @@ public class PushSession
 
             case PDUCommand.Disconnect:
                 await writer.WriteAsync(BuildDisconnectResponse(pdu), ct);
-                EndSession(); // device is leaving; flush the response then close
+                EndSession("disconnect"); // device is leaving; flush the response then close
                 break;
 
             default:
@@ -274,6 +307,7 @@ public class PushSession
             await foreach (var pdu in pduIncomingChannel.Reader.ReadAllAsync(ct))
             {
                 logger.LogInformation("Got PDU command {Command} (seq {Seq})", pdu.Command, pdu.SequenceNumber);
+                PushMetrics.RecordPdu("received", pdu.Command);
 
                 var writer = pduOutgoingChannel.Writer;
 
@@ -297,6 +331,7 @@ public class PushSession
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
+            disconnectReason ??= "handler_error";
             logger.LogError(ex, "Session handler error");
             pduOutgoingChannel.Writer.TryComplete(ex);
         }
@@ -309,6 +344,7 @@ public class PushSession
 
     private async Task PduIncomingLoop(CancellationToken ct)
     {
+        using var idle = CancellationTokenSource.CreateLinkedTokenSource(ct);
         try
         {
             while (true)
@@ -339,6 +375,7 @@ public class PushSession
                     if (!PDU.TryParse(bytes, 0, total, out var pdu))
                     {
                         logger.LogWarning("Failed to parse {Total}-byte PDU; closing session", total);
+                        disconnectReason ??= "malformed_pdu";
                         return;
                     }
 
@@ -348,16 +385,26 @@ public class PushSession
                 if (recvLen == recvBuffer.Length)
                     Array.Resize(ref recvBuffer, recvBuffer.Length * 2);
 
-                int n = await sslStream.ReadAsync(recvBuffer.AsMemory(recvLen), ct);
+                idle.CancelAfter(idleTimeout);
+                int n = await sslStream.ReadAsync(recvBuffer.AsMemory(recvLen), idle.Token);
                 if (n == 0)
-                    return; // clean EOF
+                {
+                    disconnectReason ??= "eof";
+                    return;
+                }
 
                 recvLen += n;
             }
         }
+        catch (OperationCanceledException) when (idle.IsCancellationRequested && !ct.IsCancellationRequested)
+        {
+            disconnectReason ??= "idle_timeout";
+            logger.LogInformation("Nothing received for {Timeout}, closing idle session", idleTimeout);
+        }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
+            disconnectReason ??= "receive_error";
             logger.LogWarning(ex, "Receive loop error");
             pduIncomingChannel.Writer.TryComplete(ex);
         }
@@ -382,11 +429,13 @@ public class PushSession
                 var data = pdu.Serialize();
                 logger.LogDebug("Outgoing PDU data: {Outgoing}", Convert.ToHexString(data));
                 await sslStream.WriteAsync(data, ct);
+                PushMetrics.RecordPdu("sent", pdu.Command);
             }
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
+            disconnectReason ??= "send_error";
             logger.LogWarning(ex, "Send loop error");
         }
     }
@@ -482,8 +531,9 @@ public class PushSession
         return true;
     }
 
-    private void EndSession()
+    private void EndSession(string reason)
     {
+        disconnectReason ??= reason;
         pduOutgoingChannel.Writer.TryComplete();
     }
 

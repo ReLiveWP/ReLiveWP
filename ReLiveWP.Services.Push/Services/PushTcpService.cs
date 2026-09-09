@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using ReLiveWP.Services.Push.Nsp;
@@ -12,38 +12,60 @@ public class PushTcpService(
     IConfiguration configuration) : IHostedService
 {
     private readonly TcpListener tcpListener = new TcpListener(IPAddress.Any, int.Parse(configuration["Push:Port"]));
+    private readonly CancellationTokenSource stopping = new();
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         tcpListener.Start();
-        Task.Run(TcpListenerTask);
+        _ = Task.Run(() => AcceptLoopAsync(stopping.Token));
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
+        stopping.Cancel();
         tcpListener.Stop();
         return Task.CompletedTask;
     }
 
-    private async Task TcpListenerTask()
+    private async Task AcceptLoopAsync(CancellationToken ct)
     {
-        TcpClient client;
-        while ((client = await tcpListener.AcceptTcpClientAsync()) != null)
+        while (!ct.IsCancellationRequested)
         {
-            var stream = client.GetStream();
-            var sslStream = new SslStream(stream, false);
-
+            TcpClient client;
             try
             {
-                var scope = services.CreateScope();
-                var transport = ActivatorUtilities.CreateInstance<PushSession>(scope.ServiceProvider, client, sslStream);
-                var session = ActivatorUtilities.CreateInstance<NspSession>(scope.ServiceProvider, transport);
-                _ = session.RunAsync();
+                client = await tcpListener.AcceptTcpClientAsync(ct);
+            }
+            catch (Exception) when (ct.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "SSL error: {Message}", ex.Message);
+                logger.LogError(ex, "Accept failed");
+                continue;
+            }
+
+            _ = RunSessionAsync(client, ct);
+        }
+    }
+
+    private async Task RunSessionAsync(TcpClient client, CancellationToken ct)
+    {
+        using var scope = services.CreateScope();
+        using (client)
+        {
+            try
+            {
+                var sslStream = new SslStream(client.GetStream(), false);
+                var transport = ActivatorUtilities.CreateInstance<PushSession>(scope.ServiceProvider, client, sslStream);
+                var session = ActivatorUtilities.CreateInstance<NspSession>(scope.ServiceProvider, transport);
+                await session.RunAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Push session failed");
             }
         }
     }

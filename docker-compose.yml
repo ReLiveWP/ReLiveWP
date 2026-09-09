@@ -388,6 +388,8 @@ services:
     secrets:
       - source: jwt_public_key
         target: JWT__PublicKey
+      - source: media_ticket_secret
+        target: Media__TicketSecret
 
   docs:
     image: relive/docs
@@ -658,3 +660,5 @@ secrets:
     file: ./deploy/secrets/push_db_connection
   mailbox_db_connection:
     file: ./deploy/secrets/mailbox_db_connection
+  media_ticket_secret:
+    file: ./deploy/secrets/media_ticket_secret

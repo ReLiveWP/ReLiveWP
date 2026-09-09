@@ -1,9 +1,12 @@
+using ReLiveWP.Services.Activity.Providers;
+using ReLiveWP.Services.Activity.Utilities;
+
 namespace ReLiveWP.Services.Activity.Services;
 
 public record SocialAlbumFolder(string Title, IReadOnlyList<SocialPhoto> Photos);
 
-public class SocialAlbumService(SocialAlbums providers,
-                                ConnectionLookup connections,
+public class SocialAlbumService(SocialAlbumsService providers,
+                                ConnectionLookupService connections,
                                 ActivityProviderService activityProvider,
                                 ILogger<SocialAlbumService> logger)
 {
@@ -41,7 +44,7 @@ public class SocialAlbumService(SocialAlbums providers,
             }
 
             albums.Add(new SocialAlbum(
-                SocialAlbumRef.Album(source.Provider, source.ExternalId),
+                SocialAlbumRef.ForAlbum(source.Provider, source.ExternalId),
                 provider.TitleFor(handle)));
         }
 

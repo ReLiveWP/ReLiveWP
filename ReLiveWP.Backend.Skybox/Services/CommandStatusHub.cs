@@ -20,13 +20,17 @@ public class CommandStatusHub(IConnectionMultiplexer redis)
 {
     private static RedisChannel Channel(string deviceId) => RedisChannel.Literal($"sky:cmd-status:{deviceId}");
 
-    public Task PublishAsync(string deviceId, CommandStatusEvent evt) =>
-        redis.GetSubscriber().PublishAsync(Channel(deviceId), JsonSerializer.SerializeToUtf8Bytes(evt));
+    public async Task PublishAsync(string deviceId, CommandStatusEvent evt)
+    {
+        var receivers = await redis.GetSubscriber().PublishAsync(Channel(deviceId), JsonSerializer.SerializeToUtf8Bytes(evt));
+        SkyboxMetrics.StatusReceivers.Record(receivers);
+    }
 
     public async IAsyncEnumerable<CommandStatusEvent> StreamAsync(
         string deviceId, [EnumeratorCancellation] CancellationToken ct)
     {
         var queue = await redis.GetSubscriber().SubscribeAsync(Channel(deviceId));
+        SkyboxMetrics.StatusSubscribersActive.Add(1);
         try
         {
             while (!ct.IsCancellationRequested)
@@ -39,6 +43,7 @@ public class CommandStatusHub(IConnectionMultiplexer redis)
         }
         finally
         {
+            SkyboxMetrics.StatusSubscribersActive.Add(-1);
             await queue.UnsubscribeAsync();
         }
     }

@@ -14,6 +14,7 @@ namespace ReLiveWP.Services.Exchange.Controllers;
 public class PingController(ILogger<PingController> logger, PingService pingService) : ActiveSyncCommandController
 {
     [HttpPost]
+    [DisableHttpMetrics]
     public async Task Post()
     {
         var request = EasContext.XmlDocument is not null

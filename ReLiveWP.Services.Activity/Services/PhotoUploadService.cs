@@ -64,7 +64,7 @@ public class PhotoUploadService(SkyDrive.SkyDriveClient skyDrive,
 
                 using var request = new HttpRequestMessage(new HttpMethod(target.Method), target.Url)
                 {
-                    Content = new StreamContent(new WindowStream(spool, length))
+                    Content = new StreamContent(new WindowedStream(spool, length))
                 };
 
                 foreach (var (name, value) in target.Headers)

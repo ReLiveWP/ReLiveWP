@@ -164,6 +164,7 @@ public class MsnpGatewayService(MsnpGatewaySessionStore sessions, Authentication
         if (string.IsNullOrEmpty(ticket))
         {
             logger.LogWarning("MSNP gateway session {SessionId}: second USR carried no t= ticket", session.SessionId);
+            MessengerMetrics.RecordSsoVerification("no_ticket");
             return;
         }
 
@@ -179,6 +180,7 @@ public class MsnpGatewayService(MsnpGatewaySessionStore sessions, Authentication
         {
             // TODO: we need to figure out how to reject bad sessions
             logger.LogWarning(ex, "MSNP gateway session {SessionId}: could not reach AuthenticationService to verify SSO ticket", session.SessionId);
+            MessengerMetrics.RecordSsoVerification("backend_unreachable");
             return;
         }
 
@@ -186,9 +188,11 @@ public class MsnpGatewayService(MsnpGatewaySessionStore sessions, Authentication
         {
             // TODO: ditto
             logger.LogWarning("MSNP gateway session {SessionId}: SSO ticket failed verification (code={Code:X})", session.SessionId, reply.Code);
+            MessengerMetrics.RecordSsoVerification("rejected");
             return;
         }
 
+        MessengerMetrics.RecordSsoVerification("ok");
         var claims = reply.Claims.ToDictionary(c => c.Type, c => c.Value);
         if (claims.TryGetValue("email", out var email) && !string.IsNullOrEmpty(email))
             session.Email = email;

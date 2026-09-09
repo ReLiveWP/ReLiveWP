@@ -45,6 +45,7 @@ public class ChannelController(
             logger.LogInformation("delivered {Class} ({Len}B) to {DeviceId} channel {Id}",
                 notificationClass, payload.Length, channel.DeviceId, channel.ChannelId);
 
+            PushMetrics.RecordDelivery("delivered_local", notificationClass);
             return Ok();
         }
 
@@ -58,6 +59,7 @@ public class ChannelController(
             logger.LogInformation("routed {Class} ({Len}B) to {DeviceId} on {Owner} channel {Id}",
                 notificationClass, payload.Length, channel.DeviceId, owner, channel.ChannelId);
 
+            PushMetrics.RecordDelivery("routed_remote", notificationClass);
             return Accepted();
         }
 
@@ -66,6 +68,7 @@ public class ChannelController(
             channel.DeviceId, notificationClass, payload.Length, channel.ChannelId);
 
         await notificationQueue.EnqueueAsync(channel.DeviceId, channel.ChannelId, payload, (uint)notificationClass, ct: ct);
+        PushMetrics.RecordDelivery("queued_offline", notificationClass);
         return Accepted();
     }
 

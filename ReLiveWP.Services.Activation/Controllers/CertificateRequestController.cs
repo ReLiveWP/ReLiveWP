@@ -35,9 +35,9 @@ public class CertificateRequestController(
             return BadRequest("Unsupported protocol version.");
 
         var activationCode = activationCodeHeader[0];
-        var deviceInfo = deviceInfoHeader[0]!.Split(',')
-                                            .Select(s => s.Split(':'))
-                                            .ToDictionary(k => k[0], v => v.ElementAtOrDefault(1));
+        var deviceInfo = ParseDeviceInfo(deviceInfoHeader[0] ?? "");
+        if (!deviceInfo.TryGetValue("DeviceUniqueID", out var uniqueId) || string.IsNullOrEmpty(uniqueId))
+            return BadRequest("Device info header has no DeviceUniqueID.");
 
         logger.LogInformation("Provided key {ProductKey}", activationCode);
 
@@ -46,19 +46,28 @@ public class CertificateRequestController(
 
         var requestCert = await new StreamReader(Request.Body).ReadToEndAsync();
 
-        var encoded = Convert.FromBase64String(requestCert);
-        var certRequest = new Pkcs10CertificationRequest(encoded);
+        byte[] encoded;
+        Pkcs10CertificationRequest certRequest;
+        try
+        {
+            encoded = Convert.FromBase64String(requestCert);
+            certRequest = new Pkcs10CertificationRequest(encoded);
+        }
+        catch (Exception ex) when (ex is FormatException or IOException or ArgumentException or InvalidCastException)
+        {
+            logger.LogWarning(ex, "Rejecting certificate request: body is not a base64 PKCS#10 request");
+            return BadRequest("Malformed certificate request.");
+        }
+
         var certRequestInfo = certRequest.GetCertificationRequestInfo();
 
         var registrationRequest = new DeviceRegistrationRequest
         {
             CertificateSubject = certRequestInfo.Subject.ToString(),
             ActivationCode = activationCode,
-
-            // if we dont have these we're probably shafted anyway lol
-            UniqueId = deviceInfo["DeviceUniqueID"],
-            OsVersion = deviceInfo["OSVersion"],
-            Locale = deviceInfo["Locale"]
+            UniqueId = uniqueId,
+            OsVersion = deviceInfo.GetValueOrDefault("OSVersion", ""),
+            Locale = deviceInfo.GetValueOrDefault("Locale", ""),
         };
 
         // i don't care about these ones too much
@@ -88,5 +97,21 @@ public class CertificateRequestController(
         }
 
         return Unauthorized();
+    }
+
+    // "DeviceUniqueID:abc,OSVersion:7.10.7720,Locale:0409,..."
+    private static Dictionary<string, string> ParseDeviceInfo(string header)
+    {
+        var info = new Dictionary<string, string>();
+        foreach (var pair in header.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var colon = pair.IndexOf(':');
+            if (colon <= 0)
+                continue;
+
+            info[pair[..colon]] = pair[(colon + 1)..];
+        }
+
+        return info;
     }
 }

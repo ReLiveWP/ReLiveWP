@@ -54,6 +54,23 @@ public class FakeConnectedServicesClient : ConnectedServices.ConnectedServicesCl
         FakeCall.ServerStreaming(OnGetConnections?.Invoke(request) ?? []);
 }
 
+public class FakeUserClient : User.UserClient
+{
+    public Func<GetUserInfoRequest, GetUserInfoResponse>? OnGetUserInfo { get; set; }
+
+    public int GetUserInfoCalls { get; private set; }
+
+    public override AsyncUnaryCall<GetUserInfoResponse> GetUserInfoAsync(GetUserInfoRequest request, CallOptions options)
+    {
+        GetUserInfoCalls++;
+
+        if (OnGetUserInfo is null)
+            throw new InvalidOperationException($"{nameof(OnGetUserInfo)} not configured");
+
+        return FakeCall.Unary(() => OnGetUserInfo(request));
+    }
+}
+
 internal static class FakeCall
 {
     public static AsyncServerStreamingCall<T> ServerStreaming<T>(IEnumerable<T> items) =>

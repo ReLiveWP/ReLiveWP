@@ -10,6 +10,7 @@ using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 namespace ReLiveWP.Services.Docs.Controllers;
 
 [Authorize]
+[UpstreamFaultFilter]
 [Route(DavController.Base)]
 public class DavController(SkyDocs.SkyDocsClient client,
                            IHttpClientFactory httpClientFactory,

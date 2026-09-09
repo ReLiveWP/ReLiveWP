@@ -1,5 +1,3 @@
-import "./nav-account.scss";
-
 import { Link } from "@relivewp/ui";
 import { Show } from "@preact/signals/utils";
 
@@ -10,12 +8,11 @@ const NavAccount = () => {
 
     return (
         <Show when={appState.hasIdentity} fallback={<Link activeClass="active" href="/auth/login">sign in</Link>}>
-            <span class="account">
+            <Link activeClass="active text-accent" href="/settings">
                 <Show when={appState.user} fallback={<span>hi there</span>}>
-                    <span class="text-accent">hi, {appState.user.value?.username}</span>
+                    <span>hi, {appState.user.value?.username}</span>
                 </Show>
-                <button type="button" class="sign-out" onClick={() => appState.signOut()}>sign out</button>
-            </span>
+            </Link>
         </Show>
     )
 };

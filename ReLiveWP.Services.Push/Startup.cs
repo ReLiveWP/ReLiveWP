@@ -3,6 +3,7 @@ using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Push.Data;
 using ReLiveWP.Services.Push.Nsp;
 using ReLiveWP.Services.Push.Services;
+using ReLiveWP.Services.Push.Session;
 
 namespace ReLiveWP.Services.Push;
 
@@ -22,10 +23,16 @@ public class Startup
 
         services.AddDefaultHealthChecks();
 
+        services.AddSingleton<PushServerCertificate>();
         services.AddHostedService<PushTcpService>();
 
         services.AddDbContextFactory<PushDatabase>(
             o => o.UseNpgsql(Configuration.GetConnectionString("Push") ?? "Host=localhost;Database=relive_push;Username=relive;Password=relive"));
+        services.AddReadinessCheck("postgres", async (sp, ct) =>
+        {
+            await using var db = await sp.GetRequiredService<IDbContextFactory<PushDatabase>>().CreateDbContextAsync(ct);
+            return await db.Database.CanConnectAsync(ct);
+        });
 
         services.AddScoped<ChannelStore>();
         services.AddScoped<NotificationQueue>();

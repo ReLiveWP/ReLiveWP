@@ -1,4 +1,6 @@
+using ReLiveWP.Services.Activity.Providers;
 using ReLiveWP.Services.Activity.Services;
+using ReLiveWP.Services.Activity.Utilities;
 using ReLiveWP.Services.Grpc;
 using static ReLiveWP.Services.Activity.Tests.AtomSerialization;
 
@@ -34,7 +36,7 @@ public class PhotoFeedRendererTests
     [Fact]
     public void TheAlbumFeedNamesItsAlbum()
     {
-        var feed = PhotoFeedRenderer.AlbumFeed(Urls, Urls.Album("wmphotos"), Album(), [Item()]);
+        var feed = PhotoFeedRenderer.CreateAlbumFeed(Urls, Urls.ForAlbum("wmphotos"), Album(), [Item()]);
         var xml = Serialize(feed);
 
         Assert.Contains("<live:canonicalName>WMPhotos</live:canonicalName>", xml);
@@ -45,7 +47,7 @@ public class PhotoFeedRendererTests
     [Fact]
     public void PhotoEntriesPointAtEveryRendition()
     {
-        var xml = Serialize(PhotoFeedRenderer.AlbumFeed(Urls, Urls.Album("wmphotos"), Album(), [Item()]));
+        var xml = Serialize(PhotoFeedRenderer.CreateAlbumFeed(Urls, Urls.ForAlbum("wmphotos"), Album(), [Item()]));
 
         foreach (var size in (int[])[800, 176, 96])
         {
@@ -59,8 +61,8 @@ public class PhotoFeedRendererTests
     [Fact]
     public void OnlyVideosCarryMediaContent()
     {
-        var photo = Serialize(PhotoFeedRenderer.AlbumFeed(Urls, Urls.Album("wmphotos"), Album(), [Item()]));
-        var video = Serialize(PhotoFeedRenderer.AlbumFeed(Urls, Urls.Album("wmphotos"), Album(), [Item("video")]));
+        var photo = Serialize(PhotoFeedRenderer.CreateAlbumFeed(Urls, Urls.ForAlbum("wmphotos"), Album(), [Item()]));
+        var video = Serialize(PhotoFeedRenderer.CreateAlbumFeed(Urls, Urls.ForAlbum("wmphotos"), Album(), [Item("video")]));
 
         Assert.DoesNotContain("<media:content", photo);
         Assert.Contains("<live:type>Photo</live:type>", photo);
@@ -72,8 +74,8 @@ public class PhotoFeedRendererTests
     [Fact]
     public void AnAlbumWithNoKnownCoverOmitsTheElement()
     {
-        var withCover = Serialize(PhotoFeedRenderer.AlbumFeed(Urls, Urls.Album("wmphotos"), Album(CoverRef), []));
-        var without = Serialize(PhotoFeedRenderer.AlbumFeed(Urls, Urls.Album("wmphotos"), Album(), []));
+        var withCover = Serialize(PhotoFeedRenderer.CreateAlbumFeed(Urls, Urls.ForAlbum("wmphotos"), Album(CoverRef), []));
+        var without = Serialize(PhotoFeedRenderer.CreateAlbumFeed(Urls, Urls.ForAlbum("wmphotos"), Album(), []));
 
         Assert.Contains($"live:resourceId=\"{CoverRef}\"", withCover);
         Assert.DoesNotContain("thumbnail", without);
@@ -82,7 +84,7 @@ public class PhotoFeedRendererTests
     [Fact]
     public void TheAlbumFeedWritesItsCoverBeforeTheFirstEntry()
     {
-        var xml = Serialize(PhotoFeedRenderer.AlbumFeed(Urls, Urls.Album("wmphotos"), Album(CoverRef), [Item()]));
+        var xml = Serialize(PhotoFeedRenderer.CreateAlbumFeed(Urls, Urls.ForAlbum("wmphotos"), Album(CoverRef), [Item()]));
 
         Assert.True(xml.IndexOf("thumbnail", StringComparison.Ordinal) < xml.IndexOf("<a:entry", StringComparison.Ordinal));
     }
@@ -90,7 +92,7 @@ public class PhotoFeedRendererTests
     [Fact]
     public void LibraryEntriesAddressTheirAlbumByName()
     {
-        var entry = PhotoFeedRenderer.LibraryEntry(Urls, Album(CoverRef));
+        var entry = PhotoFeedRenderer.CreateLibraryEntry(Urls, Album(CoverRef));
 
         Assert.Equal("http://api.live.test/Users(1584806899286369791)/Files/wmphotos", entry.Id);
         Assert.Equal("WMPhotos", entry.CanonicalName);
@@ -101,7 +103,7 @@ public class PhotoFeedRendererTests
     public void SocialAlbumEntriesAddressTheirFolderByResourceId()
     {
         var album = new SocialAlbum("atproto+did:plc:amyamyamyamyamyamyamy", "@amyy.me's photos");
-        var entry = PhotoFeedRenderer.SocialAlbumEntry(Urls, album, coverRef: null);
+        var entry = PhotoFeedRenderer.CreateSocialAlbumEntry(Urls, album, coverRef: null);
 
         Assert.Equal($"http://api.live.test/Users(1584806899286369791)/Files/folders('{album.ResourceId}')", entry.Id);
         Assert.Equal("publicshared", entry.SharingLevel);
@@ -117,7 +119,7 @@ public class PhotoFeedRendererTests
             new($"{CoverRef}2", "two.jpg", null, DateTime.UtcNow, 0, 0),
         };
 
-        var feed = PhotoFeedRenderer.SocialAlbumFeed(Urls, "atproto+did:plc:amy", "@amyy.me's photos", photos);
+        var feed = PhotoFeedRenderer.CreateSocialAlbumFeed(Urls, "atproto+did:plc:amy", "@amyy.me's photos", photos);
 
         Assert.Equal(CoverRef, Assert.Single(feed.Thumbnails).ResourceId);
         Assert.Equal(2, feed.ItemCount);
@@ -126,7 +128,7 @@ public class PhotoFeedRendererTests
     [Fact]
     public void ThePhotoFeedCarriesOneEntryAndNoAlbumOfItsOwn()
     {
-        var xml = Serialize(PhotoFeedRenderer.PhotoFeed(Urls, PhotoRef, title: null));
+        var xml = Serialize(PhotoFeedRenderer.CreatePhotoFeed(Urls, PhotoRef, title: null));
 
         Assert.Equal(1, xml.Split("<a:entry").Length - 1);
         Assert.Contains($"<live:resourceId>{PhotoRef}</live:resourceId>", xml);
@@ -136,7 +138,7 @@ public class PhotoFeedRendererTests
     [Fact]
     public void AnUploadedVideoComesBackAsAVideo()
     {
-        var entry = PhotoFeedRenderer.UploadedEntry(Urls, new UploadedPhoto(PhotoRef, "clip.mp4", "video"));
+        var entry = PhotoFeedRenderer.CreateUploadedEntry(Urls, new UploadedPhoto(PhotoRef, "clip.mp4", "video"));
 
         Assert.Equal("Video", entry.Type);
         Assert.Equal($"http://api.live.test/Users(1584806899286369791)/Files/files('{PhotoRef}')", entry.Id);

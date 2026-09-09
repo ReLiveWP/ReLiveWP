@@ -1,4 +1,5 @@
 using System.Globalization;
+using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -15,26 +16,34 @@ namespace ReLiveWP.Services.FindMyPhone.Controllers;
 [Route("Services/Device/SkyTrigger/[action]")]
 [Consumes("application/xml", "text/xml")]
 [Produces("application/xml")]
-public class SkyTriggerController(FindMyPhoneClient findMyPhone) : ControllerBase
+public class SkyTriggerController(FindMyPhoneClient findMyPhone, ILogger<SkyTriggerController> logger) : ControllerBase
 {
     // bound the backend hop so a stalled Skybox can't hang the device's status POST
     private static readonly TimeSpan ReportTimeout = TimeSpan.FromSeconds(10);
 
+    private const int CodeOk = 0;
+    private const int CodeFailed = 1;
+
+    private string? DeviceGuid => Request.Headers["X-WM-DeviceId"].FirstOrDefault();
 
     [HttpPost]
     [ActionName("RegisterChannel")]
     public async Task<RegisterChannelResponseModel> RegisterChannelAsync([FromBody] RegisterChannelRequestModel model)
     {
         var userId = User.Id();
-        var deviceGuid = Request.Headers["X-WM-DeviceId"][0]!;
-        if (deviceGuid is null)
-            return new RegisterChannelResponseModel() { ResponseCode = 1, ResponseMessage = "Missing X-WM-DeviceId header" };
+        var deviceGuid = DeviceGuid;
+        if (string.IsNullOrEmpty(deviceGuid))
+        {
+            FindMyPhoneMetrics.RecordDeviceResponse("RegisterChannel", CodeFailed);
+            return new RegisterChannelResponseModel() { ResponseCode = CodeFailed, ResponseMessage = "Missing X-WM-DeviceId header" };
+        }
 
         var request = new RegisterChannelRequest() { UserId = userId, DeviceGuid = deviceGuid };
         if (!string.IsNullOrEmpty(model.NotificationUri))
             request.NotificationUri = model.NotificationUri;
 
         var resp = await findMyPhone.RegisterChannelAsync(request);
+        FindMyPhoneMetrics.RecordDeviceResponse("RegisterChannel", resp.Code);
         return new RegisterChannelResponseModel()
         {
             ResponseCode = resp.Code,
@@ -46,16 +55,13 @@ public class SkyTriggerController(FindMyPhoneClient findMyPhone) : ControllerBas
     [ActionName("UpdateCommandStatus")]
     public async Task<UpdateCommandStatusResponseModel> UpdateCommandStatus([FromBody] UpdateCommandStatusRequestModel model)
     {
-        var deviceGuid = Request.Headers["X-WM-DeviceId"][0]!;
-        if (deviceGuid is null)
-            return new UpdateCommandStatusResponseModel() { ResponseCode = 1, ResponseMessage = "Missing X-WM-DeviceId header" };
-
-        await findMyPhone.ReportCommandStatusAsync(ToReport(deviceGuid, model), deadline: DateTime.UtcNow.Add(ReportTimeout));
+        var code = await ReportAsync(DeviceGuid, model);
+        FindMyPhoneMetrics.RecordDeviceResponse("UpdateCommandStatus", code);
 
         return new UpdateCommandStatusResponseModel()
         {
-            ResponseCode = 0,
-            ResponseMessage = "OK"
+            ResponseCode = code,
+            ResponseMessage = code == CodeOk ? "OK" : "Failed"
         };
     }
 
@@ -63,16 +69,35 @@ public class SkyTriggerController(FindMyPhoneClient findMyPhone) : ControllerBas
     [ActionName("UpdateCommandStatusBatched")]
     public async Task<UpdateCommandStatusBatchedResponseModel> UpdateCommandStatusBatched([FromBody] UpdateCommandStatusBatchedRequestModel model)
     {
-        var deviceGuid = Request.Headers["X-WM-DeviceId"][0]!;
-        foreach (var request in model.Requests)
-            await findMyPhone.ReportCommandStatusAsync(ToReport(deviceGuid, request), deadline: DateTime.UtcNow.Add(ReportTimeout));
+        var deviceGuid = DeviceGuid;
+        FindMyPhoneMetrics.CommandStatusBatchSize.Record(model.Requests.Count);
 
-        return new UpdateCommandStatusBatchedResponseModel()
+        var responses = new List<CommandStatusResponseModel>(model.Requests.Count);
+        foreach (var request in model.Requests)
         {
-            Responses = model.Requests
-                .Select(r => new CommandStatusResponseModel() { ResponseCode = 0, RequestId = r.RequestId })
-                .ToList()
-        };
+            var code = await ReportAsync(deviceGuid, request);
+            FindMyPhoneMetrics.RecordDeviceResponse("UpdateCommandStatusBatched", code);
+            responses.Add(new CommandStatusResponseModel() { ResponseCode = code, RequestId = request.RequestId });
+        }
+
+        return new UpdateCommandStatusBatchedResponseModel() { Responses = responses };
+    }
+
+    private async Task<int> ReportAsync(string? deviceGuid, UpdateCommandStatusRequestModel model)
+    {
+        if (string.IsNullOrEmpty(deviceGuid))
+            return CodeFailed;
+
+        try
+        {
+            await findMyPhone.ReportCommandStatusAsync(ToReport(deviceGuid, model), deadline: DateTime.UtcNow.Add(ReportTimeout));
+            return CodeOk;
+        }
+        catch (RpcException ex)
+        {
+            logger.LogWarning(ex, "Command status report {RequestId} for {DeviceId} failed", model.RequestId, deviceGuid);
+            return CodeFailed;
+        }
     }
 
     private static ReportCommandStatusRequest ToReport(string deviceGuid, UpdateCommandStatusRequestModel model) => new()

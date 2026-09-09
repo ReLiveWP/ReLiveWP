@@ -10,14 +10,26 @@ export type NavItem = {
     exact?: boolean;
 };
 
+function navItem(item: NavItem) {
+    return (
+        <li key={item.href}>
+            <Link activeClass="active text-accent" exactMatch={item.exact} href={item.href}>
+                {item.label}
+            </Link>
+        </li>
+    );
+}
+
 export function SiteHeader({
     items = [],
-    trailing,
+    trailing = [],
+    account,
     search,
     home = "/",
 }: {
     items?: NavItem[];
-    trailing?: ComponentChildren;
+    trailing?: NavItem[];
+    account?: ComponentChildren;
     search?: SearchProps;
     home?: string;
 }) {
@@ -38,22 +50,11 @@ export function SiteHeader({
                 </a>
             </div>
             <nav class="header-nav">
-                <ul class="header-items leading">
-                    {items.map((item) => (
-                        <li key={item.href}>
-                            <Link
-                                activeClass="active text-accent"
-                                exactMatch={item.exact}
-                                href={item.href}
-                            >
-                                {item.label}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-                {trailing !== undefined ? (
+                <ul class="header-items leading">{items.map(navItem)}</ul>
+                {trailing.length > 0 || account !== undefined ? (
                     <ul class="header-items trailing">
-                        <li>{trailing}</li>
+                        {trailing.map(navItem)}
+                        {account !== undefined ? <li>{account}</li> : null}
                     </ul>
                 ) : null}
             </nav>

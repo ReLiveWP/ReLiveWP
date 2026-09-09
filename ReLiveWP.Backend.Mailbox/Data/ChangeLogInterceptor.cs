@@ -52,14 +52,12 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
 
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
-        var db = (MailboxDbContext)eventData.Context!;
-        _ = PublishNotificationsAsync(db).ContinueWith(
-            t => _logger.LogError(t.Exception, "failed publishing mailbox.changed notifications"),
-            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
+        _ = PublishNotificationsAsync((MailboxDbContext)eventData.Context!);
         return base.SavedChanges(eventData, result);
     }
 
+    // the save has already committed by the time this runs, so a publish failure is a device that
+    // waits for its next poll, never a failed save
     private async Task PublishNotificationsAsync(MailboxDbContext db)
     {
         if (db.PendingChangeNotifications.Count == 0)
@@ -72,7 +70,17 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
             return;
 
         foreach (var evt in pending)
-            await _redis.PublishChangedAsync(evt);
+        {
+            try
+            {
+                await _redis.PublishChangedAsync(evt);
+            }
+            catch (Exception ex)
+            {
+                MailboxMetrics.PublishFailures.Add(1);
+                _logger.LogError(ex, "failed publishing mailbox.changed for collection {Collection}", evt.CollectionId);
+            }
+        }
     }
 
     private static MailboxChangeKind ToKind(DbChangeEventType t) => t switch
@@ -270,14 +278,24 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
 
         // deliver push notifications after the save completes, not before (avoids a race)
         foreach (var e in db.ChangeTracker.Entries<DbItemEvent>())
-            if (e.State == EntityState.Added)
-                db.PendingChangeNotifications.Add(new MailboxChangedEvent(
-                    e.Entity.UserId, e.Entity.CollectionId, e.Entity.ServerId, ToKind(e.Entity.EventType)));
+        {
+            if (e.State != EntityState.Added)
+                continue;
+
+            MailboxMetrics.RecordChangeEvent("item", e.Entity.EventType);
+            db.PendingChangeNotifications.Add(new MailboxChangedEvent(
+                e.Entity.UserId, e.Entity.CollectionId, e.Entity.ServerId, ToKind(e.Entity.EventType)));
+        }
 
         foreach (var e in db.ChangeTracker.Entries<DbFolderEvent>())
-            if (e.State == EntityState.Added)
-                db.PendingChangeNotifications.Add(new MailboxChangedEvent(
-                    e.Entity.UserId, FolderHierarchyCollectionId, e.Entity.ServerId, ToKind(e.Entity.EventType)));
+        {
+            if (e.State != EntityState.Added)
+                continue;
+
+            MailboxMetrics.RecordChangeEvent("folder", e.Entity.EventType);
+            db.PendingChangeNotifications.Add(new MailboxChangedEvent(
+                e.Entity.UserId, FolderHierarchyCollectionId, e.Entity.ServerId, ToKind(e.Entity.EventType)));
+        }
     }
 
     private static bool IsChildMutation(EntityEntry entry) =>

@@ -53,7 +53,7 @@ public class PingService(
         var monitored = folders.Select(x => x.Id).ToHashSet();
         var deadline = DateTimeOffset.UtcNow.AddSeconds(heartbeat.Value);
 
-        var changed = await monitor.WaitForChangesAsync(userId, deviceId, monitored, deadline, requestAborted);
+        var changed = await monitor.WaitForChangesAsync(userId, deviceId, monitored, deadline, EasCommand.Ping, requestAborted);
 
         if (changed.Count > 0)
         {

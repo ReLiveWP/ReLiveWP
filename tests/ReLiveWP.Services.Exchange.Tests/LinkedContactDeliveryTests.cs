@@ -140,8 +140,22 @@ public class LinkedContactDeliveryTests
     private const string EightOneNames =
         "CID,WLID,Type,ShellContactType,SID,OID,MRI,OtherMRI,MobileIMEnabled,UserTileUrl,UserTileHash";
 
-    private static async Task<Dictionary<string, string>> AnnotationsFor(string cachedNames)
+    private static Item Mirrored(bool annotated) => new()
     {
+        ServerId = ServerId,
+        CollectionId = Collection,
+        Origin = new ItemOrigin { ServiceId = "google", CollectionId = "people/me/connections", ExternalId = "people/c1" },
+        Contact = new ContactItem
+        {
+            FirstName = "amy",
+            Annotation = annotated ? new ContactAnnotation { FavoriteOrder = 1 } : null,
+        },
+    };
+
+    private static async Task<Dictionary<string, string>> AnnotationsFor(string cachedNames, Item? item = null)
+    {
+        item ??= Linked();
+
         var client = new FakeMailboxStoreClient
         {
             OnGetSyncState = _ => new SyncState
@@ -156,7 +170,7 @@ public class LinkedContactDeliveryTests
                 PreviousWatermark = 0,
             },
             OnGetItemEvents = _ => [new ItemEvent { Id = 6, CommitId = 6, ServerId = ServerId, EventType = ChangeEventType.Add }],
-            OnGetItems = _ => [Linked()],
+            OnGetItems = _ => [item],
             OnUpsertSyncState = _ => new SyncState { UserId = User, DeviceId = Device, CollectionId = Collection },
         };
 
@@ -168,7 +182,9 @@ public class LinkedContactDeliveryTests
         });
 
         var data = response.Commands!.Add.Single(a => a.ServerId == ServerId).ApplicationData;
-        var annotations = data.Elements.Single(e => e.LocalName == "Annotations");
+        var annotations = data.Elements.SingleOrDefault(e => e.LocalName == "Annotations");
+        if (annotations is null)
+            return [];
 
         return annotations.ChildNodes.Cast<System.Xml.XmlNode>().ToDictionary(
             n => n.SelectSingleNode("*[local-name()='Name']")!.InnerText,
@@ -202,6 +218,27 @@ public class LinkedContactDeliveryTests
 
         // 8.1 never asks for IMMRI, so it must not appear even though the contact has one
         Assert.False(annotations.ContainsKey("IMMRI"));
+    }
+
+    [Fact]
+    public async Task Origin_goes_out_only_to_a_client_that_asked_for_it()
+    {
+        var phone = await AnnotationsFor(EightOneNames, Mirrored(annotated: true));
+        Assert.False(phone.ContainsKey("OriginService"));
+        Assert.False(phone.ContainsKey("OriginCollection"));
+
+        var web = await AnnotationsFor("CID,OriginService,OriginCollection", Mirrored(annotated: true));
+        Assert.Equal("google", web["OriginService"]);
+        Assert.Equal("people/me/connections", web["OriginCollection"]);
+    }
+
+    [Fact]
+    public async Task A_mirrored_contact_with_no_annotation_row_still_carries_its_origin()
+    {
+        var web = await AnnotationsFor("CID,OriginService,OriginCollection", Mirrored(annotated: false));
+
+        Assert.Equal("google", web["OriginService"]);
+        Assert.False(web.ContainsKey("CID"));
     }
 
     [Fact]

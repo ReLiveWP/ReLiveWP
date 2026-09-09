@@ -25,7 +25,10 @@ int y = 0;
 int z = 0;
 app.MapPost("/v6/{webService=ClientWebService}/{filename=client.asmx}", async (HttpContext context, IWebHostEnvironment environment) =>
 {
-    var header = context.Request.Headers["SOAPAction"].First().Trim('"');
+    var header = context.Request.Headers["SOAPAction"].FirstOrDefault()?.Trim('"');
+    if (header is null)
+        return Results.BadRequest();
+
     Console.WriteLine(header);
     switch (header)
     {
@@ -77,11 +80,7 @@ app.MapPost("/v6/{webService=ClientWebService}/{filename=client.asmx}", async (H
 
                 foreach (XmlNode element in xml.SelectNodes("//u:FileLocation/u:Url", nsmgr))
                 {
-                    _ = client.GetByteArrayAsync(element.InnerText)
-                              .ContinueWith(async s =>
-                              {
-                                  await File.WriteAllBytesAsync(Path.Join("Packages", Path.GetFileName(element.InnerText)), s.Result);
-                              });
+                    _ = DownloadPackageAsync(element.InnerText);
                     Console.WriteLine(element.InnerText);
                 }
 
@@ -118,3 +117,16 @@ app.MapPost("/v6/{webService=ClientWebService}/{filename=client.asmx}", async (H
 app.MapDefaultEndpoints();
 
 app.Run();
+
+async Task DownloadPackageAsync(string url)
+{
+    try
+    {
+        var package = await client.GetByteArrayAsync(url);
+        await File.WriteAllBytesAsync(Path.Join("Packages", Path.GetFileName(url)), package);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"package download failed for {url}: {ex.Message}");
+    }
+}

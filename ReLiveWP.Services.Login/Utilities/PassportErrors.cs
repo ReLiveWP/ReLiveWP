@@ -7,7 +7,7 @@ public static class PassportErrors
 
     public static string Describe(uint code) => code switch
     {
-        BadMemberNameOrPassword => "That ReLive account or password isn't recognised. Please try again.",
+        BadMemberNameOrPassword => "The sign-in name or password does not match one in the ReLive account system.",
         _ => $"Something went wrong signing you in. (0x{code:X8})"
     };
 }

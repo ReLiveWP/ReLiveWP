@@ -45,6 +45,9 @@ service MailboxStore {
   rpc DeleteContactIdentity    (DeleteContactIdentityRequest)    returns (MutationResult);
   rpc ResolveAuthorsToContacts (ResolveAuthorsToContactsRequest) returns (ResolveAuthorsToContactsResponse);
   rpc ResolveContactIdentities (ResolveContactIdentitiesRequest) returns (ResolveContactIdentitiesResponse);
+  rpc ListContactIdentities    (ListContactIdentitiesRequest)    returns (ResolveContactIdentitiesResponse);
+  rpc BindContactIdentity      (BindContactIdentityRequest)      returns (ContactIdentity);
+  rpc UnbindContactIdentity    (UnbindContactIdentityRequest)    returns (MutationResult);
   rpc ResolveFeedSubjects      (ResolveFeedSubjectsRequest)      returns (ResolveFeedSubjectsResponse);
   rpc GetContactProfiles      (GetContactProfilesRequest)      returns (GetContactProfilesResponse);
 
@@ -879,6 +882,25 @@ message ResolveContactIdentitiesRequest {
 
 message ResolveContactIdentitiesResponse {
   repeated ContactIdentity identities = 1;
+}
+
+message ListContactIdentitiesRequest {
+  string user_id   = 1;
+  string server_id = 2;
+}
+
+message BindContactIdentityRequest {
+  string user_id     = 1;
+  string server_id   = 2;
+  string provider    = 3;
+  string external_id = 4;
+  int64  contact_cid = 5;
+}
+
+message UnbindContactIdentityRequest {
+  string user_id   = 1;
+  string server_id = 2;
+  string provider  = 3;
 }
 
 enum FeedSubjectKind {

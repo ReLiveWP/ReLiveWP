@@ -38,10 +38,12 @@ public class ContactLinkResolver(
         {
             reply = await users.LookupUsersByEmailAsync(
                 new LookupUsersByEmailRequest { Emails = { addresses } }, cancellationToken: ct);
+            MailboxMetrics.RecordContactLink("contact_lookup", succeeded: true);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "directory lookup failed for contact {Contact}, leaving its link alone", contact.ServerId);
+            MailboxMetrics.RecordContactLink("contact_lookup", succeeded: false);
             return false;
         }
 
@@ -152,6 +154,7 @@ public class ContactLinkResolver(
         {
             var profile = await users.GetUserProfileAsync(
                 new GetUserProfileRequest { UserId = userId }, cancellationToken: ct);
+            MailboxMetrics.RecordContactLink("profile_read", succeeded: true);
 
             return new AccountProfileChangedEvent(
                 profile.UserId,
@@ -166,6 +169,7 @@ public class ContactLinkResolver(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "could not read the profile for {User}, skipping its link pass", userId);
+            MailboxMetrics.RecordContactLink("profile_read", succeeded: false);
             return null;
         }
     }
@@ -200,10 +204,12 @@ public class ContactLinkResolver(
             reply = await users.LookupUsersByEmailAsync(
                 new LookupUsersByEmailRequest { Emails = { candidates.Select(c => c.Address).Distinct() } },
                 cancellationToken: ct);
+            MailboxMetrics.RecordContactLink("feed_subjects", succeeded: true);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "directory lookup failed resolving feed subjects for {User}", viewerUserId);
+            MailboxMetrics.RecordContactLink("feed_subjects", succeeded: false);
             return resolved;
         }
 

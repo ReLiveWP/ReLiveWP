@@ -22,10 +22,12 @@ public class MeContactMirrorService(
         try
         {
             profile = await users.GetUserProfileAsync(new GetUserProfileRequest { UserId = userId }, cancellationToken: ct);
+            MailboxMetrics.RecordMeContactMirror("profile_read", "ok");
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "could not read the profile for {User}, me contact keeps its seeded values", userId);
+            MailboxMetrics.RecordMeContactMirror("profile_read", "failed");
             return;
         }
 
@@ -118,15 +120,18 @@ public class MeContactMirrorService(
         {
             var reply = await users.GetUserPictureAsync(
                 new GetUserPictureRequest { UserId = userId, Thumbnail = true }, cancellationToken: ct);
+            MailboxMetrics.RecordMeContactMirror("avatar_fetch", "ok");
             return reply.Data.ToByteArray();
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
+            MailboxMetrics.RecordMeContactMirror("avatar_fetch", "not_found");
             return null;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "could not fetch the avatar thumbnail for {User}", userId);
+            MailboxMetrics.RecordMeContactMirror("avatar_fetch", "failed");
             return null;
         }
     }

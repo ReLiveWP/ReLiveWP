@@ -14,14 +14,17 @@ const { Contacts, WindowsLive: WL } = tags;
 export const CONTACT_SUPPORTED: EasNode[] =
     supportedFrom(CONTACT_PROPERTIES, ['Contacts', 'Contacts2']);
 
+// the server only sends names that were asked for, so the two origin names are ours alone and a
+// phone syncing the same account never sees them
 export const LIVE_ANNOTATIONS: readonly string[] = [
     'CID', 'OID', 'WLID', 'IMMRI', 'Type', 'UserTileUrl', 'UserTileHash', 'TrustLevel',
-    'FavoriteOrder',
+    'FavoriteOrder', 'OriginService', 'OriginCollection',
 ];
 
 const EMPTY_ANNOTATION: ContactAnnotation = {
     cid: null, objectId: null, wlid: null, imMri: null, type: null,
     userTileUrl: null, userTileHash: null, trustLevel: null, favouriteOrder: null,
+    originService: null, originCollection: null,
 };
 
 function annotationInt(value: string | null): number | null {
@@ -60,6 +63,8 @@ export function readAnnotations(data: EasNode): ContactAnnotation | null {
         userTileHash: read('UserTileHash'),
         trustLevel: annotationInt(read('TrustLevel')),
         favouriteOrder: annotationInt(read('FavoriteOrder')),
+        originService: read('OriginService'),
+        originCollection: read('OriginCollection'),
     };
 }
 

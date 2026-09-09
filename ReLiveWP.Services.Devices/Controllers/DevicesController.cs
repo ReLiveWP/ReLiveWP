@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Grpc.Core;
@@ -37,15 +38,7 @@ public class DevicesController(
         {
             var carrierInfo = carrierLookupService.GetCarrierInfo(device.Operator);
 
-            Device? registeredDevice = null;
-            try
-            {
-                registeredDevice = await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = device.UniqueId }, cancellationToken: cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogInformation(ex, "Missing device registration for {DeviceId}", device.UniqueId);
-            }
+            var registeredDevice = await FindRegistrationAsync(device.UniqueId, cancellationToken);
 
             yield return new ConnectedDeviceModel(
                 device.UniqueId,
@@ -75,15 +68,7 @@ public class DevicesController(
 
         var carrierInfo = carrierLookupService.GetCarrierInfo(device.Operator);
 
-        Device? registeredDevice = null;
-        try
-        {
-            registeredDevice = await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = device.UniqueId }, cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogInformation(ex, "Missing device registration for {DeviceId}", device.UniqueId);
-        }
+        var registeredDevice = await FindRegistrationAsync(device.UniqueId, cancellationToken);
 
         return new ConnectedDeviceExtendedModel(
             device.UniqueId,
@@ -107,6 +92,27 @@ public class DevicesController(
             device.HasLastSeenLong ? device.LastSeenLong : null,
             registeredDevice?.Imei
         );
+    }
+
+    // a device that never activated has no registration, that is normal and just means no IMEI.
+    // anything else is DeviceRegistration being down and should not look the same
+    private async Task<Device?> FindRegistrationAsync(string deviceId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await deviceRegistrationClient.DeviceByIdAsync(new DeviceByIdRequest() { DeviceId = deviceId }, cancellationToken: cancellationToken);
+        }
+        catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.NotFound)
+        {
+            logger.LogInformation("No device registration for {DeviceId}", deviceId);
+            return null;
+        }
+        catch (RpcException ex)
+        {
+            logger.LogWarning(ex, "Device registration lookup for {DeviceId} failed", deviceId);
+            DevicesMetrics.RegistrationLookupFailures.Add(1);
+            return null;
+        }
     }
 
     [HttpGet("~/[controller]/image/{size}/{device}")]
@@ -133,6 +139,7 @@ public class DevicesController(
             return Unauthorized(); // should never happen
 
         var response = await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandRing }, cancellationToken: cancellationToken);
+        DevicesMetrics.RecordCommandRequested("ring");
 
         return Accepted(new { requestId = response.RequestId });
     }
@@ -147,6 +154,7 @@ public class DevicesController(
             return Unauthorized(); // should never happen
 
         var response = await skyboxClient.SendDeviceCommandAsync(new DeviceCommandRequest() { UserId = User.Id(), DeviceGuid = id, Command = DeviceCommandRequestType.CommandLocate }, cancellationToken: cancellationToken);
+        DevicesMetrics.RecordCommandRequested("locate");
 
         return Accepted(new { requestId = response.RequestId });
     }
@@ -183,6 +191,7 @@ public class DevicesController(
     [HttpGet]
     [Authorize]
     [ActionName("events")]
+    [DisableHttpMetrics]
     public IResult EventsStream(string id, CancellationToken cancellationToken)
     {
         if (User == null)
@@ -199,44 +208,54 @@ public class DevicesController(
         AsyncServerStreamingCall<CommandStatusUpdate> call,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        using (call)
+        var started = Stopwatch.GetTimestamp();
+        DevicesMetrics.EventsStreamActive.Add(1);
+        try
         {
-            // equivalent to, except catches RpcException for cancellation
-            // await foreach (var update in call.ResponseStream.ReadAllAsync(cancellationToken))
-            await using var enumerator = call.ResponseStream.ReadAllAsync(cancellationToken)
-                .GetAsyncEnumerator(cancellationToken);
-            while (!cancellationToken.IsCancellationRequested)
+            using (call)
             {
-                CommandStatusUpdate? update = null;
-                try
+                // equivalent to, except catches RpcException for cancellation
+                // await foreach (var update in call.ResponseStream.ReadAllAsync(cancellationToken))
+                await using var enumerator = call.ResponseStream.ReadAllAsync(cancellationToken)
+                    .GetAsyncEnumerator(cancellationToken);
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (!await enumerator.MoveNextAsync())
-                        yield break;
-
-                    update = enumerator.Current;
-                }
-                catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.Cancelled)
-                {
-                    yield break;
-                }
-
-                yield return new CommandStatusModel(
-                    update.RequestId,
-                    update.Action switch
+                    CommandStatusUpdate? update = null;
+                    try
                     {
-                        DeviceCommandRequestType.CommandRing => "ring",
-                        DeviceCommandRequestType.CommandLocate => "locate",
-                        _ => "unknown"
-                    },
-                    update.Result,
-                    update.Final,
-                    string.IsNullOrEmpty(update.Data) ? null : update.Data,
-                    update.Reported?.ToDateTimeOffset(),
-                    update.HasLat ? update.Lat : null,
-                    update.HasLong ? update.Long : null,
-                    update.HasAccuracy ? update.Accuracy : null);
+                        if (!await enumerator.MoveNextAsync())
+                            yield break;
 
+                        update = enumerator.Current;
+                    }
+                    catch (RpcException ex) when (ex.StatusCode == global::Grpc.Core.StatusCode.Cancelled)
+                    {
+                        yield break;
+                    }
+
+                    yield return new CommandStatusModel(
+                        update.RequestId,
+                        update.Action switch
+                        {
+                            DeviceCommandRequestType.CommandRing => "ring",
+                            DeviceCommandRequestType.CommandLocate => "locate",
+                            _ => "unknown"
+                        },
+                        update.Result,
+                        update.Final,
+                        string.IsNullOrEmpty(update.Data) ? null : update.Data,
+                        update.Reported?.ToDateTimeOffset(),
+                        update.HasLat ? update.Lat : null,
+                        update.HasLong ? update.Long : null,
+                        update.HasAccuracy ? update.Accuracy : null);
+
+                }
             }
+        }
+        finally
+        {
+            DevicesMetrics.EventsStreamActive.Add(-1);
+            DevicesMetrics.RecordEventsStreamEnd(started, cancellationToken.IsCancellationRequested);
         }
     }
 

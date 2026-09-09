@@ -38,10 +38,8 @@ public class InferenceController(ILogger<InferenceController> logger, IHttpClien
         await Request.Body.CopyToAsync(body, ct);
         body.Position = 0;
 
-        GetLocationUsingFingerprintRequest request;
-        using (var gzipStream = new GZipStream(body, CompressionMode.Decompress, true))
-        using (var textReader = new StreamReader(gzipStream))
-            request = (GetLocationUsingFingerprintRequest)RequestSerializer.Deserialize(textReader)!;
+        if (!TryReadRequest(body, RequestSerializer, out GetLocationUsingFingerprintRequest request))
+            return BadRequest();
 
         var trackingId = request.RequestHeader?.TrackingId;
         var detections = request.BeaconFingerprint?.Detections;
@@ -224,10 +222,8 @@ public class InferenceController(ILogger<InferenceController> logger, IHttpClien
         await Request.Body.CopyToAsync(body, ct);
         body.Position = 0;
 
-        GetTileUsingPositionRequest request;
-        using (var gzipStream = new GZipStream(body, CompressionMode.Decompress, true))
-        using (var textReader = new StreamReader(gzipStream))
-            request = (GetTileUsingPositionRequest)TileRequestSerializer.Deserialize(textReader)!;
+        if (!TryReadRequest(body, TileRequestSerializer, out GetTileUsingPositionRequest request))
+            return BadRequest();
 
         var trackingId = request.RequestHeader?.TrackingId;
         logger.LogInformation(
@@ -249,6 +245,24 @@ public class InferenceController(ILogger<InferenceController> logger, IHttpClien
         };
 
         return Xml(response);
+    }
+
+    private bool TryReadRequest<T>(MemoryStream body, XmlSerializer serializer, out T request)
+        where T : class
+    {
+        try
+        {
+            using var gzipStream = new GZipStream(body, CompressionMode.Decompress, true);
+            using var textReader = new StreamReader(gzipStream);
+            request = serializer.Deserialize(textReader) as T;
+            return request is not null;
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or InvalidOperationException or XmlException)
+        {
+            logger.LogWarning(ex, "Rejecting {Length}-byte body: not a gzipped {Type} document", body.Length, typeof(T).Name);
+            request = null;
+            return false;
+        }
     }
 
     private IActionResult Xml(GetLocationUsingFingerprintResponse response)

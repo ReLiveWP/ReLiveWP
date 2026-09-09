@@ -13,6 +13,7 @@ builder.Services.AddSingleton<RootCACertificateProvider>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<DevicesDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddReadinessCheck("postgres", (sp, ct) => sp.GetRequiredService<DevicesDbContext>().Database.CanConnectAsync(ct));
 
 var app = builder.Build();
 
