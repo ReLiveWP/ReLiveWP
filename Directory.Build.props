@@ -1,10 +1,10 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
+    <Features>runtime-async=on</Features>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(MSBuildProjectName)</OutputPath>
-    <PublishDir>$(MSBuildThisFileDirectory)publish\$(TargetFramework)\$(RuntimeIdentifier)\$(MSBuildProjectName)</PublishDir>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
     <IsPublishable Condition="$(MSBuildProjectName.EndsWith('.Tests'))">false</IsPublishable>
   </PropertyGroup>
 </Project>

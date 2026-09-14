@@ -85,8 +85,6 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
-    ports:
-      - 15002:5000
 
   activation:
     <<: *debug

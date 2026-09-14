@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-preview-alpine AS base
 RUN apk add --no-cache gosu ca-certificates icu-libs tzdata icu-data-full krb5-libs
 COPY docker/entrypoint.sh /entrypoint.sh
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
@@ -7,7 +7,7 @@ WORKDIR /app
 
 # One build of the whole solution, shared by every service image. Nothing in this
 # stage may depend on PROJECT, or buildkit stops deduplicating it.
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0-preview-alpine AS build
 ARG CONFIGURATION=Release
 ARG BUILD_JOBS
 
@@ -28,13 +28,12 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --mount=type=cache,id=dotnet_tools,target=/root/.dotnet \
     --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     dotnet publish ReLiveWP.slnx -c "$CONFIGURATION" ${BUILD_JOBS:+-m:$BUILD_JOBS} \
-        -p:UseAppHost=false -p:DebugType=portable -p:DebugSymbols=true
+        -p:ArtifactsPivots=out -p:UseAppHost=false -p:DebugType=portable -p:DebugSymbols=true
 
 # --- final image ---
 FROM base AS final
 ARG PROJECT
-ARG TARGET_FRAMEWORK=net10.0
 ENV SERVICE_DLL=$PROJECT.dll
 WORKDIR /app
-COPY --from=build /src/publish/$TARGET_FRAMEWORK/$PROJECT/ ./
+COPY --from=build /src/artifacts/publish/$PROJECT/out/ ./
 ENTRYPOINT ["/entrypoint.sh"]
