@@ -5,7 +5,33 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Packages\**" />
+    <Compile Remove="SyncUpdates\**" />
+    <Compile Remove="UpdateRegulation\**" />
+    <Content Remove="Packages\**" />
+    <Content Remove="SyncUpdates\**" />
+    <Content Remove="UpdateRegulation\**" />
+    <EmbeddedResource Remove="Packages\**" />
+    <EmbeddedResource Remove="SyncUpdates\**" />
+    <EmbeddedResource Remove="UpdateRegulation\**" />
+    <None Remove="Packages\**" />
+    <None Remove="SyncUpdates\**" />
+    <None Remove="UpdateRegulation\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
   <ItemGroup>
@@ -14,9 +40,6 @@
 
   <ItemGroup>
     <Folder Include="GetExtendedUpdateInfo\" />
-    <Folder Include="Packages\" />
-    <Folder Include="UpdateRegulation\" />
-    <Folder Include="SyncUpdates\" />
   </ItemGroup>
 
 </Project>

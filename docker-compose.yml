@@ -254,6 +254,30 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Backend.Mail.ini:/app/ReLiveWP.Backend.Mail.ini:ro
 
+  deviceupdate:
+    image: relive/deviceupdate
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10004/health"]
+    environment: *v-env
+    networks:
+      - relive
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 10004:10004
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Backend.DeviceUpdate.ini:/app/ReLiveWP.Backend.DeviceUpdate.ini:ro
+      - ./deploy/data/deviceupdate/wwwroot:/app/wwwroot:ro
+      - ./deploy/data/deviceupdate/catalog:/app/Catalog:ro
+      - ./deploy/data/deviceupdate/packages:/app/Packages
+    secrets:
+      - source: deviceupdate_db_connection
+        target: ConnectionStrings__DefaultConnection
+
   activation:
     image: relive/activation
     healthcheck:
@@ -307,8 +331,8 @@ services:
     environment: *v-env
     networks:
       - relive
-    ports:
-      - 10004:8080
+    # ports:
+    #   - 10004:8080
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -660,5 +684,7 @@ secrets:
     file: ./deploy/secrets/push_db_connection
   mailbox_db_connection:
     file: ./deploy/secrets/mailbox_db_connection
+  deviceupdate_db_connection:
+    file: ./deploy/secrets/deviceupdate_db_connection
   media_ticket_secret:
     file: ./deploy/secrets/media_ticket_secret

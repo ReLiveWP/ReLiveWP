@@ -1,132 +1,62 @@
-using System.Net.Http.Headers;
-using System.Text;
-using System.Xml;
+using Microsoft.EntityFrameworkCore;
+using ReLiveWP.Backend.DeviceUpdate;
+using ReLiveWP.Backend.DeviceUpdate.Catalog;
+using ReLiveWP.Backend.DeviceUpdate.Commands;
+using ReLiveWP.Backend.DeviceUpdate.Data;
+using ReLiveWP.Backend.DeviceUpdate.Wsup;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
 
+builder.Services.Configure<CrawlerOptions>(builder.Configuration.GetSection(CrawlerOptions.SectionName));
+builder.Services.Configure<PackageOptions>(builder.Configuration.GetSection(PackageOptions.SectionName));
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContextPool<UpdatesDbContext>(options => options.UseNpgsql(connectionString));
+
+var upstreamHttp = LongLivedClient("Windows-Update-Agent");
+var packagesHttp = LongLivedClient(null);
+
+builder.Services.AddScoped(sp => ActivatorUtilities.CreateInstance<WsusUpstreamClient>(sp, upstreamHttp));
+builder.Services.AddScoped(sp => ActivatorUtilities.CreateInstance<PackageStore>(sp, packagesHttp));
+
+builder.Services.AddScoped<UpdateService>();
+builder.Services.AddScoped<CatalogReparser>();
+builder.Services.AddScoped<CatalogCompiler>();
+builder.Services.AddScoped<Crawler>();
+builder.Services.AddReadinessCheck("postgres", (sp, ct) => sp.GetRequiredService<UpdatesDbContext>().Database.CanConnectAsync(ct));
+
 var app = builder.Build();
 
-app.MapMethods("/WM/MicrosoftUpdate/redir/duredir.cab", ["HEAD", "GET"], (IWebHostEnvironment environment) =>
+using (var scope = app.Services.CreateScope())
 {
-    return Results.File(Path.Join(environment.WebRootPath, "duredir.cab"), "application/vnd.ms-cab-compressed");
-});
+    await scope.ServiceProvider.GetRequiredService<UpdatesDbContext>().Database.MigrateAsync();
+}
 
+if (DeviceUpdateCommands.IsCommandInvocation(args))
+    return await DeviceUpdateCommands.RunAsync(app, args);
 
-app.MapMethods("/WM/MicrosoftUpdate/selfupdate/duident.cab", ["HEAD", "GET"], (IWebHostEnvironment environment) =>
+using (var scope = app.Services.CreateScope())
 {
-    return Results.File(Path.Join(environment.WebRootPath, "duident.cab"), "application/vnd.ms-cab-compressed");
-});
+    var db = scope.ServiceProvider.GetRequiredService<UpdatesDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    CatalogVerifier.LogReport(await CatalogVerifier.CheckCatalogAsync(db), logger);
+}
 
-var client = new HttpClient();
+app.MapClientWebService();
 
-int x = 0;
-int y = 0;
-int z = 0;
-app.MapPost("/v6/{webService=ClientWebService}/{filename=client.asmx}", async (HttpContext context, IWebHostEnvironment environment) =>
+await app.RunAsync();
+return 0;
+
+static HttpClient LongLivedClient(string? userAgent)
 {
-    var header = context.Request.Headers["SOAPAction"].FirstOrDefault()?.Trim('"');
-    if (header is null)
-        return Results.BadRequest();
-
-    Console.WriteLine(header);
-    switch (header)
+    var client = new HttpClient(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(15) })
     {
-        case "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetConfig":
-            return Results.File(Path.Join(environment.WebRootPath, "client_config.xml"), "text/xml; charset=utf-8");
-        case "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetCookie":
-            return Results.File(Path.Join(environment.WebRootPath, "cookie.xml"), "text/xml; charset=utf-8");
-        case "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/SyncUpdates":
-            {
-                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+        Timeout = TimeSpan.FromMinutes(10),
+    };
 
-                var num = ++x;
+    if (userAgent is not null)
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
 
-                await File.WriteAllTextAsync($"SyncUpdates\\{num}_SyncUpdatesRequest.xml", body);
-
-                var request = new HttpRequestMessage(HttpMethod.Post, "https://fe2.update.microsoft.com/v6/ClientWebService/client.asmx");
-                request.Headers.Add("SOAPAction", "\"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/SyncUpdates\"");
-                request.Content = new StringContent(body, new MediaTypeHeaderValue("text/xml"));
-
-                var resp = await client.SendAsync(request);
-                var body2 = await resp.Content.ReadAsStringAsync();
-
-                await File.WriteAllTextAsync($"SyncUpdates\\{num}_SyncUpdatesResponse.xml", body2);
-
-                return Results.Text(body2, "text/xml; charset=utf-8", Encoding.UTF8);
-            }
-        case "http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetExtendedUpdateInfo":
-            {
-                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
-
-                var num = ++y;
-
-                await File.WriteAllTextAsync($"GetExtendedUpdateInfo\\{num}_GetExtendedUpdateInfoRequest.xml", body);
-
-                var request = new HttpRequestMessage(HttpMethod.Post, "https://fe2.update.microsoft.com/v6/ClientWebService/client.asmx");
-                request.Headers.Add("SOAPAction", "\"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetExtendedUpdateInfo\"");
-                request.Content = new StringContent(body, new MediaTypeHeaderValue("text/xml"));
-
-                var resp = await client.SendAsync(request);
-                var body2 = await resp.Content.ReadAsStringAsync();
-
-                var xml = new XmlDocument();
-                xml.LoadXml(body2);
-
-                XmlNamespaceManager nsmgr = new XmlNamespaceManager(xml.NameTable);
-                nsmgr.AddNamespace("u", @"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService");
-
-                // //FileLocation/Url
-
-                foreach (XmlNode element in xml.SelectNodes("//u:FileLocation/u:Url", nsmgr))
-                {
-                    _ = DownloadPackageAsync(element.InnerText);
-                    Console.WriteLine(element.InnerText);
-                }
-
-                await File.WriteAllTextAsync($"GetExtendedUpdateInfo\\{num}_GetExtendedUpdateInfoResponse.xml", body2);
-
-                return Results.Text(body2, "text/xml; charset=utf-8", Encoding.UTF8);
-            }
-        case "http://www.microsoft.com/SoftwareDistribution/Server/UpdateRegulationWebService/GetUpdateDownloadInformation":
-            {
-                var body = await new StreamReader(context.Request.Body).ReadToEndAsync();
-
-                var num = ++z;
-
-                await File.WriteAllTextAsync($"UpdateRegulation\\{num}_GetUpdateDownloadInformationRequest.xml", body);
-
-                var request = new HttpRequestMessage(HttpMethod.Post, "https://fe2.update.microsoft.com/v6/UpdateRegulationService/UpdateRegulation.asmx");
-                request.Headers.Add("SOAPAction", "\"http://www.microsoft.com/SoftwareDistribution/Server/UpdateRegulationWebService/GetUpdateDownloadInformation\"");
-                request.Content = new StringContent(body, new MediaTypeHeaderValue("text/xml"));
-
-                var resp = await client.SendAsync(request);
-                var body2 = await resp.Content.ReadAsStringAsync();
-
-                await File.WriteAllTextAsync($"UpdateRegulation\\{num}_GetUpdateDownloadInformationResponse.xml", body2);
-
-                return Results.Text(body2, "text/xml; charset=utf-8", Encoding.UTF8);
-            }
-        case "http://www.microsoft.com/SoftwareDistribution/Server/SimpleAuthWebService/GetAuthorizationCookie":
-            return Results.File(Path.Join(environment.WebRootPath, "auth_cookie.xml"), "text/xml; charset=utf-8");
-    }
-
-    return Results.NotFound();
-});
-
-app.MapDefaultEndpoints();
-
-app.Run();
-
-async Task DownloadPackageAsync(string url)
-{
-    try
-    {
-        var package = await client.GetByteArrayAsync(url);
-        await File.WriteAllBytesAsync(Path.Join("Packages", Path.GetFileName(url)), package);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"package download failed for {url}: {ex.Message}");
-    }
+    return client;
 }

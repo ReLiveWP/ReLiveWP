@@ -5,6 +5,7 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Duende.IdentityModel.OidcClient" Version="6.0.1" />
     <PackageVersion Include="Duende.IdentityModel.OidcClient.Extensions" Version="6.0.1" />
     <PackageVersion Include="FishyFlip" Version="4.1.0-alpha.2" />
@@ -48,6 +49,7 @@
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageVersion Include="SoapCore" Version="1.2.1.13" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.12" />
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.*" />

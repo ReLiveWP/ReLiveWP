@@ -63,6 +63,13 @@ services:
       args:
         PROJECT: ReLiveWP.Backend.Mail
 
+  deviceupdate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.DeviceUpdate
+
   activation:
     build:
       context: .

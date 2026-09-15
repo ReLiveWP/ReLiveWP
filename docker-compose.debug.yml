@@ -86,6 +86,13 @@ services:
         CONFIGURATION: Debug
     environment: *dev-env
 
+  deviceupdate:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+
   activation:
     <<: *debug
     build:
