@@ -8,11 +8,25 @@ using static ReLiveWP.Services.Grpc.DeviceRegistration.DeviceRegistration;
 namespace ReLiveWP.Backend.DeviceRegistration.Services;
 
 public class DeviceRegistrationService(ILogger<DeviceRegistrationService> logger,
-                                       DevicesDbContext dbContext) : DeviceRegistrationBase
+                                       DevicesDbContext dbContext,
+                                       IActivationCodeValidator activationCodeValidator) : DeviceRegistrationBase
 {
     public override async Task<DeviceRegistrationResponse> RegisterDevice(DeviceRegistrationRequest request, ServerCallContext context)
     {
         logger.LogInformation("Registering device {DeviceID}...", request.UniqueId);
+
+        var codeCheck = activationCodeValidator.CheckActivationCode(request.ActivationCode);
+        if (!codeCheck.IsValid)
+        {
+            logger.LogWarning("Rejecting device {DeviceID}, activation code {ActivationCode} is not valid", request.UniqueId, request.ActivationCode);
+            return RejectRegistration(ActivationRejection.InvalidActivationCode);
+        }
+
+        if (codeCheck.Serial is int serial && !await TryRedeemActivationCodeAsync(serial, request))
+        {
+            logger.LogWarning("Rejecting device {DeviceID}, activation code serial {Serial} is revoked or redeemed by another device", request.UniqueId, serial);
+            return RejectRegistration(ActivationRejection.ActivationCodeInUse);
+        }
 
         var deviceRegistrationResponse = new DeviceRegistrationResponse()
         {
@@ -54,6 +68,37 @@ public class DeviceRegistrationService(ILogger<DeviceRegistrationService> logger
         await dbContext.SaveChangesAsync();
         return deviceRegistrationResponse;
     }
+
+    private async Task<bool> TryRedeemActivationCodeAsync(int serial, DeviceRegistrationRequest request)
+    {
+        var existingRedemption = await dbContext.ActivationCodeRedemptions.FindAsync(serial);
+        if (existingRedemption != null)
+            return existingRedemption.RevokedAt == null && existingRedemption.DeviceUniqueId == request.UniqueId;
+
+        var redemption = new ActivationCodeRedemption()
+        {
+            Serial = serial,
+            DeviceUniqueId = request.UniqueId,
+            ActivationCode = request.ActivationCode,
+            RedeemedAt = DateTimeOffset.UtcNow
+        };
+
+        dbContext.ActivationCodeRedemptions.Add(redemption);
+        try
+        {
+            await dbContext.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException ex)
+        {
+            logger.LogWarning(ex, "Lost the race redeeming activation code serial {Serial}", serial);
+            dbContext.Entry(redemption).State = EntityState.Detached;
+            return false;
+        }
+    }
+
+    private static DeviceRegistrationResponse RejectRegistration(ActivationRejection rejection) =>
+        new() { Succeeded = false, Rejection = rejection };
 
     public override async Task<DeviceAssociationResponse> AssociateDeviceWithUser(DeviceAssociationRequest request, ServerCallContext context)
     {

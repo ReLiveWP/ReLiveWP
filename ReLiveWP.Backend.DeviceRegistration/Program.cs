@@ -10,6 +10,7 @@ builder.AddServiceEndpoints();
 builder.Services.AddGrpc();
 builder.Services.AddSingleton<ICertificateService, WindowsPhoneCertificateService>();
 builder.Services.AddSingleton<RootCACertificateProvider>();
+AddActivationCodeValidator(builder);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<DevicesDbContext>(options => options.UseNpgsql(connectionString));
@@ -26,6 +27,18 @@ app.MapGrpcService<DeviceRegistrationService>();
 app.MapDefaultEndpoints();
 
 app.Run();
+
+static void AddActivationCodeValidator(WebApplicationBuilder builder)
+{
+#if PRODUCT_KEYS
+    builder.Services.AddSingleton<IActivationCodeValidator, ProductKeyActivationCodeValidator>();
+#else
+    if (builder.Configuration.GetValue<bool>("ProductKeys:Required"))
+        throw new InvalidOperationException("ProductKeys:Required is set but this build has no product key validator, check private/ was present at build time.");
+
+    builder.Services.AddSingleton<IActivationCodeValidator, PermissiveActivationCodeValidator>();
+#endif
+}
 
 static void ApplyMigrations(WebApplication app)
 {

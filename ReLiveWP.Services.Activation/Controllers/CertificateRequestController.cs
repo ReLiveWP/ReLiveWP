@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Org.BouncyCastle.Pkcs;
 using ReLiveWP.Services.Grpc;
+using ReLiveWP.Services.Activation.Utilities;
 using ReLiveWP.Services.Grpc.DeviceRegistration;
 
 namespace ReLiveWP.Services.Activation.Controllers;
@@ -34,7 +35,7 @@ public class CertificateRequestController(
         if (version != "1.0" && version != "2.0")
             return BadRequest("Unsupported protocol version.");
 
-        var activationCode = activationCodeHeader[0];
+        var activationCode = activationCodeHeader[0] ?? "";
         var deviceInfo = ParseDeviceInfo(deviceInfoHeader[0] ?? "");
         if (!deviceInfo.TryGetValue("DeviceUniqueID", out var uniqueId) || string.IsNullOrEmpty(uniqueId))
             return BadRequest("Device info header has no DeviceUniqueID.");
@@ -60,6 +61,12 @@ public class CertificateRequestController(
         }
 
         var certRequestInfo = certRequest.GetCertificationRequestInfo();
+        if (!ActivationCodeSubject.MatchesActivationCode(certRequestInfo.Subject, activationCode))
+        {
+            logger.LogWarning("Rejecting certificate request: subject {Subject} is not the hash of activation code {ActivationCode}",
+                certRequestInfo.Subject, activationCode);
+            return BadRequest("Certificate request subject does not match the activation code.");
+        }
 
         var registrationRequest = new DeviceRegistrationRequest
         {
@@ -86,7 +93,7 @@ public class CertificateRequestController(
 
         var response = await deviceRegistration.RegisterDeviceAsync(registrationRequest);
         if (!response.Succeeded)
-            return Unauthorized();
+            return response.Rejection == ActivationRejection.None ? Unauthorized() : StatusCode(StatusCodes.Status409Conflict);
 
         var provisioningRequest = new DeviceProvisioningRequest() { CertificateRequest = ByteString.CopyFrom(encoded), Version = version };
         var provisioningResponse = await clientProvisioning.ProvisionDeviceAsync(provisioningRequest);

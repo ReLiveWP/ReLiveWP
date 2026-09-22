@@ -45,7 +45,7 @@ export default function Account() {
                                 <Route default component={AccountDetails} />
                                 <Route path="/links" component={LinkedAccounts} />
                                 <Route path="/devices" component={Devices} />
-                                {/* <Route path="/privacy" component={Privacy} /> */}
+                                <Route path="/privacy" component={Privacy} />
                                 <Route path="/sign-out" component={SignOut} />
                             </Router>
                         </ErrorBoundary>

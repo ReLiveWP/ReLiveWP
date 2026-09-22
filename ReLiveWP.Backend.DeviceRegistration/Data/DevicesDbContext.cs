@@ -14,6 +14,7 @@ public class DevicesDbContext : DbContext
     }
 
     public DbSet<DeviceModel> Devices { get; set; }
+    public DbSet<ActivationCodeRedemption> ActivationCodeRedemptions { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

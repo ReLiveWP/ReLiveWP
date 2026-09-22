@@ -25,9 +25,16 @@ message DeviceRegistrationRequest {
   optional string deviceIMEI         = 9;
 }
 
+enum ActivationRejection {
+  ACTIVATION_REJECTION_NONE                    = 0;
+  ACTIVATION_REJECTION_INVALID_ACTIVATION_CODE = 1;
+  ACTIVATION_REJECTION_ACTIVATION_CODE_IN_USE  = 2;
+}
+
 message DeviceRegistrationResponse {
-  bool succeeded            = 1;
-  bool wasAlreadyRegistered = 2;
+  bool succeeded                = 1;
+  bool wasAlreadyRegistered     = 2;
+  ActivationRejection rejection = 3;
 }
 
 message DeviceAssociationRequest {
