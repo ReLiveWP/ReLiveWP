@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Mailbox.Data;
@@ -64,18 +65,16 @@ public class MailboxStoreService(
         if (folder is null || folder.DeletedAt is not null)
             return new MutationResult { Found = false };
 
-        var now = DateTime.UtcNow;
-        folder.DeletedAt = now;
+        await using var transaction = await db.Database.BeginTransactionAsync(context.CancellationToken);
 
-        // load-and-mark per entity so ChangeLogInterceptor emits per-item events; a bulk update would desync devices
-        var items = await db.Items
-            .Where(i => i.UserId == request.UserId && i.CollectionId == folder.Id && i.DeletedAt == null)
-            .ToListAsync(context.CancellationToken);
+        await db.SoftDeleteItemsAsync(
+            db.Items.Where(i => i.UserId == request.UserId && i.CollectionId == folder.Id),
+            context.CancellationToken);
 
-        foreach (var item in items)
-            item.DeletedAt = now;
-
+        folder.DeletedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(context.CancellationToken);
+
+        await transaction.CommitAsync(context.CancellationToken);
         return new MutationResult { Found = true };
     }
 
@@ -133,26 +132,29 @@ public class MailboxStoreService(
 
         db.Items.Add(entity);
 
-        if (request.Annotation != null && entity is DbContactItem contact)
-        {
-            var ann = MailboxMapper.ToEntity(request.Annotation, id);
-            ann.ContactItem = contact;
-            db.ContactAnnotations.Add(ann);
-        }
-
         var touchedDirectory = false;
-        if (entity is DbContactItem newContact)
+        switch (entity)
         {
-            await SyncContactEmailsAsync(newContact, context.CancellationToken, isNew: true);
-            touchedDirectory = await linkResolver.ResolveForContactAsync(newContact, context.CancellationToken);
+            case DbContactItem contact:
+                SyncContactChildren(contact, request.Contact);
+                if (request.Annotation != null)
+                    UpsertAnnotation(contact, request.Annotation);
+                await SyncContactEmailsAsync(contact, context.CancellationToken, isNew: true);
+                touchedDirectory = await linkResolver.ResolveForContactAsync(contact, context.CancellationToken);
+                break;
+
+            case DbCalendarItem calendar:
+                SyncCalendarChildren(calendar, request.Calendar);
+                break;
+
+            case DbNote note:
+                SyncNoteChildren(note, request.Note);
+                break;
+
+            case DbEmail email:
+                email.Attachments = [.. request.Email.Attachments.Select(a => ToAttachmentEntity(id, a))];
+                break;
         }
-
-        if (entity is DbNote note && request.BodyCase == CreateItemRequest.BodyOneofCase.Note)
-            note.Categories = [.. request.Note.Categories.Select(x => new DbNoteCategory
-            { Id = Guid.NewGuid().ToString("N"), NoteItemId = note.Id, Category = x.Category })];
-
-        if (entity is DbEmail email && request.BodyCase == CreateItemRequest.BodyOneofCase.Email)
-            email.Attachments = [.. request.Email.Attachments.Select(a => ToAttachmentEntity(id, a))];
 
         try
         {
@@ -290,17 +292,17 @@ public class MailboxStoreService(
         {
             case UpdateItemRequest.BodyOneofCase.Contact when entity is DbContactItem c:
                 MailboxMapper.ApplyToEntity(c, request.Contact);
-                await SyncContactChildrenAsync(c, request.Contact, context.CancellationToken);
+                SyncContactChildren(c, request.Contact);
                 await SyncContactEmailsAsync(c, context.CancellationToken);
                 if (request.Annotation != null)
-                    await UpsertAnnotationAsync(c, request.Annotation, context.CancellationToken);
+                    UpsertAnnotation(c, request.Annotation);
                 else
                     touchedDirectory = await linkResolver.ResolveForContactAsync(c, context.CancellationToken);
                 break;
 
             case UpdateItemRequest.BodyOneofCase.Calendar when entity is DbCalendarItem cal:
                 MailboxMapper.ApplyToEntity(cal, request.Calendar);
-                await SyncCalendarChildrenAsync(cal, request.Calendar, context.CancellationToken);
+                SyncCalendarChildren(cal, request.Calendar);
                 break;
 
             case UpdateItemRequest.BodyOneofCase.Email when entity is DbEmail mail:
@@ -313,7 +315,7 @@ public class MailboxStoreService(
 
             case UpdateItemRequest.BodyOneofCase.Note when entity is DbNote note:
                 MailboxMapper.ApplyToEntity(note, request.Note);
-                await SyncNoteChildrenAsync(note, request.Note, context.CancellationToken);
+                SyncNoteChildren(note, request.Note);
                 break;
         }
 
@@ -411,8 +413,7 @@ public class MailboxStoreService(
 
         var origin = db.Items.Where(i =>
             i.UserId == request.UserId &&
-            i.OriginServiceId == request.OriginServiceId &&
-            i.DeletedAt == null);
+            i.OriginServiceId == request.OriginServiceId);
 
         if (request.HasOriginCollectionId)
             origin = origin.Where(i => i.OriginCollectionId == request.OriginCollectionId);
@@ -421,18 +422,8 @@ public class MailboxStoreService(
             ? origin
             : origin.Where(i => request.ExternalIds.Contains(i.OriginExternalId!));
 
-        // load-and-mark per entity so ChangeLogInterceptor emits one event per item; a bulk update
-        // would desync devices
-        var doomed = await targeted.ToListAsync(context.CancellationToken);
-
-        var now = DateTime.UtcNow;
-        foreach (var item in doomed)
-            item.DeletedAt = now;
-
-        if (doomed.Count > 0)
-            await db.SaveChangesAsync(context.CancellationToken);
-
-        return new DeleteItemsByOriginResult { ItemsDeleted = doomed.Count };
+        var deleted = await db.SoftDeleteItemsAsync(targeted, context.CancellationToken);
+        return new DeleteItemsByOriginResult { ItemsDeleted = deleted };
     }
 
     public override async Task<MoveItemResult> MoveItem(MoveItemRequest request, ServerCallContext context)
@@ -490,8 +481,7 @@ public class MailboxStoreService(
         if (!dstExists)
             return new MoveConversationResult { Status = MoveItemStatus.MoveInvalidDest };
 
-        // load-and-mark per entity (not a bulk SQL update) so ChangeLogInterceptor emits
-        // per-item events; a bulk update would desync devices, matching EmptyFolder below
+        // stays tracked so folder-class validation still runs, a thread is small enough
         foreach (var email in emails)
             email.CollectionId = request.DstCollectionId;
 
@@ -512,6 +502,8 @@ public class MailboxStoreService(
         if (folder is null)
             return new EmptyFolderResult { Found = false };
 
+        await using var transaction = await db.Database.BeginTransactionAsync(context.CancellationToken);
+
         var collectionIds = new List<string> { folder.Id };
         if (request.DeleteSubFolders)
         {
@@ -530,19 +522,15 @@ public class MailboxStoreService(
                     queue.Enqueue(child.Id);
                 }
             }
+            await db.SaveChangesAsync(context.CancellationToken);
         }
 
-        // load-and-mark per entity so ChangeLogInterceptor emits per-item events; a bulk update would desync devices
-        var items = await db.Items
-            .Where(i => i.UserId == request.UserId && collectionIds.Contains(i.CollectionId) && i.DeletedAt == null)
-            .ToListAsync(context.CancellationToken);
+        var itemsDeleted = await db.SoftDeleteItemsAsync(
+            db.Items.Where(i => i.UserId == request.UserId && collectionIds.Contains(i.CollectionId)),
+            context.CancellationToken);
 
-        var now = DateTime.UtcNow;
-        foreach (var item in items)
-            item.DeletedAt = now;
-
-        await db.SaveChangesAsync(context.CancellationToken);
-        return new EmptyFolderResult { Found = true, ItemsDeleted = items.Count };
+        await transaction.CommitAsync(context.CancellationToken);
+        return new EmptyFolderResult { Found = true, ItemsDeleted = itemsDeleted };
     }
 
     public override async Task<Item> GetItem(GetItemRequest request, ServerCallContext context)
@@ -555,14 +543,11 @@ public class MailboxStoreService(
     public override async Task GetItems(
         GetItemsRequest request, IServerStreamWriter<Item> stream, ServerCallContext context)
     {
-        var items = await db.Items.AsNoTracking()
+        var query = db.Items.AsNoTracking()
             .Where(i => i.UserId == request.UserId && request.ServerIds.Contains(i.ServerId)
-                     && i.ValidationFlaggedAt == null)
-            .ToListAsync(context.CancellationToken);
+                     && i.ValidationFlaggedAt == null);
 
-        await LoadChildrenAsync(items, context.CancellationToken, noTracking: true);
-
-        foreach (var item in items)
+        await foreach (var item in ReadItemsWithChildrenAsync(query, context.CancellationToken))
             await stream.WriteAsync(MailboxMapper.ToProto(item));
     }
 
@@ -573,11 +558,35 @@ public class MailboxStoreService(
                                      && i.ValidationFlaggedAt == null);
         if (!request.IncludeDeleted) query = query.Where(i => i.DeletedAt == null);
 
-        var items = await query.ToListAsync(context.CancellationToken);
-        await LoadChildrenAsync(items, context.CancellationToken, noTracking: true);
-
-        foreach (var item in items)
+        await foreach (var item in ReadItemsWithChildrenAsync(query, context.CancellationToken))
             await stream.WriteAsync(MailboxMapper.ToProto(item));
+    }
+
+    private const int ItemStreamChunkSize = 200;
+
+    private async IAsyncEnumerable<DbItem> ReadItemsWithChildrenAsync(
+        IQueryable<DbItem> query, [EnumeratorCancellation] CancellationToken ct)
+    {
+        string? lastServerId = null;
+        while (true)
+        {
+            var page = query;
+            if (lastServerId is not null)
+                page = page.Where(i => string.Compare(i.ServerId, lastServerId) > 0);
+
+            var chunk = await page.OrderBy(i => i.ServerId).Take(ItemStreamChunkSize).ToListAsync(ct);
+            if (chunk.Count == 0)
+                yield break;
+
+            await LoadChildrenAsync(chunk, ct, noTracking: true);
+            foreach (var item in chunk)
+                yield return item;
+
+            if (chunk.Count < ItemStreamChunkSize)
+                yield break;
+
+            lastServerId = chunk[^1].ServerId;
+        }
     }
 
     public override async Task<Item> GetMeContact(GetMeContactRequest request, ServerCallContext context)
@@ -596,12 +605,11 @@ public class MailboxStoreService(
     public override async Task ListNetworks(
         ListNetworksRequest request, IServerStreamWriter<Network> stream, ServerCallContext context)
     {
-        var networks = await db.Networks.AsNoTracking()
+        var networks = db.Networks.AsNoTracking()
             .Where(n => n.UserId == request.UserId)
-            .OrderBy(n => n.DomainId).ThenBy(n => n.UserEmail)
-            .ToListAsync(context.CancellationToken);
+            .OrderBy(n => n.DomainId).ThenBy(n => n.UserEmail);
 
-        foreach (var n in networks)
+        await foreach (var n in networks.AsAsyncEnumerable().WithCancellation(context.CancellationToken))
             await stream.WriteAsync(MailboxMapper.ToProto(n));
     }
 
@@ -833,13 +841,10 @@ public class MailboxStoreService(
     public override async Task ListFlaggedItems(
         ListFlaggedItemsRequest request, IServerStreamWriter<FlaggedItem> stream, ServerCallContext context)
     {
-        var items = await db.Items.AsNoTracking()
-            .Where(i => i.UserId == request.UserId && i.ValidationFlaggedAt != null && i.DeletedAt == null)
-            .ToListAsync(context.CancellationToken);
+        var query = db.Items.AsNoTracking()
+            .Where(i => i.UserId == request.UserId && i.ValidationFlaggedAt != null && i.DeletedAt == null);
 
-        await LoadChildrenAsync(items, context.CancellationToken, noTracking: true);
-
-        foreach (var item in items)
+        await foreach (var item in ReadItemsWithChildrenAsync(query, context.CancellationToken))
             await stream.WriteAsync(new FlaggedItem
             {
                 Item = MailboxMapper.ToProto(item),
@@ -1279,10 +1284,10 @@ public class MailboxStoreService(
         }
     }
 
-    private async Task SyncContactChildrenAsync(DbContactItem c, ContactItem proto, CancellationToken ct)
+    private void SyncContactChildren(DbContactItem c, ContactItem proto)
     {
-        db.ContactCategories.RemoveRange(await db.ContactCategories.Where(x => x.ContactItemId == c.Id).ToListAsync(ct));
-        db.ContactChildren.RemoveRange(await db.ContactChildren.Where(x => x.ContactItemId == c.Id).ToListAsync(ct));
+        db.ContactCategories.RemoveRange(c.Categories);
+        db.ContactChildren.RemoveRange(c.Children);
 
         c.Categories = [.. proto.Categories.Select(x => new DbContactCategory { Id = Guid.NewGuid().ToString("N"), ContactItemId = c.Id, Name = x.Name })];
         c.Children = [.. proto.Children.Select(x => new DbContactChild { Id = Guid.NewGuid().ToString("N"), ContactItemId = c.Id, Name = x.Name })];
@@ -1308,26 +1313,22 @@ public class MailboxStoreService(
             });
     }
 
-    private async Task SyncNoteChildrenAsync(DbNote n, NoteItem proto, CancellationToken ct)
+    private void SyncNoteChildren(DbNote n, NoteItem proto)
     {
-        db.NoteCategories.RemoveRange(await db.NoteCategories.Where(x => x.NoteItemId == n.Id).ToListAsync(ct));
+        db.NoteCategories.RemoveRange(n.Categories);
         n.Categories = [.. proto.Categories.Select(x => new DbNoteCategory { Id = Guid.NewGuid().ToString("N"), NoteItemId = n.Id, Category = x.Category })];
     }
 
-    private async Task SyncCalendarChildrenAsync(DbCalendarItem cal, CalendarItem proto, CancellationToken ct)
+    private void SyncCalendarChildren(DbCalendarItem cal, CalendarItem proto)
     {
-        db.CalendarAttendees.RemoveRange(await db.CalendarAttendees.Where(x => x.CalendarItemId == cal.Id).ToListAsync(ct));
-        db.CalendarCategories.RemoveRange(await db.CalendarCategories.Where(x => x.CalendarItemId == cal.Id).ToListAsync(ct));
-
-        var oldExIds = await db.CalendarExceptions.Where(x => x.CalendarItemId == cal.Id).Select(x => x.Id).ToListAsync(ct);
-        if (oldExIds.Count > 0)
+        db.CalendarAttendees.RemoveRange(cal.Attendees);
+        db.CalendarCategories.RemoveRange(cal.Categories);
+        foreach (var oldException in cal.Exceptions)
         {
-            db.CalendarExceptionAttendees.RemoveRange(
-                await db.CalendarExceptionAttendees.Where(x => oldExIds.Contains(x.CalendarExceptionId)).ToListAsync(ct));
-            db.CalendarExceptionCategories.RemoveRange(
-                await db.CalendarExceptionCategories.Where(x => oldExIds.Contains(x.CalendarExceptionId)).ToListAsync(ct));
+            db.CalendarExceptionAttendees.RemoveRange(oldException.Attendees);
+            db.CalendarExceptionCategories.RemoveRange(oldException.Categories);
         }
-        db.CalendarExceptions.RemoveRange(await db.CalendarExceptions.Where(x => x.CalendarItemId == cal.Id).ToListAsync(ct));
+        db.CalendarExceptions.RemoveRange(cal.Exceptions);
 
         cal.Attendees = [.. proto.Attendees.Select(a => new DbCalendarAttendee
         {
@@ -1386,12 +1387,13 @@ public class MailboxStoreService(
         })];
     }
 
-    private async Task UpsertAnnotationAsync(DbContactItem c, ContactAnnotation proto, CancellationToken ct)
+    private void UpsertAnnotation(DbContactItem c, ContactAnnotation proto)
     {
-        var existing = await db.ContactAnnotations.SingleOrDefaultAsync(a => a.ContactItemId == c.Id, ct);
+        var existing = c.Annotation;
         if (existing is null)
         {
-            db.ContactAnnotations.Add(MailboxMapper.ToEntity(proto, c.Id));
+            c.Annotation = MailboxMapper.ToEntity(proto, c.Id);
+            db.ContactAnnotations.Add(c.Annotation);
         }
         else
         {

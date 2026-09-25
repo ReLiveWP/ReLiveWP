@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.ConnectedServices.Data;
+using ReLiveWP.ServiceDefaults.Events;
+using StackExchange.Redis;
 
 namespace ReLiveWP.Backend.ConnectedServices.Services;
 
 public class TransientConnectionSweeper(
     IServiceScopeFactory scopeFactory,
+    IConnectionMultiplexer redis,
     ILogger<TransientConnectionSweeper> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(15);
@@ -46,6 +49,12 @@ public class TransientConnectionSweeper(
 
         db.ConnectedServices.RemoveRange(stale);
         await db.SaveChangesAsync(ct);
+
+        foreach (var connection in stale)
+        {
+            var deleted = new ConnectionDeletedEvent(connection.UserId.ToString(), connection.Id.ToString(), connection.Service, DeleteData: false);
+            await redis.PublishConnectionDeletedAsync(deleted);
+        }
 
         logger.LogInformation("expired {Count} abandoned transient connection(s)", stale.Count);
     }

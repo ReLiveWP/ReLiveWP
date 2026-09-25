@@ -5,102 +5,86 @@ using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 namespace ReLiveWP.Backend.ConnectedServices.Services;
 
 public class TokenRefreshService(ILogger<TokenRefreshService> logger,
-                                 IServiceProvider services,
+                                 IServiceScopeFactory scopeFactory,
                                  IConnectedServicesContainer connectedServices,
-                                 ServiceTokenLocks tokenLocks) : IHostedService, IDisposable
+                                 ServiceTokenLocks tokenLocks) : BackgroundService
 {
-    private PeriodicTimer? refreshTimer;
-    private Task? timerTask;
+    private static readonly TimeSpan FirstRunDelay = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        refreshTimer = new PeriodicTimer(TimeSpan.FromSeconds(10));
-        timerTask = Task.Run(TimerLoop, cancellationToken);
-        logger.LogInformation("Token refresh service started");
-        return Task.CompletedTask;
-    }
+        using var timer = new PeriodicTimer(FirstRunDelay);
 
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        refreshTimer?.Dispose();
-        logger.LogInformation("Token refresh service stopped");
-        return Task.CompletedTask;
-    }
-
-    public void Dispose() => refreshTimer?.Dispose();
-
-    private async Task TimerLoop()
-    {
-        while (await refreshTimer!.WaitForNextTickAsync())
+        while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            refreshTimer.Period = TimeSpan.FromHours(1);
+            timer.Period = Interval;
             logger.LogInformation("Token refresh started...");
 
             try
             {
-                using var scope = services.CreateScope();
-                using var dbContext = scope.ServiceProvider.GetRequiredService<ConnectedServicesDbContext>();
-
-                foreach (var tmpService in await dbContext.ConnectedServices.ToListAsync())
-                {
-                    if (!connectedServices.TryGetValue(tmpService.Service, out var serviceDescription))
-                    {
-                        logger.LogWarning("Found unavailable service {ServiceType} in {ServiceId}", tmpService.Service, tmpService.Id);
-                        dbContext.ConnectedServices.Remove(tmpService);
-                        continue;
-                    }
-
-                    await using var serviceLock = await tokenLocks.AcquireAsync(tmpService.Id);
-                    if (!serviceLock.IsAcquired)
-                    {
-                        logger.LogWarning("Timeout acquiring lock for {ServiceId}, potential deadlock?", tmpService.Id);
-                        continue;
-                    }
-
-                    await dbContext.Entry(tmpService).ReloadAsync();
-                    if (dbContext.Entry(tmpService).State == EntityState.Detached)
-                        continue;
-
-                    var service = tmpService;
-
-                    if (service.ExpiresAt <= DateTime.UtcNow ||
-                        (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
-                    {
-                        // credential-linked services have nothing to refresh, so a rejection means the
-                        // stored password no longer works and the user has to relink
-                        if (serviceDescription.OAuthHandler == null)
-                        {
-                            logger.LogWarning("Credentials for {ServiceId} were rejected, marking for relink", tmpService.Id);
-                            service.Flags = LiveConnectedServiceFlags.Busted;
-                            dbContext.ConnectedServices.Update(service);
-                            await dbContext.SaveChangesAsync();
-                            continue;
-                        }
-
-                        var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
-                        if (!await handler.RefreshTokensAsync(service))
-                        {
-                            logger.LogError("Failed to refresh tokens for {ServiceId}!", tmpService.Id);
-                            service.Flags = LiveConnectedServiceFlags.Busted;
-                        }
-                        else
-                        {
-                            logger.LogInformation("Successfully refreshed tokens for {ServiceId}!", tmpService.Id);
-                            service.Flags = LiveConnectedServiceFlags.None;
-                        }
-
-                        dbContext.ConnectedServices.Update(service);
-                        await dbContext.SaveChangesAsync();
-                    }
-                }
-
-                // pending-OAuth expiry is handled by the Redis key TTL now (see PendingOAuthStore)
+                await RefreshDueTokensAsync(stoppingToken);
                 logger.LogInformation("Token refresh completed!");
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Something went very wrong when refreshing tokens!!");
             }
+        }
+    }
+
+    private async Task RefreshDueTokensAsync(CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ConnectedServicesDbContext>();
+
+        foreach (var service in await dbContext.ConnectedServices.ToListAsync(ct))
+        {
+            if (!connectedServices.TryGetValue(service.Service, out var serviceDescription))
+            {
+                logger.LogWarning("Found unavailable service {ServiceType} in {ServiceId}", service.Service, service.Id);
+                dbContext.ConnectedServices.Remove(service);
+                continue;
+            }
+
+            if (!service.IsDueForRefresh)
+                continue;
+
+            await using var serviceLock = await tokenLocks.AcquireAsync(service.Id, ct);
+            if (!serviceLock.IsAcquired)
+            {
+                logger.LogWarning("Timeout acquiring lock for {ServiceId}, potential deadlock?", service.Id);
+                continue;
+            }
+
+            await dbContext.Entry(service).ReloadAsync(ct);
+            if (dbContext.Entry(service).State == EntityState.Detached || !service.IsDueForRefresh)
+                continue;
+
+            // credential-linked services have nothing to refresh, so a rejection means the
+            // stored password no longer works and the user has to relink
+            if (serviceDescription.OAuthHandler == null)
+            {
+                logger.LogWarning("Credentials for {ServiceId} were rejected, marking for relink", service.Id);
+                service.ApplyRefreshResult(refreshed: false);
+                await dbContext.SaveChangesOverConcurrentWritesAsync(ct);
+                continue;
+            }
+
+            var handler = await serviceDescription.OAuthHandler(scope.ServiceProvider);
+            var refreshed = await handler.RefreshTokensAsync(service);
+
+            if (refreshed)
+                logger.LogInformation("Successfully refreshed tokens for {ServiceId}!", service.Id);
+            else
+                logger.LogError("Failed to refresh tokens for {ServiceId}!", service.Id);
+
+            service.ApplyRefreshResult(refreshed);
+            await dbContext.SaveChangesOverConcurrentWritesAsync(ct);
         }
     }
 }

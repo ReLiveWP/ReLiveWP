@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 
@@ -8,4 +9,10 @@ public abstract class GenericHostServiceProxy<T>(string serviceId, IServiceProvi
 {
     public override Uri GetRequestUrl(LiveConnectedService service, HttpContext context, string path)
         => new Uri($"https://{path}{context.Request.QueryString}");
+
+    public override Task AddHeadersAsync(LiveConnectedService service, HttpRequestMessage request)
+    {
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", service.AccessToken);
+        return Task.CompletedTask;
+    }
 }

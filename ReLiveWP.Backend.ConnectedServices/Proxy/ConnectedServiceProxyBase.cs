@@ -7,6 +7,15 @@ namespace ReLiveWP.Backend.ConnectedServices.Proxy;
 public class ConnectedServiceProxyBase(string serviceId, IServiceProvider services)
     : IConnectedServiceProxy
 {
+    private static readonly HashSet<string> ExcludedResponseHeaders
+        = new(StringComparer.OrdinalIgnoreCase) { "Transfer-Encoding", "Content-Length" };
+
+    private static readonly HashSet<string> ExcludedRequestHeaders
+        = new(ExcludedResponseHeaders, StringComparer.OrdinalIgnoreCase)
+        {
+            "Authorization", "Host", "DPoP", "X-User-ID", "X-Connection-ID"
+        };
+
     private readonly ILogger<ConnectedServiceProxyBase> logger
         = services.GetRequiredService<ILoggerFactory>().CreateLogger<ConnectedServiceProxyBase>();
 
@@ -29,14 +38,7 @@ public class ConnectedServiceProxyBase(string serviceId, IServiceProvider servic
 
         foreach (var header in context.Request.Headers)
         {
-            if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("DPoP", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("X-User-ID", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("X-Connection-ID", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase) ||
-                FilterRequestHeaders(service, header.Key))
+            if (ExcludedRequestHeaders.Contains(header.Key) || FilterRequestHeaders(service, header.Key))
                 continue;
 
             targetRequest.Headers.TryAddWithoutValidation(header.Key, (IEnumerable<string>)header.Value);
@@ -69,9 +71,7 @@ public class ConnectedServiceProxyBase(string serviceId, IServiceProvider servic
 
         foreach (var header in resp.Headers.Concat(resp.Content.Headers))
         {
-            if (header.Key.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase) ||
-                FilterResponseHeaders(service, header.Key))
+            if (ExcludedResponseHeaders.Contains(header.Key) || FilterResponseHeaders(service, header.Key))
                 continue;
 
             context.Response.Headers[header.Key] = header.Value.ToArray();
@@ -87,7 +87,16 @@ public class ConnectedServiceProxyBase(string serviceId, IServiceProvider servic
     public virtual Task<HttpClient> CreateHttpClientAsync(LiveConnectedService service)
         => Task.FromResult(HttpClientFactory.CreateClient());
     public virtual Uri GetRequestUrl(LiveConnectedService service, HttpContext context, string path)
-        => new Uri(new Uri(service.ServiceUrl!), "/" + path + context.Request.QueryString);
+    {
+        var serviceUrl = new Uri(service.ServiceUrl!);
+        var target = new Uri(serviceUrl, "/" + path + context.Request.QueryString);
+
+        // a path starting "//" or "/\" is protocol-relative and would swap the host out
+        if (Uri.Compare(target, serviceUrl, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+            throw new InvalidOperationException($"{target.Authority} is not part of the linked {ServiceId} account.");
+
+        return target;
+    }
     public virtual bool FilterRequestHeaders(LiveConnectedService service, string header)
         => false;
     public virtual bool FilterResponseHeaders(LiveConnectedService service, string header)

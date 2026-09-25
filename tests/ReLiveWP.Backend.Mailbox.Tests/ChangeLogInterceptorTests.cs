@@ -241,6 +241,26 @@ public class ChangeLogInterceptorTests : IDisposable
     }
 
     [Fact]
+    public async Task NoteCategoryMutation_bubbles_to_parent_Update()
+    {
+        await using (var seed = NewContext())
+        {
+            seed.Folders.Add(new DbFolder { Id = "notes", UserId = UserId, DisplayName = "Notes", Type = DbFolderType.NotesDefault });
+            seed.Items.Add(new DbNote { Id = "n1", ServerId = "n1", UserId = UserId, CollectionId = "notes", Subject = "note" });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var db = NewContext();
+        var note = await db.Items.OfType<DbNote>().SingleAsync(n => n.Id == "n1");
+        note.Categories.Add(new DbNoteCategory { Id = "nc1", NoteItemId = "n1", Category = "Ideas" });
+        await db.SaveChangesAsync();
+
+        var events = await db.ItemEvents.Where(e => e.ServerId == "n1").OrderBy(e => e.Id).ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.Equal(DbChangeEventType.Update, events[^1].EventType);
+    }
+
+    [Fact]
     public async Task FolderAdd_emits_FolderEvent_Add()
     {
         await using var db = NewContext();

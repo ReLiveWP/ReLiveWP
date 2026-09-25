@@ -54,14 +54,14 @@ builder.Services.AddScoped<WebDavCredentialProvider>();
 builder.Services.AddScoped<CardDavCredentialProvider>();
 builder.Services.AddScoped<CalDavCredentialProvider>();
 
-builder.Services.AddScoped<IConnectedServiceProxy, AtProtoServiceProxy>();
-builder.Services.AddScoped<IConnectedServiceProxy, GoogleServiceProxy>();
-builder.Services.AddScoped<IConnectedServiceProxy, MicrosoftServiceProxy>();
-builder.Services.AddScoped<IConnectedServiceProxy, WebDavServiceProxy>();
-builder.Services.AddScoped<IConnectedServiceProxy, CardDavServiceProxy>();
-builder.Services.AddScoped<IConnectedServiceProxy, CalDavServiceProxy>();
+builder.Services.AddKeyedScoped<IConnectedServiceProxy, AtProtoServiceProxy>(AtProto.SERVICE_NAME);
+builder.Services.AddKeyedScoped<IConnectedServiceProxy, GoogleServiceProxy>(GoogleService.SERVICE_NAME);
+builder.Services.AddKeyedScoped<IConnectedServiceProxy, MicrosoftServiceProxy>(MicrosoftService.SERVICE_NAME);
+builder.Services.AddKeyedScoped<IConnectedServiceProxy, WebDavServiceProxy>(WebDav.SERVICE_NAME);
+builder.Services.AddKeyedScoped<IConnectedServiceProxy, CardDavServiceProxy>(CardDav.SERVICE_NAME);
+builder.Services.AddKeyedScoped<IConnectedServiceProxy, CalDavServiceProxy>(CalDav.SERVICE_NAME);
 
-builder.Services.AddConnectedServices()
+builder.Services.AddConnectedServices(builder.Configuration)
     .AddConnectedService(s => new()
     {
         ServiceId = AtProto.SERVICE_NAME,

@@ -10,6 +10,7 @@ using FishyFlip.Tools;
 using Grpc.Core;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Services;
+using ReLiveWP.Backend.ConnectedServices.Utilities;
 using Status = Grpc.Core.Status;
 using static ReLiveWP.Backend.ConnectedServices.OAuthProviders.AtProto;
 
@@ -40,7 +41,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
 
         var state = CryptoRandom.CreateUniqueId();
         var codeVerifier = CryptoRandom.CreateUniqueId(32);
-        var codeChallenge = codeVerifier.ToSha256();
+        var codeChallenge = PkceChallenge.CreateS256(codeVerifier);
 
         using var protocol = new ATProtocolBuilder()
             .EnableAutoRenewSession(false)
@@ -88,7 +89,7 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
         {
             UserId = userId,
             State = state,
-            Service = "atproto",
+            Service = SERVICE_NAME,
             ExpiresAt = DateTimeOffset.Now.AddMinutes(5),
             Endpoint = pdsUrl.ToString(),
             AuthorizationEndpoint = authServer,
@@ -189,7 +190,6 @@ public class AtProtoOAuthProvider(IClientAssertionService clientAssertionService
             service.AccessToken = authSession.Session.AccessJwt;
             service.RefreshToken = authSession.Session.RefreshJwt;
             service.ExpiresAt = authSession.Session.ExpiresIn.ToUniversalTime();
-            service.RowVersion++;
 
             await FetchUserInfoForService(service);
 

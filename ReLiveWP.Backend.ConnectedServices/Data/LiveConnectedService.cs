@@ -34,6 +34,17 @@ public class LiveConnectedService
     public string? Issuer { get; set; }
 
     public LiveConnectedServiceProfile ServiceProfile { get; set; } = new();
+
+    public bool IsDueForRefresh
+        => ExpiresAt <= DateTimeOffset.UtcNow || (Flags & LiveConnectedServiceFlags.NeedsRefresh) != 0;
+
+    public void ApplyRefreshResult(bool refreshed)
+    {
+        Flags &= ~(LiveConnectedServiceFlags.NeedsRefresh | LiveConnectedServiceFlags.Busted);
+
+        if (!refreshed)
+            Flags |= LiveConnectedServiceFlags.Busted;
+    }
 }
 
 [Owned]

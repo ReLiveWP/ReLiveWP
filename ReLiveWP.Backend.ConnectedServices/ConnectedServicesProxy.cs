@@ -1,9 +1,9 @@
-using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 using ReLiveWP.Backend.ConnectedServices.Proxy;
 using ReLiveWP.Backend.ConnectedServices.Services;
+using ReLiveWP.Identity;
 
 namespace ReLiveWP.Backend.ConnectedServices;
 
@@ -20,23 +20,19 @@ public static class ConnectedServicesProxy
 
     private static Task XRpcProxyHandler(HttpContext context,
                                          ConnectedServicesDbContext dbContext,
-                                         IEnumerable<IConnectedServiceProxy> proxies,
                                          ILogger<ConnectedServicesProxyLog> logger,
                                          ServiceTokenLocks tokenLocks,
                                          string? path)
-        => ProxyHandler(context, dbContext, proxies, logger, tokenLocks, AtProto.SERVICE_NAME, path);
+        => ProxyHandler(context, dbContext, logger, tokenLocks, AtProto.SERVICE_NAME, path);
 
     private static async Task ProxyHandler(HttpContext context,
                                            ConnectedServicesDbContext dbContext,
-                                           IEnumerable<IConnectedServiceProxy> proxies,
                                            ILogger<ConnectedServicesProxyLog> logger,
                                            ServiceTokenLocks tokenLocks,
                                            string serviceId,
                                            string? path)
     {
-        // routing hands the catch-all back decoded, so a '#' in the path (google's holiday calendar
-        // ids carry one) would be read as the start of a fragment when the target url is composed,
-        // truncating everything after it. re-escaping only '#' is a no-op if it arrives encoded.
+        // TODO: probably best to escape more of this
         path = (path ?? string.Empty).Replace("#", "%23");
 
         try
@@ -55,7 +51,7 @@ public static class ConnectedServicesProxy
                 return;
             }
 
-            var proxy = proxies.FirstOrDefault(p => p.ServiceId == serviceId);
+            var proxy = context.RequestServices.GetKeyedService<IConnectedServiceProxy>(serviceId);
             if (proxy == null)
             {
                 logger.LogWarning("No proxy registered for service {ServiceId}", serviceId);
@@ -63,7 +59,7 @@ public static class ConnectedServicesProxy
                 return;
             }
 
-            if (NeedsRefresh(service))
+            if (service.IsDueForRefresh)
             {
                 var serviceLock = await tokenLocks.AcquireAsync(service.Id, context.RequestAborted);
                 try
@@ -98,16 +94,14 @@ public static class ConnectedServicesProxy
                         return;
                     }
 
-                    if (NeedsRefresh(service))
+                    if (service.IsDueForRefresh)
                     {
                         logger.LogInformation("Service {ConnectionId} requires refresh", service.Id);
 
-                        service.Flags = await proxy.RefreshAsync(service, context.RequestAborted)
-                            ? LiveConnectedServiceFlags.None
-                            : LiveConnectedServiceFlags.Busted;
+                        var refreshed = await proxy.RefreshAsync(service, context.RequestAborted);
+                        service.ApplyRefreshResult(refreshed);
 
-                        dbContext.ConnectedServices.Update(service);
-                        await dbContext.SaveChangesAsync(context.RequestAborted);
+                        await dbContext.SaveChangesOverConcurrentWritesAsync(context.RequestAborted);
                     }
 
                     if ((service.Flags & LiveConnectedServiceFlags.Busted) == LiveConnectedServiceFlags.Busted)
@@ -127,12 +121,10 @@ public static class ConnectedServicesProxy
 
             if ((service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh)
             {
-                try
-                {
-                    dbContext.ConnectedServices.Update(service);
-                    await dbContext.SaveChangesAsync(context.RequestAborted);
-                }
-                catch (DbUpdateConcurrencyException) { /* concurrent refresh already ran, next request will pick it up */ }
+                await dbContext.ConnectedServices
+                    .Where(s => s.Id == service.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(c => c.Flags, c => c.Flags | LiveConnectedServiceFlags.NeedsRefresh),
+                                        context.RequestAborted);
             }
 
             logger.LogInformation("Proxied /{ServiceId}/{Path} for {ConnectionId}", serviceId, path, service.Id);
@@ -145,10 +137,6 @@ public static class ConnectedServicesProxy
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         }
     }
-
-    private static bool NeedsRefresh(LiveConnectedService service)
-        => service.ExpiresAt <= DateTime.UtcNow ||
-           (service.Flags & LiveConnectedServiceFlags.NeedsRefresh) == LiveConnectedServiceFlags.NeedsRefresh;
 
     private static async Task<LiveConnectedService?> LoadServiceAsync(
         ConnectedServicesDbContext dbContext, Guid userId, Guid connectionId, string serviceId)
@@ -166,7 +154,7 @@ public static class ConnectedServicesProxy
 
     private static Guid GetUserId(HttpContext context)
     {
-        var sub = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+        var sub = context.User.Id()
             ?? throw new InvalidOperationException("No user identity on request.");
         return Guid.Parse(sub);
     }

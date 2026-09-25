@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -8,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
 using ReLiveWP.Backend.ConnectedServices.Services;
+using ReLiveWP.Identity;
 using ReLiveWP.ServiceDefaults.Events;
 using ReLiveWP.Services.Grpc;
 using StackExchange.Redis;
@@ -74,24 +74,12 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
             // technically this should mutate what is in `existing` but it's nice to be explicit about it
             existing = await handler.FinalizeAccountLinkAsync(existing, pendingOauth, request.Code, [.. request.Scopes]);
-            dbContext.ConnectedServices.Update(existing);
 
             serviceId = existing.Id;
         }
         else
         {
-            var service = new LiveConnectedService()
-            {
-                Id = Guid.NewGuid(),
-                UserId = pendingOauth.UserId,
-                Service = default!,
-                AccessToken = default!,
-                RefreshToken = default!,
-                ExpiresAt = default!,
-                Flags = LiveConnectedServiceFlags.None,
-                AvailableCapabilities = serviceDescription.ServiceCapabilities,
-                EnabledCapabilities = 0
-            };
+            var service = CreateUnlinkedConnection(pendingOauth.UserId, serviceDescription);
 
             // ditto for `service`
             service = await handler.FinalizeAccountLinkAsync(service, pendingOauth, request.Code, [.. request.Scopes]);
@@ -105,7 +93,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
             serviceId = service.Id;
         }
 
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesOverConcurrentWritesAsync();
         await pendingOAuths.RemoveAsync(pendingOauth.State); // consume the one-shot ticket on success
 
         return new FinaliseAccountLinkingResponse() { ConnectionId = serviceId.Value.ToString() };
@@ -128,9 +116,8 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         if (!connectedServices.TryGetValue(existing.Service, out var serviceDescription))
             throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
 
-        // use the stored handle (strip leading @) so handle->PDS resolution runs the same as initial link.
-        var identifier = existing.ServiceProfile.Username?.TrimStart('@')
-            ?? existing.ServiceProfile.UserId;
+        // prefer the handle so atproto's handle->PDS resolution runs the same as the initial link
+        var identifier = existing.ServiceProfile.Username ?? existing.ServiceProfile.UserId;
 
         using var scope = serviceProvider.CreateScope();
         var handler = await ResolveOAuthHandlerAsync(serviceDescription, scope.ServiceProvider);
@@ -161,18 +148,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
         var connection = request.HasConnectionId
             ? await LoadOwnedConnectionAsync(request.ConnectionId, userId)
-            : new LiveConnectedService()
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Service = default!,
-                AccessToken = default!,
-                RefreshToken = default!,
-                ExpiresAt = default!,
-                Flags = LiveConnectedServiceFlags.None,
-                AvailableCapabilities = serviceDescription.ServiceCapabilities,
-                EnabledCapabilities = 0
-            };
+            : CreateUnlinkedConnection(userId, serviceDescription);
 
         try
         {
@@ -191,15 +167,26 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         if (request.Transient && !request.HasConnectionId)
             connection.Flags |= LiveConnectedServiceFlags.Transient;
 
-        if (request.HasConnectionId)
-            dbContext.ConnectedServices.Update(connection);
-        else
+        if (!request.HasConnectionId)
             await dbContext.ConnectedServices.AddAsync(connection);
 
-        await dbContext.SaveChangesAsync();
+        await dbContext.SaveChangesOverConcurrentWritesAsync();
 
         return new FinaliseAccountLinkingResponse() { ConnectionId = connection.Id.ToString() };
     }
+
+    private static LiveConnectedService CreateUnlinkedConnection(Guid userId, ConnectedServiceDescription description) => new()
+    {
+        Id = Guid.NewGuid(),
+        UserId = userId,
+        Service = default!,
+        AccessToken = default!,
+        RefreshToken = default!,
+        ExpiresAt = default!,
+        Flags = LiveConnectedServiceFlags.None,
+        AvailableCapabilities = description.ServiceCapabilities,
+        EnabledCapabilities = 0
+    };
 
     private async Task<LiveConnectedService> LoadOwnedConnectionAsync(string connectionId, Guid userId)
     {
@@ -247,7 +234,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
     {
         var userId = GetUserId(context);
 
-        var connections = dbContext.ConnectedServices.Where(c =>
+        var connections = dbContext.ConnectedServices.AsNoTracking().Where(c =>
             c.UserId == userId &&
             (request.IncludeTransient || (c.Flags & LiveConnectedServiceFlags.Transient) == 0) &&
             (!request.HasCapabilities || (c.EnabledCapabilities & (LiveConnectedServiceCapabilities)request.Capabilities) == (LiveConnectedServiceCapabilities)request.Capabilities) &&
@@ -299,7 +286,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
         var required = (LiveConnectedServiceCapabilities)request.Capabilities;
 
-        var rows = dbContext.ConnectedServices.Where(c =>
+        var rows = dbContext.ConnectedServices.AsNoTracking().Where(c =>
             ids.Contains(c.UserId) &&
             c.SharedCapabilities != LiveConnectedServiceCapabilities.None &&
             (!request.HasCapabilities || (c.SharedCapabilities & required) == required) &&
@@ -440,7 +427,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
 
     private static Guid GetUserId(ServerCallContext context)
     {
-        var sub = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier)
+        var sub = context.GetHttpContext().User.Id()
             ?? throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid user."));
 
         return Guid.Parse(sub);

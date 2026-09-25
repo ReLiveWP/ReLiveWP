@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -9,7 +10,7 @@ using StackExchange.Redis;
 namespace ReLiveWP.Backend.Mailbox.Data;
 
 // records change log entries (for activesync) and emits redis pubsub events (for push) on every save
-public sealed class ChangeLogInterceptor : SaveChangesInterceptor
+public sealed class ChangeLogInterceptor : SaveChangesInterceptor, IDbTransactionInterceptor
 {
     private const string FolderHierarchyCollectionId = "0";
 
@@ -41,29 +42,50 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
         return base.SavingChanges(eventData, result);
     }
 
+    // inside an explicit transaction the save isn't visible yet, so the publish waits for the commit
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData,
         int result,
         CancellationToken ct = default)
     {
-        await PublishNotificationsAsync((MailboxDbContext)eventData.Context!);
+        var db = (MailboxDbContext)eventData.Context!;
+        if (db.Database.CurrentTransaction is null)
+            await PublishNotificationsAsync(db);
         return await base.SavedChangesAsync(eventData, result, ct);
     }
 
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
-        _ = PublishNotificationsAsync((MailboxDbContext)eventData.Context!);
+        var db = (MailboxDbContext)eventData.Context!;
+        if (db.Database.CurrentTransaction is null)
+            _ = PublishNotificationsAsync(db);
         return base.SavedChanges(eventData, result);
     }
 
+    public Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken ct = default) =>
+        PublishNotificationsAsync((MailboxDbContext)eventData.Context!);
+
+    public void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData) =>
+        _ = PublishNotificationsAsync((MailboxDbContext)eventData.Context!);
+
+    public Task TransactionRolledBackAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken ct = default)
+    {
+        ((MailboxDbContext)eventData.Context!).PendingChangeNotifications.Clear();
+        return Task.CompletedTask;
+    }
+
+    public void TransactionRolledBack(DbTransaction transaction, TransactionEndEventData eventData) =>
+        ((MailboxDbContext)eventData.Context!).PendingChangeNotifications.Clear();
+
     // the save has already committed by the time this runs, so a publish failure is a device that
-    // waits for its next poll, never a failed save
+    // waits for its next poll, never a failed save. the listener only keys on (user, collection),
+    // so one publish per collection is all a save needs however many items it touched
     private async Task PublishNotificationsAsync(MailboxDbContext db)
     {
         if (db.PendingChangeNotifications.Count == 0)
             return;
 
-        var pending = db.PendingChangeNotifications.ToArray();
+        var pending = db.PendingChangeNotifications.DistinctBy(e => (e.UserId, e.CollectionId)).ToArray();
         db.PendingChangeNotifications.Clear();
 
         if (_redis is null)
@@ -90,14 +112,13 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
         _ => MailboxChangeKind.Update,
     };
 
-    private static long fallbackCommitId = ChangeEventCursor.CommitIdOffset;
-
     private static void EmitEvents(MailboxDbContext db)
     {
         var now = DateTime.UtcNow;
-        var commitId = db.Database.IsNpgsql() ? 0L : Interlocked.Increment(ref fallbackCommitId);
+        var commitId = ChangeEventCursor.NextCommitId(db.Database);
         var entries = db.ChangeTracker.Entries().ToList();
-        var childItemServerIds = new HashSet<string>();
+        var index = new TrackedItemIndex(db);
+        var childTouched = new HashSet<DbItem>(ReferenceEqualityComparer.Instance);
 
         foreach (var entry in entries)
         {
@@ -223,31 +244,9 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                     }
                     break;
 
-                case DbContactCategory c when IsChildMutation(entry):
-                    TryAddChildUpdate(db, c.ContactItemId, childItemServerIds);
-                    break;
-                case DbContactChild c when IsChildMutation(entry):
-                    TryAddChildUpdate(db, c.ContactItemId, childItemServerIds);
-                    break;
-                case DbContactAnnotation a when IsChildMutation(entry):
-                    TryAddChildUpdate(db, a.ContactItemId, childItemServerIds);
-                    break;
-
-                case DbCalendarAttendee a when IsChildMutation(entry):
-                    TryAddChildUpdate(db, a.CalendarItemId, childItemServerIds);
-                    break;
-                case DbCalendarCategory c when IsChildMutation(entry):
-                    TryAddChildUpdate(db, c.CalendarItemId, childItemServerIds);
-                    break;
-                case DbCalendarException ex when IsChildMutation(entry):
-                    TryAddChildUpdate(db, ex.CalendarItemId, childItemServerIds);
-                    break;
-
-                case DbCalendarExceptionAttendee ea when IsChildMutation(entry):
-                    TryBubbleThroughException(db, ea.CalendarExceptionId, childItemServerIds);
-                    break;
-                case DbCalendarExceptionCategory ec when IsChildMutation(entry):
-                    TryBubbleThroughException(db, ec.CalendarExceptionId, childItemServerIds);
+                default:
+                    if (TrackedItemIndex.IsChildMutation(entry) && index.ParentItemOf(entry.Entity) is { } parent)
+                        childTouched.Add(parent);
                     break;
             }
         }
@@ -258,12 +257,9 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
             .Select(e => ((DbItem)e.Entity).ServerId)
             .ToHashSet();
 
-        foreach (var serverId in childItemServerIds)
+        foreach (var item in childTouched)
         {
-            if (alreadyHandled.Contains(serverId)) continue;
-
-            var item = db.Items.Local.FirstOrDefault(i => i.ServerId == serverId);
-            if (item is null) continue;
+            if (alreadyHandled.Contains(item.ServerId)) continue;
 
             db.ItemEvents.Add(new DbItemEvent
             {
@@ -271,7 +267,7 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
                 UserId = item.UserId,
                 CollectionId = item.CollectionId,
                 EventType = DbChangeEventType.Update,
-                ServerId = serverId,
+                ServerId = item.ServerId,
                 OccurredAt = now,
             });
         }
@@ -298,9 +294,6 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
         }
     }
 
-    private static bool IsChildMutation(EntityEntry entry) =>
-        entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted;
-
     private static bool IsSoftDelete(EntityEntry entry)
     {
         var prop = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "DeletedAt");
@@ -319,17 +312,4 @@ public sealed class ChangeLogInterceptor : SaveChangesInterceptor
         return false;
     }
 
-    private static void TryAddChildUpdate(MailboxDbContext db, string itemId, HashSet<string> target)
-    {
-        var item = db.Items.Local.FirstOrDefault(i => i.Id == itemId);
-        if (item is not null)
-            target.Add(item.ServerId);
-    }
-
-    private static void TryBubbleThroughException(MailboxDbContext db, string exceptionId, HashSet<string> target)
-    {
-        var ex = db.CalendarExceptions.Local.FirstOrDefault(e => e.Id == exceptionId);
-        if (ex is not null)
-            TryAddChildUpdate(db, ex.CalendarItemId, target);
-    }
 }

@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+
 namespace ReLiveWP.Backend.Mailbox.Data.Entities;
 
 public enum DbChangeEventType { Add, Update, Delete }
@@ -29,4 +32,10 @@ public static class ChangeEventCursor
     /// </summary>
     public const string SafeHorizonSql =
         "(pg_snapshot_xmin(pg_current_snapshot())::text::bigint + 1000000000)";
+
+    private static long fallbackCommitId = CommitIdOffset;
+
+    // zero lets Postgres fill in CommitIdDefaultSql; anything else has no transaction id to lean on
+    public static long NextCommitId(DatabaseFacade database) =>
+        database.IsNpgsql() ? 0L : Interlocked.Increment(ref fallbackCommitId);
 }

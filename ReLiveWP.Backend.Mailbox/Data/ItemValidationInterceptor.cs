@@ -28,11 +28,31 @@ public sealed class ItemValidationInterceptor : SaveChangesInterceptor
         return await base.SavingChangesAsync(eventData, result, ct);
     }
 
-    private static List<DbItem> CollectItems(MailboxDbContext db) =>
-        [.. db.ChangeTracker.Entries<DbItem>()
-              .Where(e => e.State is EntityState.Added or EntityState.Modified)
-              .Select(e => e.Entity)
-              .Where(i => i.ValidationFlaggedAt is null)];
+    // an item whose only change is in a child row is Unchanged itself, so it has to be picked up
+    // through the child or an exception with no start time sails through. annotations don't count,
+    // the link fan-outs write them across other people's contacts and one bad row would sink a batch
+    private static List<DbItem> CollectItems(MailboxDbContext db)
+    {
+        var index = new TrackedItemIndex(db);
+        var items = new HashSet<DbItem>(ReferenceEqualityComparer.Instance);
+
+        foreach (var entry in db.ChangeTracker.Entries())
+        {
+            if (entry.Entity is DbItem item)
+            {
+                if (entry.State is EntityState.Added or EntityState.Modified)
+                    items.Add(item);
+            }
+            else if (entry.Entity is not DbContactAnnotation
+                     && TrackedItemIndex.IsChildMutation(entry)
+                     && index.ParentItemOf(entry.Entity) is { } parent)
+            {
+                items.Add(parent);
+            }
+        }
+
+        return [.. items.Where(i => i.ValidationFlaggedAt is null)];
+    }
 
     private static Dictionary<string, DbFolderType> ResolveFolderTypes(MailboxDbContext db, List<DbItem> items)
     {

@@ -6,18 +6,19 @@ public class ConnectedServicesContainer : Dictionary<string, ConnectedServiceDes
 
 public static class ConnectedServicesExtensions
 {
-    public static ConnectedServicesBuilder AddConnectedServices(this IServiceCollection services)
+    public static ConnectedServicesBuilder AddConnectedServices(this IServiceCollection services, IConfiguration configuration)
     {
         var container = new ConnectedServicesContainer();
         services.AddSingleton<IConnectedServicesContainer>(container);
-        return new ConnectedServicesBuilder(services, container);
+        return new ConnectedServicesBuilder(services, configuration, container);
     }
 }
 
-public class ConnectedServicesBuilder(IServiceCollection services, IConnectedServicesContainer container)
+public class ConnectedServicesBuilder(IServiceCollection services, IConfiguration configuration, IConnectedServicesContainer container)
 {
     public ConnectedServicesBuilder AddConnectedService(ConnectedServiceDescription description)
     {
+        description.IsEnabled = configuration.GetValue($"ConnectedServices:{description.ServiceId}:Enabled", description.IsEnabled);
         container.Add(description.ServiceId, description);
         return this;
     }

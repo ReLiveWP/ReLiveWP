@@ -30,9 +30,6 @@ public class ClientAssertionService(IJWKProvider jwkProvider, ILogger<ClientAsse
         );
 
         var handler = new JwtSecurityTokenHandler();
-        var written = handler.WriteToken(token);
-        var decoded = handler.ReadJwtToken(written);
-
         return handler.WriteToken(token);
     }
 }

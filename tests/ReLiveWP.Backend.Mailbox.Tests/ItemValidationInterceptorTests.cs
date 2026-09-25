@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Mailbox.Data;
 using ReLiveWP.Backend.Mailbox.Data.Entities;
 using ReLiveWP.Backend.Mailbox.Validation;
+using ReLiveWP.ServiceDefaults.Contacts;
 
 namespace ReLiveWP.Backend.Mailbox.Tests;
 
@@ -99,6 +100,61 @@ public class ItemValidationInterceptorTests : IDisposable
         var saved = await verify.Items.OfType<DbTask>().SingleAsync(t => t.Id == "t2");
         Assert.Equal("after", saved.Subject);
         Assert.NotNull(saved.DateCompleted);
+    }
+
+    [Fact]
+    public async Task Child_only_edit_still_validates_the_parent()
+    {
+        await using (var seed = await SeededContextAsync())
+        {
+            seed.Folders.Add(new DbFolder { Id = "cal", UserId = UserId, DisplayName = "Calendar", Type = DbFolderType.CalendarDefault });
+            seed.Items.Add(new DbCalendarItem { Id = "c1", ServerId = "c1", UserId = UserId, CollectionId = "cal", Subject = "standup" });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext())
+        {
+            var calendar = await db.Items.OfType<DbCalendarItem>().SingleAsync(c => c.Id == "c1");
+            calendar.Exceptions.Add(new DbCalendarException { Id = "e1", CalendarItemId = "c1" });
+
+            await Assert.ThrowsAsync<ItemValidationException>(() => db.SaveChangesAsync());
+        }
+
+        await using var verify = NewContext();
+        Assert.Equal(0, await verify.CalendarExceptions.CountAsync());
+    }
+
+    [Fact]
+    public async Task Annotation_only_edit_does_not_validate_a_legacy_invalid_contact()
+    {
+        await using (var seed = await SeededContextAsync())
+        {
+            seed.Folders.Add(new DbFolder { Id = "contacts", UserId = UserId, DisplayName = "Contacts", Type = DbFolderType.ContactsDefault });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var raw = new MailboxDbContext(new DbContextOptionsBuilder<MailboxDbContext>().UseSqlite(_connection).Options))
+        {
+            raw.Items.Add(new DbContactItem
+            {
+                Id = "legacy",
+                ServerId = "legacy",
+                UserId = UserId,
+                CollectionId = "contacts",
+                Picture = new byte[ContactContract.MaxPictureBase64Bytes],
+            });
+            await raw.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext())
+        {
+            var contact = await db.Items.OfType<DbContactItem>().SingleAsync(c => c.Id == "legacy");
+            db.ContactAnnotations.Add(new DbContactAnnotation { ContactItemId = "legacy", ContactItem = contact, Cid = 42 });
+            await db.SaveChangesAsync();
+        }
+
+        await using var verify = NewContext();
+        Assert.Equal(42, (await verify.ContactAnnotations.SingleAsync(a => a.ContactItemId == "legacy")).Cid);
     }
 
     [Fact]
