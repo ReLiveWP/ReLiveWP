@@ -9,6 +9,7 @@ package identity;
 
 service Authentication {
   rpc Register (RegisterRequest) returns (RegisterResponse);
+  rpc CheckUserNameAvailability (UserNameAvailabilityRequest) returns (UserNameAvailabilityResponse);
   rpc RegisterDevice (RegisterDeviceRequest) returns (RegisterDeviceResponse);
   rpc GetSecurityTokens (SecurityTokensRequest) returns (SecurityTokensResponse);
   rpc GetDeviceCertificate (DeviceCertificateRequest) returns (DeviceCertificateResponse);
@@ -25,9 +26,11 @@ service Authentication {
 }
 
 message RegisterRequest {
-  string username     = 1;
-  string emailAddress = 2;
-  string password     = 3;
+  string          username           = 1;
+  string          emailAddress       = 2;
+  string          password           = 3;
+  optional string alternateEmail     = 4;
+  optional string activationCodeHash = 5;
 }
 
 message RegisterResponse {
@@ -35,6 +38,14 @@ message RegisterResponse {
   optional string id   = 2;
   optional int64  puid = 3;
   optional string cid  = 4;
+}
+
+message UserNameAvailabilityRequest {
+  string username = 1;
+}
+
+message UserNameAvailabilityResponse {
+  uint32 code = 1;
 }
 
 message RegisterDeviceRequest {

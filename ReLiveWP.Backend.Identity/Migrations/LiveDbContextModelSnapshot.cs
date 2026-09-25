@@ -253,6 +253,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("AlternateEmail")
+                        .HasColumnType("text");
+
                     b.Property<string>("Cid")
                         .IsRequired()
                         .HasColumnType("text");
@@ -300,6 +303,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<string>("SignupActivationCodeHash")
+                        .HasColumnType("text");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -323,6 +329,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.HasIndex("Puid")
+                        .IsUnique();
+
+                    b.HasIndex("SignupActivationCodeHash")
                         .IsUnique();
 
                     b.HasIndex("Type");

@@ -31,6 +31,7 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
 .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<TokenManager>();
+builder.Services.AddScoped<UserRegistrationService>();
 builder.Services.AddScoped<SsoSessionManager>();
 builder.Services.AddSingleton<ISsoAuthorizationCodeStore, RedisSsoAuthorizationCodeStore>();
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();

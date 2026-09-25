@@ -13,12 +13,15 @@ public enum LiveUserType
 [Index(nameof(Cid), IsUnique = true)]
 [Index(nameof(Puid), IsUnique = true)]
 [Index(nameof(Type))]
+[Index(nameof(SignupActivationCodeHash), IsUnique = true)]
 public class LiveUser : IdentityUser<Guid>
 {
     public string Cid { get; set; } = default!;
     public long Puid { get; set; }
     public LiveUserType Type { get; set; }
     public string? DeviceId { get; set; }
+    public string? AlternateEmail { get; set; }
+    public string? SignupActivationCodeHash { get; set; }
     public ICollection<LiveUserCertificate> Certificates { get; set; } = [];
     public LiveUserProfile? Profile { get; set; } = default!;
 }

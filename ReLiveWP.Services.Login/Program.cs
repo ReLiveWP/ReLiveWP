@@ -46,6 +46,8 @@ builder.Services.AddSingleton<AuthForwardingInterceptor>();
 
 builder.Services.AddRedis(builder.Configuration);
 builder.Services.AddSingleton<PendingAuthorizeStore>();
+builder.Services.AddSingleton<SignupKeyRing>();
+builder.Services.AddSingleton<GwpCertificateValidator>();
 builder.Services.Configure<SsoOptions>(builder.Configuration.GetSection(SsoOptions.SectionName));
 builder.Services.Configure<InlineLoginOptions>(builder.Configuration.GetSection(InlineLoginOptions.SectionName));
 

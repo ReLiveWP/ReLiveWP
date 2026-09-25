@@ -21,6 +21,7 @@ public class AuthenticationService(
     TokenManager tokenManager,
     LiveIdDeviceCertificateService deviceCertificateService,
     UserManager<LiveUser> userManager,
+    UserRegistrationService registrationService,
     LiveDbContext dbContext,
     IConnectionMultiplexer redis,
     ILogger<AuthenticationService> logger) : Authentication.AuthenticationBase
@@ -36,25 +37,16 @@ public class AuthenticationService(
 
     public override async Task<RegisterResponse> Register(RegisterRequest request, ServerCallContext context)
     {
-        if (await userManager.FindByNameAsync(request.Username) != null)
-            return new RegisterResponse() { Code = ERROR_ALREADY_EXISTS };
+        var registration = new UserRegistration(
+            request.Username,
+            request.EmailAddress,
+            request.Password,
+            request.HasAlternateEmail ? request.AlternateEmail : null,
+            request.HasActivationCodeHash ? request.ActivationCodeHash : null);
 
-        var (userId, cid, puid) = UserUtils.GenerateUserIds(LiveUserType.User);
-
-        var user = new LiveUser()
-        {
-            Id = userId,
-            Cid = cid,
-            Puid = puid,
-            UserName = request.Username,
-            Email = request.EmailAddress,
-        };
-
-        var result = await userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-        {
-            throw new RpcException(new Status(StatusCode.FailedPrecondition, string.Join(", ", result.Errors.Select(s => s.Description))));
-        }
+        var result = await registrationService.RegisterUserAsync(registration);
+        if (result.User is not { } user)
+            return new RegisterResponse() { Code = result.Code };
 
         // best-effort: backends provision on this event, the mailbox reconciler backfills if it's lost
         try
@@ -66,7 +58,13 @@ public class AuthenticationService(
             logger.LogWarning(ex, "failed to publish account.created for {User}", user.Id);
         }
 
-        return new RegisterResponse() { Code = S_OK, Id = user.Id.ToString(), Cid = cid, Puid = puid };
+        return new RegisterResponse() { Code = S_OK, Id = user.Id.ToString(), Cid = user.Cid, Puid = user.Puid };
+    }
+
+    public override async Task<UserNameAvailabilityResponse> CheckUserNameAvailability(UserNameAvailabilityRequest request, ServerCallContext context)
+    {
+        var code = await registrationService.CheckUserNameAvailabilityAsync(request.Username);
+        return new UserNameAvailabilityResponse() { Code = code };
     }
 
     public override async Task<RegisterDeviceResponse> RegisterDevice(RegisterDeviceRequest request, ServerCallContext context)

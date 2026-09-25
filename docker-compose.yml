@@ -319,9 +319,12 @@ services:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Login.ini:/app/ReLiveWP.Services.Login.ini:ro
+      - ./deploy/certs/provisioning_ca.crt:/certs/provisioning_ca.crt:ro
     secrets:
       - source: jwt_public_key
         target: JWT__PublicKey
+      - source: signup_key_0
+        target: Signup__Keys__0__PrivateKey
 
   web:
     image: relive/web
@@ -660,6 +663,8 @@ secrets:
     file: ./deploy/secrets/root_ca_password
   provisioning_ca_password:
     file: ./deploy/secrets/provisioning_ca_password
+  signup_key_0:
+    file: ./deploy/secrets/signup_key_0
   push_cert_password:
     file: ./deploy/secrets/push_cert_password
   api_key_geolocation:
