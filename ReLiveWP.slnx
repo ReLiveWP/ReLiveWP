@@ -72,6 +72,7 @@
     <Project Path="tests/ReLiveWP.Backend.Mailbox.Tests/ReLiveWP.Backend.Mailbox.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Login.Tests/ReLiveWP.Services.Login.Tests.csproj" />
+    <Project Path="tests/ReLiveWP.Services.MediaProxy.Tests/ReLiveWP.Services.MediaProxy.Tests.csproj" />
   </Folder>
   <Folder Name="/Windows Live/">
     <Project Path="ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />
@@ -80,6 +81,7 @@
     <Project Path="ReLiveWP.Services.Activity/ReLiveWP.Services.Activity.csproj" />
     <Project Path="ReLiveWP.Services.Docs/ReLiveWP.Services.Docs.csproj" />
     <Project Path="ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />
+    <Project Path="ReLiveWP.Services.MediaProxy/ReLiveWP.Services.MediaProxy.csproj" />
     <Project Path="ReLiveWP.Services.Messenger/ReLiveWP.Services.Messenger.csproj" />
   </Folder>
   <Project Path="ReLiveWP/ReLiveWP.csproj" />

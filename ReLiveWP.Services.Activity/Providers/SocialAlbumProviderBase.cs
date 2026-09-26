@@ -1,4 +1,4 @@
-using ReLiveWP.ServiceDefaults;
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Activity.Providers;
@@ -30,7 +30,8 @@ public abstract class SocialAlbumProviderBase
     public abstract Task<string?> GetHandleAsync(
         string userId, string externalId, Connection? connection, CancellationToken ct = default);
 
-    public abstract ContentLocation GetMediaLocation(string externalId, string mediaId, int maxSize);
+    // the size only picks which of the provider's own renditions to start from, the proxy does the resize
+    public abstract Uri? ResolveMediaSource(string externalId, string mediaId, MediaSize size);
 
     public virtual string FileNameFor(string mediaId) => $"{mediaId}.jpg";
 

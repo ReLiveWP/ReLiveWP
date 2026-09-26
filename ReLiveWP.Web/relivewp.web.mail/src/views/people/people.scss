@@ -176,7 +176,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    @include t.themed(color, ink);
+    @include t.themed(color, ink-faint);
 }
 
 .card-account-auto {
@@ -197,29 +197,70 @@
     }
 }
 
-.card-account-add {
-    display: flex;
-    gap: 6px;
-    margin-top: 4px;
+.card-account-provider {
+    @include t.themed(color, ink-muted);
 
-    input {
-        flex: 1;
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+.card-account-pick {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+}
+
+.card-account-choice {
+    @include chromeless;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    text-align: left;
+    @include t.themed(color, ink-muted);
+
+    &:hover:not(:disabled) .card-account-name,
+    &:focus-visible .card-account-name,
+    &:hover:not(:disabled) .card-account-provider {
+        @include t.themed(color, ink);
+    }
+}
+
+.card-account-input {
+    display: block;
+    width: 100%;
+
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font: inherit;
+    @include t.themed(color, ink);
+    @include t.themed(background-color, surface);
+    @include t.themed(border, rule, "1px solid ");
+
+    &:focus {
+        outline: none;
+        @include t.themed-raw(border-color, config.$accent, var(--accent-colour));
+    }
+}
+
+.card-account-add {
+    display: block;
+
+    .inputs,
+    .buttons {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
     }
 
-    input,
-    select {
-        min-width: 0;
-        box-sizing: border-box;
-        padding: 4px 6px;
-        font: inherit;
-        @include t.themed(color, ink);
-        @include t.themed(background-color, surface);
-        @include t.themed(border, rule, "1px solid ");
-
-        &:focus {
-            outline: none;
-            @include t.themed-raw(border-color, config.$accent, var(--accent-colour));
-        }
+    .buttons {
+        justify-content: right;
     }
 }
 

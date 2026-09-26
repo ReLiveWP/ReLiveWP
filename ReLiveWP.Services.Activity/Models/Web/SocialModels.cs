@@ -1,3 +1,4 @@
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Activity.Providers;
 
 namespace ReLiveWP.Services.Activity.Models.Web;
@@ -12,21 +13,26 @@ public record SocialAuthor(
     string AvatarUrl,
     string CanonicalUrl)
 {
-    public static SocialAuthor From(ProfileModel author, string? cid) => new(
+    public static SocialAuthor From(ProfileModel author, string? cid, MediaProxyUrlSigner mediaProxy) => new(
         author.IsMe ? null : cid,
         author.IsMe,
         author.Provider,
         author.Id,
         author.DisplayName,
         author.ScreenName,
-        author.AvatarUrl,
+        mediaProxy.SignUrlOrOriginal(author.AvatarUrl, MediaSize.Avatar),
         author.CanonicalUrl);
 }
 
-public record SocialPhoto(string ThumbnailUrl, string FullSizeUrl, string CanonicalUrl, string MimeType)
+public record SocialPhoto(string ThumbnailUrl, string FullSizeUrl, string CanonicalUrl)
 {
-    public static SocialPhoto From(PhotoActivityModel photo) =>
-        new(photo.ThumbnailUrl, photo.FullSizeUrl, photo.CanonicalUrl, photo.MimeType);
+    public static SocialPhoto From(PhotoActivityModel photo, MediaProxyUrlSigner mediaProxy)
+    {
+        var thumbnailUrl = mediaProxy.SignUrlOrOriginal(photo.ThumbnailUrl, MediaSize.Thumb);
+        var fullSizeUrl = mediaProxy.SignUrlOrOriginal(photo.FullSizeUrl, MediaSize.Full);
+
+        return new SocialPhoto(thumbnailUrl, fullSizeUrl, photo.CanonicalUrl);
+    }
 }
 
 public record SocialEntry(
@@ -44,7 +50,7 @@ public record SocialEntry(
     SocialAuthor Author,
     IReadOnlyList<SocialPhoto> Photos)
 {
-    public static SocialEntry From(EntryModel entry, string? authorCid) => new(
+    public static SocialEntry From(EntryModel entry, string? authorCid, MediaProxyUrlSigner mediaProxy) => new(
         $"{entry.ProviderId}:{entry.Id}",
         entry.ProviderId,
         entry.EntryType.ToString().ToLowerInvariant(),
@@ -56,8 +62,8 @@ public record SocialEntry(
         entry.Categories,
         entry.CanReply,
         entry.ReplyCount,
-        SocialAuthor.From(entry.Author, authorCid),
-        [.. entry.AdditionalActivities.OfType<PhotoActivityModel>().Select(SocialPhoto.From)]);
+        SocialAuthor.From(entry.Author, authorCid, mediaProxy),
+        [.. entry.AdditionalActivities.OfType<PhotoActivityModel>().Select(photo => SocialPhoto.From(photo, mediaProxy))]);
 }
 
 public record SocialFeedResponse(bool Connected, IReadOnlyList<SocialEntry> Entries);
@@ -72,8 +78,9 @@ public record SocialReplyResponse(bool Posted);
 
 public record SocialIdentity(string Provider, string ExternalId, string Handle, string DisplayName, string AvatarUrl)
 {
-    public static SocialIdentity From(ResolvedIdentity identity) =>
-        new(identity.Provider, identity.ExternalId, identity.Handle, identity.DisplayName, identity.AvatarUrl);
+    public static SocialIdentity From(ResolvedIdentity identity, MediaProxyUrlSigner mediaProxy) =>
+        new(identity.Provider, identity.ExternalId, identity.Handle, identity.DisplayName,
+            mediaProxy.SignUrlOrOriginal(identity.AvatarUrl, MediaSize.Avatar));
 }
 
 public record SocialIdentitiesResponse(string Cid, IReadOnlyList<SocialIdentity> Identities);

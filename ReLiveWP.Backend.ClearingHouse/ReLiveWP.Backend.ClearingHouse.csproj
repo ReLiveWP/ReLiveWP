@@ -22,7 +22,6 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="RedLock.net" />
-    <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 
   <ItemGroup>

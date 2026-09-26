@@ -21,8 +21,7 @@ public class ProfileService(
     IConfiguration configuration,
     ILogger<ProfileService> logger) : IProfileService
 {
-    private const string PlaceholderAvatar =
-        "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:7rfssi44thh6f4ywcl3u5nvt/bafkreifzzvtmxjraoiym6plysmh3e5wc257aecnapxvs427esswjktmvoy@jpeg";
+    private const string NoAvatar = "";
 
     public async Task<GetManyResponse> GetMany(GetManyRequest message)
     {
@@ -90,11 +89,11 @@ public class ProfileService(
 
             ProfileView view;
             if (owner is not null && cid == owner.Cid)
-                view = BuildView(owner.FirstName, owner.LastName, owner.TileUrl ?? PlaceholderAvatar);
+                view = BuildView(owner.FirstName, owner.LastName, owner.TileUrl ?? NoAvatar);
             else if (cid is { } c && profilesByCid.TryGetValue(c, out var contact))
-                view = BuildView(contact.DisplayName, "", string.IsNullOrEmpty(contact.AvatarUrl) ? PlaceholderAvatar : contact.AvatarUrl);
+                view = BuildView(contact.DisplayName, "", string.IsNullOrEmpty(contact.AvatarUrl) ? NoAvatar : contact.AvatarUrl);
             else
-                view = BuildView(fallbackName, "", PlaceholderAvatar);
+                view = BuildView(fallbackName, "", NoAvatar);
 
             response.GetManyResult.Profiles.Add(new ProfileResponse { ProfileId = id, View = view });
         }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Grpc.Core;
 using Microsoft.Extensions.Caching.Memory;
 using ReLiveWP.Identity;
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Activity.Models.Web;
 using ReLiveWP.Services.Activity.Providers;
 using ReLiveWP.Services.Activity.Services;
@@ -43,6 +44,7 @@ public static class SocialEndpoints
         ClaimsPrincipal user,
         ActivityProviderService providers,
         MailboxStore.MailboxStoreClient mailbox,
+        MediaProxyUrlSigner mediaProxy,
         CancellationToken ct)
     {
         var userId = user.Id()!;
@@ -59,7 +61,7 @@ public static class SocialEndpoints
         }
 
         var identities = await Task.WhenAll(
-            listed.Identities.Select(row => DescribeAsync(providers, row.Provider, row.ExternalId, ct)));
+            listed.Identities.Select(row => DescribeAsync(providers, mediaProxy, row.Provider, row.ExternalId, ct)));
 
         var cid = listed.Identities.Count > 0 ? listed.Identities[0].ContactCid : Cids.ContactCid(userId, serverId);
         return Results.Ok(new SocialIdentitiesResponse(WebCids.FormatCid(cid), identities));
@@ -71,6 +73,7 @@ public static class SocialEndpoints
         ClaimsPrincipal user,
         ActivityProviderService providers,
         MailboxStore.MailboxStoreClient mailbox,
+        MediaProxyUrlSigner mediaProxy,
         CancellationToken ct)
     {
         var provider = providers.FindPublicProvider(request.Provider);
@@ -103,7 +106,8 @@ public static class SocialEndpoints
             return Results.NotFound(new SocialErrorResponse("contact_not_found"));
         }
 
-        return Results.Ok(new SocialIdentitiesResponse(WebCids.FormatCid(bound.ContactCid), [SocialIdentity.From(resolved)]));
+        var identity = SocialIdentity.From(resolved, mediaProxy);
+        return Results.Ok(new SocialIdentitiesResponse(WebCids.FormatCid(bound.ContactCid), [identity]));
     }
 
     private static async Task<IResult> UnbindIdentityAsync(
@@ -130,13 +134,14 @@ public static class SocialEndpoints
     // a stored identity is just a provider and an id, the name and picture are looked up each time
     // and the provider caches them
     private static async Task<SocialIdentity> DescribeAsync(
-        ActivityProviderService providers, string providerToken, string externalId, CancellationToken ct)
+        ActivityProviderService providers, MediaProxyUrlSigner mediaProxy, string providerToken, string externalId,
+        CancellationToken ct)
     {
         var provider = providers.FindPublicProvider(providerToken);
         var resolved = provider == null ? null : await provider.ResolveIdentityAsync(externalId, ct);
         return resolved == null
             ? new SocialIdentity(providerToken, externalId, "", externalId, "")
-            : SocialIdentity.From(resolved);
+            : SocialIdentity.From(resolved, mediaProxy);
     }
 
     private static async Task<IResult> GetFeedAsync(
@@ -144,6 +149,7 @@ public static class SocialEndpoints
         ActivityProviderService providers,
         ActivityFeedReader reader,
         IMemoryCache cache,
+        MediaProxyUrlSigner mediaProxy,
         int count = 20)
     {
         var userId = user.Id()!;
@@ -158,7 +164,7 @@ public static class SocialEndpoints
             return Results.Ok(new SocialFeedResponse(false, []));
 
         var entries = await reader.ReadOwnFeedAsync(provider, ActivitiesContext.Contacts, count, userId);
-        var response = new SocialFeedResponse(true, [.. entries.Select(RenderEntry)]);
+        var response = new SocialFeedResponse(true, [.. entries.Select(entry => RenderEntry(entry, mediaProxy))]);
         cache.Set(key, response, WebFeedLifetime);
         return Results.Ok(response);
     }
@@ -168,6 +174,7 @@ public static class SocialEndpoints
         ClaimsPrincipal user,
         ActivityProviderService providers,
         ActivityFeedReader reader,
+        MediaProxyUrlSigner mediaProxy,
         CancellationToken ct,
         int count = 20)
     {
@@ -179,7 +186,8 @@ public static class SocialEndpoints
         var sources = await providers.GetContactFeedSourcesAsync(contactCid, user.Id()!, ct);
         var entries = await reader.ReadContactFeedAsync(providers.PublicProviders, sources, contactCid, count);
 
-        return Results.Ok(new SocialContactFeedResponse(WebCids.FormatCid(contactCid), sources.Count > 0, [.. entries.Select(RenderEntry)]));
+        var rendered = entries.Select(entry => RenderEntry(entry, mediaProxy));
+        return Results.Ok(new SocialContactFeedResponse(WebCids.FormatCid(contactCid), sources.Count > 0, [.. rendered]));
     }
 
     private static async Task<IResult> GetRepliesAsync(
@@ -188,6 +196,7 @@ public static class SocialEndpoints
         ActivityProviderService providers,
         ActivityFeedReader reader,
         IMemoryCache cache,
+        MediaProxyUrlSigner mediaProxy,
         int count = 20)
     {
         if (!ActivityIds.TrySplit(activityId, out var providerId, out var id))
@@ -203,7 +212,7 @@ public static class SocialEndpoints
         var replyProviders = await providers.GetReplyProvidersAsync();
         var entries = await reader.ReadRepliesAsync(replyProviders, providerId, id, count, userId);
 
-        var response = new SocialRepliesResponse(activityId, [.. entries.Select(RenderEntry)]);
+        var response = new SocialRepliesResponse(activityId, [.. entries.Select(entry => RenderEntry(entry, mediaProxy))]);
         cache.Set(key, response, WebRepliesLifetime);
         return Results.Ok(response);
     }
@@ -235,6 +244,6 @@ public static class SocialEndpoints
 
     private static string GetReplyCacheKey(string userId, string activityId) => $"web:replies:{userId}:{activityId}";
 
-    private static SocialEntry RenderEntry(ResolvedEntry resolved)
-        => SocialEntry.From(resolved.Entry, WebCids.FormatCid(resolved.AuthorCid));
+    private static SocialEntry RenderEntry(ResolvedEntry resolved, MediaProxyUrlSigner mediaProxy)
+        => SocialEntry.From(resolved.Entry, WebCids.FormatCid(resolved.AuthorCid), mediaProxy);
 }

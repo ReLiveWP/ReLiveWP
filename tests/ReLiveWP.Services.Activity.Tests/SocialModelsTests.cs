@@ -1,6 +1,7 @@
 using System.Globalization;
 using ReLiveWP.Services.Activity.Models;
 using ReLiveWP.Services.Activity.Models.Web;
+using ReLiveWP.Services.Activity.Providers;
 
 namespace ReLiveWP.Services.Activity.Tests;
 
@@ -21,7 +22,7 @@ public class SocialModelsTests
             MimeType = "image/jpeg",
         });
 
-        var social = SocialEntry.From(entry, "15fe5d7a6d8d65ff");
+        var social = SocialEntry.From(entry, "15fe5d7a6d8d65ff", TestMediaProxy.Unconfigured);
 
         Assert.Equal("AT:3kabc", social.Id);
         Assert.Equal("post", social.Type);
@@ -30,16 +31,79 @@ public class SocialModelsTests
         Assert.Equal("did:plc:amy", social.Author.ExternalId);
         var photo = Assert.Single(social.Photos);
         Assert.Equal("https://cdn/thumb@jpeg", photo.ThumbnailUrl);
-        Assert.Equal("image/jpeg", photo.MimeType);
     }
 
     [Fact]
     public void The_viewers_own_posts_carry_no_cid()
     {
-        var social = SocialEntry.From(Post("3kself", isMe: true), "15fe5d7a6d8d65ff");
+        var social = SocialEntry.From(Post("3kself", isMe: true), "15fe5d7a6d8d65ff", TestMediaProxy.Unconfigured);
 
         Assert.True(social.Author.IsMe);
         Assert.Null(social.Author.Cid);
+    }
+
+    [Fact]
+    public void Remote_images_go_through_the_media_proxy()
+    {
+        var entry = Post("3kabc", isMe: false);
+        entry.Author.AvatarUrl = "https://cdn.bsky.app/img/avatar/plain/did:plc:amy/a@jpeg";
+        entry.AdditionalActivities.Add(new PhotoActivityModel
+        {
+            Id = "img1",
+            CanonicalUrl = "https://files.example/statuses/1",
+            ThumbnailUrl = "https://files.example/small/1.png",
+            FullSizeUrl = "https://files.example/original/1.png",
+            MimeType = "image/png",
+        });
+
+        var social = SocialEntry.From(entry, "15fe5d7a6d8d65ff", TestMediaProxy.CreateSigner());
+
+        Assert.StartsWith($"{TestMediaProxy.Root}/v1/avatar/", social.Author.AvatarUrl);
+        var photo = Assert.Single(social.Photos);
+        Assert.StartsWith($"{TestMediaProxy.Root}/v1/thumb/", photo.ThumbnailUrl);
+        Assert.StartsWith($"{TestMediaProxy.Root}/v1/full/", photo.FullSizeUrl);
+        Assert.Equal("https://files.example/statuses/1", photo.CanonicalUrl);
+    }
+
+    [Fact]
+    public void An_image_the_proxy_would_refuse_stays_as_it_was()
+    {
+        var entry = Post("3kabc", isMe: false);
+        entry.AdditionalActivities.Add(new PhotoActivityModel
+        {
+            Id = "img1",
+            CanonicalUrl = "https://files.example/statuses/1",
+            ThumbnailUrl = "http://files.example/small/1.png",
+            FullSizeUrl = "http://files.example/original/1.png",
+            MimeType = "image/png",
+        });
+
+        var social = SocialEntry.From(entry, "15fe5d7a6d8d65ff", TestMediaProxy.CreateSigner());
+
+        var photo = Assert.Single(social.Photos);
+        Assert.Equal("http://files.example/small/1.png", photo.ThumbnailUrl);
+        Assert.Equal("http://files.example/original/1.png", photo.FullSizeUrl);
+    }
+
+    [Fact]
+    public void A_resolved_identity_avatar_goes_through_the_media_proxy()
+    {
+        var resolved = new ResolvedIdentity("atproto", "did:plc:amy", "amy.example", "Amy",
+                                            "https://cdn.bsky.app/img/avatar/plain/did:plc:amy/a@jpeg");
+
+        var identity = SocialIdentity.From(resolved, TestMediaProxy.CreateSigner());
+
+        Assert.StartsWith($"{TestMediaProxy.Root}/v1/avatar/", identity.AvatarUrl);
+    }
+
+    [Fact]
+    public void A_missing_avatar_stays_empty()
+    {
+        var resolved = new ResolvedIdentity("mastodon", "https://snug.moe/users/amy", "amy@snug.moe", "Amy", "");
+
+        var identity = SocialIdentity.From(resolved, TestMediaProxy.CreateSigner());
+
+        Assert.Equal("", identity.AvatarUrl);
     }
 
     [Fact]

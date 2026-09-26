@@ -15,7 +15,6 @@ export type SocialPhoto = {
     thumbnail_url: string,
     full_size_url: string,
     canonical_url: string,
-    mime_type: string,
 };
 
 export type SocialEntry = {

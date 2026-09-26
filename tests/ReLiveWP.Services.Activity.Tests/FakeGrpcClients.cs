@@ -71,6 +71,24 @@ public class FakeUserClient : User.UserClient
     }
 }
 
+public class FakeSkyDriveClient : SkyDrive.SkyDriveClient
+{
+    public Func<GetPhotoContentRequest, GetPhotoContentReply>? OnGetPhotoContent { get; set; }
+
+    public int GetPhotoContentCalls { get; private set; }
+
+    public override AsyncUnaryCall<GetPhotoContentReply> GetPhotoContentAsync(
+        GetPhotoContentRequest request, CallOptions options)
+    {
+        GetPhotoContentCalls++;
+
+        if (OnGetPhotoContent is null)
+            throw new InvalidOperationException($"{nameof(OnGetPhotoContent)} not configured");
+
+        return FakeCall.Unary(() => OnGetPhotoContent(request));
+    }
+}
+
 internal static class FakeCall
 {
     public static AsyncServerStreamingCall<T> ServerStreaming<T>(IEnumerable<T> items) =>

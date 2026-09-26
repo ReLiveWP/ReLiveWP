@@ -9,6 +9,7 @@ using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Grpc;
 using ReLiveWP.Backend.Identity.Services;
 using ReLiveWP.Identity.LiveID;
+using ReLiveWP.ServiceDefaults.Media;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -37,11 +38,10 @@ builder.Services.AddSingleton<ISsoAuthorizationCodeStore, RedisSsoAuthorizationC
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();
 builder.Services.AddScoped<RootCACertificateProvider>();
 builder.Services.AddSingleton<AvatarStore>();
+builder.AddMediaPipelineClient();
 builder.Services.AddSingleton<AvatarProcessor>();
 
 builder.Services.AddGrpc();
-
-builder.Services.AddHostedService<UserMigrationService>();
 
 var app = builder.Build();
 

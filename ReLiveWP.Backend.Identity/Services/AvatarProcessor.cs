@@ -1,6 +1,4 @@
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Processing;
+using ReLiveWP.ServiceDefaults.Media;
 
 namespace ReLiveWP.Backend.Identity.Services;
 
@@ -10,14 +8,9 @@ public readonly record struct AvatarCrop(int X, int Y, int Size);
 
 public record ProcessedAvatar(byte[] Original, byte[] Thumbnail, string ContentType, string Extension);
 
-public class AvatarProcessor(ILogger<AvatarProcessor> logger)
+public class AvatarProcessor(MediaPipelineClient pipeline, ILogger<AvatarProcessor> logger)
 {
     public const int MaxSourceBytes = 8 * 1024 * 1024;
-
-    private const int MaxSourcePixels = 64_000_000;
-    private const int OriginalSize = 512;
-    private const int ThumbnailSize = 128;
-    private const int Quality = 82;
 
     public async Task<ProcessedAvatar> ProcessAsync(byte[] source, AvatarCrop? crop, CancellationToken ct = default)
     {
@@ -25,73 +18,43 @@ public class AvatarProcessor(ILogger<AvatarProcessor> logger)
             throw new AvatarProcessingException("no image data");
         if (source.Length > MaxSourceBytes)
             throw new AvatarProcessingException($"image is {source.Length} B, over the {MaxSourceBytes} B limit");
-
-        using var buffered = new MemoryStream(source, writable: false);
-
-        ImageInfo info;
-        try
-        {
-            info = await Image.IdentifyAsync(buffered, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            throw new AvatarProcessingException("could not read the image");
-        }
-
-        if ((long)info.Width * info.Height > MaxSourcePixels)
-            throw new AvatarProcessingException($"{info.Width}x{info.Height} is too large");
-
-        buffered.Position = 0;
-        using var image = await Image.LoadAsync(buffered, ct);
-
-        // before the crop, always: the browser previews with image-orientation: from-image, so the
-        // rect the user drew is in oriented coordinates
-        image.Mutate(x => x.AutoOrient());
-
-        if (crop is { } rect)
-            image.Mutate(x => x.Crop(ResolveCrop(rect, image.Width, image.Height)));
-
-        // squares the result if the crop was clamped, or if there was no crop at all
-        var side = Math.Min(OriginalSize, Math.Min(image.Width, image.Height));
-        image.Mutate(x => x
-            .Resize(new ResizeOptions
-            {
-                Size = new Size(side, side),
-                Mode = ResizeMode.Crop,
-                Position = AnchorPositionMode.Center,
-                Sampler = KnownResamplers.Lanczos3,
-            })
-            .BackgroundColor(Color.White));
-
-        var original = await EncodeAsync(image, ct);
-
-        var thumbSide = Math.Min(ThumbnailSize, side);
-        using var thumbnail = image.Clone(x => x.Resize(thumbSide, thumbSide, KnownResamplers.Lanczos3));
-        var thumb = await EncodeAsync(thumbnail, ct);
-
-        logger.LogInformation("processed avatar: {Source} B in, {Original} B original, {Thumb} B thumbnail",
-            source.Length, original.Length, thumb.Length);
-
-        return new ProcessedAvatar(original, thumb, "image/jpeg", ".jpg");
-    }
-
-    private static Rectangle ResolveCrop(AvatarCrop crop, int width, int height)
-    {
-        if (crop.Size <= 0)
+        if (crop is { Size: <= 0 })
             throw new AvatarProcessingException("crop size must be positive");
 
-        var requested = new Rectangle(crop.X, crop.Y, crop.Size, crop.Size);
-        var clamped = Rectangle.Intersect(requested, new Rectangle(0, 0, width, height));
-        if (clamped.Width <= 0 || clamped.Height <= 0)
-            throw new AvatarProcessingException("crop rectangle falls outside the image");
+        var mediaCrop = crop is { } rect ? new MediaCrop(rect.X, rect.Y, rect.Size, rect.Size) : (MediaCrop?)null;
 
-        return clamped;
+        var original = await RunProfileAsync(source, MediaProfiles.ForAvatar(mediaCrop), ct);
+        var thumbnail = await RunProfileAsync(original, MediaProfiles.ForAvatarThumbnail(), ct);
+
+        logger.LogInformation("processed avatar: {Source} B in, {Original} B original, {Thumb} B thumbnail",
+            source.Length, original.Length, thumbnail.Length);
+
+        return new ProcessedAvatar(original, thumbnail, "image/jpeg", ".jpg");
     }
 
-    private static async Task<byte[]> EncodeAsync(Image image, CancellationToken ct)
+    private async Task<byte[]> RunProfileAsync(byte[] source, string profile, CancellationToken ct)
     {
-        using var buffer = new MemoryStream();
-        await image.SaveAsJpegAsync(buffer, new JpegEncoder { Quality = Quality }, ct);
-        return buffer.ToArray();
+        using var stream = new MemoryStream(source, writable: false);
+        var result = await pipeline.ProcessImageAsync(stream, profile, ct);
+
+        if (result.IsUnavailable)
+            throw new MediaPipelineUnavailableException();
+
+        if (result.Jpeg is null)
+            throw new AvatarProcessingException(DescribeRejection(result.Rejection!));
+
+        return result.Jpeg;
+    }
+
+    internal static string DescribeRejection(MediaPipelineRejection rejection)
+    {
+        return rejection.Code switch
+        {
+            MediaPipelineRejection.Unreadable => "could not read the image",
+            MediaPipelineRejection.TooManyPixels => $"{rejection.Detail} is too large",
+            MediaPipelineRejection.CropOutside => "crop rectangle falls outside the image",
+            MediaPipelineRejection.TooLarge => "image is too large",
+            _ => $"could not process the image ({rejection.Code})",
+        };
     }
 }

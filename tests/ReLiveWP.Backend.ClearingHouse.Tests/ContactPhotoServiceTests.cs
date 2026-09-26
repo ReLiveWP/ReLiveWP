@@ -1,20 +1,35 @@
+using System.Net;
+using System.Net.Http.Json;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Grpc.Mailbox;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 
 namespace ReLiveWP.Backend.ClearingHouse.Tests;
 
 public class ContactPhotoServiceTests
 {
-    private const int Base64Cap = 48 * 1024;
+    private static readonly byte[] Tile = [0xFF, 0xD8, 7, 7, 7, 0xFF, 0xD9];
 
-    private static ContactPhotoService NewService()
+    private sealed class FakeMediaPipeline : HttpMessageHandler
+    {
+        public Func<HttpResponseMessage> Respond { get; set; } =
+            () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Tile) };
+
+        public List<(string Profile, byte[] Source)> Calls { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var profile = QueryHelpers.ParseQuery(request.RequestUri!.Query)["profile"].ToString();
+            Calls.Add((profile, await request.Content!.ReadAsByteArrayAsync(ct)));
+            return Respond();
+        }
+    }
+
+    private static ContactPhotoService NewService(FakeMediaPipeline pipeline)
     {
         var factory = new NoopHttpClientFactory();
         var config = new ConfigurationBuilder()
@@ -24,84 +39,78 @@ public class ContactPhotoServiceTests
             })
             .Build();
 
-        return new(factory, new ConnectedServicesProxy(factory, config),
+        var http = new HttpClient(pipeline) { BaseAddress = new Uri("http://mediaproxy:5000") };
+        var client = new MediaPipelineClient(http, NullLogger<MediaPipelineClient>.Instance);
+
+        return new(factory, new ConnectedServicesProxy(factory, config), client,
             NullLogger<ContactPhotoService>.Instance);
     }
 
-    private static RemoteContact WithPhoto(byte[]? data, string? url = null) =>
-        new("x", new ContactItem(), PhotoUrl: url, PhotoData: data);
+    private static RemoteContact WithPhoto(byte[]? data, string? url = null, PhotoCrop? crop = null) =>
+        new("x", new ContactItem(), PhotoUrl: url, PhotoData: data, PhotoCrop: crop);
 
-    // a noisy image is the worst case for jpeg: it will not compress away, so if this fits the cap
-    // a real photograph will
-    private static byte[] NoisyPng(int width, int height)
+    [Fact]
+    public async Task An_inline_photo_is_made_into_a_tile_by_the_pipeline()
     {
-        using var image = new Image<Rgba32>(width, height);
-        var random = new Random(1);
+        var pipeline = new FakeMediaPipeline();
 
-        image.ProcessPixelRows(accessor =>
+        var result = await NewService(pipeline).ResolveAsync(WithPhoto([1, 2, 3]));
+
+        Assert.Equal(Tile, result);
+        var call = Assert.Single(pipeline.Calls);
+        Assert.Equal("contact-tile", call.Profile);
+        Assert.Equal([1, 2, 3], call.Source);
+    }
+
+    [Fact]
+    public async Task The_crop_and_its_origin_travel_with_the_photo()
+    {
+        var pipeline = new FakeMediaPipeline();
+        var crop = new PhotoCrop(28, 21, 679, 679, OriginIsBottomLeft: true);
+
+        await NewService(pipeline).ResolveAsync(WithPhoto([1], crop: crop));
+
+        Assert.Equal("contact-tile:28,21,679,679:bottom-left", Assert.Single(pipeline.Calls).Profile);
+    }
+
+    [Fact]
+    public void A_top_left_crop_carries_no_origin()
+    {
+        var profile = ContactPhotoService.ChooseTileProfile(new PhotoCrop(10, 0, 400, 400, OriginIsBottomLeft: false));
+
+        Assert.Equal("contact-tile:10,0,400,400", profile);
+    }
+
+    [Fact]
+    public async Task A_photo_the_pipeline_refuses_yields_no_photo()
+    {
+        var pipeline = new FakeMediaPipeline
         {
-            for (var y = 0; y < accessor.Height; y++)
+            Respond = () => new HttpResponseMessage(HttpStatusCode.UnprocessableEntity)
             {
-                var row = accessor.GetRowSpan(y);
-                for (var x = 0; x < row.Length; x++)
-                    row[x] = new Rgba32((byte)random.Next(256), (byte)random.Next(256), (byte)random.Next(256));
-            }
-        });
+                Content = JsonContent.Create(new MediaPipelineRejection(MediaPipelineRejection.Unreadable)),
+            },
+        };
 
-        using var output = new MemoryStream();
-        image.Save(output, new PngEncoder());
-        return output.ToArray();
-    }
-
-    private static long Base64Length(byte[] bytes) => ((long)bytes.Length + 2) / 3 * 4;
-
-    [Fact]
-    public async Task Resizes_an_inline_photo_to_the_tile_size()
-    {
-        var result = await NewService().ResolveAsync(WithPhoto(NoisyPng(600, 400)));
-
-        Assert.NotNull(result);
-
-        using var image = Image.Load(result);
-        Assert.Equal(ContactPhotoService.TileSize, image.Width);
-        Assert.Equal(ContactPhotoService.TileSize, image.Height);
-    }
-
-    // ItemValidationRules rejects an oversized picture, and a rejection aborts the entire
-    // SaveChanges batch rather than just that one contact
-    [Theory]
-    [InlineData(4000, 3000)]
-    [InlineData(1024, 1024)]
-    [InlineData(200, 200)]
-    public async Task Output_always_fits_the_mailbox_picture_cap(int width, int height)
-    {
-        var result = await NewService().ResolveAsync(WithPhoto(NoisyPng(width, height)));
-
-        Assert.NotNull(result);
-        Assert.True(Base64Length(result) <= Base64Cap,
-            $"{width}x{height} produced {Base64Length(result)} B base64, over the {Base64Cap} B cap");
+        Assert.Null(await NewService(pipeline).ResolveAsync(WithPhoto([1, 2, 3, 4, 5])));
     }
 
     [Fact]
-    public async Task A_photo_smaller_than_the_tile_is_still_squared()
+    public async Task The_pipeline_being_down_fails_the_run_instead_of_dropping_the_photo()
     {
-        var result = await NewService().ResolveAsync(WithPhoto(NoisyPng(64, 32)));
+        var pipeline = new FakeMediaPipeline { Respond = () => throw new HttpRequestException("connection refused") };
 
-        Assert.NotNull(result);
-        using var image = Image.Load(result);
-        Assert.Equal(image.Width, image.Height);
+        await Assert.ThrowsAsync<MediaPipelineUnavailableException>(
+            () => NewService(pipeline).ResolveAsync(WithPhoto([1, 2, 3])));
     }
 
     [Fact]
-    public async Task Unreadable_data_yields_no_photo_rather_than_throwing()
+    public async Task A_contact_with_no_photo_yields_null_without_asking_the_pipeline()
     {
-        Assert.Null(await NewService().ResolveAsync(WithPhoto([1, 2, 3, 4, 5])));
-    }
+        var pipeline = new FakeMediaPipeline();
 
-    [Fact]
-    public async Task A_contact_with_no_photo_yields_null()
-    {
-        Assert.Null(await NewService().ResolveAsync(WithPhoto(null)));
+        Assert.Null(await NewService(pipeline).ResolveAsync(WithPhoto(null)));
+        Assert.Empty(pipeline.Calls);
     }
 
     // these urls arrive inside a provider response, so anything off the provider's own cdn is
@@ -114,69 +123,7 @@ public class ContactPhotoServiceTests
     [InlineData("file:///etc/passwd")]
     public async Task Refuses_photo_urls_off_the_allowlist(string url)
     {
-        Assert.Null(await NewService().ResolveAsync(WithPhoto(null, url)));
-    }
-
-    [Fact]
-    public void A_bottom_left_crop_is_measured_from_the_far_edge()
-    {
-        var frame = ContactPhotoService.Frame(new PhotoCrop(28, 21, 679, 679, OriginIsBottomLeft: true), 727, 727);
-
-        Assert.Equal(new Rectangle(28, 727 - 21 - 679, 679, 679), frame);
-    }
-
-    [Fact]
-    public void A_crop_hanging_off_the_image_is_clipped_to_it()
-    {
-        var frame = ContactPhotoService.Frame(new PhotoCrop(10, 0, 400, 400, OriginIsBottomLeft: false), 200, 200);
-
-        Assert.Equal(new Rectangle(10, 0, 190, 200), frame);
-    }
-
-    // the rect was measured against an image we are not looking at, so framing an edge of this one
-    // would be worse than ignoring it
-    [Fact]
-    public void A_crop_entirely_outside_the_image_is_discarded()
-    {
-        Assert.Null(ContactPhotoService.Frame(new PhotoCrop(900, 900, 100, 100, OriginIsBottomLeft: false), 200, 200));
-    }
-
-    [Fact]
-    public async Task The_crop_selects_the_region_the_user_framed()
-    {
-        var source = HalfRedHalfBlue(200, 200);
-
-        var cropped = await NewService().ResolveAsync(
-            new RemoteContact("x", new ContactItem(), PhotoData: source,
-                PhotoCrop: new PhotoCrop(0, 0, 200, 100, OriginIsBottomLeft: true)));
-
-        Assert.NotNull(cropped);
-
-        using var image = Image.Load<Rgba32>(cropped);
-        var pixel = image[ContactPhotoService.TileSize / 2, ContactPhotoService.TileSize / 2];
-
-        Assert.True(pixel.B > pixel.R, $"expected the bottom (blue) half, got {pixel}");
-    }
-
-    // red on top, blue on the bottom, so a crop tells you which end it took
-    private static byte[] HalfRedHalfBlue(int width, int height)
-    {
-        using var image = new Image<Rgba32>(width, height);
-
-        image.ProcessPixelRows(accessor =>
-        {
-            for (var y = 0; y < accessor.Height; y++)
-            {
-                var row = accessor.GetRowSpan(y);
-                var colour = y < accessor.Height / 2 ? new Rgba32(255, 0, 0) : new Rgba32(0, 0, 255);
-                for (var x = 0; x < row.Length; x++)
-                    row[x] = colour;
-            }
-        });
-
-        using var output = new MemoryStream();
-        image.Save(output, new PngEncoder());
-        return output.ToArray();
+        Assert.Null(await NewService(new FakeMediaPipeline()).ResolveAsync(WithPhoto(null, url)));
     }
 
     private sealed class NoopHttpClientFactory : System.Net.Http.IHttpClientFactory

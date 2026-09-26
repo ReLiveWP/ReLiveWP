@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Identity.Data;
 using ReLiveWP.Backend.Identity.Services;
 using ReLiveWP.ServiceDefaults.Events;
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Grpc;
 using StackExchange.Redis;
 
@@ -155,6 +156,10 @@ public class UserService(
         catch (AvatarProcessingException ex)
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, ex.Message));
+        }
+        catch (MediaPipelineUnavailableException ex)
+        {
+            throw new RpcException(new Status(StatusCode.Unavailable, ex.Message));
         }
 
         var etag = avatarStore.ComputeEtag(processed.Original);

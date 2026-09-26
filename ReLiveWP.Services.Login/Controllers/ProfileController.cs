@@ -76,6 +76,11 @@ public class ProfileController(
             logger.LogInformation("rejected an avatar upload: {Detail}", e.Status.Detail);
             return BadRequest(new ErrorModel(0, null));
         }
+        catch (RpcException e) when (e.StatusCode == GrpcStatus.Unavailable)
+        {
+            logger.LogWarning("could not process an avatar upload: {Detail}", e.Status.Detail);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorModel(0, null));
+        }
     }
 
     [Authorize]

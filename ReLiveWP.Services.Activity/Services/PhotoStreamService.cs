@@ -1,5 +1,7 @@
 using ReLiveWP.Identity;
 using ReLiveWP.ServiceDefaults;
+using ReLiveWP.ServiceDefaults.Media;
+using ReLiveWP.Services.Activity.Providers;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
 namespace ReLiveWP.Services.Activity.Services;
@@ -9,13 +11,13 @@ public class PhotoStreamService(PhotoLibraryService library,
                                 SocialAlbumService social,
                                 FileViewerService viewer,
                                 ThumbnailService thumbnails,
+                                MediaProxyClient mediaProxy,
                                 IHttpClientFactory httpClientFactory)
 {
     public async Task<bool> WriteAsync(HttpContext context, string id, string resourceRef, int maxSize,
                                        CancellationToken ct = default)
     {
         var userId = context.User.Id()!;
-        using var http = httpClientFactory.CreateClient();
 
         if (socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
         {
@@ -23,16 +25,21 @@ public class PhotoStreamService(PhotoLibraryService library,
             if (!await social.IsServableAsync(provider, externalId, subjectCid, userId, ct))
                 return false;
 
-            var media = provider.GetMediaLocation(externalId, mediaId, maxSize);
-            using var mediaResponse = await http.FetchAsync(media, context, ct);
-
-            await mediaResponse.PipeAsync(media, context, ct);
-            return true;
+            return await WriteSocialPhotoAsync(context, provider, externalId, mediaId, maxSize, ct);
         }
+
+        using var http = httpClientFactory.CreateClient();
 
         var resolved = await library.ResolveContentAsync(userId, resourceRef, maxSize, refresh: false, ct);
         if (resolved == null)
             return false;
+
+        var resizeTo = resolved.Value.ResizeTo;
+        if (resizeTo > 0 && thumbnails.TryGetCachedThumbnail(userId, resourceRef, resizeTo, out var cached))
+        {
+            await WriteThumbnailAsync(context, cached, ct);
+            return true;
+        }
 
         var location = resolved.Value.Location;
         var forwardRange = resolved.Value.ResizeTo == 0;
@@ -56,13 +63,13 @@ public class PhotoStreamService(PhotoLibraryService library,
             if (resolved.Value.ResizeTo > 0 && response.IsSuccessStatusCode)
             {
                 await using var source = await response.Content.ReadAsStreamAsync(ct);
-                var thumbnail = await thumbnails.ResizeAsync(userId, resourceRef, resolved.Value.ResizeTo, source, ct);
+                var sourceLength = response.Content.Headers.ContentLength;
+                var thumbnail = await thumbnails.ResizeAsync(userId, resourceRef, resolved.Value.ResizeTo, source,
+                                                             sourceLength, ct);
 
                 if (thumbnail != null)
                 {
-                    context.Response.ContentType = thumbnail.ContentType;
-                    context.Response.ContentLength = thumbnail.Data.Length;
-                    await context.Response.Body.WriteAsync(thumbnail.Data, ct);
+                    await WriteThumbnailAsync(context, thumbnail, ct);
                     return true;
                 }
 
@@ -78,5 +85,42 @@ public class PhotoStreamService(PhotoLibraryService library,
         {
             response.Dispose();
         }
+    }
+
+    private async Task<bool> WriteSocialPhotoAsync(HttpContext context, SocialAlbumProviderBase provider,
+                                                   string externalId, string mediaId, int maxSize, CancellationToken ct)
+    {
+        var size = MediaSizes.ChooseSizeFor(maxSize);
+        var source = provider.ResolveMediaSource(externalId, mediaId, size);
+        if (source == null)
+            return false;
+
+        if (thumbnails.TryGetCachedProxiedImage(source, size, out var cached))
+        {
+            await WriteThumbnailAsync(context, cached, ct);
+            return true;
+        }
+
+        using var response = await mediaProxy.FetchImageAsync(source, size, ct);
+        if (response == null)
+            return false;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            context.Response.StatusCode = (int)response.StatusCode;
+            return true;
+        }
+
+        var jpeg = await response.Content.ReadAsByteArrayAsync(ct);
+        var image = thumbnails.StoreProxiedImage(source, size, jpeg);
+        await WriteThumbnailAsync(context, image, ct);
+        return true;
+    }
+
+    private static async Task WriteThumbnailAsync(HttpContext context, Thumbnail thumbnail, CancellationToken ct)
+    {
+        context.Response.ContentType = thumbnail.ContentType;
+        context.Response.ContentLength = thumbnail.Data.Length;
+        await context.Response.Body.WriteAsync(thumbnail.Data, ct);
     }
 }

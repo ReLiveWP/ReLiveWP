@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Activity.Models;
 using ReLiveWP.Services.Activity.Models.Atom;
 using ReLiveWP.Services.Activity.Providers;
@@ -7,7 +8,7 @@ using Link = Atom.Xml.Link;
 
 namespace ReLiveWP.Services.Activity.Services;
 
-public class FeedRendererService(ActivityFeedReader reader)
+public class FeedRendererService(ActivityFeedReader reader, MediaProxyUrlSigner mediaProxy)
 {
     public async Task<List<LiveEntry>> RenderFeedAsync(
         IUrlHelper url,
@@ -32,7 +33,7 @@ public class FeedRendererService(ActivityFeedReader reader)
         return [.. entries.Select(resolved => CreatePostEntry(url, resolved.Entry, meAuthor: null, authorCid: cid))];
     }
 
-    private static LiveEntry CreatePostEntry(IUrlHelper url, EntryModel entryModel, LiveAuthor? meAuthor, long authorCid)
+    internal LiveEntry CreatePostEntry(IUrlHelper url, EntryModel entryModel, LiveAuthor? meAuthor, long authorCid)
     {
         var entryAuthor = entryModel.Author;
         var author = entryAuthor.IsMe && meAuthor != null ? meAuthor : new LiveAuthor()
@@ -43,7 +44,7 @@ public class FeedRendererService(ActivityFeedReader reader)
             Url = entryAuthor.CanonicalUrl,
             Links =
             [
-                new Link(entryAuthor.AvatarUrl, "preview", "image/jpeg")
+                CreateImageLink(entryAuthor.AvatarUrl, "preview", MediaSize.Avatar, "image/jpeg")
             ]
         };
 
@@ -105,13 +106,22 @@ public class FeedRendererService(ActivityFeedReader reader)
                     Id = photo.CanonicalUrl,
                     Links =
                     [
-                        new Link(photo.ThumbnailUrl, "preview", photo.MimeType),
-                        new Link(photo.FullSizeUrl, "alternate", photo.MimeType)
+                        CreateImageLink(photo.ThumbnailUrl, "preview", MediaSize.Thumb, photo.MimeType),
+                        CreateImageLink(photo.FullSizeUrl, "alternate", MediaSize.Full, photo.MimeType)
                     ]
                 });
             }
         }
 
         return postEntry;
+    }
+
+    private Link CreateImageLink(string sourceUrl, string rel, MediaSize size, string sourceMimeType)
+    {
+        var proxiedUrl = mediaProxy.SignUrlOrOriginal(sourceUrl, size);
+        if (proxiedUrl == sourceUrl)
+            return new Link(sourceUrl, rel, sourceMimeType);
+
+        return new Link(proxiedUrl, rel, MediaProfiles.OutputContentType);
     }
 }

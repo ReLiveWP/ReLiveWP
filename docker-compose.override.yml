@@ -188,3 +188,10 @@ services:
       dockerfile: Dockerfile
       args:
         PROJECT: ReLiveWP.Services.Support
+
+  mediaproxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Services.MediaProxy

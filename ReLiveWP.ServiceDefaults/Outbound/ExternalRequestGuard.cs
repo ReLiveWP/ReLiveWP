@@ -24,8 +24,14 @@ public static class ExternalRequestGuard
            IsPublicDnsName(uri.IdnHost);
 
     // the guarded handler never follows redirects, so every hop gets the same checks as the first request here
-    public static async Task<HttpResponseMessage?> GetFollowingRedirectsAsync(
+    public static Task<HttpResponseMessage?> GetFollowingRedirectsAsync(
         HttpClient http, Uri url, IEnumerable<string> accept, CancellationToken ct = default)
+    {
+        return GetFollowingRedirectsAsync(http, url, accept, HttpCompletionOption.ResponseContentRead, ct);
+    }
+
+    public static async Task<HttpResponseMessage?> GetFollowingRedirectsAsync(
+        HttpClient http, Uri url, IEnumerable<string> accept, HttpCompletionOption completion, CancellationToken ct = default)
     {
         if (!IsAcceptableUri(url))
             return null;
@@ -36,7 +42,7 @@ public static class ExternalRequestGuard
             foreach (var mediaType in accept)
                 request.Headers.Accept.ParseAdd(mediaType);
 
-            var response = await http.SendAsync(request, ct);
+            var response = await http.SendAsync(request, completion, ct);
             if ((int)response.StatusCode is not (>= 300 and < 400))
                 return response;
 

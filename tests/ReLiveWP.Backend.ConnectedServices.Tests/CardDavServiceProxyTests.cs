@@ -12,7 +12,7 @@ public class CardDavServiceProxyTests
 {
     private const string ICloudCollection = "https://p42-contacts.icloud.com/123456789/carddavhome/card/";
 
-    private const string ICloudPhoto = "https://gateway.icloud.com/contacts/123456789/ck/card/abcdefghijklmnopqrstuvwxyz";
+    private const string ICloudPhoto = "https://gateway.icloud.com/contacts/123456789/ck/card/4e30a076849c6239ad56d4899ffe458a";
 
     private readonly CardDavServiceProxy proxy;
 

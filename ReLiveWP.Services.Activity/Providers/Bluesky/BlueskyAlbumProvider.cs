@@ -3,7 +3,7 @@ using FishyFlip.Lexicon.App.Bsky.Embed;
 using FishyFlip.Lexicon.App.Bsky.Feed;
 using FishyFlip.Models;
 using Microsoft.Extensions.Caching.Memory;
-using ReLiveWP.ServiceDefaults;
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Activity.Utilities;
 using ReLiveWP.Services.Grpc;
 
@@ -143,12 +143,10 @@ public class BlueskyAlbumProvider(IConfiguration configuration,
         }
     }
 
-    public override ContentLocation GetMediaLocation(string externalId, string mediaId, int maxSize)
+    public override Uri? ResolveMediaSource(string externalId, string mediaId, MediaSize size)
     {
-        var rendition = maxSize is > 0 and <= 320 ? "feed_thumbnail" : "feed_fullsize";
-        var url = $"https://cdn.bsky.app/img/{rendition}/plain/{externalId}/{mediaId}@jpeg";
-
-        return new ContentLocation(url, new Dictionary<string, string>(), "image/jpeg", null);
+        var rendition = size == MediaSize.Full ? "feed_fullsize" : "feed_thumbnail";
+        return new Uri($"https://cdn.bsky.app/img/{rendition}/plain/{externalId}/{mediaId}@jpeg");
     }
 
     private ATProtocol CreateProtocol(string userId, Connection? connection)

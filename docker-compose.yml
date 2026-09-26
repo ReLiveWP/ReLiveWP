@@ -417,6 +417,8 @@ services:
         target: JWT__PublicKey
       - source: media_ticket_secret
         target: Media__TicketSecret
+      - source: media_proxy_key
+        target: Media__ProxyKeys__v1
 
   docs:
     image: relive/docs
@@ -641,6 +643,24 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
       - ./deploy/ReLiveWP.Services.Support.ini:/app/ReLiveWP.Services.Support.ini:ro
 
+  mediaproxy:
+    image: relive/mediaproxy
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10021/health"]
+    environment: *v-env
+    networks:
+      - relive
+    ports:
+      - 10021:10021
+    volumes:
+      - ./deploy/services.ini:/app/services.ini:ro
+      - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
+      - ./deploy/ReLiveWP.Services.MediaProxy.ini:/app/ReLiveWP.Services.MediaProxy.ini:ro
+    secrets:
+      - source: media_proxy_key
+        target: Media__ProxyKeys__v1
+
 networks:
   relive:
     name: relive
@@ -693,3 +713,5 @@ secrets:
     file: ./deploy/secrets/deviceupdate_db_connection
   media_ticket_secret:
     file: ./deploy/secrets/media_ticket_secret
+  media_proxy_key:
+    file: ./deploy/secrets/media_proxy_key

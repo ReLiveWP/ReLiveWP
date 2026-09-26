@@ -1,9 +1,6 @@
 using System.Net;
 using ReLiveWP.Backend.ClearingHouse.Services.Mirror;
-using ReLiveWP.ServiceDefaults.Contacts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Processing;
+using ReLiveWP.ServiceDefaults.Media;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
 namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
@@ -11,15 +8,12 @@ namespace ReLiveWP.Backend.ClearingHouse.Services.ContactSync;
 public class ContactPhotoService(
     IHttpClientFactory httpClientFactory,
     ConnectedServicesProxy proxy,
+    MediaPipelineClient pipeline,
     ILogger<ContactPhotoService> logger)
 {
-    public const int TileSize = 170;
-
-    private const int MaxBytes = ContactContract.MaxPictureBytes;
+    public const int TileSize = MediaProfiles.ContactTileEdge;
 
     private const int MaxDownloadBytes = 8 * 1024 * 1024;
-
-    private static readonly int[] QualitySteps = [82, 70, 58, 45];
 
     private static readonly string[] AllowedPhotoHosts =
     [
@@ -37,15 +31,27 @@ public class ContactPhotoService(
 
         if (source is null) return null;
 
-        try
-        {
-            return Resize(source, contact.PhotoCrop);
-        }
-        catch (Exception e)
-        {
-            logger.LogWarning(e, "could not process the photo for {External}", contact.ExternalId);
-            return null;
-        }
+        var profile = ChooseTileProfile(contact.PhotoCrop);
+        using var stream = new MemoryStream(source, writable: false);
+        var result = await pipeline.ProcessImageAsync(stream, profile, ct);
+
+        // failing the run keeps the delta token, so the batch is retried rather than written without photos
+        if (result.IsUnavailable)
+            throw new MediaPipelineUnavailableException();
+
+        if (result.Jpeg is null)
+            logger.LogWarning("could not process the photo for {External}: {Code}", contact.ExternalId, result.Rejection?.Code);
+
+        return result.Jpeg;
+    }
+
+    internal static string ChooseTileProfile(PhotoCrop? crop)
+    {
+        if (crop is null)
+            return MediaProfiles.ForContactTile(null, false);
+
+        var rect = new MediaCrop(crop.X, crop.Y, crop.Width, crop.Height);
+        return MediaProfiles.ForContactTile(rect, crop.OriginIsBottomLeft);
     }
 
     private async Task<byte[]?> DownloadViaProxyAsync(
@@ -131,45 +137,4 @@ public class ContactPhotoService(
         uri.Scheme == Uri.UriSchemeHttps &&
         AllowedPhotoHosts.Any(h => uri.Host.Equals(h, StringComparison.OrdinalIgnoreCase)
                                 || uri.Host.EndsWith("." + h, StringComparison.OrdinalIgnoreCase));
-
-    private static byte[]? Resize(byte[] source, PhotoCrop? crop)
-    {
-        using var input = new MemoryStream(source, writable: false);
-        using var image = Image.Load(input);
-
-        image.Mutate(x => x.AutoOrient());
-
-        if (crop is not null && Frame(crop, image.Width, image.Height) is { } frame)
-            image.Mutate(x => x.Crop(frame));
-
-        image.Mutate(x => x
-            .Resize(new ResizeOptions
-            {
-                Size = new Size(TileSize, TileSize),
-                Mode = ResizeMode.Crop,
-                Position = AnchorPositionMode.Center,
-            }));
-
-        foreach (var quality in QualitySteps)
-        {
-            using var output = new MemoryStream();
-            image.Save(output, new JpegEncoder { Quality = quality });
-
-            if (output.Length <= MaxBytes)
-                return output.ToArray();
-        }
-
-        return null;
-    }
-
-    internal static Rectangle? Frame(PhotoCrop crop, int width, int height)
-    {
-        var top = crop.OriginIsBottomLeft ? height - crop.Y - crop.Height : crop.Y;
-
-        var frame = Rectangle.Intersect(
-            new Rectangle(crop.X, top, crop.Width, crop.Height),
-            new Rectangle(0, 0, width, height));
-
-        return frame.Width > 0 && frame.Height > 0 ? frame : null;
-    }
 }

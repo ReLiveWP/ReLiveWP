@@ -1,3 +1,4 @@
+using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Activity.Models.Web;
 using ReLiveWP.Services.Activity.Providers;
 using ReLiveWP.Services.Activity.Utilities;
@@ -5,7 +6,7 @@ using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Services.Activity.Services;
 
-public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService socialAlbums)
+public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService socialAlbums, MediaProxyUrlSigner mediaProxy)
 {
     public const int ThumbnailSize = 320;
 
@@ -16,7 +17,7 @@ public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService 
     }
 
     public SocialAlbumSummary RenderSocialSummary(SocialAlbum album, string? coverRef)
-        => new(album.ResourceId, album.Title, coverRef == null ? null : GetSocialMediaUrl(coverRef, ThumbnailSize));
+        => new(album.ResourceId, album.Title, coverRef == null ? null : GetSocialMediaUrl(coverRef, MediaSize.Thumb));
 
     public SocialAlbumResponse RenderLibrary(FilesUrls urls, string userId, string resourceId, PhotoListing listing)
     {
@@ -42,8 +43,8 @@ public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService 
         var photos = new List<SocialAlbumPhoto>();
         foreach (var photo in folder.Photos)
         {
-            var thumbnail = GetSocialMediaUrl(photo.ResourceRef, ThumbnailSize);
-            var fullSize = GetSocialMediaUrl(photo.ResourceRef, 0);
+            var thumbnail = GetSocialMediaUrl(photo.ResourceRef, MediaSize.Thumb);
+            var fullSize = GetSocialMediaUrl(photo.ResourceRef, MediaSize.Full);
             if (thumbnail == null || fullSize == null)
                 continue;
 
@@ -63,8 +64,15 @@ public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService 
     private string GetThumbnailUrl(FilesUrls urls, string userId, string resourceRef)
         => tickets.SignUrl(urls.ForItemThumbnail(resourceRef, ThumbnailSize), userId, resourceRef, ThumbnailSize);
 
-    private string? GetSocialMediaUrl(string resourceRef, int size)
-        => socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId)
-            ? provider.GetMediaLocation(externalId, mediaId, size).Url
-            : null;
+    private string? GetSocialMediaUrl(string resourceRef, MediaSize size)
+    {
+        if (!socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
+            return null;
+
+        var source = provider.ResolveMediaSource(externalId, mediaId, size);
+        if (source == null)
+            return null;
+
+        return mediaProxy.SignUrlOrOriginal(source.AbsoluteUri, size);
+    }
 }

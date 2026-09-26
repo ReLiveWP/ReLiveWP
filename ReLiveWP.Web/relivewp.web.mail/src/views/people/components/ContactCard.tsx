@@ -1,6 +1,9 @@
 import type { Contact, PostalAddress } from "@relivewp/eas-store";
+import BlueskyIcon from "@relivewp/ui/icons/bluesky.svg";
+import MastodonIcon from "@relivewp/ui/icons/mastodon.svg";
+import MisskeyIcon from "@relivewp/ui/icons/misskey.svg";
 import type { ComponentChildren } from "preact";
-import { useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { normalizeEmail, normalizePhone, present, searchLinks, suggestLinks, type Aggregate } from "../state/aggregate";
 import ContactName from "./ContactName";
@@ -11,6 +14,12 @@ import Tile from "./Tile";
 const HANDLE_PLACEHOLDERS: Partial<Record<string, string>> = {
     atproto: "handle.bsky.social",
     mastodon: "user@instance.social",
+};
+
+const PROVIDER_ICONS: Partial<Record<string, typeof BlueskyIcon>> = {
+    atproto: BlueskyIcon,
+    mastodon: MastodonIcon,
+    misskey: MisskeyIcon,
 };
 
 type Field = {
@@ -139,7 +148,7 @@ function LinkPicker({ linkable }: { linkable: NonNullable<Props["linkable"]> }) 
     const rows = useMemo(() => (trimmed === ""
         ? suggestLinks(linkable.self, linkable.candidates)
         : searchLinks(linkable.self, linkable.candidates, trimmed)),
-    [trimmed, linkable.self, linkable.candidates]);
+        [trimmed, linkable.self, linkable.candidates]);
 
     const link = (other: Aggregate) => {
         linkable.onLink(other);
@@ -148,14 +157,13 @@ function LinkPicker({ linkable }: { linkable: NonNullable<Props["linkable"]> }) 
 
     return (
         <>
-            <div class="card-account-add">
-                <input
-                    type="text"
-                    value={query}
-                    placeholder="link a contact"
-                    onInput={(event) => { setQuery((event.target as HTMLInputElement).value); }}
-                />
-            </div>
+            <input
+                type="text"
+                class="card-account-input"
+                value={query}
+                placeholder="link a contact"
+                onInput={(event) => { setQuery((event.target as HTMLInputElement).value); }}
+            />
 
             {rows.map((other) => (
                 <AccountRow
@@ -225,20 +233,82 @@ function IdentityRow({ identity, onUnlink }: { identity: SocialIdentity, onUnlin
     );
 }
 
-function LinkedAccountsSection({ automatic, links, editing }: { automatic: string | null, links: LinkedAccounts, editing: boolean }) {
-    const [handle, setHandle] = useState("");
+function ProviderTile({ provider }: { provider: SocialProvider }) {
+    const Icon = PROVIDER_ICONS[provider.provider];
+    if (Icon === undefined)
+        return <span class="card-account-tile">{initialFor(provider.name)}</span>;
+
+    return <span class="card-account-tile card-account-provider"><Icon /></span>;
+}
+
+function AddAccount({ links, unbound }: { links: LinkedAccounts, unbound: SocialProvider[] }) {
     const [chosen, setChosen] = useState<string | null>(null);
+    const [handle, setHandle] = useState("");
+    const input = useRef<HTMLInputElement>(null);
     const trimmed = handle.trim();
+
+    const target = unbound.find((provider) => provider.provider === chosen);
+
+    useEffect(() => { input.current?.focus(); }, [target?.provider]);
+
+    const cancel = () => {
+        setChosen(null);
+        setHandle("");
+    };
+
+    const submit = async () => {
+        if (trimmed === "" || links.busy || target === undefined) return;
+        if (await links.bind(target.provider, trimmed)) cancel();
+    };
+
+    if (target === undefined) {
+        return (
+            <div class="card-account-pick">
+                {unbound.map((provider) => (
+                    <button
+                        key={provider.provider}
+                        type="button"
+                        class="card-account-choice"
+                        disabled={links.busy}
+                        onClick={() => { setChosen(provider.provider); }}
+                    >
+                        <ProviderTile provider={provider} />
+                        <span class="card-account-name">{provider.name.toLowerCase()}</span>
+                    </button>
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <form class="card-account-add" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+            <div class="inputs">
+                <ProviderTile provider={target} />
+                <input
+                    ref={input}
+                    type="text"
+                    class="card-account-input"
+                    value={handle}
+                    placeholder={HANDLE_PLACEHOLDERS[target.provider] ?? "handle"}
+                    disabled={links.busy}
+                    onInput={(event) => { setHandle((event.target as HTMLInputElement).value); }}
+                />
+            </div>
+            <div class="buttons">
+                <button type="submit" class="text-button" disabled={trimmed === "" || links.busy}>
+                    {links.busy ? "linking" : "link"}
+                </button>
+                <button type="button" class="text-button secondary" disabled={links.busy} onClick={cancel}>cancel</button>
+            </div>
+        </form>
+    );
+}
+
+function LinkedAccountsSection({ automatic, links, editing }: { automatic: string | null, links: LinkedAccounts, editing: boolean }) {
     const empty = automatic === null && links.identities.length === 0;
 
     const unbound = links.providers.filter((provider) =>
         !links.identities.some((identity) => identity.provider === provider.provider));
-    const target = unbound.find((provider) => provider.provider === chosen) ?? unbound[0];
-
-    const submit = async () => {
-        if (trimmed === "" || links.busy || target === undefined) return;
-        if (await links.bind(target.provider, trimmed)) setHandle("");
-    };
 
     return (
         <section class="card-accounts">
@@ -264,31 +334,7 @@ function LinkedAccountsSection({ automatic, links, editing }: { automatic: strin
 
             {!editing && empty && !links.loading && <p class="note">None yet.</p>}
 
-            {editing && target !== undefined && (
-                <form class="card-account-add" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-                    {unbound.length > 1 && (
-                        <select
-                            value={target.provider}
-                            disabled={links.busy}
-                            onChange={(event) => { setChosen((event.target as HTMLSelectElement).value); }}
-                        >
-                            {unbound.map((provider) => (
-                                <option key={provider.provider} value={provider.provider}>{provider.name.toLowerCase()}</option>
-                            ))}
-                        </select>
-                    )}
-                    <input
-                        type="text"
-                        value={handle}
-                        placeholder={HANDLE_PLACEHOLDERS[target.provider] ?? "handle"}
-                        disabled={links.busy}
-                        onInput={(event) => { setHandle((event.target as HTMLInputElement).value); }}
-                    />
-                    <button type="submit" class="text-button" disabled={trimmed === "" || links.busy}>
-                        {links.busy ? "linking" : "link"}
-                    </button>
-                </form>
-            )}
+            {editing && unbound.length > 0 && <AddAccount links={links} unbound={unbound} />}
 
             {links.bindError !== null && <p class="error">{links.bindError}</p>}
         </section>
