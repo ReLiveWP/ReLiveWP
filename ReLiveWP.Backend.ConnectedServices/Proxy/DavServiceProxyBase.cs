@@ -17,8 +17,7 @@ public abstract class DavServiceProxyBase(string serviceId, string displayName, 
 
         if (Uri.TryCreate(path, UriKind.Absolute, out var absolute))
         {
-            if (absolute.Scheme != Uri.UriSchemeHttps ||
-                !absolute.Host.Equals(serviceUrl.Host, StringComparison.OrdinalIgnoreCase))
+            if (absolute.Scheme != Uri.UriSchemeHttps || !IsAccountHost(serviceUrl, absolute))
                 throw new InvalidOperationException($"{absolute.Host} is not part of the linked {displayName} account.");
 
             return absolute;
@@ -26,6 +25,9 @@ public abstract class DavServiceProxyBase(string serviceId, string displayName, 
 
         return new($"{service.ServiceUrl!.TrimEnd('/')}/{path.TrimStart('/')}{context.Request.QueryString}");
     }
+
+    protected virtual bool IsAccountHost(Uri serviceUrl, Uri target)
+        => target.Host.Equals(serviceUrl.Host, StringComparison.OrdinalIgnoreCase);
 
     public override Task<HttpClient> CreateHttpClientAsync(LiveConnectedService service)
         => Task.FromResult(HttpClientFactory.CreateClient(OutboundAddressPolicyExtensions.GuardedClientName));
