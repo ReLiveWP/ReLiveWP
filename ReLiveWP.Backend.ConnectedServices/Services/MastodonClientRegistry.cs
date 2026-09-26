@@ -60,7 +60,7 @@ public class MastodonClientRegistry(ConnectedServicesDbContext dbContext,
 
     private static void EnsureInstanceRoot(Uri instance)
     {
-        if (!FediverseRequestGuard.IsAcceptableUri(instance) || instance.AbsolutePath != "/" || instance.Query.Length > 0)
+        if (!ExternalRequestGuard.IsAcceptableUri(instance) || instance.AbsolutePath != "/" || instance.Query.Length > 0)
             throw new ArgumentException($"{instance} is not an instance root.", nameof(instance));
     }
 
@@ -114,7 +114,7 @@ public class MastodonClientRegistry(ConnectedServicesDbContext dbContext,
         if (string.IsNullOrWhiteSpace(description.RedirectUri))
             throw new RpcException(new Status(StatusCode.Unavailable, "Mastodon linking has no redirect url configured."));
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
 
         // nothing gets POSTed to a host until it has shown it actually serves the Mastodon API
         await EnsureSpeaksMastodonApiAsync(http, instance, ct);
@@ -229,7 +229,7 @@ public class MastodonClientRegistry(ConnectedServicesDbContext dbContext,
         if (string.IsNullOrEmpty(endpoint))
             return null;
 
-        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || !FediverseRequestGuard.IsOnInstance(uri, instance))
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || !ExternalRequestGuard.IsOnInstance(uri, instance))
             throw new RpcException(new Status(StatusCode.FailedPrecondition,
                 $"{instance.Host} advertises an OAuth endpoint that isn't on {instance.Host}, refusing to use it."));
 

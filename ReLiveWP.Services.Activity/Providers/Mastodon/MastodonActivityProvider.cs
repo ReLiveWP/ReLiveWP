@@ -44,8 +44,8 @@ public class MastodonActivityProvider : OwnedActivityProviderBase
         connectionId = connection.Id;
         selfActorUri = connection.UserId;
 
-        if (connection.HasServiceUrl && FediverseRequestGuard.TryParseAcceptableUri(connection.ServiceUrl, out var serviceUrl))
-            instance = FediverseRequestGuard.GetInstanceRoot(serviceUrl);
+        if (connection.HasServiceUrl && ExternalRequestGuard.TryParseAcceptableUri(connection.ServiceUrl, out var serviceUrl))
+            instance = ExternalRequestGuard.GetInstanceRoot(serviceUrl);
         else
             logger.LogWarning("Mastodon connection {ConnectionId} has no usable instance url", connectionId);
     }
@@ -133,7 +133,7 @@ public class MastodonActivityProvider : OwnedActivityProviderBase
     }
 
     private bool IsOwnInstance(Uri origin)
-        => instance != null && FediverseRequestGuard.IsOnInstance(origin, instance);
+        => instance != null && ExternalRequestGuard.IsOnInstance(origin, instance);
 
     private async Task<string?> GetTimelinePathAsync(ActivitiesContext context)
     {
@@ -178,7 +178,7 @@ public class MastodonActivityProvider : OwnedActivityProviderBase
                 proxy, new Uri($"api/v1/statuses/{statusId}", UriKind.Relative), logger);
 
         var remote = await publicProvider.FetchStatusAsync(origin, statusId);
-        if (remote?.Uri == null || !FediverseRequestGuard.TryParseAcceptableUri(remote.Uri, out var remoteUri))
+        if (remote?.Uri == null || !ExternalRequestGuard.TryParseAcceptableUri(remote.Uri, out var remoteUri))
             return null;
 
         var searchUrl = $"api/v2/search?q={Uri.EscapeDataString(remoteUri.AbsoluteUri)}&type=statuses&resolve=true&limit=1";

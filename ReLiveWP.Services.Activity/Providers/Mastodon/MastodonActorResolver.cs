@@ -20,7 +20,7 @@ public class MastodonActorResolver(IHttpClientFactory httpClientFactory, IMemory
         if (cache.TryGetValue<Uri?>(key, out var cached))
             return cached;
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
         var actorUri = await FediverseWebFinger.FindActorUriAsync(http, address, ct);
 
         cache.Set(key, actorUri, actorUri == null ? MissLifetime : ActorLifetime);
@@ -31,7 +31,7 @@ public class MastodonActorResolver(IHttpClientFactory httpClientFactory, IMemory
     public async Task<Uri?> ResolveAuthorAsync(MastodonAccount account, Uri servingInstance, CancellationToken ct = default)
     {
         if (account.Uri != null)
-            return FediverseRequestGuard.TryParseAcceptableUri(account.Uri, out var claimed) ? claimed : null;
+            return ExternalRequestGuard.TryParseAcceptableUri(account.Uri, out var claimed) ? claimed : null;
 
         var address = MastodonEntryMapper.DescribeAccountAddress(account, servingInstance);
         return await FindActorUriAsync(address, ct);
@@ -68,7 +68,7 @@ public class MastodonActorResolver(IHttpClientFactory httpClientFactory, IMemory
 
     public async Task<MastodonAccountRef?> FindAccountAsync(Uri actorUri, CancellationToken ct = default)
     {
-        if (!FediverseRequestGuard.IsAcceptableUri(actorUri))
+        if (!ExternalRequestGuard.IsAcceptableUri(actorUri))
             return null;
 
         var key = $"mastodon:account:{actorUri.AbsoluteUri}";
@@ -83,7 +83,7 @@ public class MastodonActorResolver(IHttpClientFactory httpClientFactory, IMemory
 
     private async Task<MastodonAccountRef?> FetchAccountAsync(Uri actorUri, CancellationToken ct)
     {
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
 
         var address = await FediverseWebFinger.FindAccountAddressAsync(http, actorUri, ct);
         if (address == null)
@@ -92,7 +92,7 @@ public class MastodonActorResolver(IHttpClientFactory httpClientFactory, IMemory
             return null;
         }
 
-        var instance = FediverseRequestGuard.GetInstanceRoot(actorUri);
+        var instance = ExternalRequestGuard.GetInstanceRoot(actorUri);
         var lookupUrl = new Uri(instance, $"/api/v1/accounts/lookup?acct={Uri.EscapeDataString(address)}");
 
         var account = await MastodonRequests.GetJsonAsync<MastodonAccount>(http, lookupUrl, logger, ct);

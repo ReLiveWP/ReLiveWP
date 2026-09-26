@@ -5,7 +5,7 @@ using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedService
 
 namespace ReLiveWP.Backend.ConnectedServices.Tests;
 
-public class FediverseRequestGuardTests
+public class ExternalRequestGuardTests
 {
     private static readonly Uri Snug = new("https://snug.moe/");
 
@@ -14,7 +14,7 @@ public class FediverseRequestGuardTests
     [InlineData("https://SNUG.moe/api/v1/apps")]
     public void Endpoints_on_the_instance_are_accepted(string uri)
     {
-        Assert.True(FediverseRequestGuard.IsOnInstance(new Uri(uri), Snug));
+        Assert.True(ExternalRequestGuard.IsOnInstance(new Uri(uri), Snug));
     }
 
     [Theory]
@@ -28,7 +28,7 @@ public class FediverseRequestGuardTests
     [InlineData("https://[::1]/oauth/token")]
     public void Endpoints_anywhere_else_are_refused(string uri)
     {
-        Assert.False(FediverseRequestGuard.IsOnInstance(new Uri(uri), Snug));
+        Assert.False(ExternalRequestGuard.IsOnInstance(new Uri(uri), Snug));
     }
 
     [Theory]
@@ -45,7 +45,7 @@ public class FediverseRequestGuardTests
     [InlineData("https://169.254.169.254/latest/meta-data/")]
     public void Unusable_uris_do_not_parse(string? value)
     {
-        Assert.False(FediverseRequestGuard.TryParseAcceptableUri(value, out _));
+        Assert.False(ExternalRequestGuard.TryParseAcceptableUri(value, out _));
     }
 
     [Fact]
@@ -53,10 +53,10 @@ public class FediverseRequestGuardTests
     {
         var factory = new FakeHttpClientFactory(new FakeFediverseHandler());
 
-        using var client = FediverseRequestGuard.CreateGuardedClient(factory);
+        using var client = ExternalRequestGuard.CreateGuardedClient(factory);
 
         Assert.Equal([OutboundAddressPolicyExtensions.GuardedClientName], factory.RequestedNames);
-        Assert.Equal(FediverseRequestGuard.MaxResponseBytes, client.MaxResponseContentBufferSize);
+        Assert.Equal(ExternalRequestGuard.MaxResponseBytes, client.MaxResponseContentBufferSize);
     }
 
     [Fact]

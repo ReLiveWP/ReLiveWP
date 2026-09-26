@@ -20,7 +20,7 @@ public class PublicMastodonActivityProvider(MastodonActorResolver resolver,
         if (!string.Equals(provider, IdentityProvider, StringComparison.OrdinalIgnoreCase))
             yield break;
 
-        if (!FediverseRequestGuard.TryParseAcceptableUri(externalId, out var actorUri))
+        if (!ExternalRequestGuard.TryParseAcceptableUri(externalId, out var actorUri))
             yield break;
 
         foreach (var entry in (await GetAuthorPageAsync(actorUri)).Take(count))
@@ -50,7 +50,7 @@ public class PublicMastodonActivityProvider(MastodonActorResolver resolver,
         if (!MastodonEntryMapper.TryParseActivityId(provider, activityId, out var instance, out var statusId))
             yield break;
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
         var contextUrl = new Uri(instance, $"/api/v1/statuses/{statusId}/context");
 
         var replies = await MastodonTimelines.ReadRepliesAsync(http, contextUrl, instance, statusId, selfActorUri: null, count, resolver, logger);
@@ -60,16 +60,16 @@ public class PublicMastodonActivityProvider(MastodonActorResolver resolver,
 
     public async Task<MastodonStatus?> FetchStatusAsync(Uri instance, string statusId, CancellationToken ct = default)
     {
-        if (!FediverseRequestGuard.IsAcceptableUri(instance) || !MastodonEntryMapper.IsInstanceId(statusId))
+        if (!ExternalRequestGuard.IsAcceptableUri(instance) || !MastodonEntryMapper.IsInstanceId(statusId))
             return null;
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
         return await MastodonRequests.GetJsonAsync<MastodonStatus>(http, new Uri(instance, $"/api/v1/statuses/{statusId}"), logger, ct);
     }
 
     private async Task<Uri?> FindActorUriAsync(string handleOrId, CancellationToken ct)
     {
-        if (FediverseRequestGuard.TryParseAcceptableUri(handleOrId, out var actorUri) && actorUri.AbsolutePath != "/")
+        if (ExternalRequestGuard.TryParseAcceptableUri(handleOrId, out var actorUri) && actorUri.AbsolutePath != "/")
             return actorUri;
 
         if (FediverseHandle.TryParse(handleOrId, out var handle) && handle.AccountAddress is { } address)
@@ -96,7 +96,7 @@ public class PublicMastodonActivityProvider(MastodonActorResolver resolver,
         if (account == null)
             return [];
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
         var statusesUrl = new Uri(account.Instance,
             $"/api/v1/accounts/{account.Account.Id}/statuses?limit={PageSize}&exclude_replies=true&exclude_reblogs=true");
 

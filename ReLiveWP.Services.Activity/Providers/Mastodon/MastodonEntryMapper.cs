@@ -28,7 +28,7 @@ public static class MastodonEntryMapper
         if (parts.Length != 2 || !IsInstanceId(parts[1]))
             return false;
 
-        if (!FediverseRequestGuard.TryCreateInstanceRoot(parts[0], out var root) ||
+        if (!ExternalRequestGuard.TryCreateInstanceRoot(parts[0], out var root) ||
             !string.Equals(root.IdnHost, parts[0], StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -93,7 +93,7 @@ public static class MastodonEntryMapper
     }
 
     public static string AcceptableOrEmpty(string? url)
-        => FediverseRequestGuard.TryParseAcceptableUri(url, out var uri) ? uri.AbsoluteUri : "";
+        => ExternalRequestGuard.TryParseAcceptableUri(url, out var uri) ? uri.AbsoluteUri : "";
 
     private static ProfileModel MapAuthor(MastodonAccount account, Uri instance, Uri authorActorUri, string? selfActorUri)
     {
@@ -129,10 +129,10 @@ public static class MastodonEntryMapper
             if (attachment.Type != "image")
                 continue;
 
-            if (!FediverseRequestGuard.TryParseAcceptableUri(attachment.Url, out var full))
+            if (!ExternalRequestGuard.TryParseAcceptableUri(attachment.Url, out var full))
                 continue;
 
-            var preview = FediverseRequestGuard.TryParseAcceptableUri(attachment.PreviewUrl, out var thumbnail) ? thumbnail : full;
+            var preview = ExternalRequestGuard.TryParseAcceptableUri(attachment.PreviewUrl, out var thumbnail) ? thumbnail : full;
 
             photos.Add(new PhotoActivityModel()
             {

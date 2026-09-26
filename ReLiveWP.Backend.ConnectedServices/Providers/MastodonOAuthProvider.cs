@@ -61,7 +61,7 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
 
     public async Task<LiveConnectedService> FinalizeAccountLinkAsync(LiveConnectedService service, LivePendingOAuth state, string code)
     {
-        if (!FediverseRequestGuard.TryParseAcceptableUri(state.Endpoint, out var instance))
+        if (!ExternalRequestGuard.TryParseAcceptableUri(state.Endpoint, out var instance))
             throw new RpcException(new Status(StatusCode.FailedPrecondition, "This link request doesn't name a usable server."));
 
         var client = await clientRegistry.FindClientAsync(instance)
@@ -69,10 +69,10 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
                 $"ReLiveWP's registration with {instance.Host} went away, try linking again."));
 
         if (!Uri.TryCreate(client.TokenEndpoint, UriKind.Absolute, out var tokenEndpoint) ||
-            !FediverseRequestGuard.IsOnInstance(tokenEndpoint, instance))
+            !ExternalRequestGuard.IsOnInstance(tokenEndpoint, instance))
             throw new RpcException(new Status(StatusCode.FailedPrecondition, $"The token endpoint for {instance.Host} isn't on {instance.Host}."));
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
 
         var tokenResult = await http.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
         {
@@ -128,7 +128,7 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
 
     public async Task<bool> RefreshTokensAsync(LiveConnectedService service)
     {
-        if (!FediverseRequestGuard.TryParseAcceptableUri(service.ServiceUrl, out var instance))
+        if (!ExternalRequestGuard.TryParseAcceptableUri(service.ServiceUrl, out var instance))
         {
             logger.LogError("{ConnectionId} has no usable instance url", service.Id);
             return false;
@@ -136,7 +136,7 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
 
         try
         {
-            using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+            using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
             using var response = await SendVerifyCredentialsAsync(http, instance, service.AccessToken);
 
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
@@ -167,7 +167,7 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
 
     public async Task RevokeTokensAsync(LiveConnectedService service)
     {
-        if (!FediverseRequestGuard.TryParseAcceptableUri(service.ServiceUrl, out var instance))
+        if (!ExternalRequestGuard.TryParseAcceptableUri(service.ServiceUrl, out var instance))
             return;
 
         var client = await clientRegistry.FindClientAsync(instance);
@@ -180,10 +180,10 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
         if (!Uri.TryCreate(client.RevocationEndpoint, UriKind.Absolute, out var revocationEndpoint))
             revocationEndpoint = new Uri(instance, "/oauth/revoke");
 
-        if (!FediverseRequestGuard.IsOnInstance(revocationEndpoint, instance))
+        if (!ExternalRequestGuard.IsOnInstance(revocationEndpoint, instance))
             return;
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
         var result = await http.RevokeTokenAsync(new TokenRevocationRequest
         {
             Address = revocationEndpoint.AbsoluteUri,
@@ -218,18 +218,18 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
         if (handle.AccountAddress is not { } address)
             return handle.DomainRoot;
 
-        using var http = FediverseRequestGuard.CreateGuardedClient(httpClientFactory);
+        using var http = ExternalRequestGuard.CreateGuardedClient(httpClientFactory);
 
         // split-domain servers answer webfinger on the handle's domain but serve the API from the actor's
         var actorUri = await FediverseWebFinger.FindActorUriAsync(http, address);
-        return actorUri == null ? handle.DomainRoot : FediverseRequestGuard.GetInstanceRoot(actorUri);
+        return actorUri == null ? handle.DomainRoot : ExternalRequestGuard.GetInstanceRoot(actorUri);
     }
 
     private async Task<Uri?> ResolveActorUriAsync(HttpClient http, Uri instance, MastodonAccount account)
     {
         if (account.Uri != null)
         {
-            if (Uri.TryCreate(account.Uri, UriKind.Absolute, out var claimed) && FediverseRequestGuard.IsOnInstance(claimed, instance))
+            if (Uri.TryCreate(account.Uri, UriKind.Absolute, out var claimed) && ExternalRequestGuard.IsOnInstance(claimed, instance))
                 return claimed;
 
             logger.LogWarning("{Instance} claimed an actor off-instance ({ActorUri}), ignoring it", instance.Authority, account.Uri);
@@ -237,7 +237,7 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
         }
 
         var discovered = await FediverseWebFinger.FindActorUriAsync(http, $"{account.Username}@{instance.IdnHost}");
-        if (discovered != null && FediverseRequestGuard.IsOnInstance(discovered, instance))
+        if (discovered != null && ExternalRequestGuard.IsOnInstance(discovered, instance))
             return discovered;
 
         return null;
@@ -269,7 +269,7 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
 
         service.ServiceProfile.Username = $"@{accountAddress}";
         service.ServiceProfile.DisplayName = displayName.Length > MaxDisplayNameLength ? displayName[..MaxDisplayNameLength] : displayName;
-        service.ServiceProfile.AvatarUrl = FediverseRequestGuard.TryParseAcceptableUri(account.Avatar, out var avatar) ? avatar.AbsoluteUri : null;
+        service.ServiceProfile.AvatarUrl = ExternalRequestGuard.TryParseAcceptableUri(account.Avatar, out var avatar) ? avatar.AbsoluteUri : null;
     }
 
     private sealed record MastodonAccount(string Username, string? DisplayName, string? Avatar, string? Uri, string? Fqn);

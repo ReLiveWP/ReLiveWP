@@ -35,7 +35,7 @@ public readonly record struct FediverseHandle(string? Username, string Domain)
                 return false;
         }
 
-        if (!FediverseRequestGuard.TryCreateInstanceRoot(domain, out var root))
+        if (!ExternalRequestGuard.TryCreateInstanceRoot(domain, out var root))
             return false;
 
         handle = new FediverseHandle(username, root.IdnHost.ToLowerInvariant());
@@ -61,7 +61,7 @@ public readonly record struct FediverseHandle(string? Username, string Domain)
     {
         handle = default;
 
-        if (!FediverseRequestGuard.TryParseAcceptableUri(input, out var uri) ||
+        if (!ExternalRequestGuard.TryParseAcceptableUri(input, out var uri) ||
             uri.AbsolutePath != "/" ||
             uri.Query.Length > 0 ||
             uri.Fragment.Length > 0)

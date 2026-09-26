@@ -19,10 +19,10 @@ public static class FediverseWebFinger
     // only answers when the server names the same actor back, so nobody can hand us someone else's handle
     public static async Task<string?> FindAccountAddressAsync(HttpClient http, Uri actorUri, CancellationToken ct = default)
     {
-        if (!FediverseRequestGuard.IsAcceptableUri(actorUri))
+        if (!ExternalRequestGuard.IsAcceptableUri(actorUri))
             return null;
 
-        var document = await FetchDocumentAsync(http, FediverseRequestGuard.GetInstanceRoot(actorUri), actorUri.AbsoluteUri, ct);
+        var document = await FetchDocumentAsync(http, ExternalRequestGuard.GetInstanceRoot(actorUri), actorUri.AbsoluteUri, ct);
         if (document?.Subject is not { } subject || FindActor(document) != actorUri)
             return null;
 
@@ -53,7 +53,7 @@ public static class FediverseWebFinger
                         return null;
 
                     url = new Uri(url, location);
-                    if (!FediverseRequestGuard.IsAcceptableUri(url))
+                    if (!ExternalRequestGuard.IsAcceptableUri(url))
                         return null;
 
                     continue;
@@ -76,7 +76,7 @@ public static class FediverseWebFinger
     private static Uri? FindActor(WebFingerDocument? document)
     {
         var href = document?.Links?.FirstOrDefault(IsActorLink)?.Href;
-        return FediverseRequestGuard.TryParseAcceptableUri(href, out var actor) ? actor : null;
+        return ExternalRequestGuard.TryParseAcceptableUri(href, out var actor) ? actor : null;
     }
 
     private static bool IsActorLink(WebFingerLink link)

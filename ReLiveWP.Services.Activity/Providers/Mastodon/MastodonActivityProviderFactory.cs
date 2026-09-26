@@ -19,7 +19,7 @@ public class MastodonActivityProviderFactory(IConfiguration configuration,
 
         var proxy = httpClientFactory.CreateClient();
         proxy.BaseAddress = new Uri(proxyRoot, $"/proxy/{IdentityProvider}/");
-        proxy.MaxResponseContentBufferSize = FediverseRequestGuard.MaxResponseBytes;
+        proxy.MaxResponseContentBufferSize = ExternalRequestGuard.MaxResponseBytes;
         proxy.DefaultRequestHeaders.Add("X-User-Id", userId);
         proxy.DefaultRequestHeaders.Add("X-Connection-Id", connection.Id);
 
