@@ -2,6 +2,7 @@ using Duende.IdentityModel;
 using Duende.IdentityModel.Client;
 using Grpc.Core;
 using ReLiveWP.Backend.ConnectedServices.Data;
+using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Backend.ConnectedServices.Utilities;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 

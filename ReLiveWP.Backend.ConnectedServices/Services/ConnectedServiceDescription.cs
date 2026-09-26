@@ -1,6 +1,7 @@
 using ReLiveWP.Backend.ConnectedServices.Data;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 
-namespace ReLiveWP.Backend.ConnectedServices.Providers;
+namespace ReLiveWP.Backend.ConnectedServices.Services;
 
 public enum ServiceLinkMode
 {

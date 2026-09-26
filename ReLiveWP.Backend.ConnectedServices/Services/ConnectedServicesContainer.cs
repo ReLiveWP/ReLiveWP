@@ -1,4 +1,4 @@
-namespace ReLiveWP.Backend.ConnectedServices.Providers;
+namespace ReLiveWP.Backend.ConnectedServices.Services;
 
 public interface IConnectedServicesContainer : IDictionary<string, ConnectedServiceDescription> { }
 
