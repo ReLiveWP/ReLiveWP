@@ -27,7 +27,7 @@ input[type="submit"] {
     background: transparent;
     border: none;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0;
     font: inherit;
     font-size: t.$font-size-base !important;
     font-weight: 500;
@@ -36,6 +36,10 @@ input[type="submit"] {
 
     min-width: 0 !important;
     min-height: 0 !important;
+
+    &.secondary {
+        @include t.themed(color, ink-muted);
+    }
 
     &:hover {
         text-decoration: underline;

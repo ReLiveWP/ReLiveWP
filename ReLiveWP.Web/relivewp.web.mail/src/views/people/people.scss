@@ -204,6 +204,10 @@
 
     input {
         flex: 1;
+    }
+
+    input,
+    select {
         min-width: 0;
         box-sizing: border-box;
         padding: 4px 6px;

@@ -4,17 +4,18 @@ using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.ConnectedServices;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Grpc;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 using ReLiveWP.Backend.ConnectedServices.Proxy;
 using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Identity;
+using ReLiveWP.ServiceDefaults.Outbound;
 using RedLockNet.SERedis;
 using RedLockNet.SERedis.Configuration;
 using StackExchange.Redis;
 
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
-using GoogleService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
-using MicrosoftService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Microsoft;
+using GoogleService = ReLiveWP.Backend.ConnectedServices.Providers.Google;
+using MicrosoftService = ReLiveWP.Backend.ConnectedServices.Providers.Microsoft;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceEndpoints();
@@ -38,17 +39,15 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton<ServiceTokenLocks>();
 builder.Services.AddSingleton<PendingOAuthStore>();
 builder.Services.AddSingleton<ConnectionSecretProtector>();
-builder.Services.AddSingleton<IOutboundAddressPolicy, PublicOnlyAddressPolicy>();
-
-builder.Services.AddHttpClient(OutboundAddressPolicyExtensions.GuardedClientName)
-    .ConfigurePrimaryHttpMessageHandler(s =>
-        OutboundAddressPolicyExtensions.CreateGuardedHandler(s.GetRequiredService<IOutboundAddressPolicy>()));
+builder.Services.AddGuardedOutboundClient();
 
 builder.Services.AddScoped<IClientAssertionService, ClientAssertionService>();
 builder.Services.AddScoped<IJWKProvider, JWKProvider>();
 builder.Services.AddScoped<AtProtoOAuthProvider>();
 builder.Services.AddScoped<GoogleOAuthProvider>();
 builder.Services.AddScoped<MicrosoftOAuthProvider>();
+builder.Services.AddScoped<MastodonClientRegistry>();
+builder.Services.AddScoped<MastodonOAuthProvider>();
 builder.Services.AddScoped<DavHomeSetDiscovery>();
 builder.Services.AddScoped<WebDavCredentialProvider>();
 builder.Services.AddScoped<CardDavCredentialProvider>();
@@ -60,6 +59,7 @@ builder.Services.AddKeyedScoped<IConnectedServiceProxy, MicrosoftServiceProxy>(M
 builder.Services.AddKeyedScoped<IConnectedServiceProxy, WebDavServiceProxy>(WebDav.SERVICE_NAME);
 builder.Services.AddKeyedScoped<IConnectedServiceProxy, CardDavServiceProxy>(CardDav.SERVICE_NAME);
 builder.Services.AddKeyedScoped<IConnectedServiceProxy, CalDavServiceProxy>(CalDav.SERVICE_NAME);
+builder.Services.AddKeyedScoped<IConnectedServiceProxy, MastodonServiceProxy>(Mastodon.SERVICE_NAME);
 
 builder.Services.AddConnectedServices(builder.Configuration)
     .AddConnectedService(s => new()
@@ -72,6 +72,16 @@ builder.Services.AddConnectedServices(builder.Configuration)
         ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialCheckIn | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost | ServiceCaps.SocialPhotos,
         ShareableCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<AtProtoOAuthProvider>())
+    })
+    .AddConnectedService(s => new()
+    {
+        ServiceId = Mastodon.SERVICE_NAME,
+        DisplayName = "Mastodon",
+        RedirectUri = builder.Configuration["ConnectedServices:Mastodon:RedirectUrl"]!,
+        Scopes = Mastodon.REQUESTED_SCOPES,
+        ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPost | ServiceCaps.SocialPhotos,
+        ShareableCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos,
+        OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MastodonOAuthProvider>())
     })
     .AddConnectedService(s => new()
     {

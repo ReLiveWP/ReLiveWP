@@ -2,7 +2,7 @@
 
 namespace ReLiveWP.Services.Activity.Providers;
 
-public class FeedCoalescingActivityProvider(IReadOnlyList<OwnedActivityProviderBase> providers) : OwnedActivityProviderBase
+public class FeedCoalescingActivityProvider(IReadOnlyList<OwnedActivityProviderBase> providers, ILogger logger) : OwnedActivityProviderBase
 {
     private class EntryEqualityComparaer : IEqualityComparer<EntryModel>
     {
@@ -23,7 +23,7 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<OwnedActivityProviderB
 
         public int GetHashCode(EntryModel obj)
         {
-            return obj.GetHashCode();
+            return StringComparer.InvariantCultureIgnoreCase.GetHashCode(obj.Content);
         }
     }
 
@@ -77,16 +77,25 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<OwnedActivityProviderB
     public override async IAsyncEnumerable<EntryModel> GetRepliesAsync(string providerId, string activityId, int count)
     {
         // providers are expected to ignore IDs they don't understand
+        HashSet<string> seen = [];
         foreach (var provider in providers)
         {
             await foreach (var item in provider.GetRepliesAsync(providerId, activityId, count))
-                yield return item;
+            {
+                if (seen.Add(GetReplyKey(item)))
+                    yield return item;
+            }
         }
     }
 
     public override async Task CreatePostAsync(string text)
     {
-        await Task.WhenAll(providers.Select(s => s.CreatePostAsync(text)));
+        var attempts = providers.Select(provider => TryCreatePostAsync(provider, text));
+        var results = await Task.WhenAll(attempts);
+
+        var failures = results.OfType<Exception>().ToList();
+        if (failures.Count > 0 && failures.Count == results.Length)
+            throw new AggregateException(failures);
     }
 
     public override async Task<bool> CreateReplyAsync(string providerId, string activityId, string text)
@@ -98,5 +107,23 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<OwnedActivityProviderB
         }
 
         return false;
+    }
+
+    // the same status read through two fediverse accounts gets a different id per instance, the url stays put
+    private static string GetReplyKey(EntryModel reply)
+        => string.IsNullOrEmpty(reply.CanonicalUrl) ? $"{reply.ProviderId}:{reply.Id}" : reply.CanonicalUrl;
+
+    private async Task<Exception?> TryCreatePostAsync(OwnedActivityProviderBase provider, string text)
+    {
+        try
+        {
+            await provider.CreatePostAsync(text);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Posting to {Provider} failed", provider.Name);
+            return ex;
+        }
     }
 }

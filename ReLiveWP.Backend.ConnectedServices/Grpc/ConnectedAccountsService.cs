@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReLiveWP.Backend.ConnectedServices.Data;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Identity;
 using ReLiveWP.ServiceDefaults.Events;
@@ -30,7 +30,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
     {
         var userId = GetUserId(context);
 
-        if (!connectedServices.TryGetValue(request.Service, out var serviceDescription))
+        if (!connectedServices.TryGetValue(request.Service, out var serviceDescription) || !serviceDescription.IsEnabled)
             throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
 
         using var scope = serviceProvider.CreateScope();
@@ -143,6 +143,9 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         if (serviceDescription.LinkMode != ServiceLinkMode.Credentials || serviceDescription.CredentialHandler == null)
             throw new RpcException(new Status(StatusCode.InvalidArgument, "This service does not accept credentials."));
 
+        if (!serviceDescription.IsEnabled && !request.HasConnectionId)
+            throw new RpcException(new Status(StatusCode.Unavailable, "This service is unsupported at this time."));
+
         using var scope = serviceProvider.CreateScope();
         var handler = await serviceDescription.CredentialHandler(scope.ServiceProvider);
 
@@ -215,7 +218,7 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
     public override Task<SupportedConnectionsResponse> GetSupportedConnections(Empty request, ServerCallContext context)
     {
         var response = new SupportedConnectionsResponse();
-        foreach (var connection in connectedServices.Values)
+        foreach (var connection in connectedServices.Values.Where(s => s.IsEnabled))
         {
             response.AvailableConnections.Add(new SupportedConnection()
             {
@@ -334,12 +337,32 @@ public class ConnectedAccountsService(IServiceProvider serviceProvider,
         dbContext.ConnectedServices.Remove(connection);
         await dbContext.SaveChangesAsync();
 
+        await RevokeTokensAsync(connection);
+
         // whatever this connection was feeding into the mailbox now has nothing behind it, and until
         // this went out nothing noticed a connection disappearing at all
         await redis.PublishConnectionDeletedAsync(
             new ConnectionDeletedEvent(userId.ToString(), connId.ToString(), service, request.DeleteData));
 
         return new DeleteConnectionResponse();
+    }
+
+    private async Task RevokeTokensAsync(LiveConnectedService connection)
+    {
+        if (!connectedServices.TryGetValue(connection.Service, out var description) || description.OAuthHandler == null)
+            return;
+
+        try
+        {
+            using var scope = serviceProvider.CreateScope();
+            var handler = await description.OAuthHandler(scope.ServiceProvider);
+            await handler.RevokeTokensAsync(connection);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Couldn't revoke the tokens for {ConnectionId} ({Service}), it's unlinked here regardless",
+                connection.Id, connection.Service);
+        }
     }
 
     public override async Task<Empty> UpdateCapabilities(UpdateCapabilitiesRequest request, ServerCallContext context)

@@ -2,6 +2,7 @@
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Login.Models;
 using GrpcStatus = Grpc.Core.StatusCode;
@@ -12,8 +13,14 @@ namespace ReLiveWP.Services.Login.Controllers;
 [Route("oauth/[action]/{service?}")]
 public class OAuthController(
     ConnectedServices.ConnectedServicesClient connectedServicesClient,
-    IConfiguration configuration) : Controller
+    IConfiguration configuration,
+    ILogger<OAuthController> logger) : Controller
 {
+    private const string LinkDenied = "denied";
+    private const string LinkExpired = "expired";
+    private const string LinkFailed = "failed";
+    private const string OidcAccessDenied = "access_denied";
+
     [HttpGet]
     [Authorize]
     [ActionName("available-links")]
@@ -128,8 +135,8 @@ public class OAuthController(
     {
         if (code == null)
         {
-            // error case
-            return Unauthorized();
+            logger.LogInformation("{Service} sent the link back without a code: {Error} {ErrorDescription}", service, error, error_description);
+            return RedirectToLoginComplete("error", error == OidcAccessDenied ? LinkDenied : LinkFailed);
         }
 
         var request = new FinaliseAccountLinkingRequest()
@@ -143,10 +150,22 @@ public class OAuthController(
         if (!string.IsNullOrWhiteSpace(scope))
             request.Scopes.AddRange(scope.Split(' '));
 
-        var result = await connectedServicesClient.FinaliseAccountLinkingForServiceAsync(request);
+        FinaliseAccountLinkingResponse result;
+        try
+        {
+            result = await connectedServicesClient.FinaliseAccountLinkingForServiceAsync(request);
+        }
+        catch (RpcException ex)
+        {
+            logger.LogWarning(ex, "Finalising the {Service} link failed", service);
+            return RedirectToLoginComplete("error", ex.StatusCode == GrpcStatus.Unauthenticated ? LinkExpired : LinkFailed);
+        }
 
-        return Redirect($"{configuration["OAuth:LoginCompleteUrl"]!}?connectionId={Uri.EscapeDataString(result.ConnectionId)}");
+        return RedirectToLoginComplete("connectionId", result.ConnectionId);
     }
+
+    private RedirectResult RedirectToLoginComplete(string key, string value)
+        => Redirect(QueryHelpers.AddQueryString(configuration["OAuth:LoginCompleteUrl"]!, key, value));
 
     [AllowAnonymous]
     [ActionName("jwks")]

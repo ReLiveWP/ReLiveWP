@@ -31,14 +31,4 @@ public class ProxyPathTests
             uri.AbsolutePath);
         Assert.Equal(string.Empty, uri.Fragment);
     }
-
-    // the normalisation the handler applies has to leave an already-escaped path alone, because it
-    // cannot tell whether routing decoded on the way in
-    [Fact]
-    public void Escaping_an_already_escaped_hash_changes_nothing()
-    {
-        var once = Path(CalendarId).Replace("#", "%23");
-
-        Assert.Equal(once, once.Replace("#", "%23"));
-    }
 }

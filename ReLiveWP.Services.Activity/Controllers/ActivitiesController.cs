@@ -74,7 +74,7 @@ public class ActivitiesController(
             return feed;
         }
 
-        var provider = await activityProvider.GetOwnedProviderAsync();
+        var provider = await activityProvider.GetOwnedProviderAsync(OwnedProviderUse.Read);
         if (provider == null)
             return feed;
 
@@ -110,7 +110,7 @@ public class ActivitiesController(
             ]
         };
 
-        var provider = await activityProvider.GetOwnedProviderAsync();
+        var provider = await activityProvider.GetOwnedProviderAsync(OwnedProviderUse.Read);
         if (provider == null)
             return feed;
 
@@ -203,7 +203,7 @@ public class ActivitiesController(
         if (!ActivityIds.TrySplit(id, out var providerId, out var stringId))
             return BadRequest();
 
-        var activityProviderInstance = await activityProvider.GetOwnedProviderAsync();
+        var activityProviderInstance = await activityProvider.GetOwnedProviderAsync(OwnedProviderUse.Post);
         if (activityProviderInstance == null)
             return NoContent();
 

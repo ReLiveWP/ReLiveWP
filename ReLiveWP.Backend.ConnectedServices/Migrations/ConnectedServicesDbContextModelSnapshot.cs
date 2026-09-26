@@ -106,6 +106,57 @@ namespace ReLiveWP.Backend.ConnectedServices.Migrations
                     b.ToTable("DPoPKeys");
                 });
 
+            modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LiveOAuthClient", b =>
+                {
+                    b.Property<string>("Authority")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AuthorizationEndpoint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EncryptedSecret")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RedirectUri")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("RegisteredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RegisteredScopes")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestedScopes")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RevocationEndpoint")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Service")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TokenEndpoint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Authority");
+
+                    b.ToTable("OAuthClients");
+                });
+
             modelBuilder.Entity("ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedService", b =>
                 {
                     b.HasOne("ReLiveWP.Backend.ConnectedServices.Data.LiveDPoPKey", "DPoPKey")

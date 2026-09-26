@@ -14,11 +14,13 @@
       "default": "./dist/index.js"
     },
     "./styles/*": "./styles/*",
+    "./icons/*": "./icons/*",
     "./logo.svg": "./logo.svg"
   },
   "files": [
     "dist",
     "styles",
+    "icons",
     "logo.svg"
   ],
   "scripts": {

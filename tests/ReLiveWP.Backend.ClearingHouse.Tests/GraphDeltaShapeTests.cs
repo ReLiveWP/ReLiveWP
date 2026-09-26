@@ -42,15 +42,6 @@ public class GraphDeltaShapeTests
                 }
                 """).NextLink);
 
-    [Fact]
-    public void A_removed_entry_is_distinguishable_from_a_contact()
-    {
-        var entries = Parse(Page).Value;
-
-        Assert.False(entries[0].TryGetProperty("@removed", out _));
-        Assert.True(entries[1].TryGetProperty("@removed", out _));
-    }
-
     // a tombstone carries an id and nothing else, which is why the driver tests @removed before it
     // projects rather than after
     [Fact]

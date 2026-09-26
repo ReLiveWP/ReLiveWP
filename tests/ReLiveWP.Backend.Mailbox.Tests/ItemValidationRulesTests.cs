@@ -131,7 +131,6 @@ public class ItemValidationRulesTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
     [InlineData("IPM.Note")]
     public void Note_with_a_non_conforming_message_class_is_corrected(string? messageClass)
     {

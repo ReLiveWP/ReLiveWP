@@ -21,11 +21,11 @@ public class UsersController(
     [Route("/Users({id})/Status")] // TODO: Move
     public async Task<ActionResult> Status(long id, [FromBody] LiveEntry? entry)
     {
-        if (entry?.Title?.Value is not { } text || !ModelState.IsValid)
+        if (entry?.Title?.Value is not { } text)
             return BadRequest();
 
         Response.Headers.Append("X-QueriedServices", "WL");
-        var provider = await activityProvider.GetOwnedProviderAsync();
+        var provider = await activityProvider.GetOwnedProviderAsync(OwnedProviderUse.Post);
         if (provider == null)
             return NoContent();
 

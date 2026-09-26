@@ -14,7 +14,7 @@ function initialStage(service?: string): Stage {
 }
 
 export { OAUTH_CHANNEL } from "~/util/oauth";
-import { OAUTH_CHANNEL } from "~/util/oauth";
+import { OAUTH_CHANNEL, describeLinkError, type OAuthLinkResult } from "~/util/oauth";
 import { subscribeBroadcast } from "~/util/broadcast";
 
 export default function LinkAccountDialog({ onClose, service: initialService, initialCaps, existingConnectionId, currentEnabledCaps, relinkConnectionId }: {
@@ -48,7 +48,13 @@ export default function LinkAccountDialog({ onClose, service: initialService, in
         }
     }, [initialService, existingConnectionId, relinkConnectionId]);
 
-    useEffect(() => subscribeBroadcast<{ connectionId: string }>(OAUTH_CHANNEL, (message) => {
+    useEffect(() => subscribeBroadcast<OAuthLinkResult>(OAUTH_CHANNEL, (message) => {
+        if ("error" in message) {
+            error.value = describeLinkError(message.error);
+            stage.value = 'error';
+            return;
+        }
+
         connectionId.value = message.connectionId;
         stage.value = 'configure';
     }), []);

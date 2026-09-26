@@ -106,6 +106,8 @@ module.exports = (_env, argv) => {
             extensions: ['.tsx', '.ts', '.js'],
             alias: {
                 '~': path.resolve(__dirname, "src/"),
+                "react": "preact/compat",
+                "react-dom": "preact/compat",
             }
         },
         plugins: [

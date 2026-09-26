@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.ConnectedServices.Data;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 using ReLiveWP.Backend.ConnectedServices.Proxy;
 using ReLiveWP.Backend.ConnectedServices.Services;
 using ReLiveWP.Identity;

@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import type { Contact } from '@relivewp/eas-store';
 
-import { ALPHABET, initialOf, letterIndex, letterOf, nameOf, OTHER, toRows } from '../src/views/people/groups.ts';
+import { ALPHABET, initialOf, letterIndex, letterOf, nameOf, OTHER, toRows } from '../src/views/people/state/groups.ts';
 
 function named(id: string, patch: Partial<Contact>): Contact {
     return { ...contact(id, id.toLowerCase()), ...patch };
@@ -79,9 +79,8 @@ describe('the a-z index', () => {
     });
 
     it('puts the other bucket last, after z', () => {
-        assert.equal(ALPHABET[ALPHABET.length - 1], OTHER);
-
         const index = letterIndex(toRows([contact('n', '3 mobile'), contact('a1', 'anderson')]));
+        assert.equal(index.at(-1)?.letter, OTHER);
         assert.notEqual(index.find((entry) => entry.letter === OTHER)?.row, null);
     });
 });

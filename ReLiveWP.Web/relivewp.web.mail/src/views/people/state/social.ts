@@ -104,6 +104,19 @@ export type SocialIdentities = {
     identities: SocialIdentity[],
 };
 
+export type SocialProvider = {
+    provider: string,
+    name: string,
+};
+
+export type SocialProviders = {
+    providers: SocialProvider[],
+};
+
+export function fetchProvidersAsync(fetcher: typeof fetch): Promise<SocialProviders> {
+    return getJson(fetcher, `${ENDPOINT_ACTIVITY}/api/social/providers`);
+}
+
 function identitiesUrl(serverId: string): string {
     return `${ENDPOINT_ACTIVITY}/api/social/contacts/${encodeURIComponent(serverId)}/identities`;
 }

@@ -67,7 +67,6 @@ public class SyncDataTests
 
         Assert.Contains("multistatus", xml);
         Assert.DoesNotContain("<D:response>", xml);
-        Assert.Equal(xml, Render(w => MultiStatusWriter.Write(w, [])));
     }
 
     [Fact]

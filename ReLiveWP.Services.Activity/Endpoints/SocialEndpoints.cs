@@ -22,6 +22,7 @@ public static class SocialEndpoints
     {
         var group = app.MapGroup("/api/social").RequireAuthorization();
 
+        group.MapGet("/providers", GetProviders);
         group.MapGet("/feed", GetFeedAsync);
         group.MapGet("/contacts/{cid}/feed", GetContactFeedAsync);
         group.MapGet("/replies", GetRepliesAsync);
@@ -29,6 +30,12 @@ public static class SocialEndpoints
         group.MapGet("/contacts/{serverId}/identities", GetIdentitiesAsync);
         group.MapPost("/contacts/{serverId}/identities", BindIdentityAsync);
         group.MapDelete("/contacts/{serverId}/identities/{provider}", UnbindIdentityAsync);
+    }
+
+    private static IResult GetProviders(ActivityProviderService providers)
+    {
+        var listed = providers.PublicProviders.Select(p => new SocialProvider(p.IdentityProvider, p.Name));
+        return Results.Ok(new SocialProvidersResponse([.. listed]));
     }
 
     private static async Task<IResult> GetIdentitiesAsync(
@@ -146,7 +153,7 @@ public static class SocialEndpoints
         if (cache.TryGetValue<SocialFeedResponse>(key, out var cached) && cached != null && cached.Entries.Count >= count)
             return Results.Ok(cached with { Entries = [.. cached.Entries.Take(count)] });
 
-        var provider = await providers.GetOwnedProviderAsync();
+        var provider = await providers.GetOwnedProviderAsync(OwnedProviderUse.Read);
         if (provider is not { HasSources: true })
             return Results.Ok(new SocialFeedResponse(false, []));
 
@@ -214,7 +221,7 @@ public static class SocialEndpoints
         if (text.Length is 0 or > MaxReplyLength)
             return Results.BadRequest(new SocialErrorResponse("invalid_text"));
 
-        var provider = await providers.GetOwnedProviderAsync();
+        var provider = await providers.GetOwnedProviderAsync(OwnedProviderUse.Post);
         if (provider is not { HasSources: true })
             return Results.Conflict(new SocialErrorResponse("not_connected"));
 

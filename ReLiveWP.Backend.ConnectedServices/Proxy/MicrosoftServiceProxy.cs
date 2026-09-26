@@ -1,5 +1,5 @@
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
-using MicrosoftService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Microsoft;
+using ReLiveWP.Backend.ConnectedServices.Providers;
+using MicrosoftService = ReLiveWP.Backend.ConnectedServices.Providers.Microsoft;
 
 namespace ReLiveWP.Backend.ConnectedServices.Proxy;
 

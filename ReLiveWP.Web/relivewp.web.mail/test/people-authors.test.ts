@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import type { Contact, ContactAnnotation } from '@relivewp/eas-store';
 
-import { cidIndex, contactFor } from '../src/views/people/authors.ts';
+import { cidIndex, contactFor } from '../src/views/people/state/authors.ts';
 
 function contact(id: string, cid: string | null): Contact {
     const annotation: ContactAnnotation | null = cid === null ? null : {

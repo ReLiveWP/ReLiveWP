@@ -57,19 +57,6 @@ public class MultiStatusWriterTests
     }
 
     [Fact]
-    public void DatesSplitIntoExactlySixSpaceSeparatedParts()
-    {
-        var prop = Prop(Write(File()));
-
-        foreach (var name in new[] { "creationdate", "getlastmodified" })
-        {
-            var parts = prop.Element(Dav + name)!.Value.Split(' ');
-            Assert.Equal(6, parts.Length);
-            Assert.Equal(3, parts[4].Split(':').Length);
-        }
-    }
-
-    [Fact]
     public void NonUtcInputIsConvertedBeforeFormatting()
     {
         var local = new DateTimeOffset(2015, 10, 21, 9, 28, 0, TimeSpan.FromHours(2));

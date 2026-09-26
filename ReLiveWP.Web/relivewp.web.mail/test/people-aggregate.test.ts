@@ -8,7 +8,7 @@ import {
     normalizeName, normalizePhone, pairKey, phonesMatch, photoOf, searchLinks, suggestLinks,
     withLinked, withoutMember,
     type Aggregate,
-} from '../src/views/people/aggregate.ts';
+} from '../src/views/people/state/aggregate.ts';
 
 type Patch = Partial<Omit<Contact, 'emails' | 'phones' | 'annotation'>> & {
     emails?: string[],

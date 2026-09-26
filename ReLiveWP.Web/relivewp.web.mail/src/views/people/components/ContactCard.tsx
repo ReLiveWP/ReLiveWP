@@ -5,10 +5,13 @@ import { useMemo, useState } from "preact/hooks";
 import { normalizeEmail, normalizePhone, present, searchLinks, suggestLinks, type Aggregate } from "../state/aggregate";
 import ContactName from "./ContactName";
 import { initialFor, initialOf } from "../state/groups";
-import type { SocialIdentity } from "../state/social";
+import type { SocialIdentity, SocialProvider } from "../state/social";
 import Tile from "./Tile";
 
-const BLUESKY = "atproto";
+const HANDLE_PLACEHOLDERS: Partial<Record<string, string>> = {
+    atproto: "handle.bsky.social",
+    mastodon: "user@instance.social",
+};
 
 type Field = {
     key: string,
@@ -20,6 +23,7 @@ type Field = {
 
 export type LinkedAccounts = {
     identities: SocialIdentity[],
+    providers: SocialProvider[],
     loading: boolean,
     error: string | null,
     busy: boolean,
@@ -223,13 +227,17 @@ function IdentityRow({ identity, onUnlink }: { identity: SocialIdentity, onUnlin
 
 function LinkedAccountsSection({ automatic, links, editing }: { automatic: string | null, links: LinkedAccounts, editing: boolean }) {
     const [handle, setHandle] = useState("");
+    const [chosen, setChosen] = useState<string | null>(null);
     const trimmed = handle.trim();
-    const hasBluesky = links.identities.some((identity) => identity.provider === BLUESKY);
     const empty = automatic === null && links.identities.length === 0;
 
+    const unbound = links.providers.filter((provider) =>
+        !links.identities.some((identity) => identity.provider === provider.provider));
+    const target = unbound.find((provider) => provider.provider === chosen) ?? unbound[0];
+
     const submit = async () => {
-        if (trimmed === "" || links.busy) return;
-        if (await links.bind(BLUESKY, trimmed)) setHandle("");
+        if (trimmed === "" || links.busy || target === undefined) return;
+        if (await links.bind(target.provider, trimmed)) setHandle("");
     };
 
     return (
@@ -256,12 +264,23 @@ function LinkedAccountsSection({ automatic, links, editing }: { automatic: strin
 
             {!editing && empty && !links.loading && <p class="note">None yet.</p>}
 
-            {editing && !hasBluesky && (
+            {editing && target !== undefined && (
                 <form class="card-account-add" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+                    {unbound.length > 1 && (
+                        <select
+                            value={target.provider}
+                            disabled={links.busy}
+                            onChange={(event) => { setChosen((event.target as HTMLSelectElement).value); }}
+                        >
+                            {unbound.map((provider) => (
+                                <option key={provider.provider} value={provider.provider}>{provider.name.toLowerCase()}</option>
+                            ))}
+                        </select>
+                    )}
                     <input
                         type="text"
                         value={handle}
-                        placeholder="handle.bsky.social"
+                        placeholder={HANDLE_PLACEHOLDERS[target.provider] ?? "handle"}
                         disabled={links.busy}
                         onInput={(event) => { setHandle((event.target as HTMLInputElement).value); }}
                     />

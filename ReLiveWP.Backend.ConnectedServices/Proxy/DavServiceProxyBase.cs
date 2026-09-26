@@ -1,5 +1,6 @@
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Services;
+using ReLiveWP.ServiceDefaults.Outbound;
 
 namespace ReLiveWP.Backend.ConnectedServices.Proxy;
 

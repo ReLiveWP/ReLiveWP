@@ -4,12 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Grpc;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 using ReLiveWP.Services.Grpc;
 
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
-using GoogleService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
-using MicrosoftService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Microsoft;
+using GoogleService = ReLiveWP.Backend.ConnectedServices.Providers.Google;
+using MicrosoftService = ReLiveWP.Backend.ConnectedServices.Providers.Microsoft;
+using ReLiveWP.Backend.ConnectedServices.Services;
 
 namespace ReLiveWP.Backend.ConnectedServices.Tests;
 

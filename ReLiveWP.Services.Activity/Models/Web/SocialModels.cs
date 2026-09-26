@@ -80,6 +80,10 @@ public record SocialIdentitiesResponse(string Cid, IReadOnlyList<SocialIdentity>
 
 public record SocialBindRequest(string Provider, string Handle);
 
+public record SocialProvider(string Provider, string Name);
+
+public record SocialProvidersResponse(IReadOnlyList<SocialProvider> Providers);
+
 public record SocialErrorResponse(string Error);
 
 public record SocialAlbumSummary(string ResourceId, string Title, string? CoverUrl);

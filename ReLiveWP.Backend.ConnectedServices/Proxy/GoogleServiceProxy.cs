@@ -1,5 +1,5 @@
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
-using GoogleService = ReLiveWP.Backend.ConnectedServices.OAuthProviders.Google;
+using ReLiveWP.Backend.ConnectedServices.Providers;
+using GoogleService = ReLiveWP.Backend.ConnectedServices.Providers.Google;
 
 namespace ReLiveWP.Backend.ConnectedServices.Proxy;
 

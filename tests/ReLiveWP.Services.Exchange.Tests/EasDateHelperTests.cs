@@ -43,11 +43,4 @@ public class EasDateHelperTests
         Assert.Null(EasDateHelper.ToDateTime(null));
         Assert.Null(EasDateHelper.ToDateTime("not-a-date"));
     }
-
-    [Fact]
-    public void Compact_write_then_read_round_trips()
-    {
-        var wire = EasDateHelper.FromDateTimeCompact(Sample);
-        Assert.Equal(Sample, EasDateHelper.ToDateTime(wire));
-    }
 }

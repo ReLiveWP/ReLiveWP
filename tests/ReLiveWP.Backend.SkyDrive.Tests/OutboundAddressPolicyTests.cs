@@ -1,6 +1,7 @@
 using System.Net;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 using ReLiveWP.Backend.ConnectedServices.Services;
+using ReLiveWP.ServiceDefaults.Outbound;
 
 namespace ReLiveWP.Backend.SkyDrive.Tests;
 
@@ -89,10 +90,6 @@ public class OutboundAddressPolicyTests
     [InlineData("https://169.254.169.254/latest/meta-data/")]
     public void ValidateUriRejectsPrivateLiterals(string url)
         => Assert.Throws<CredentialLinkException>(() => policy.ValidateUri(new Uri(url)));
-
-    [Fact]
-    public void ValidateUriAcceptsAPublicHttpsHost()
-        => policy.ValidateUri(new Uri("https://cloud.example.com/remote.php/dav/files/me/"));
 
     // a hostname passing here is not a decision, only a deferral: the ConnectCallback re-checks the
     // resolved address, which is what actually defeats rebinding

@@ -2,7 +2,6 @@ using Grpc.Core;
 using Microsoft.Extensions.Caching.Memory;
 using ReLiveWP.Identity;
 using ReLiveWP.Services.Activity.Providers;
-using ReLiveWP.Services.Activity.Providers.Bluesky;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.Mailbox;
 
@@ -10,10 +9,16 @@ namespace ReLiveWP.Services.Activity.Services;
 
 public record ContactFeedSource(string Provider, string ExternalId, string? Handle = null);
 
+public enum OwnedProviderUse
+{
+    Read,
+    Post,
+}
+
 public class ActivityProviderService(
     IHttpContextAccessor httpContextAccessor,
-    IConfiguration configuration,
-    ILoggerFactory loggerFactory,
+    IEnumerable<PublicActivityProviderBase> publicProviders,
+    IEnumerable<IOwnedActivityProviderFactory> ownedProviderFactories,
     ConnectedServices.ConnectedServicesClient connectedServices,
     MailboxStore.MailboxStoreClient mailbox,
     IMemoryCache cache,
@@ -23,42 +28,55 @@ public class ActivityProviderService(
 
     private const ulong BustedFlag = 0x80000000UL;
     private const uint SocialFeedCapability = 0x20;
+    private const uint SocialPostCapability = 0x40;
     private const uint SocialPhotosCapability = 0x1000;
 
-    private IReadOnlyList<PublicActivityProviderBase>? publicProviders;
+    private readonly Dictionary<string, IOwnedActivityProviderFactory> ownedProviderFactories =
+        ownedProviderFactories.ToDictionary(f => f.IdentityProvider, StringComparer.OrdinalIgnoreCase);
 
-    public IReadOnlyList<PublicActivityProviderBase> PublicProviders =>
-        publicProviders ??= [new PublicBlueskyActivityProvider(loggerFactory, cache)];
+    public IReadOnlyList<PublicActivityProviderBase> PublicProviders { get; } = [.. publicProviders];
 
     public PublicActivityProviderBase? FindPublicProvider(string identityProvider)
         => PublicProviders.FirstOrDefault(p => string.Equals(p.IdentityProvider, identityProvider, StringComparison.OrdinalIgnoreCase));
 
-    public async Task<OwnedActivityProviderBase?> GetOwnedProviderAsync()
+    public async Task<OwnedActivityProviderBase?> GetOwnedProviderAsync(OwnedProviderUse use)
+    {
+        var owned = await CreateOwnedProvidersAsync(use);
+        return owned == null ? null : new FeedCoalescingActivityProvider(owned, logger);
+    }
+
+    // replies are public, so a network the viewer hasn't linked is still read through its public provider
+    public async Task<IReadOnlyList<ActivityProviderBase>> GetReplyProvidersAsync()
+    {
+        var owned = await CreateOwnedProvidersAsync(OwnedProviderUse.Read) ?? [];
+        var unlinked = PublicProviders.Where(p => !owned.Any(o =>
+            string.Equals(o.IdentityProvider, p.IdentityProvider, StringComparison.OrdinalIgnoreCase)));
+
+        return [new FeedCoalescingActivityProvider(owned, logger), .. unlinked];
+    }
+
+    private async Task<IReadOnlyList<OwnedActivityProviderBase>?> CreateOwnedProvidersAsync(OwnedProviderUse use)
     {
         var context = httpContextAccessor.HttpContext;
         if (context == null)
             return null;
 
-        var auth = context.User.Id()!;
-        var servicesResponse = connectedServices.GetConnections(new ConnectionsRequest());
+        var userId = context.User.Id()!;
+
+        var required = use == OwnedProviderUse.Post ? SocialPostCapability : SocialFeedCapability;
+        var servicesResponse = connectedServices.GetConnections(new ConnectionsRequest { Capabilities = required });
 
         List<OwnedActivityProviderBase> providers = [];
         await foreach (var connection in servicesResponse.ResponseStream.ReadAllAsync())
         {
-            if (connection.Service == BlueskyEntryMapper.IdentityProviderToken && (connection.Flags & BustedFlag) == 0)
-            {
-                providers.Add(new BlueskyActivityProvider(auth, connection, configuration, loggerFactory));
-            }
+            if ((connection.Flags & BustedFlag) != 0)
+                continue;
+
+            if (ownedProviderFactories.TryGetValue(connection.Service, out var factory))
+                providers.Add(factory.Create(userId, connection));
         }
 
-        return new FeedCoalescingActivityProvider([.. providers]);
-    }
-
-    // replies are public, so a viewer with nothing linked still gets to read them
-    public async Task<IReadOnlyList<ActivityProviderBase>> GetReplyProvidersAsync()
-    {
-        var owned = await GetOwnedProviderAsync();
-        return owned == null ? PublicProviders : [owned];
+        return providers;
     }
 
     public Task<IReadOnlyList<ContactFeedSource>> GetContactFeedSourcesAsync(
@@ -68,6 +86,40 @@ public class ActivityProviderService(
     public Task<IReadOnlyList<ContactFeedSource>> GetContactPhotoSourcesAsync(
         long cid, string viewerUserId, CancellationToken ct = default)
         => GetContactSourcesAsync(cid, viewerUserId, SocialPhotosCapability, ct);
+
+    private async Task<IReadOnlyList<ContactFeedSource>> GetContactSourcesAsync(
+        long cid, string viewerUserId, uint capability, CancellationToken ct)
+    {
+        FeedSubject? subject;
+        try
+        {
+            var response = await mailbox.ResolveFeedSubjectsAsync(
+                new ResolveFeedSubjectsRequest { UserId = viewerUserId, Cids = { cid } }, cancellationToken: ct);
+
+            subject = response.Subjects.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "could not resolve the feed subject for {Cid}", cid);
+            return [];
+        }
+
+        if (subject == null)
+            return [];
+
+        switch (subject.Kind)
+        {
+            case FeedSubjectKind.ContactIdentity:
+                return [.. subject.Identities.Select(i => new ContactFeedSource(i.Provider, i.ExternalId))];
+
+            case FeedSubjectKind.LiveUser:
+                return await SharedSourcesAsync(subject.SubjectUserId, capability, ct);
+
+            default:
+                logger.LogInformation("Per-contact feed for CID {Cid}: nothing the viewer may read", cid);
+                return [];
+        }
+    }
 
     public async Task<bool> IsServableIdentityAsync(
         string provider, string externalId, long? subjectCid, string viewerUserId, CancellationToken ct = default)
@@ -118,40 +170,6 @@ public class ActivityProviderService(
         {
             logger.LogWarning(ex, "could not check the contact identities of {User}", viewerUserId);
             return false;
-        }
-    }
-
-    private async Task<IReadOnlyList<ContactFeedSource>> GetContactSourcesAsync(
-        long cid, string viewerUserId, uint capability, CancellationToken ct)
-    {
-        FeedSubject? subject;
-        try
-        {
-            var response = await mailbox.ResolveFeedSubjectsAsync(
-                new ResolveFeedSubjectsRequest { UserId = viewerUserId, Cids = { cid } }, cancellationToken: ct);
-
-            subject = response.Subjects.FirstOrDefault();
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "could not resolve the feed subject for {Cid}", cid);
-            return [];
-        }
-
-        if (subject == null)
-            return [];
-
-        switch (subject.Kind)
-        {
-            case FeedSubjectKind.ContactIdentity:
-                return [.. subject.Identities.Select(i => new ContactFeedSource(i.Provider, i.ExternalId))];
-
-            case FeedSubjectKind.LiveUser:
-                return await SharedSourcesAsync(subject.SubjectUserId, capability, ct);
-
-            default:
-                logger.LogInformation("Per-contact feed for CID {Cid}: nothing the viewer may read", cid);
-                return [];
         }
     }
 

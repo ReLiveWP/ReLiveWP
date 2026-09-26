@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using Duende.IdentityModel.OidcClient.DPoP;
 using ReLiveWP.Backend.ConnectedServices.Data;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 using ReLiveWP.Backend.ConnectedServices.Services;
 
 namespace ReLiveWP.Backend.ConnectedServices.Proxy;

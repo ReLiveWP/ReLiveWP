@@ -131,6 +131,6 @@ public class ServableDidTests
         new() { Subjects = { new FeedSubject { Cid = Cid, Kind = FeedSubjectKind.LiveUser, SubjectUserId = Subject } } };
 
     private ActivityProviderService NewService() =>
-        new(null!, null!, NullLoggerFactory.Instance, connectedServices, mailbox, TestCache.New(),
+        new(null!, [], [], connectedServices, mailbox, TestCache.New(),
             NullLogger<ActivityProviderService>.Instance);
 }

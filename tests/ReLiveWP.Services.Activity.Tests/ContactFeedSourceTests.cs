@@ -121,6 +121,6 @@ public class ContactFeedSourceTests
         new() { Subjects = { subject } };
 
     private ActivityProviderService NewService() =>
-        new(null!, null!, NullLoggerFactory.Instance, connectedServices, mailbox, TestCache.New(),
+        new(null!, [], [], connectedServices, mailbox, TestCache.New(),
             NullLogger<ActivityProviderService>.Instance);
 }

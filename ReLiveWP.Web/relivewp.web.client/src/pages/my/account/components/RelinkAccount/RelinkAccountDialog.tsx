@@ -11,6 +11,7 @@ import { LinkAccountContext, useLinkAccount } from "../LinkAccount/link-account-
 import { DoneStage, ErrorStage, RedirectStage } from "../LinkAccount/LinkAccountStages";
 import { OAUTH_CHANNEL } from "../LinkAccount/LinkAccountDialog";
 import { subscribeBroadcast } from "~/util/broadcast";
+import { describeLinkError, type OAuthLinkResult } from "~/util/oauth";
 
 function RelinkLoadingStage() {
     const fetch = useAuthenticatedFetch();
@@ -65,7 +66,15 @@ export default function RelinkAccountDialog({ id, onClose }: {
     const error = useSignal<string | null>(null);
     const connectionId = useSignal("");
 
-    useEffect(() => subscribeBroadcast(OAUTH_CHANNEL, () => { stage.value = 'done'; }), []);
+    useEffect(() => subscribeBroadcast<OAuthLinkResult>(OAUTH_CHANNEL, (message) => {
+        if ("error" in message) {
+            error.value = describeLinkError(message.error);
+            stage.value = 'error';
+            return;
+        }
+
+        stage.value = 'done';
+    }), []);
 
     const renderStage = () => {
         switch (stage.value) {

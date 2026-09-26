@@ -1,6 +1,7 @@
 using System.Xml.Linq;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 using ReLiveWP.Dav;
+using ReLiveWP.ServiceDefaults.Outbound;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
 namespace ReLiveWP.Backend.ConnectedServices.Services;

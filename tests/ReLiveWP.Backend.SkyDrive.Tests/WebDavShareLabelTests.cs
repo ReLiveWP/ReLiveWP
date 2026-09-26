@@ -1,4 +1,4 @@
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 
 namespace ReLiveWP.Backend.SkyDrive.Tests;
 

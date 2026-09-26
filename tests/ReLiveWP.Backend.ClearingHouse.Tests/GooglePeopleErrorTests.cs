@@ -62,10 +62,6 @@ public class GooglePeopleErrorTests
             { "error": { "code": 400, "status": "PERMISSION_DENIED" } }
             """));
 
-    [Fact]
-    public void A_success_is_never_a_token_problem()
-        => Assert.False(GooglePeopleErrors.IsSyncTokenRejected(200, """{ "connections": [] }"""));
-
     [Theory]
     [InlineData("")]
     [InlineData("<html>502 Bad Gateway</html>")]

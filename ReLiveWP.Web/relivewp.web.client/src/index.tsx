@@ -7,12 +7,17 @@ import "./util/shims";
 
 import Main from "./Main";
 import { render } from "preact"
-import { OAUTH_CHANNEL } from "./util/oauth";
+import { OAUTH_CHANNEL, type OAuthLinkResult } from "./util/oauth";
 import { postBroadcast } from "./util/broadcast";
 
 if (window.location.pathname === '/login-complete') {
-    const connectionId = new URLSearchParams(window.location.search).get('connectionId') ?? '';
-    postBroadcast(OAUTH_CHANNEL, { connectionId });
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    const result: OAuthLinkResult = error !== null
+        ? { error }
+        : { connectionId: params.get('connectionId') ?? '' };
+
+    postBroadcast(OAUTH_CHANNEL, result);
     window.close();
 }
 else {

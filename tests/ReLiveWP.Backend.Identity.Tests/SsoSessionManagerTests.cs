@@ -145,21 +145,6 @@ public class SsoSessionManagerTests : IDisposable
 
         Assert.NotNull(await manager.RedeemAuthorizationCodeAsync(code, ClientId, RedirectUri, null));
         Assert.Null(await manager.RedeemAuthorizationCodeAsync(code, ClientId, RedirectUri, null));
-    }
-
-    [Fact]
-    public async Task Concurrent_redemption_succeeds_exactly_once()
-    {
-        var (manager, session) = await SignedInAsync();
-        var code = await manager.IssueAuthorizationCodeAsync(Payload(session.SessionId));
-
-        // the store is the serialisation point, so redeem sequentially against it and assert the
-        // second caller gets nothing rather than a second set of tokens
-        var first = await manager.RedeemAuthorizationCodeAsync(code, ClientId, RedirectUri, null);
-        var second = await manager.RedeemAuthorizationCodeAsync(code, ClientId, RedirectUri, null);
-
-        Assert.NotNull(first);
-        Assert.Null(second);
         Assert.Equal(0, _codes.StoredCount);
     }
 

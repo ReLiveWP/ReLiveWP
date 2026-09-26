@@ -1,6 +1,6 @@
 using System.Net;
 using ReLiveWP.Backend.ConnectedServices.Data;
-using ReLiveWP.Backend.ConnectedServices.OAuthProviders;
+using ReLiveWP.Backend.ConnectedServices.Providers;
 
 namespace ReLiveWP.Backend.ConnectedServices.Proxy;
 
@@ -84,8 +84,10 @@ public class ConnectedServiceProxyBase(string serviceId, IServiceProvider servic
 
     public virtual Task AddHeadersAsync(LiveConnectedService service, HttpRequestMessage request)
         => Task.CompletedTask;
+    
     public virtual Task<HttpClient> CreateHttpClientAsync(LiveConnectedService service)
         => Task.FromResult(HttpClientFactory.CreateClient());
+
     public virtual Uri GetRequestUrl(LiveConnectedService service, HttpContext context, string path)
     {
         var serviceUrl = new Uri(service.ServiceUrl!);
@@ -97,8 +99,10 @@ public class ConnectedServiceProxyBase(string serviceId, IServiceProvider servic
 
         return target;
     }
+    
     public virtual bool FilterRequestHeaders(LiveConnectedService service, string header)
         => false;
+    
     public virtual bool FilterResponseHeaders(LiveConnectedService service, string header)
         => false;
 }

@@ -6,6 +6,7 @@ public class ConnectedServicesDbContext(DbContextOptions<ConnectedServicesDbCont
 {
     public DbSet<LiveDPoPKey> DPoPKeys { get; set; }
     public DbSet<LiveConnectedService> ConnectedServices { get; set; }
+    public DbSet<LiveOAuthClient> OAuthClients { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -6,14 +6,17 @@ import { reason } from "~/util/reason";
 import {
     bindIdentityAsync,
     fetchIdentitiesAsync,
+    fetchProvidersAsync,
     SocialError,
     unbindIdentityAsync,
     type SocialIdentity,
+    type SocialProvider,
 } from "../state/social";
 
 export type ContactIdentitiesState = {
     cid: string | null,
     identities: SocialIdentity[],
+    providers: SocialProvider[],
     loading: boolean,
     error: string | null,
     busy: boolean,
@@ -21,6 +24,7 @@ export type ContactIdentitiesState = {
 };
 
 const NONE: SocialIdentity[] = [];
+const NO_PROVIDERS: SocialProvider[] = [];
 
 const REASONS: Record<string, string> = {
     handle_not_found: "we couldn't find that handle",
@@ -46,6 +50,10 @@ export function useContactIdentities(serverId: string | null): ContactIdentities
         fetcher === undefined || serverId === null ? null : () => fetchIdentitiesAsync(fetcher, serverId),
         [fetcher, serverId],
         { describe: bindReason });
+
+    const providers = useAsync(
+        fetcher === undefined ? null : () => fetchProvidersAsync(fetcher),
+        [fetcher]);
 
     useEffect(() => {
         setBusy(false);
@@ -102,6 +110,7 @@ export function useContactIdentities(serverId: string | null): ContactIdentities
     return {
         cid,
         identities: listed.value?.identities ?? NONE,
+        providers: providers.value?.providers ?? NO_PROVIDERS,
         loading: listed.loading,
         error: listed.error,
         busy,
