@@ -14,11 +14,19 @@ namespace ReLiveWP.Services.Login.Controllers;
 [Route("sso")]
 public class SsoController(
     Sso.SsoClient ssoClient,
+    Authentication.AuthenticationClient authenticationClient,
     PendingAuthorizeStore pendingStore,
     IOptions<SsoOptions> options,
     ILogger<SsoController> logger) : Controller
 {
     private const uint S_OK = 0x0;
+    private const uint MEMBER_INVALID = 0x80041103;
+    private const uint PASSWORD_TOOSHORT = 0x80041105;
+    private const uint PASSWORD_TOOLONG = 0x80041106;
+    private const uint PASSWORD_INVALIDCHARS = 0x80041108;
+    private const uint MEMBER_EXISTS = 0x80041133;
+    private const uint GWP_E_ACTIVATION_CODE_INVALID = 0x81120003;
+    private const uint GWP_E_ACTIVATION_CODE_IN_USE = 0x81120005;
 
     private SsoOptions Options => options.Value;
 
@@ -76,11 +84,20 @@ public class SsoController(
         if (prompt == "none")
             return RedirectWithError(redirect_uri!, state, "login_required", "no active session");
 
-        return View("SignIn", new SignInViewModel
-        {
-            PendingId = await pendingStore.CreateAsync(pending),
-            RememberMe = true,
-        });
+        var pendingId = await pendingStore.CreateAsync(pending);
+        if (prompt == "create")
+            return View("SignUp", new SignUpViewModel { PendingId = pendingId, RememberMe = true });
+
+        return View("SignIn", new SignInViewModel { PendingId = pendingId, RememberMe = true });
+    }
+
+    [HttpGet("signin")]
+    public async Task<IActionResult> ShowSignIn(string? pending)
+    {
+        if (await pendingStore.PeekAsync(pending) == null)
+            return SignInExpired();
+
+        return View("SignIn", new SignInViewModel { PendingId = pending!, RememberMe = true });
     }
 
     [HttpPost("signin")]
@@ -92,32 +109,63 @@ public class SsoController(
         // from the form. the form only carries which request it belongs to.
         var pending = await pendingStore.PeekAsync(model.PendingId);
         if (pending == null)
-            return InvalidRequest("Sign-in expired", "That sign-in request has expired. Go back to the application and start again.");
+            return SignInExpired();
 
         if (!ModelState.IsValid)
             return SignInFailed(model, "Enter your ReLive ID and password.");
 
-        var response = await ssoClient.SignInAsync(new SsoSignInRequest()
-        {
-            Username = model.Username,
-            Password = model.Password,
-            Persistent = model.RememberMe,
-            UserAgent = Request.Headers.UserAgent.ToString(),
-            CreatedIp = ClientIp() ?? "",
-        }, cancellationToken: cancellationToken);
-
-        if (response.Code != S_OK || string.IsNullOrEmpty(response.SessionHandle))
+        var session = await CreateSessionAsync(model.Username, model.Password, model.RememberMe, cancellationToken);
+        if (session.Code != S_OK || string.IsNullOrEmpty(session.SessionHandle))
             return SignInFailed(model, "That ReLive ID or password isn't recognised.");
 
-        SetSessionCookie(response.SessionHandle, model.RememberMe, response.Expires.ToDateTimeOffset());
+        return await CompleteSignInAsync(session, pending, model.PendingId, model.RememberMe, cancellationToken);
+    }
 
-        await pendingStore.TakeAsync(model.PendingId);
+    [HttpGet("signup")]
+    public async Task<IActionResult> ShowSignUp(string? pending)
+    {
+        if (await pendingStore.PeekAsync(pending) == null)
+            return SignInExpired();
 
-        var code = await IssueCodeAsync(response.SessionHandle, pending, cancellationToken);
-        if (code == null)
-            return InvalidRequest("Sign-in failed", "We could not complete that sign-in. Please try again.");
+        return View("SignUp", new SignUpViewModel { PendingId = pending!, RememberMe = true });
+    }
 
-        return RedirectWithCode(pending.RedirectUri, pending.State, code);
+    [HttpPost("signup")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("SsoSignUp")]
+    public async Task<IActionResult> SignUp(SignUpViewModel model, CancellationToken cancellationToken)
+    {
+        var pending = await pendingStore.PeekAsync(model.PendingId);
+        if (pending == null)
+            return SignInExpired();
+
+        if (!ModelState.IsValid)
+        {
+            return SignUpFailed(model, HasEmptySignUpField(model)
+                ? "Required fields missing!"
+                : "Those passwords don't match!");
+        }
+
+        var emailAddress = model.EmailAddress.Trim();
+        var registered = await authenticationClient.RegisterAsync(new RegisterRequest()
+        {
+            Username = model.Username.Trim(),
+            EmailAddress = emailAddress,
+            Password = model.Password,
+            InviteCode = model.InviteCode.Trim(),
+        }, cancellationToken: cancellationToken);
+
+        if (registered.Code != S_OK)
+            return SignUpFailed(model, DescribeRegisterFailure(registered.Code));
+
+        var session = await CreateSessionAsync(emailAddress, model.Password, model.RememberMe, cancellationToken);
+        if (session.Code != S_OK || string.IsNullOrEmpty(session.SessionHandle))
+        {
+            logger.LogWarning("Account {UserId} was created but its first sign-in failed, code {Code:X8}", registered.Id, session.Code);
+            return InvalidRequest("Sign-in failed", "Your account was created, but we were unable to create a session: try sign in normally.");
+        }
+
+        return await CompleteSignInAsync(session, pending, model.PendingId, model.RememberMe, cancellationToken);
     }
 
     [HttpPost("token")]
@@ -171,6 +219,34 @@ public class SsoController(
         return View("SignedOut");
     }
 
+    private Task<CreateSessionResponse> CreateSessionAsync(string username, string password, bool persistent, CancellationToken cancellationToken)
+    {
+        var request = new SsoSignInRequest()
+        {
+            Username = username,
+            Password = password,
+            Persistent = persistent,
+            UserAgent = Request.Headers.UserAgent.ToString(),
+            CreatedIp = ClientIp() ?? "",
+        };
+
+        return ssoClient.SignInAsync(request, cancellationToken: cancellationToken).ResponseAsync;
+    }
+
+    private async Task<IActionResult> CompleteSignInAsync(
+        CreateSessionResponse session, PendingAuthorize pending, string pendingId, bool persistent, CancellationToken cancellationToken)
+    {
+        SetSessionCookie(session.SessionHandle, persistent, session.Expires.ToDateTimeOffset());
+
+        await pendingStore.TakeAsync(pendingId);
+
+        var code = await IssueCodeAsync(session.SessionHandle, pending, cancellationToken);
+        if (code == null)
+            return InvalidRequest("Sign-in failed", "We could not complete that sign-in. Please try again.");
+
+        return RedirectWithCode(pending.RedirectUri, pending.State, code);
+    }
+
     private async Task<IssuedCode?> IssueCodeAsync(string handle, PendingAuthorize pending, CancellationToken cancellationToken)
     {
         var request = new IssueAuthorizationCodeRequest()
@@ -219,15 +295,43 @@ public class SsoController(
         return View("SignIn", model);
     }
 
+    private IActionResult SignUpFailed(SignUpViewModel model, string error)
+    {
+        model.Password = "";
+        model.ConfirmPassword = "";
+        model.Error = error;
+
+        Response.StatusCode = StatusCodes.Status400BadRequest;
+        return View("SignUp", model);
+    }
+
+    private static bool HasEmptySignUpField(SignUpViewModel model)
+    {
+        string?[] fields = [model.InviteCode, model.EmailAddress, model.Username, model.Password, model.ConfirmPassword];
+        return fields.Any(string.IsNullOrWhiteSpace);
+    }
+
+    private static string DescribeRegisterFailure(uint code) => code switch
+    {
+        GWP_E_ACTIVATION_CODE_INVALID => "That invite code isn't valid!",
+        GWP_E_ACTIVATION_CODE_IN_USE => "That invite code has already been redeemed!",
+        MEMBER_EXISTS => "That username or email address has already been used!",
+        MEMBER_INVALID => "That username or email address can't be used.",
+        PASSWORD_TOOSHORT => "Your password must be longer than 8 characters.",
+        PASSWORD_TOOLONG => "Your password must be under 127 characters.",
+        PASSWORD_INVALIDCHARS => "Your password has characters that we can't guarantee you can type on a phone.",
+        _ => "Something went wrong and we couldn't create your account, try again.",
+    };
+
+    private IActionResult SignInExpired()
+        => InvalidRequest("Sign-in expired", "That sign-in request has expired. Go back to the application and start again.");
+
     private IActionResult InvalidRequest(string title, string detail)
     {
         Response.StatusCode = StatusCodes.Status400BadRequest;
         return View("Error", new SsoErrorViewModel(title, detail));
     }
 
-    // the code goes in the fragment so it never reaches the app's own web server logs. persistent
-    // rides along because the Remember me box lives on this page, and the app needs it to decide
-    // between local and session storage.
     private IActionResult RedirectWithCode(string redirectUri, string state, IssuedCode issued)
         => Redirect($"{redirectUri}#code={Uri.EscapeDataString(issued.Code)}"
             + $"&state={Uri.EscapeDataString(state)}"

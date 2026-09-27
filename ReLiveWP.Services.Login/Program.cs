@@ -127,6 +127,15 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,
         }));
 
+    options.AddPolicy("SsoSignUp", context => RateLimitPartition.GetFixedWindowLimiter(
+        ClientKey(context),
+        _ => new FixedWindowRateLimiterOptions()
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromHours(1),
+            QueueLimit = 0,
+        }));
+
     options.AddPolicy("SsoToken", context => RateLimitPartition.GetFixedWindowLimiter(
         ClientKey(context),
         _ => new FixedWindowRateLimiterOptions()

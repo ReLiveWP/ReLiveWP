@@ -12,6 +12,7 @@
     <Project Path="ReLiveWP.Integration/ReLiveWP.Integration.csproj" />
     <Project Path="ReLiveWP.Mail/ReLiveWP.Mail.csproj" />
     <Project Path="ReLiveWP.Passport/ReLiveWP.Passport.csproj" />
+    <Project Path="ReLiveWP.ProductKeys/ReLiveWP.ProductKeys.csproj" />
     <Project Path="ReLiveWP.ServiceDefaults/ReLiveWP.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/! Solution Items/">
@@ -25,6 +26,7 @@
   </Folder>
   <Folder Name="/Activation/">
     <Project Path="ReLiveWP.Backend.DeviceRegistration/ReLiveWP.Backend.DeviceRegistration.csproj" />
+    <Project Path="ReLiveWP.ProductKeys.Cli/ReLiveWP.ProductKeys.Cli.csproj" />
     <Project Path="ReLiveWP.Services.Activation/ReLiveWP.Services.Activation.csproj" />
   </Folder>
   <Folder Name="/Auth/">
@@ -59,6 +61,7 @@
     <Project Path="tests/ReLiveWP.Dav.Tests/ReLiveWP.Dav.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Identity.Tests/ReLiveWP.Identity.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Mail.Tests/ReLiveWP.Mail.Tests.csproj" />
+    <Project Path="tests/ReLiveWP.ProductKeys.Tests/ReLiveWP.ProductKeys.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Activation.Tests/ReLiveWP.Services.Activation.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Activity.Tests/ReLiveWP.Services.Activity.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Docs.Tests/ReLiveWP.Services.Docs.Tests.csproj" />

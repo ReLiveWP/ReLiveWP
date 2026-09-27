@@ -47,17 +47,31 @@ public class UserRegistrationServiceTests : IDisposable
             Options.Create(options),
             new PasswordHasher<LiveUser>(),
             [new UserValidator<LiveUser>()],
-            [new PasswordValidator<LiveUser>()],
+            [new PasswordValidator<LiveUser>(), new UserPasswordValidator()],
             new UpperInvariantLookupNormalizer(),
             new IdentityErrorDescriber(),
             null!,
             NullLogger<UserManager<LiveUser>>.Instance);
     }
 
-    private UserRegistrationService CreateService() => new(CreateUserManager(), _db);
+    private UserRegistrationService CreateService(IInviteCodeValidator? inviteCodeValidator = null)
+        => new(CreateUserManager(), _db, inviteCodeValidator ?? new PermissiveInviteCodeValidator());
 
-    private static UserRegistration Signup(string name, string? activationCodeHash = null)
-        => new(name, name, "hunter22", "backup@example.com", activationCodeHash);
+    private UserRegistrationService CreateInviteOnlyService()
+        => CreateService(new FakeInviteCodeValidator());
+
+    private static UserRegistration Signup(string name, string? activationCodeHash = null, string? inviteCode = null)
+        => new(name, name, "hunter22", "backup@example.com", activationCodeHash, inviteCode);
+
+    private sealed class FakeInviteCodeValidator : IInviteCodeValidator
+    {
+        public InviteCodeCheck CheckInviteCode(string inviteCode) => inviteCode switch
+        {
+            "INVITE-7" => new(true, 7),
+            "INVITE-8" => new(true, 8),
+            _ => new(false, null),
+        };
+    }
 
     [Fact]
     public async Task Unused_name_is_available()
@@ -75,7 +89,7 @@ public class UserRegistrationServiceTests : IDisposable
 
         var code = await service.CheckUserNameAvailabilityAsync("taken@relivewp.net");
 
-        Assert.Equal(UserRegistrationService.ERROR_ALREADY_EXISTS, code);
+        Assert.Equal(UserRegistrationService.MEMBER_EXISTS, code);
     }
 
     [Fact]
@@ -86,7 +100,7 @@ public class UserRegistrationServiceTests : IDisposable
 
         var code = await service.CheckUserNameAvailabilityAsync("someone@relivewp.net");
 
-        Assert.Equal(UserRegistrationService.ERROR_ALREADY_EXISTS, code);
+        Assert.Equal(UserRegistrationService.MEMBER_EXISTS, code);
     }
 
     [Theory]
@@ -97,7 +111,7 @@ public class UserRegistrationServiceTests : IDisposable
     {
         var code = await CreateService().CheckUserNameAvailabilityAsync(name);
 
-        Assert.Equal(UserRegistrationService.ERROR_INVALID_ACCOUNT_NAME, code);
+        Assert.Equal(UserRegistrationService.MEMBER_INVALID, code);
     }
 
     [Fact]
@@ -121,7 +135,7 @@ public class UserRegistrationServiceTests : IDisposable
 
         var result = await service.RegisterUserAsync(Signup("dupe@relivewp.net"));
 
-        Assert.Equal(UserRegistrationService.ERROR_ALREADY_EXISTS, result.Code);
+        Assert.Equal(UserRegistrationService.MEMBER_EXISTS, result.Code);
         Assert.Null(result.User);
     }
 
@@ -133,7 +147,7 @@ public class UserRegistrationServiceTests : IDisposable
 
         var result = await service.RegisterUserAsync(Signup("second@relivewp.net", "hash-b"));
 
-        Assert.Equal(UserRegistrationService.ERROR_QUOTA_EXCEEDED, result.Code);
+        Assert.Equal(UserRegistrationService.ACCOUNTDENIED, result.Code);
         Assert.False(await _db.Users.AnyAsync(u => u.UserName == "second@relivewp.net"));
     }
 
@@ -153,7 +167,7 @@ public class UserRegistrationServiceTests : IDisposable
     {
         var result = await CreateService().RegisterUserAsync(Signup("bad name@relivewp.net"));
 
-        Assert.Equal(UserRegistrationService.ERROR_INVALID_ACCOUNT_NAME, result.Code);
+        Assert.Equal(UserRegistrationService.MEMBER_INVALID, result.Code);
     }
 
     [Fact]
@@ -165,7 +179,86 @@ public class UserRegistrationServiceTests : IDisposable
         await Assert.ThrowsAsync<DbUpdateException>(() => _db.SaveChangesAsync());
     }
 
-    private static LiveUser RawUser(string name, string activationCodeHash)
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("NOT-AN-INVITE")]
+    public async Task Register_rejects_a_bad_invite(string? inviteCode)
+    {
+        var result = await CreateInviteOnlyService().RegisterUserAsync(Signup("uninvited@relivewp.net", inviteCode: inviteCode));
+
+        Assert.Equal(UserRegistrationService.GWP_E_ACTIVATION_CODE_INVALID, result.Code);
+        Assert.False(await _db.Users.AnyAsync(u => u.UserName == "uninvited@relivewp.net"));
+    }
+
+    [Fact]
+    public async Task Register_stores_the_invite_serial()
+    {
+        var result = await CreateInviteOnlyService().RegisterUserAsync(Signup("invited@relivewp.net", inviteCode: "INVITE-7"));
+
+        Assert.Equal(UserRegistrationService.S_OK, result.Code);
+        var stored = await _db.Users.SingleAsync(u => u.UserName == "invited@relivewp.net");
+        Assert.Equal(7, stored.InviteSerial);
+    }
+
+    [Fact]
+    public async Task Register_rejects_a_second_account_for_the_same_invite()
+    {
+        var service = CreateInviteOnlyService();
+        await service.RegisterUserAsync(Signup("first-invited@relivewp.net", inviteCode: "INVITE-8"));
+
+        var result = await service.RegisterUserAsync(Signup("second-invited@relivewp.net", inviteCode: "INVITE-8"));
+
+        Assert.Equal(UserRegistrationService.GWP_E_ACTIVATION_CODE_IN_USE, result.Code);
+        Assert.False(await _db.Users.AnyAsync(u => u.UserName == "second-invited@relivewp.net"));
+    }
+
+    [Fact]
+    public async Task Different_invites_do_not_collide()
+    {
+        var service = CreateInviteOnlyService();
+        await service.RegisterUserAsync(Signup("seven@relivewp.net", inviteCode: "INVITE-7"));
+
+        var result = await service.RegisterUserAsync(Signup("eight@relivewp.net", inviteCode: "INVITE-8"));
+
+        Assert.Equal(UserRegistrationService.S_OK, result.Code);
+    }
+
+    [Fact]
+    public async Task Register_reports_a_short_password_as_a_live_code()
+    {
+        var registration = new UserRegistration("short@relivewp.net", "short@relivewp.net", "short");
+
+        var result = await CreateService().RegisterUserAsync(registration);
+
+        Assert.Equal(UserRegistrationService.PASSWORD_TOOSHORT, result.Code);
+    }
+
+    [Fact]
+    public async Task Register_reports_an_untypeable_password_as_a_live_code()
+    {
+        var snowman = (char)0x2603;
+        var registration = new UserRegistration("snow@relivewp.net", "snow@relivewp.net", "hunter22" + snowman);
+
+        var result = await CreateService().RegisterUserAsync(registration);
+
+        Assert.Equal(UserRegistrationService.PASSWORD_INVALIDCHARS, result.Code);
+    }
+
+    [Fact]
+    public async Task Database_refuses_two_users_with_the_same_invite_serial()
+    {
+        var first = RawUser("serial-a@relivewp.net");
+        var second = RawUser("serial-b@relivewp.net");
+        first.InviteSerial = 42;
+        second.InviteSerial = 42;
+        _db.Users.Add(first);
+        _db.Users.Add(second);
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => _db.SaveChangesAsync());
+    }
+
+    private static LiveUser RawUser(string name, string? activationCodeHash = null)
     {
         var (userId, cid, puid) = UserUtils.GenerateUserIds(LiveUserType.User);
         return new LiveUser()

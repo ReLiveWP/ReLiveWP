@@ -31,6 +31,7 @@ message RegisterRequest {
   string          password           = 3;
   optional string alternateEmail     = 4;
   optional string activationCodeHash = 5;
+  optional string inviteCode         = 6;
 }
 
 message RegisterResponse {

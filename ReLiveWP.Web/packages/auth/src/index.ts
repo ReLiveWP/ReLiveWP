@@ -30,10 +30,12 @@ export type SsoCallbackResult =
     | { kind: "error", error: string, description?: string | undefined }
     | { kind: "signed-in", tokens: SecurityToken[], response: SecurityTokensResponse, persistent: boolean };
 
+export type SsoPrompt = "none" | "create";
+
 const STATE_KEY = "relivewp.sso.state";
 const VERIFIER_KEY = "relivewp.sso.verifier";
 
-function authorizeUrl(config: SsoConfig, state: string, challenge: string, method: string, prompt?: "none"): string {
+function authorizeUrl(config: SsoConfig, state: string, challenge: string, method: string, prompt?: SsoPrompt): string {
     const params = new URLSearchParams({
         client_id: config.clientId,
         redirect_uri: config.redirectUri,
@@ -48,7 +50,7 @@ function authorizeUrl(config: SsoConfig, state: string, challenge: string, metho
     return `${config.authority}/sso/authorize?${params}`;
 }
 
-export async function beginSignIn(config: SsoConfig, prompt?: "none"): Promise<void> {
+export async function beginSignIn(config: SsoConfig, prompt?: SsoPrompt): Promise<void> {
     const state = createState();
     const verifier = createVerifier();
     const { challenge, method } = await challengeFor(verifier);

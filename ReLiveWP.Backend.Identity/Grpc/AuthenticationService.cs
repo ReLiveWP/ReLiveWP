@@ -42,7 +42,8 @@ public class AuthenticationService(
             request.EmailAddress,
             request.Password,
             request.HasAlternateEmail ? request.AlternateEmail : null,
-            request.HasActivationCodeHash ? request.ActivationCodeHash : null);
+            request.HasActivationCodeHash ? request.ActivationCodeHash : null,
+            request.HasInviteCode ? request.InviteCode : null);
 
         var result = await registrationService.RegisterUserAsync(registration);
         if (result.User is not { } user)

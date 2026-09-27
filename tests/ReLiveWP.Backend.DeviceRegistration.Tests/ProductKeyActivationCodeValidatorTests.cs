@@ -1,4 +1,3 @@
-#if PRODUCT_KEYS
 using Microsoft.Extensions.Configuration;
 using Org.BouncyCastle.Security;
 using ReLiveWP.Backend.DeviceRegistration.Services;
@@ -67,4 +66,3 @@ public class ProductKeyActivationCodeValidatorTests
         Assert.Throws<InvalidOperationException>(() => new ProductKeyActivationCodeValidator(configuration));
     }
 }
-#endif

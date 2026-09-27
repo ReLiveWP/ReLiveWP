@@ -11,8 +11,11 @@
         }
     };
 
-    var username = document.getElementById('username');
-    var password = document.getElementById('password');
-    var focusTarget = username && !username.value ? username : password;
-    if (focusTarget) focusTarget.focus();
+    var fields = form.querySelectorAll('input.textbox');
+    for (var i = 0; i < fields.length; i++) {
+        if (!fields[i].value) {
+            fields[i].focus();
+            break;
+        }
+    }
 })();

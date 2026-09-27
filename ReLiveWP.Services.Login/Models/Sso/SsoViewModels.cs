@@ -22,6 +22,33 @@ public class SignInViewModel
     public string? Error { get; set; }
 }
 
+public class SignUpViewModel
+{
+    [Required]
+    public string PendingId { get; set; } = default!;
+
+    [Required]
+    public string InviteCode { get; set; } = "";
+
+    [Required]
+    public string EmailAddress { get; set; } = "";
+
+    [Required]
+    public string Username { get; set; } = "";
+
+    [Required]
+    [DataType(DataType.Password)]
+    public string Password { get; set; } = "";
+
+    [Compare(nameof(Password))]
+    [DataType(DataType.Password)]
+    public string ConfirmPassword { get; set; } = "";
+
+    public bool RememberMe { get; set; }
+
+    public string? Error { get; set; }
+}
+
 public record SsoErrorViewModel(string Title, string Detail);
 
 public record TokenRequestModel(

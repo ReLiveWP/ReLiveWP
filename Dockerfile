@@ -5,13 +5,10 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 RUN chmod +x /entrypoint.sh
 WORKDIR /app
 
-# One build of the whole solution, shared by every service image. Nothing in this
-# stage may depend on PROJECT, or buildkit stops deduplicating it.
 FROM mcr.microsoft.com/dotnet/sdk:11.0-preview-alpine AS build
 ARG CONFIGURATION=Release
 ARG BUILD_JOBS
 
-# nodejs/npm come from alpine's own repos, so they are musl-native and need no compat shim
 RUN apk add --no-cache protobuf protobuf-dev grpc grpc-plugins icu-libs nodejs npm \
     && npm install -g pnpm@10.13.1
 
@@ -30,7 +27,6 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish ReLiveWP.slnx -c "$CONFIGURATION" ${BUILD_JOBS:+-m:$BUILD_JOBS} \
         -p:ArtifactsPivots=out -p:UseAppHost=false -p:DebugType=portable -p:DebugSymbols=true
 
-# --- final image ---
 FROM base AS final
 ARG PROJECT
 ENV SERVICE_DLL=$PROJECT.dll

@@ -274,6 +274,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("InviteSerial")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
@@ -319,6 +322,9 @@ namespace ReLiveWP.Backend.Identity.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Cid")
+                        .IsUnique();
+
+                    b.HasIndex("InviteSerial")
                         .IsUnique();
 
                     b.HasIndex("NormalizedEmail")

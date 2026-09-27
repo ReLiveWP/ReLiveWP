@@ -1,17 +1,17 @@
 using ReLiveWP.ProductKeys;
 
-namespace ReLiveWP.Backend.DeviceRegistration.Services;
+namespace ReLiveWP.Backend.Identity.Services;
 
-public class ProductKeyActivationCodeValidator(IConfiguration configuration) : IActivationCodeValidator
+public class ProductKeyInviteCodeValidator(IConfiguration configuration) : IInviteCodeValidator
 {
-    private readonly ProductKeyVerifier _verifier = new(LoadCurve(configuration.GetRequiredSection("ProductKeys")));
+    private readonly ProductKeyVerifier _verifier = new(LoadCurve(configuration.GetRequiredSection("InviteKeys")));
 
-    public ActivationCodeCheck CheckActivationCode(string activationCode)
+    public InviteCodeCheck CheckInviteCode(string inviteCode)
     {
-        if (!_verifier.TryVerifyProductKey(activationCode, out var fields))
-            return new ActivationCodeCheck(false, null);
+        if (!_verifier.TryVerifyProductKey(inviteCode, out var fields))
+            return new InviteCodeCheck(false, null);
 
-        return new ActivationCodeCheck(true, fields.Serial);
+        return new InviteCodeCheck(true, fields.Serial);
     }
 
     private static ProductKeyCurve LoadCurve(IConfigurationSection section)

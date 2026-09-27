@@ -31,19 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ReLiveWP.ProductKeys\ReLiveWP.ProductKeys.csproj" />
     <ProjectReference Include="..\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
-  </ItemGroup>
-
-  <PropertyGroup>
-    <ProductKeysProject>$(MSBuildThisFileDirectory)..\private\ReLiveWP.ProductKeys\ReLiveWP.ProductKeys.csproj</ProductKeysProject>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="Exists('$(ProductKeysProject)')">
-    <DefineConstants>$(DefineConstants);PRODUCT_KEYS</DefineConstants>
-  </PropertyGroup>
-
-  <ItemGroup Condition="Exists('$(ProductKeysProject)')">
-    <ProjectReference Include="$(ProductKeysProject)" />
   </ItemGroup>
 
 </Project>

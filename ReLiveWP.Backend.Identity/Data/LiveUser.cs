@@ -14,6 +14,7 @@ public enum LiveUserType
 [Index(nameof(Puid), IsUnique = true)]
 [Index(nameof(Type))]
 [Index(nameof(SignupActivationCodeHash), IsUnique = true)]
+[Index(nameof(InviteSerial), IsUnique = true)]
 public class LiveUser : IdentityUser<Guid>
 {
     public string Cid { get; set; } = default!;
@@ -22,6 +23,7 @@ public class LiveUser : IdentityUser<Guid>
     public string? DeviceId { get; set; }
     public string? AlternateEmail { get; set; }
     public string? SignupActivationCodeHash { get; set; }
+    public int? InviteSerial { get; set; }
     public ICollection<LiveUserCertificate> Certificates { get; set; } = [];
     public LiveUserProfile? Profile { get; set; } = default!;
 }

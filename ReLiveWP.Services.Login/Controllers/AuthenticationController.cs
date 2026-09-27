@@ -67,20 +67,6 @@ public class AuthenticationController(
         return new ConnectionModels(connectionModels);
     }
 
-    [ActionName("register")]
-    [EnableRateLimiting("AuthTokens")]
-    public async Task<IActionResult> CreateAccountAsync([FromBody] CreateAccountModel request)
-    {
-        await authenticationClient.RegisterAsync(new RegisterRequest()
-        {
-            Username = request.Username,
-            Password = request.Password,
-            EmailAddress = request.EmailAddress
-        });
-
-        return Created();
-    }
-
     [ActionName("request_tokens")]
     [HttpPost(Name = "request_tokens")]
     [EnableRateLimiting("AuthTokens")]

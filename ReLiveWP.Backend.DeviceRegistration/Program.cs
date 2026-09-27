@@ -30,14 +30,14 @@ app.Run();
 
 static void AddActivationCodeValidator(WebApplicationBuilder builder)
 {
-#if PRODUCT_KEYS
-    builder.Services.AddSingleton<IActivationCodeValidator, ProductKeyActivationCodeValidator>();
-#else
-    if (builder.Configuration.GetValue<bool>("ProductKeys:Required"))
-        throw new InvalidOperationException("ProductKeys:Required is set but this build has no product key validator, check private/ was present at build time.");
+    if (!builder.Configuration.GetValue<bool>("ProductKeys:Required"))
+    {
+        builder.Services.AddSingleton<IActivationCodeValidator, PermissiveActivationCodeValidator>();
+        return;
+    }
 
-    builder.Services.AddSingleton<IActivationCodeValidator, PermissiveActivationCodeValidator>();
-#endif
+    var activationCodeValidator = new ProductKeyActivationCodeValidator(builder.Configuration);
+    builder.Services.AddSingleton<IActivationCodeValidator>(activationCodeValidator);
 }
 
 static void ApplyMigrations(WebApplication app)

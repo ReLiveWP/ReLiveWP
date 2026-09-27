@@ -19,3 +19,7 @@ export function ssoConfig(): SsoConfig {
 export function startSignIn(): Promise<void> {
     return beginSignIn(ssoConfig());
 }
+
+export function startSignUp(): Promise<void> {
+    return beginSignIn(ssoConfig(), "create");
+}

@@ -29,10 +29,12 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
     options.Password.RequiredLength = 1;
 })
 .AddEntityFrameworkStores<LiveDbContext>()
-.AddDefaultTokenProviders();
+.AddDefaultTokenProviders()
+.AddPasswordValidator<UserPasswordValidator>();
 
 builder.Services.AddScoped<TokenManager>();
 builder.Services.AddScoped<UserRegistrationService>();
+AddInviteCodeValidator(builder);
 builder.Services.AddScoped<SsoSessionManager>();
 builder.Services.AddSingleton<ISsoAuthorizationCodeStore, RedisSsoAuthorizationCodeStore>();
 builder.Services.AddScoped<LiveIdDeviceCertificateService>();
@@ -64,3 +66,15 @@ app.MapGrpcService<SsoService>();
 app.MapDefaultEndpoints();
 
 app.Run();
+
+static void AddInviteCodeValidator(WebApplicationBuilder builder)
+{
+    if (!builder.Configuration.GetValue<bool>("InviteKeys:Required"))
+    {
+        builder.Services.AddSingleton<IInviteCodeValidator, PermissiveInviteCodeValidator>();
+        return;
+    }
+
+    var inviteCodeValidator = new ProductKeyInviteCodeValidator(builder.Configuration);
+    builder.Services.AddSingleton<IInviteCodeValidator>(inviteCodeValidator);
+}
