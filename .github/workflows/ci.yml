@@ -1,0 +1,109 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 11.0.x
+          dotnet-quality: preview
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: src/web/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: src/web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: src/web
+
+      - run: dotnet test ReLiveWP.slnx
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: src/web/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: src/web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "./packages/**" run build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  images:
+    needs: [dotnet, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RELIVE_REGISTRY: ghcr.io/relivewp
+      PUSH: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    steps:
+      # .dockerignore lets .git/config into the build context, keep the token out of it
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        if: env.PUSH == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: echo "RELIVE_TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - uses: docker/bake-action@v7
+        with:
+          source: .
+          files: |
+            docker-compose.yml
+            docker-compose.override.yml
+          set: |
+            *.platform=linux/amd64,linux/arm64
+            *.labels.org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            *.labels.org.opencontainers.image.revision=${{ github.sha }}
+          push: ${{ env.PUSH == 'true' }}

@@ -74,7 +74,7 @@ services:
         condition: service_healthy
 
   identity:
-    image: relive/identity
+    image: ${RELIVE_REGISTRY:-relive}/identity:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -108,7 +108,7 @@ services:
         target: ConnectionStrings__DefaultConnection
 
   connectedservices:
-    image: relive/connectedservices
+    image: ${RELIVE_REGISTRY:-relive}/connectedservices:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -134,7 +134,7 @@ services:
         target: ConnectedServices__Secrets__ConnectionKey
 
   deviceregistration:
-    image: relive/deviceregistration
+    image: ${RELIVE_REGISTRY:-relive}/deviceregistration:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -158,7 +158,7 @@ services:
         target: ConnectionStrings__DefaultConnection
 
   skybox:
-    image: relive/skybox
+    image: ${RELIVE_REGISTRY:-relive}/skybox:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -182,7 +182,7 @@ services:
         target: ConnectionStrings__DefaultConnection
 
   clearinghouse:
-    image: relive/clearinghouse
+    image: ${RELIVE_REGISTRY:-relive}/clearinghouse:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -210,7 +210,7 @@ services:
         target: ConnectionStrings__DefaultConnection
 
   skydrive:
-    image: relive/skydrive
+    image: ${RELIVE_REGISTRY:-relive}/skydrive:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -236,7 +236,7 @@ services:
         target: ConnectionStrings__DefaultConnection
 
   mailbox:
-    image: relive/mailbox
+    image: ${RELIVE_REGISTRY:-relive}/mailbox:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -260,7 +260,7 @@ services:
         target: ConnectionStrings__DefaultConnection
 
   mail:
-    image: relive/mail
+    image: ${RELIVE_REGISTRY:-relive}/mail:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -281,7 +281,7 @@ services:
       - ./deploy/ReLiveWP.Backend.Mail.ini:/app/ReLiveWP.Backend.Mail.ini:ro
 
   deviceupdate:
-    image: relive/deviceupdate
+    image: ${RELIVE_REGISTRY:-relive}/deviceupdate:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -304,7 +304,7 @@ services:
         target: ConnectionStrings__DefaultConnection
 
   activation:
-    image: relive/activation
+    image: ${RELIVE_REGISTRY:-relive}/activation:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -321,7 +321,7 @@ services:
       - ./deploy/ReLiveWP.Services.Activation.ini:/app/ReLiveWP.Services.Activation.ini:ro
 
   login:
-    image: relive/login
+    image: ${RELIVE_REGISTRY:-relive}/login:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -350,7 +350,7 @@ services:
         target: Signup__Keys__0__PrivateKey
 
   web:
-    image: relive/web
+    image: ${RELIVE_REGISTRY:-relive}/web:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -363,7 +363,7 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
 
   webmail:
-    image: relive/webmail
+    image: ${RELIVE_REGISTRY:-relive}/webmail:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -376,7 +376,7 @@ services:
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
 
   push:
-    image: relive/push
+    image: ${RELIVE_REGISTRY:-relive}/push:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -409,7 +409,7 @@ services:
         target: ConnectionStrings__Push
 
   activity:
-    image: relive/activity
+    image: ${RELIVE_REGISTRY:-relive}/activity:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -441,7 +441,7 @@ services:
         target: Media__ProxyKeys__v1
 
   docs:
-    image: relive/docs
+    image: ${RELIVE_REGISTRY:-relive}/docs:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -465,7 +465,7 @@ services:
         target: JWT__PublicKey
 
   exchange:
-    image: relive/exchange
+    image: ${RELIVE_REGISTRY:-relive}/exchange:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -489,7 +489,7 @@ services:
         target: JWT__PublicKey
 
   addressbook:
-    image: relive/addressbook
+    image: ${RELIVE_REGISTRY:-relive}/addressbook:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -509,7 +509,7 @@ services:
         target: JWT__PublicKey
 
   profile:
-    image: relive/profile
+    image: ${RELIVE_REGISTRY:-relive}/profile:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -526,7 +526,7 @@ services:
       - ./deploy/ReLiveWP.Services.Profile.ini:/app/ReLiveWP.Services.Profile.ini:ro
 
   hub:
-    image: relive/hub
+    image: ${RELIVE_REGISTRY:-relive}/hub:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -548,7 +548,7 @@ services:
         target: JWT__PublicKey
 
   devices:
-    image: relive/devices
+    image: ${RELIVE_REGISTRY:-relive}/devices:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -570,7 +570,7 @@ services:
         target: JWT__PublicKey
 
   findmyphone:
-    image: relive/findmyphone
+    image: ${RELIVE_REGISTRY:-relive}/findmyphone:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -592,7 +592,7 @@ services:
         target: JWT__PublicKey
 
   appserver:
-    image: relive/appserver
+    image: ${RELIVE_REGISTRY:-relive}/appserver:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -606,7 +606,7 @@ services:
       - ./deploy/ReLiveWP.Services.AppServer.ini:/app/ReLiveWP.Services.AppServer.ini:ro
 
   orion:
-    image: relive/orion
+    image: ${RELIVE_REGISTRY:-relive}/orion:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -623,7 +623,7 @@ services:
         target: Orion__InferenceApiKey
 
   messenger:
-    image: relive/messenger
+    image: ${RELIVE_REGISTRY:-relive}/messenger:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -640,7 +640,7 @@ services:
       - ./deploy/ReLiveWP.Services.Messenger.ini:/app/ReLiveWP.Services.Messenger.ini:ro
 
   support:
-    image: relive/support
+    image: ${RELIVE_REGISTRY:-relive}/support:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck
@@ -654,7 +654,7 @@ services:
       - ./deploy/ReLiveWP.Services.Support.ini:/app/ReLiveWP.Services.Support.ini:ro
 
   mediaproxy:
-    image: relive/mediaproxy
+    image: ${RELIVE_REGISTRY:-relive}/mediaproxy:${RELIVE_TAG:-latest}
     restart: unless-stopped
     healthcheck:
       <<: *healthcheck

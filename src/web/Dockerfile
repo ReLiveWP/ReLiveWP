@@ -1,5 +1,5 @@
 # Build context: repo root
-FROM node:20-alpine AS build
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"

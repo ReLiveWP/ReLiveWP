@@ -5,7 +5,7 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 RUN chmod +x /entrypoint.sh
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:11.0-preview-alpine AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0-preview-alpine AS build
 ARG CONFIGURATION=Release
 ARG BUILD_JOBS
 
