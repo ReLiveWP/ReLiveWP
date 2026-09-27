@@ -51,11 +51,9 @@ public static class EasTimeZone
     private static TimeZoneInfo.AdjustmentRule? RuleFor(TimeZoneInfo zone, DateTime forInstantUtc)
     {
         var rules = zone.GetAdjustmentRules();
-        if (rules.Length == 0) return null;
-
         var local = TimeZoneInfo.ConvertTimeFromUtc(forInstantUtc, zone).Date;
 
-        return rules.FirstOrDefault(r => r.DateStart <= local && local <= r.DateEnd) ?? rules[^1];
+        return rules.FirstOrDefault(r => r.DateStart <= local && local <= r.DateEnd && r.DaylightDelta != TimeSpan.Zero);
     }
 
     private static void WriteTransition(byte[] buffer, int offset, TimeZoneInfo.TransitionTime transition)

@@ -39,6 +39,15 @@ public class EasTimeZoneTests
     private static Blob Build(string id, DateTime? at = null) =>
         Read(EasTimeZone.Build(TimeZoneInfo.FindSystemTimeZoneById(id), at ?? Winter));
 
+    private static TimeZoneInfo ZoneWithOneRule(DateTime ruleStart, DateTime ruleEnd, TimeSpan daylightDelta)
+    {
+        var springForward = TimeZoneInfo.TransitionTime.CreateFloatingDateRule(new DateTime(1, 1, 1, 2, 0, 0), 3, 5, DayOfWeek.Sunday);
+        var fallBack = TimeZoneInfo.TransitionTime.CreateFloatingDateRule(new DateTime(1, 1, 1, 3, 0, 0), 10, 5, DayOfWeek.Sunday);
+        var rule = TimeZoneInfo.AdjustmentRule.CreateAdjustmentRule(ruleStart, ruleEnd, daylightDelta, springForward, fallBack);
+
+        return TimeZoneInfo.CreateCustomTimeZone("Test/OneRule", TimeSpan.FromHours(3), "Test", "Test Standard", "Test Daylight", [rule]);
+    }
+
     [Fact]
     public void The_blob_is_172_bytes()
     {
@@ -112,6 +121,41 @@ public class EasTimeZoneTests
         Assert.Equal(0, blob.DaylightDate.Month);
         Assert.Equal(0, blob.StandardDate.Month);
         Assert.Equal(0, blob.DaylightBias);
+    }
+
+    [Fact]
+    public void Dst_the_zone_has_since_dropped_does_not_come_back()
+    {
+        var zone = ZoneWithOneRule(new DateTime(2000, 1, 1), new DateTime(2015, 12, 31), TimeSpan.FromHours(1));
+
+        var blob = Read(EasTimeZone.Build(zone, Winter));
+
+        Assert.Equal(0, blob.DaylightDate.Month);
+        Assert.Equal(0, blob.StandardDate.Month);
+        Assert.Equal(0, blob.DaylightBias);
+    }
+
+    [Fact]
+    public void Dst_still_applies_inside_the_years_its_rule_covers()
+    {
+        var zone = ZoneWithOneRule(new DateTime(2000, 1, 1), new DateTime(2015, 12, 31), TimeSpan.FromHours(1));
+
+        var blob = Read(EasTimeZone.Build(zone, new DateTime(2010, 1, 15, 12, 0, 0, DateTimeKind.Utc)));
+
+        Assert.Equal(3, blob.DaylightDate.Month);
+        Assert.Equal(10, blob.StandardDate.Month);
+        Assert.Equal(-60, blob.DaylightBias);
+    }
+
+    [Fact]
+    public void A_rule_that_adds_no_daylight_time_is_not_dst()
+    {
+        var zone = ZoneWithOneRule(new DateTime(2000, 1, 1), DateTime.MaxValue.Date, TimeSpan.Zero);
+
+        var blob = Read(EasTimeZone.Build(zone, Winter));
+
+        Assert.Equal(0, blob.DaylightDate.Month);
+        Assert.Equal(0, blob.StandardDate.Month);
     }
 
     // every numeric field is zero for UTC; the name fields still carry a name
