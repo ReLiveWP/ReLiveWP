@@ -149,7 +149,7 @@ public class FilesController(FileViewerService viewer,
         if (socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
         {
             var subjectCid = await viewer.SubjectCidAsync(id, User, Aborted);
-            if (!await social.IsServableAsync(provider, externalId, subjectCid, UserId, Aborted))
+            if (!await social.CanServeAsync(provider, externalId, subjectCid, UserId, Aborted))
                 return NotFound();
 
             title = provider.FileNameFor(mediaId);
@@ -200,7 +200,7 @@ public class FilesController(FileViewerService viewer,
         string id, string folderId, SocialAlbumProviderBase provider, string externalId)
     {
         var subjectCid = await viewer.SubjectCidAsync(id, User, Aborted);
-        if (!await social.IsServableAsync(provider, externalId, subjectCid, UserId, Aborted))
+        if (!await social.CanServeAsync(provider, externalId, subjectCid, UserId, Aborted))
             return NotFound();
 
         var folder = await social.FolderAsync(provider, externalId, UserId, Aborted);

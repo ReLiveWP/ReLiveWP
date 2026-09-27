@@ -41,9 +41,9 @@ public class AlbumRenderServiceTests
     }
 
     [Fact]
-    public void SocialAlbumPhotosPointAtTheMediaProxy()
+    public async Task SocialAlbumPhotosPointAtTheMediaProxy()
     {
-        var response = CreateRenderer(TestMediaProxy.CreateSigner()).RenderSocialLibrary($"atproto+{Did}", CreateFolder());
+        var response = await CreateRenderer(TestMediaProxy.CreateSigner()).RenderSocialLibraryAsync($"atproto+{Did}", CreateFolder());
 
         var photo = Assert.Single(response.Photos);
         Assert.StartsWith($"{TestMediaProxy.Root}/v1/thumb/", photo.ThumbnailUrl);
@@ -53,18 +53,18 @@ public class AlbumRenderServiceTests
     }
 
     [Fact]
-    public void ASocialCoverPointsAtTheMediaProxy()
+    public async Task ASocialCoverPointsAtTheMediaProxy()
     {
-        var summary = CreateRenderer(TestMediaProxy.CreateSigner()).RenderSocialSummary(new SocialAlbum($"atproto+{Did}", "photos"), PhotoRef);
+        var summary = await CreateRenderer(TestMediaProxy.CreateSigner()).RenderSocialSummaryAsync(new SocialAlbum($"atproto+{Did}", "photos"), PhotoRef);
 
         Assert.NotNull(summary.CoverUrl);
         Assert.StartsWith($"{TestMediaProxy.Root}/v1/thumb/", summary.CoverUrl);
     }
 
     [Fact]
-    public void WithoutAProxyKeyTheWebGetsTheCdnDirectly()
+    public async Task WithoutAProxyKeyTheWebGetsTheCdnDirectly()
     {
-        var response = CreateRenderer(TestMediaProxy.Unconfigured).RenderSocialLibrary($"atproto+{Did}", CreateFolder());
+        var response = await CreateRenderer(TestMediaProxy.Unconfigured).RenderSocialLibraryAsync($"atproto+{Did}", CreateFolder());
 
         var photo = Assert.Single(response.Photos);
         Assert.Equal($"https://cdn.bsky.app/img/feed_thumbnail/plain/{Did}/{BlobCid}@jpeg", photo.ThumbnailUrl);
@@ -72,9 +72,9 @@ public class AlbumRenderServiceTests
     }
 
     [Fact]
-    public void AnUnresolvableCoverIsLeftOut()
+    public async Task AnUnresolvableCoverIsLeftOut()
     {
-        var summary = CreateRenderer(TestMediaProxy.CreateSigner()).RenderSocialSummary(new SocialAlbum($"atproto+{Did}", "photos"), "nostr+x+y");
+        var summary = await CreateRenderer(TestMediaProxy.CreateSigner()).RenderSocialSummaryAsync(new SocialAlbum($"atproto+{Did}", "photos"), "nostr+x+y");
 
         Assert.Null(summary.CoverUrl);
     }

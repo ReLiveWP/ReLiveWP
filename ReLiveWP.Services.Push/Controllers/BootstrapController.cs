@@ -13,6 +13,7 @@ public class BootstrapController(IConfiguration configuration, IHttpClientFactor
         var port = int.Parse(configuration["Push:Port"]);
         if (ip == null)
         {
+            // TODO(wam): abomination
             using var client = httpClientFactory.CreateClient();
             ip = await client.GetStringAsync("https://api.ipify.org/");
         }

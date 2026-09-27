@@ -11,11 +11,12 @@ x-healthcheck:
   interval: 120s
   timeout: 3s
   retries: 3
-  start_period: 30s   # covers EF Database.Migrate() at boot without counting failures
+  start_period: 30s  
 
 services:
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: relive
       POSTGRES_DB: relive
@@ -35,6 +36,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     networks:
       - relive
     volumes:
@@ -48,15 +50,32 @@ services:
 
   nginx:
     image: nginx:alpine
+    restart: unless-stopped
     networks:
       - relive
     ports:
       - "8086:80"
     volumes:
       - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      login:
+        condition: service_healthy
+      devices:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+      activity:
+        condition: service_healthy
+      findmyphone:
+        condition: service_healthy
+      push:
+        condition: service_healthy
+      support:
+        condition: service_healthy
 
   identity:
     image: relive/identity
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -90,6 +109,7 @@ services:
 
   connectedservices:
     image: relive/connectedservices
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -115,6 +135,7 @@ services:
 
   deviceregistration:
     image: relive/deviceregistration
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -138,6 +159,7 @@ services:
 
   skybox:
     image: relive/skybox
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -161,6 +183,7 @@ services:
 
   clearinghouse:
     image: relive/clearinghouse
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -188,6 +211,7 @@ services:
 
   skydrive:
     image: relive/skydrive
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -213,6 +237,7 @@ services:
 
   mailbox:
     image: relive/mailbox
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -236,6 +261,7 @@ services:
 
   mail:
     image: relive/mail
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5001/health"]
@@ -256,6 +282,7 @@ services:
 
   deviceupdate:
     image: relive/deviceupdate
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10004/health"]
@@ -265,8 +292,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - 10004:10004
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -280,6 +305,7 @@ services:
 
   activation:
     image: relive/activation
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10000/health"]
@@ -289,8 +315,6 @@ services:
     depends_on:
       deviceregistration:
         condition: service_healthy
-    ports:
-      - 10000:10000
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -298,6 +322,7 @@ services:
 
   login:
     image: relive/login
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10002/health"]
@@ -313,8 +338,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - 10002:10002
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -328,34 +351,33 @@ services:
 
   web:
     image: relive/web
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
     environment: *v-env
     networks:
       - relive
-    # ports:
-    #   - 10004:8080
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
-      
+
   webmail:
     image: relive/webmail
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
     environment: *v-env
     networks:
       - relive
-    ports:
-      - 10018:8080
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
 
   push:
     image: relive/push
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10005/health"]
@@ -373,8 +395,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - 10005:10005
-      - 0.0.0.0:33573:33573
+      - 0.0.0.0:33573:33573   # raw nsp socket, must be accessible
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -389,6 +410,7 @@ services:
 
   activity:
     image: relive/activity
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10007/health"]
@@ -402,8 +424,6 @@ services:
         condition: service_healthy
       skydrive:
         condition: service_healthy
-    ports:
-      - 10007:10007
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -422,6 +442,7 @@ services:
 
   docs:
     image: relive/docs
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10016/health"]
@@ -435,8 +456,6 @@ services:
         condition: service_healthy
       skydrive:
         condition: service_healthy
-    ports:
-      - 10016:10016
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -447,6 +466,7 @@ services:
 
   exchange:
     image: relive/exchange
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10008/health"]
@@ -460,8 +480,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - 10008:10008
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -472,6 +490,7 @@ services:
 
   addressbook:
     image: relive/addressbook
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10010/health"]
@@ -481,8 +500,6 @@ services:
     depends_on:
       identity:
         condition: service_healthy
-    ports:
-      - 10010:10010
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -493,6 +510,7 @@ services:
 
   profile:
     image: relive/profile
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10014/health"]
@@ -500,9 +518,8 @@ services:
     networks:
       - relive
     depends_on:
-      - identity
-    ports:
-      - 10014:10014
+      identity:
+        condition: service_healthy
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -510,6 +527,7 @@ services:
 
   hub:
     image: relive/hub
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10020/health"]
@@ -521,8 +539,6 @@ services:
         condition: service_healthy
       clearinghouse:
         condition: service_healthy
-    ports:
-      - 10020:10020
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -533,6 +549,7 @@ services:
 
   devices:
     image: relive/devices
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10011/health"]
@@ -544,8 +561,6 @@ services:
         condition: service_healthy
       identity:
         condition: service_healthy
-    ports:
-      - 10011:10011
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -556,6 +571,7 @@ services:
 
   findmyphone:
     image: relive/findmyphone
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10012/health"]
@@ -567,8 +583,6 @@ services:
         condition: service_healthy
       identity:
         condition: service_healthy
-    ports:
-      - 10012:10012
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -579,14 +593,13 @@ services:
 
   appserver:
     image: relive/appserver
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10019/health"]
     environment: *v-env
     networks:
       - relive
-    ports:
-      - 10019:10019
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -594,14 +607,13 @@ services:
 
   orion:
     image: relive/orion
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10013/health"]
     environment: *v-env
     networks:
       - relive
-    ports:
-      - 10013:10013
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -612,6 +624,7 @@ services:
 
   messenger:
     image: relive/messenger
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10015/health"]
@@ -621,8 +634,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    ports:
-      - 10015:10015
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -630,14 +641,13 @@ services:
 
   support:
     image: relive/support
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10017/alive"]
     environment: *v-env
     networks:
       - relive
-    ports:
-      - 10017:10017
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro
@@ -645,14 +655,13 @@ services:
 
   mediaproxy:
     image: relive/mediaproxy
+    restart: unless-stopped
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:10021/health"]
     environment: *v-env
     networks:
       - relive
-    ports:
-      - 10021:10021
     volumes:
       - ./deploy/services.ini:/app/services.ini:ro
       - ./deploy/certs/trust:/usr/local/share/ca-certificates/relive:ro

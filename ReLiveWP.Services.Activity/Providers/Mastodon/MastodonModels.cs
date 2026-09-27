@@ -12,7 +12,17 @@ public sealed record MastodonAccount(
     string? Url,
     string? Uri);
 
-public sealed record MastodonMediaAttachment(string? Id, string? Type, string? Url, string? PreviewUrl, string? Description);
+public sealed record MastodonMediaDimensions(int? Width, int? Height);
+
+public sealed record MastodonMediaMeta(MastodonMediaDimensions? Original);
+
+public sealed record MastodonMediaAttachment(
+    string? Id,
+    string? Type,
+    string? Url,
+    string? PreviewUrl,
+    string? Description,
+    MastodonMediaMeta? Meta);
 
 public sealed record MastodonStatus(
     string Id,
@@ -26,7 +36,8 @@ public sealed record MastodonStatus(
     MastodonStatus? Reblog,
     int? RepliesCount,
     MastodonAccount Account,
-    MastodonMediaAttachment[]? MediaAttachments);
+    MastodonMediaAttachment[]? MediaAttachments,
+    bool? Sensitive);
 
 public sealed record MastodonContext(MastodonStatus[]? Ancestors, MastodonStatus[]? Descendants);
 

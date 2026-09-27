@@ -121,7 +121,7 @@ public class ActivityProviderService(
         }
     }
 
-    public async Task<bool> IsServableIdentityAsync(
+    public async Task<bool> CanServeIdentityAsync(
         string provider, string externalId, long? subjectCid, string viewerUserId, CancellationToken ct = default)
     {
         if (await OwnsIdentityAsync(provider, externalId, ct))

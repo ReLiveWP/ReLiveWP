@@ -42,7 +42,7 @@ public class ChannelController(
         if (pushPresence.TryGet(channel.DeviceId, out var session)
             && session.TrySend((uint)channel.ChannelId, notificationClass, payload))
         {
-            logger.LogInformation("delivered {Class} ({Len}B) to {DeviceId} channel {Id}",
+            logger.LogDebug("delivered {Class} ({Len}B) to {DeviceId} channel {Id}",
                 notificationClass, payload.Length, channel.DeviceId, channel.ChannelId);
 
             PushMetrics.RecordDelivery("delivered_local", notificationClass);
@@ -56,7 +56,7 @@ public class ChannelController(
             await router.PublishAsync(owner, new RoutedNotification(
                 channel.DeviceId, (uint)channel.ChannelId, (uint)notificationClass, payload));
 
-            logger.LogInformation("routed {Class} ({Len}B) to {DeviceId} on {Owner} channel {Id}",
+            logger.LogDebug("routed {Class} ({Len}B) to {DeviceId} on {Owner} channel {Id}",
                 notificationClass, payload.Length, channel.DeviceId, owner, channel.ChannelId);
 
             PushMetrics.RecordDelivery("routed_remote", notificationClass);
@@ -64,7 +64,7 @@ public class ChannelController(
         }
 
         // nobody holds it, queue until the device reconnects
-        logger.LogInformation("{DeviceId} offline, queued {Class} ({Len}B) for channel {Id}",
+        logger.LogDebug("{DeviceId} offline, queued {Class} ({Len}B) for channel {Id}",
             channel.DeviceId, notificationClass, payload.Length, channel.ChannelId);
 
         await notificationQueue.EnqueueAsync(channel.DeviceId, channel.ChannelId, payload, (uint)notificationClass, ct: ct);

@@ -1,0 +1,223 @@
+---
+name: relivewp
+
+x-otel:
+  &otel
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
+
+x-obs-depends:
+  &obs-depends
+  alloy:
+    condition: service_healthy
+
+x-obs-healthcheck:
+  &obs-healthcheck
+  interval: 10s
+  timeout: 3s
+  retries: 5
+  start_period: 10s
+
+services:
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    networks:
+      - relive
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      tempo:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_started
+
+  tempo:
+    image: grafana/tempo:latest
+    restart: unless-stopped
+    healthcheck:
+      <<: *obs-healthcheck
+      test: ["CMD", "/tempo", "-health"]
+    networks:
+      - relive
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./deploy/obsv/tempo.yml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    networks:
+      - relive
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./deploy/obsv/loki-config.yml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    depends_on:
+      loki-permissions:
+        condition: service_completed_successfully
+
+  loki-permissions:
+    image: busybox
+    restart: "no"
+    networks:
+      - relive
+    command: ["chown", "-R", "10001:10001", "/loki"]
+    volumes:
+      - loki-data:/loki
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    healthcheck:
+      <<: *obs-healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/healthy"]
+    networks:
+      - relive
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-remote-write-receiver"
+    volumes:
+      - ./deploy/obsv/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+  alloy:
+    image: grafana/alloy:latest
+    restart: unless-stopped
+    healthcheck:
+      <<: *obs-healthcheck
+      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/12345"]
+    networks:
+      - relive
+    ports:
+      - 4317:4317
+      - 4318:4318
+      - 12345:12345
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    volumes:
+      - ./deploy/obsv/config.alloy:/etc/alloy/config.alloy:ro
+    depends_on:
+      tempo:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    secrets:
+      - postgres_password
+
+  identity:
+    environment: *otel
+    depends_on: *obs-depends
+
+  connectedservices:
+    environment: *otel
+    depends_on: *obs-depends
+
+  deviceregistration:
+    environment: *otel
+    depends_on: *obs-depends
+
+  skybox:
+    environment: *otel
+    depends_on: *obs-depends
+
+  clearinghouse:
+    environment: *otel
+    depends_on: *obs-depends
+
+  skydrive:
+    environment: *otel
+    depends_on: *obs-depends
+
+  mailbox:
+    environment: *otel
+    depends_on: *obs-depends
+
+  mail:
+    environment: *otel
+    depends_on: *obs-depends
+
+  deviceupdate:
+    environment: *otel
+    depends_on: *obs-depends
+
+  activation:
+    environment: *otel
+    depends_on: *obs-depends
+
+  login:
+    environment: *otel
+    depends_on: *obs-depends
+
+  push:
+    environment: *otel
+    depends_on: *obs-depends
+
+  activity:
+    environment: *otel
+    depends_on: *obs-depends
+
+  docs:
+    environment: *otel
+    depends_on: *obs-depends
+
+  exchange:
+    environment: *otel
+    depends_on: *obs-depends
+
+  addressbook:
+    environment: *otel
+    depends_on: *obs-depends
+
+  profile:
+    environment: *otel
+    depends_on: *obs-depends
+
+  hub:
+    environment: *otel
+    depends_on: *obs-depends
+
+  devices:
+    environment: *otel
+    depends_on: *obs-depends
+
+  findmyphone:
+    environment: *otel
+    depends_on: *obs-depends
+
+  appserver:
+    environment: *otel
+    depends_on: *obs-depends
+
+  orion:
+    environment: *otel
+    depends_on: *obs-depends
+
+  messenger:
+    environment: *otel
+    depends_on: *obs-depends
+
+  support:
+    environment: *otel
+    depends_on: *obs-depends
+
+  mediaproxy:
+    environment: *otel
+    depends_on: *obs-depends
+
+volumes:
+  grafana-data:
+  tempo-data:
+  loki-data:
+  prometheus-data:

@@ -22,7 +22,7 @@ public class PhotoStreamService(PhotoLibraryService library,
         if (socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
         {
             var subjectCid = await viewer.SubjectCidAsync(id, context.User, ct);
-            if (!await social.IsServableAsync(provider, externalId, subjectCid, userId, ct))
+            if (!await social.CanServeAsync(provider, externalId, subjectCid, userId, ct))
                 return false;
 
             return await WriteSocialPhotoAsync(context, provider, externalId, mediaId, maxSize, ct);
@@ -91,7 +91,7 @@ public class PhotoStreamService(PhotoLibraryService library,
                                                    string externalId, string mediaId, int maxSize, CancellationToken ct)
     {
         var size = MediaSizes.ChooseSizeFor(maxSize);
-        var source = provider.ResolveMediaSource(externalId, mediaId, size);
+        var source = await provider.ResolveMediaSourceAsync(externalId, mediaId, size, ct);
         if (source == null)
             return false;
 

@@ -143,10 +143,11 @@ public class BlueskyAlbumProvider(IConfiguration configuration,
         }
     }
 
-    public override Uri? ResolveMediaSource(string externalId, string mediaId, MediaSize size)
+    public override Task<Uri?> ResolveMediaSourceAsync(string albumKey, string mediaId, MediaSize size,
+                                                       CancellationToken ct = default)
     {
         var rendition = size == MediaSize.Full ? "feed_fullsize" : "feed_thumbnail";
-        return new Uri($"https://cdn.bsky.app/img/{rendition}/plain/{externalId}/{mediaId}@jpeg");
+        return Task.FromResult<Uri?>(new Uri($"https://cdn.bsky.app/img/{rendition}/plain/{albumKey}/{mediaId}@jpeg"));
     }
 
     private ATProtocol CreateProtocol(string userId, Connection? connection)

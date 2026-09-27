@@ -34,7 +34,7 @@ public class PushRouteSubscriber(
             if (presence.TryGet(msg.DeviceId, out var session)
                 && session.TrySend(msg.ChannelId, notificationClass, msg.Payload))
             {
-                logger.LogInformation("routed {Class} to {DeviceId} channel {Id}",
+                logger.LogDebug("routed {Class} to {DeviceId} channel {Id}",
                     notificationClass, msg.DeviceId, msg.ChannelId);
                 PushMetrics.RecordDelivery("delivered_routed", notificationClass);
                 return;
@@ -44,7 +44,7 @@ public class PushRouteSubscriber(
             using var scope = scopeFactory.CreateScope();
             var queue = scope.ServiceProvider.GetRequiredService<NotificationQueue>();
             await queue.EnqueueAsync(msg.DeviceId, msg.ChannelId, msg.Payload, msg.Class);
-            logger.LogInformation("routed miss, queued for {DeviceId} channel {Id}", msg.DeviceId, msg.ChannelId);
+            logger.LogDebug("routed miss, queued for {DeviceId} channel {Id}", msg.DeviceId, msg.ChannelId);
             PushMetrics.RecordDelivery("routed_miss", notificationClass);
         }
         catch (Exception ex)

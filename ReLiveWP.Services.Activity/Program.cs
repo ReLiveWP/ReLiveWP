@@ -85,6 +85,7 @@ builder.AddMediaProxyClient();
 builder.Services.AddSingleton<ThumbnailService>();
 builder.Services.AddSingleton(new MediaTicketService(builder.Configuration, TimeProvider.System));
 builder.Services.AddScoped<SocialAlbumProviderBase, BlueskyAlbumProvider>();
+builder.Services.AddScoped<SocialAlbumProviderBase, MastodonAlbumProvider>();
 builder.Services.AddScoped<SocialAlbumsService>();
 builder.Services.AddScoped<ActivityProviderService>();
 builder.Services.AddScoped<ActivityFeedReader>();

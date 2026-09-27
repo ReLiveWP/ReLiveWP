@@ -74,14 +74,27 @@ public sealed class MastodonFixture
     }
 
     public static string Status(string id, string account, string content = "<p>hello</p>", string visibility = "public",
-                                string? inReplyTo = null, string? reblog = null, string media = "[]", string spoiler = "")
+                                string? inReplyTo = null, string? reblog = null, string media = "[]", string spoiler = "",
+                                bool sensitive = false)
     {
         var replyField = inReplyTo == null ? "null" : $"\"{inReplyTo}\"";
+        var sensitiveField = sensitive ? "true" : "false";
         return $$"""
             {"id":"{{id}}","created_at":"2026-09-25T12:00:00Z","uri":"https://snug.moe/notes/{{id}}","url":"https://snug.moe/notes/{{id}}",
              "content":{{System.Text.Json.JsonSerializer.Serialize(content)}},"spoiler_text":"{{spoiler}}","visibility":"{{visibility}}",
-             "in_reply_to_id":{{replyField}},"reblog":{{reblog ?? "null"}},"replies_count":2,"account":{{account}},"media_attachments":{{media}}}
+             "in_reply_to_id":{{replyField}},"reblog":{{reblog ?? "null"}},"replies_count":2,"account":{{account}},"media_attachments":{{media}},
+             "sensitive":{{sensitiveField}}}
             """;
+    }
+
+    public static string Attachment(string id, string type = "image", string? url = null, string? previewUrl = null,
+                                    string? description = null, int? width = null, int? height = null)
+    {
+        var urlField = System.Text.Json.JsonSerializer.Serialize(url ?? $"https://media.snug.moe/{id}.png");
+        var previewField = System.Text.Json.JsonSerializer.Serialize(previewUrl ?? $"https://media.snug.moe/{id}-small.webp");
+        var descriptionField = System.Text.Json.JsonSerializer.Serialize(description);
+        var metaField = width == null ? "null" : $$$"""{"original":{"width":{{{width}}},"height":{{{height}}}}}""";
+        return $$"""{"id":"{{id}}","type":"{{type}}","url":{{urlField}},"preview_url":{{previewField}},"description":{{descriptionField}},"meta":{{metaField}}}""";
     }
 
     public void ServeWebFingerByAcct(string domain, string address, string actor)

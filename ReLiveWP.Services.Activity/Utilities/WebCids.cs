@@ -15,6 +15,6 @@ public static class WebCids
         if (text.Length is 0 or > 16)
             return false;
 
-        return long.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out cid) && cid >= 0;
+        return long.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out cid);
     }
 }

@@ -21,6 +21,13 @@ public abstract class SocialAlbumProviderBase
     public abstract bool IsValidExternalId(string externalId);
     public abstract bool IsValidMediaId(string mediaId);
 
+    // album keys end up in files route paths, so a provider whose identities can't go there names them differently
+    public virtual Task<string?> GetAlbumKeyAsync(string identityId, CancellationToken ct = default)
+        => Task.FromResult<string?>(identityId);
+
+    public virtual Task<string?> FindIdentityAsync(string albumKey, CancellationToken ct = default)
+        => Task.FromResult<string?>(albumKey);
+
     public abstract Task<IReadOnlyList<SocialAlbum>> GetAlbumsAsync(
         string userId, IEnumerable<Connection> connections, CancellationToken ct = default);
 
@@ -31,7 +38,7 @@ public abstract class SocialAlbumProviderBase
         string userId, string externalId, Connection? connection, CancellationToken ct = default);
 
     // the size only picks which of the provider's own renditions to start from, the proxy does the resize
-    public abstract Uri? ResolveMediaSource(string externalId, string mediaId, MediaSize size);
+    public abstract Task<Uri?> ResolveMediaSourceAsync(string albumKey, string mediaId, MediaSize size, CancellationToken ct = default);
 
     public virtual string FileNameFor(string mediaId) => $"{mediaId}.jpg";
 

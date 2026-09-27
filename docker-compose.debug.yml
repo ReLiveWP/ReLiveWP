@@ -92,6 +92,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10004:10004
 
   activation:
     <<: *debug
@@ -99,6 +101,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10000:10000
 
   login:
     <<: *debug
@@ -106,6 +110,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10002:10002
 
   web:
     build:
@@ -118,6 +124,8 @@ services:
       args:
         CLIENT_BUILD_SCRIPT: build:local
     environment: *dev-env
+    ports:
+      - 10018:8080
 
   push:
     <<: *debug
@@ -125,6 +133,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10005:10005
 
   activity:
     <<: *debug
@@ -132,6 +142,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10007:10007
 
   docs:
     <<: *debug
@@ -139,6 +151,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10016:10016
 
   exchange:
     <<: *debug
@@ -146,6 +160,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10008:10008
 
   addressbook:
     <<: *debug
@@ -153,6 +169,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10010:10010
 
   hub:
     <<: *debug
@@ -160,6 +178,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10020:10020
 
   devices:
     <<: *debug
@@ -167,6 +187,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10011:10011
 
   findmyphone:
     <<: *debug
@@ -174,6 +196,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10012:10012
 
   appserver:
     <<: *debug
@@ -181,6 +205,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10019:10019
 
   orion:
     <<: *debug
@@ -188,6 +214,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10013:10013
 
   profile:
     <<: *debug
@@ -195,6 +223,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10014:10014
 
   messenger:
     <<: *debug
@@ -202,6 +232,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10015:10015
 
   support:
     <<: *debug
@@ -209,6 +241,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10017:10017
 
   mediaproxy:
     <<: *debug
@@ -216,6 +250,8 @@ services:
       args:
         CONFIGURATION: Debug
     environment: *dev-env
+    ports:
+      - 10021:10021
 
   aspire-dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:latest

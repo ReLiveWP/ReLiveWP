@@ -25,7 +25,7 @@ public class ServableDidTests
     {
         connectedServices.OnGetConnections = _ => [new Connection { Service = "atproto", UserId = Did }];
 
-        Assert.True(await NewService().IsServableIdentityAsync(Provider, Did, subjectCid: null, Viewer));
+        Assert.True(await NewService().CanServeIdentityAsync(Provider, Did, subjectCid: null, Viewer));
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public class ServableDidTests
         connectedServices.OnGetConnections = _ => [];
         mailbox.OnResolveAuthorsToContacts = _ => new ResolveAuthorsToContactsResponse { ContactCids = { [Did] = Cid } };
 
-        Assert.True(await NewService().IsServableIdentityAsync(Provider, Did, subjectCid: null, Viewer));
+        Assert.True(await NewService().CanServeIdentityAsync(Provider, Did, subjectCid: null, Viewer));
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class ServableDidTests
             Connections = { new SharedConnection { OwnerUserId = Subject, Service = "atproto", UserId = Did } },
         };
 
-        Assert.True(await NewService().IsServableIdentityAsync(Provider, Did, Cid, Viewer));
+        Assert.True(await NewService().CanServeIdentityAsync(Provider, Did, Cid, Viewer));
     }
 
     // the same contact, after they stop sharing or stop being discoverable
@@ -58,7 +58,7 @@ public class ServableDidTests
         mailbox.OnResolveFeedSubjects = _ => LiveUser();
         connectedServices.OnGetSharedConnections = _ => new SharedConnectionsResponse();
 
-        Assert.False(await NewService().IsServableIdentityAsync(Provider, Did, Cid, Viewer));
+        Assert.False(await NewService().CanServeIdentityAsync(Provider, Did, Cid, Viewer));
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class ServableDidTests
             Subjects = { new FeedSubject { Cid = Cid, Kind = FeedSubjectKind.Unknown } },
         };
 
-        Assert.False(await NewService().IsServableIdentityAsync(Provider, Did, Cid, Viewer));
+        Assert.False(await NewService().CanServeIdentityAsync(Provider, Did, Cid, Viewer));
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class ServableDidTests
             Connections = { new SharedConnection { OwnerUserId = Subject, Service = "atproto", UserId = Did } },
         };
 
-        Assert.False(await NewService().IsServableIdentityAsync(Provider, StrangerDid, Cid, Viewer));
+        Assert.False(await NewService().CanServeIdentityAsync(Provider, StrangerDid, Cid, Viewer));
     }
 
     [Fact]

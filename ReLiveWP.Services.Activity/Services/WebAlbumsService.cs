@@ -52,13 +52,13 @@ public class WebAlbumsService(PhotoLibraryService libraries,
                                                                   string resourceId, long? subjectCid, string userId,
                                                                   CancellationToken ct)
     {
-        if (!await social.IsServableAsync(provider, externalId, subjectCid, userId, ct))
+        if (!await social.CanServeAsync(provider, externalId, subjectCid, userId, ct))
             return null;
 
         var folder = await social.FolderAsync(provider, externalId, userId, ct);
         await libraries.RememberCoverAsync(userId, resourceId, folder.Photos.FirstOrDefault()?.ResourceRef, ct);
 
-        return renderer.RenderSocialLibrary(resourceId, folder);
+        return await renderer.RenderSocialLibraryAsync(resourceId, folder, ct);
     }
 
     private async Task<List<SocialAlbumSummary>> RenderSocialSummariesAsync(IReadOnlyList<SocialAlbum> albums,
@@ -70,7 +70,7 @@ public class WebAlbumsService(PhotoLibraryService libraries,
         foreach (var album in albums)
         {
             var cover = covers.GetValueOrDefault(album.ResourceId) ?? await FirstPhotoRefAsync(album, userId, ct);
-            summaries.Add(renderer.RenderSocialSummary(album, cover));
+            summaries.Add(await renderer.RenderSocialSummaryAsync(album, cover, ct));
         }
 
         return summaries;

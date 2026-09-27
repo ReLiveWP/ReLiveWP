@@ -123,7 +123,7 @@ public class NspSession(
             return;
         }
 
-        logger.LogInformation("NSP binding '{Binding}': {Nsp}", data.Binding ?? "", nsp);
+        logger.LogDebug("NSP binding '{Binding}': {Nsp}", data.Binding ?? "", nsp);
 
         await foreach (var response in BuildResponses(nsp, ct))
             transport.TrySendData(response.Serialize());
@@ -140,16 +140,15 @@ public class NspSession(
                     var channel = await channels.RegisterAsync(
                         transport.Context.DeviceId, request.ChannelName, request.ServiceName,
                         request.Version, request.Identifier, ct);
-                    var uri = BuildChannelUri(channel.Token);
 
-                    logger.LogInformation("Registered channel '{Name}' (publisher {Publisher}) for {DeviceId} -> {Uri} (id {Id})",
-                        request.ChannelName, request.ServiceName, transport.Context.DeviceId, uri, channel.ChannelId);
+                    logger.LogInformation("Registered channel '{Name}' (publisher {Publisher}) for {DeviceId}",
+                        request.ChannelName, request.ServiceName, transport.Context.DeviceId);
 
                     yield return new NspCreateChannelResponse
                     {
                         RequestId = request.RequestId,
                         ChannelId = (uint)channel.ChannelId,
-                        ChannelUri = uri,
+                        ChannelUri = BuildChannelUri(channel.Token),
                     }.ToPackage();
                     break;
                 }
@@ -158,7 +157,7 @@ public class NspSession(
                 {
                     var request = NspConfigureRequest.FromPackage(package);
 
-                    logger.LogInformation("Configured channel {Channel} for {DeviceId}",
+                    logger.LogDebug("Configured channel {Channel} for {DeviceId}",
                         request.ChannelId, transport.Context.DeviceId);
 
                     yield return new NspConfigureResponse
@@ -173,7 +172,7 @@ public class NspSession(
                 {
                     var channelId = package.GetUInt(NspTag.ChannelId) ?? 0;
 
-                    logger.LogInformation("Deregistered channel {Channel} for {DeviceId}",
+                    logger.LogDebug("Deregistered channel {Channel} for {DeviceId}",
                         channelId, transport.Context.DeviceId);
 
                     yield return new NspDeregisterResponse

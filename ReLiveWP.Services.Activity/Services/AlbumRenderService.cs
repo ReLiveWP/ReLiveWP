@@ -16,8 +16,12 @@ public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService 
         return new SocialAlbumSummary(library.Id, GetLibraryTitle(library), cover);
     }
 
-    public SocialAlbumSummary RenderSocialSummary(SocialAlbum album, string? coverRef)
-        => new(album.ResourceId, album.Title, coverRef == null ? null : GetSocialMediaUrl(coverRef, MediaSize.Thumb));
+    public async Task<SocialAlbumSummary> RenderSocialSummaryAsync(SocialAlbum album, string? coverRef,
+                                                                   CancellationToken ct = default)
+    {
+        var cover = coverRef == null ? null : await GetSocialMediaUrlAsync(coverRef, MediaSize.Thumb, ct);
+        return new SocialAlbumSummary(album.ResourceId, album.Title, cover);
+    }
 
     public SocialAlbumResponse RenderLibrary(FilesUrls urls, string userId, string resourceId, PhotoListing listing)
     {
@@ -38,13 +42,14 @@ public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService 
         return new SocialAlbumResponse(resourceId, GetLibraryTitle(listing.Library), photos);
     }
 
-    public SocialAlbumResponse RenderSocialLibrary(string resourceId, SocialAlbumFolder folder)
+    public async Task<SocialAlbumResponse> RenderSocialLibraryAsync(string resourceId, SocialAlbumFolder folder,
+                                                                    CancellationToken ct = default)
     {
         var photos = new List<SocialAlbumPhoto>();
         foreach (var photo in folder.Photos)
         {
-            var thumbnail = GetSocialMediaUrl(photo.ResourceRef, MediaSize.Thumb);
-            var fullSize = GetSocialMediaUrl(photo.ResourceRef, MediaSize.Full);
+            var thumbnail = await GetSocialMediaUrlAsync(photo.ResourceRef, MediaSize.Thumb, ct);
+            var fullSize = await GetSocialMediaUrlAsync(photo.ResourceRef, MediaSize.Full, ct);
             if (thumbnail == null || fullSize == null)
                 continue;
 
@@ -64,12 +69,12 @@ public class AlbumRenderService(MediaTicketService tickets, SocialAlbumsService 
     private string GetThumbnailUrl(FilesUrls urls, string userId, string resourceRef)
         => tickets.SignUrl(urls.ForItemThumbnail(resourceRef, ThumbnailSize), userId, resourceRef, ThumbnailSize);
 
-    private string? GetSocialMediaUrl(string resourceRef, MediaSize size)
+    private async Task<string?> GetSocialMediaUrlAsync(string resourceRef, MediaSize size, CancellationToken ct)
     {
-        if (!socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var externalId, out var mediaId))
+        if (!socialAlbums.TryResolvePhoto(resourceRef, out var provider, out var albumKey, out var mediaId))
             return null;
 
-        var source = provider.ResolveMediaSource(externalId, mediaId, size);
+        var source = await provider.ResolveMediaSourceAsync(albumKey, mediaId, size, ct);
         if (source == null)
             return null;
 

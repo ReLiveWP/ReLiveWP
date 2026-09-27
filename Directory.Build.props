@@ -6,5 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseArtifactsOutput>true</UseArtifactsOutput>
     <IsPublishable Condition="$(MSBuildProjectName.EndsWith('.Tests'))">false</IsPublishable>
+    <NoWarn>$(NoWarn);NU1507;NU1510</NoWarn>
   </PropertyGroup>
 </Project>

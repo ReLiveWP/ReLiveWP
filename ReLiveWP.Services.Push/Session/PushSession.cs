@@ -114,7 +114,7 @@ public class PushSession
                 checkCertificateRevocation: false)
                 .WaitAsync(handshakeTimeout, token);
 
-            logger.LogInformation("SSL handshake complete");
+            logger.LogDebug("SSL handshake complete");
 
             receive = PduIncomingLoop(token);
             handle = PduIncomingHandler(token);
@@ -306,7 +306,7 @@ public class PushSession
         {
             await foreach (var pdu in pduIncomingChannel.Reader.ReadAllAsync(ct))
             {
-                logger.LogInformation("Got PDU command {Command} (seq {Seq})", pdu.Command, pdu.SequenceNumber);
+                logger.LogDebug("Got PDU command {Command} (seq {Seq})", pdu.Command, pdu.SequenceNumber);
                 PushMetrics.RecordPdu("received", pdu.Command);
 
                 var writer = pduOutgoingChannel.Writer;
@@ -425,7 +425,7 @@ public class PushSession
                 if (pdu.Tag != null)
                     sentTags[pdu.SequenceNumber] = pdu.Tag;
 
-                logger.LogInformation("Sending PDU {Command} (seq {Seq})", pdu.Command, pdu.SequenceNumber);
+                logger.LogDebug("Sending PDU {Command} (seq {Seq})", pdu.Command, pdu.SequenceNumber);
                 var data = pdu.Serialize();
                 logger.LogDebug("Outgoing PDU data: {Outgoing}", Convert.ToHexString(data));
                 await sslStream.WriteAsync(data, ct);

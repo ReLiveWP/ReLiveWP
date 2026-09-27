@@ -6,8 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.ServiceDefaults.Media;
+using ReLiveWP.Services.Activity.Providers;
 using ReLiveWP.Services.Activity.Providers.Bluesky;
+using ReLiveWP.Services.Activity.Providers.Mastodon;
 using ReLiveWP.Services.Activity.Services;
+using ReLiveWP.Services.Activity.Utilities;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.Mailbox;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
@@ -81,7 +84,7 @@ public class PhotoStreamServiceTests
         public ThumbnailService Thumbnails { get; }
         public PhotoStreamService Photos { get; }
 
-        public Harness(int resizeTo = 0, MediaProxyUrlSigner? signer = null)
+        public Harness(int resizeTo = 0, MediaProxyUrlSigner? signer = null, SocialAlbumProviderBase? otherProvider = null)
         {
             SkyDrive.OnGetPhotoContent = _ => new GetPhotoContentReply
             {
@@ -97,7 +100,11 @@ public class PhotoStreamServiceTests
             var library = new PhotoLibraryService(SkyDrive, NullLogger<PhotoLibraryService>.Instance);
             Thumbnails = new ThumbnailService(Pipeline.CreateClient(), NullLogger<ThumbnailService>.Instance);
 
-            var albums = new SocialAlbumsService([new BlueskyAlbumProvider(null!, TestCache.New(), NullLoggerFactory.Instance)]);
+            List<SocialAlbumProviderBase> providers = [new BlueskyAlbumProvider(null!, TestCache.New(), NullLoggerFactory.Instance)];
+            if (otherProvider != null)
+                providers.Add(otherProvider);
+
+            var albums = new SocialAlbumsService(providers);
             var activity = new ActivityProviderService(null!, [], [], ConnectedServices, Mailbox, TestCache.New(),
                                                        NullLogger<ActivityProviderService>.Instance);
             var social = new SocialAlbumService(albums, new ConnectionLookupService(ConnectedServices), activity,
@@ -215,6 +222,52 @@ public class PhotoStreamServiceTests
         var (written, _, _) = await harness.RequestAsync($"atproto+{StrangerDid}+{BlobCid}", 176);
 
         Assert.False(written);
+        Assert.Empty(harness.MediaProxy.Requests);
+    }
+
+    [Fact]
+    public async Task AMastodonPhotoComesThroughTheMediaProxyFromItsPreview()
+    {
+        var fediverse = new MastodonFixture();
+        var account = MastodonFixture.Account("8zlkadc6ao", "wamwoowam", fqn: "wamwoowam@snug.moe");
+        fediverse.ServeSnugAccount();
+        fediverse.Server.OnJson(HttpMethod.Get, "https://snug.moe/api/v1/accounts/8zlkadc6ao", account);
+        fediverse.ServeWebFingerByAcct("snug.moe", "wamwoowam@snug.moe", MastodonFixture.SnugActor);
+        fediverse.Server.OnJson(HttpMethod.Get, "https://snug.moe/api/v1/statuses/110",
+            MastodonFixture.Status("110", account, media: $"[{MastodonFixture.Attachment("a110")}]"));
+
+        var provider = new MastodonAlbumProvider(fediverse.Resolver, fediverse.HttpClientFactory, TestCache.New(),
+                                                 NullLogger<MastodonAlbumProvider>.Instance);
+        using var harness = new Harness(otherProvider: provider);
+        harness.ConnectedServices.OnGetConnections = _ =>
+            [new Connection { Service = "mastodon", UserId = MastodonFixture.SnugActor }];
+
+        var (written, _, body) = await harness.RequestAsync("mastodon+snug.moe+8zlkadc6ao+110.a110", 176);
+
+        Assert.True(written);
+        Assert.Equal(FakeMediaProxy.Proxied, body);
+
+        var request = Assert.Single(harness.MediaProxy.Requests);
+        Assert.StartsWith("/v1/thumb/", request.AbsolutePath);
+
+        var encodedSource = request.AbsolutePath.Split('/')[4].Replace(".jpg", "");
+        var source = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(encodedSource));
+        Assert.Equal("https://media.snug.moe/a110-small.webp", source);
+    }
+
+    [Fact]
+    public async Task ASocialPhotoThatDoesNotResolveNeverReachesTheProxy()
+    {
+        var provider = new FakeKeyedAlbumProvider { MediaSource = null };
+        using var harness = new Harness(otherProvider: provider);
+        harness.ConnectedServices.OnGetConnections = _ =>
+            [new Connection { Service = FakeKeyedAlbumProvider.Token, UserId = FakeKeyedAlbumProvider.AmyIdentity }];
+
+        var (written, _, _) = await harness.RequestAsync(
+            SocialAlbumRef.ForPhoto(FakeKeyedAlbumProvider.Token, FakeKeyedAlbumProvider.AmyKey, "photo1"), 176);
+
+        Assert.False(written);
+        Assert.Equal(1, provider.ResolveCalls);
         Assert.Empty(harness.MediaProxy.Requests);
     }
 

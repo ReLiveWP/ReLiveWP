@@ -33,10 +33,14 @@ public class SocialAlbumService(SocialAlbumsService providers,
                 continue;
 
             // one dead account must not sink the listing, a 5xx here is retried for hours
+            var albumKey = await FindAlbumKeyAsync(provider, source.ExternalId, ct);
+            if (albumKey == null)
+                continue;
+
             var handle = source.Handle;
             try
             {
-                handle ??= await provider.GetHandleAsync(userId, source.ExternalId, connection: null, ct);
+                handle ??= await provider.GetHandleAsync(userId, albumKey, connection: null, ct);
             }
             catch (Exception ex)
             {
@@ -44,35 +48,59 @@ public class SocialAlbumService(SocialAlbumsService providers,
             }
 
             albums.Add(new SocialAlbum(
-                SocialAlbumRef.ForAlbum(source.Provider, source.ExternalId),
+                SocialAlbumRef.ForAlbum(source.Provider, albumKey),
                 provider.TitleFor(handle)));
         }
 
         return albums;
     }
 
-    public Task<bool> IsServableAsync(SocialAlbumProviderBase provider, string externalId, long? subjectCid,
-                                      string userId, CancellationToken ct = default)
-        => activityProvider.IsServableIdentityAsync(provider.Provider, externalId, subjectCid, userId, ct);
+    public async Task<bool> CanServeAsync(SocialAlbumProviderBase provider, string albumKey, long? subjectCid,
+                                            string userId, CancellationToken ct = default)
+    {
+        var identity = await provider.FindIdentityAsync(albumKey, ct);
+        if (identity == null)
+            return false;
 
-    public async Task<SocialAlbumFolder> FolderAsync(SocialAlbumProviderBase provider, string externalId, string userId,
+        return await activityProvider.CanServeIdentityAsync(provider.Provider, identity, subjectCid, userId, ct);
+    }
+
+    public async Task<SocialAlbumFolder> FolderAsync(SocialAlbumProviderBase provider, string albumKey, string userId,
                                                      CancellationToken ct = default)
     {
+        var identity = await provider.FindIdentityAsync(albumKey, ct);
         var linked = await connections.AllAsync(ct);
-        var owned = linked.FirstOrDefault(c => c.Service == provider.Provider && c.UserId == externalId);
+        var owned = identity == null ? null : linked.FirstOrDefault(c => c.Service == provider.Provider && c.UserId == identity);
 
         // an account that will not talk to us opens empty, a 5xx here is retried for hours
         SocialAlbumContents contents;
         try
         {
-            contents = await provider.GetAlbumAsync(userId, externalId, owned, ct);
+            contents = await provider.GetAlbumAsync(userId, albumKey, owned, ct);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "could not read the {Provider} album for {ExternalId}", provider.Provider, externalId);
+            logger.LogWarning(ex, "could not read the {Provider} album for {AlbumKey}", provider.Provider, albumKey);
             contents = new SocialAlbumContents([], null);
         }
 
         return new SocialAlbumFolder(provider.TitleFor(contents.Handle ?? owned?.UserName), contents.Photos);
+    }
+
+    private async Task<string?> FindAlbumKeyAsync(SocialAlbumProviderBase provider, string identityId, CancellationToken ct)
+    {
+        try
+        {
+            var albumKey = await provider.GetAlbumKeyAsync(identityId, ct);
+            if (albumKey == null)
+                logger.LogInformation("no {Provider} album for {ExternalId}, it didn't resolve", provider.Provider, identityId);
+
+            return albumKey;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "could not find the {Provider} album for {ExternalId}", provider.Provider, identityId);
+            return null;
+        }
     }
 }
