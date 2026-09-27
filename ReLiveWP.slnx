@@ -65,7 +65,6 @@
     <Project Path="tests/ReLiveWP.Services.Activation.Tests/ReLiveWP.Services.Activation.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Activity.Tests/ReLiveWP.Services.Activity.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Docs.Tests/ReLiveWP.Services.Docs.Tests.csproj" />
-    <Project Path="benchmarks/ReLiveWP.Backend.DeviceUpdate.Benchmarks/ReLiveWP.Backend.DeviceUpdate.Benchmarks.csproj" />
     <Project Path="tests/ReLiveWP.Backend.ClearingHouse.Tests/ReLiveWP.Backend.ClearingHouse.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Backend.ConnectedServices.Tests/ReLiveWP.Backend.ConnectedServices.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Backend.DeviceRegistration.Tests/ReLiveWP.Backend.DeviceRegistration.Tests.csproj" />
@@ -76,6 +75,9 @@
     <Project Path="tests/ReLiveWP.Services.Exchange.Tests/ReLiveWP.Services.Exchange.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.Login.Tests/ReLiveWP.Services.Login.Tests.csproj" />
     <Project Path="tests/ReLiveWP.Services.MediaProxy.Tests/ReLiveWP.Services.MediaProxy.Tests.csproj" />
+    <Folder Name="/Benchmarks/">
+      <Project Path="tests/benchmarks/ReLiveWP.Backend.DeviceUpdate.Benchmarks/ReLiveWP.Backend.DeviceUpdate.Benchmarks.csproj" />
+    </Folder>
   </Folder>
   <Folder Name="/Windows Live/">
     <Project Path="src/backend/ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />
