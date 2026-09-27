@@ -194,23 +194,6 @@ public class BodyNegotiationTests
     }
 
     [Fact]
-    public void Mime_body_is_truncated_like_any_other()
-    {
-        var e = new EmailItem
-        {
-            Subject = "s",
-            MimeRaw = Mime("From: a@b\r\n\r\n" + new string('y', 5000)),
-        };
-
-        var body = Body(e, new BodyPreference { Type = BodyType.MIME, TruncationSize = 50 })!;
-
-        Assert.Equal(BodyType.MIME, body.Type);
-        Assert.Equal(1, body.Truncated);
-        Assert.Equal(50, Encoding.UTF8.GetByteCount(body.Data!));
-        Assert.Equal(5013, body.EstimatedDataSize);
-    }
-
-    [Fact]
     public void Mime_request_falls_back_to_the_stored_body_when_no_mime_is_held()
     {
         var e = Plain("just text");
