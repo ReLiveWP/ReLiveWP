@@ -87,7 +87,7 @@ public static class BenchmarkCatalog
     private static string DefaultSqliteFile() => Path.Combine(ProjectDirectory(), "updates.db");
 
     private static string ProjectDirectory() =>
-        Path.Combine(RepositoryRoot(), "ReLiveWP.Backend.DeviceUpdate");
+        Path.Combine(RepositoryRoot(), "src", "backend", "ReLiveWP.Backend.DeviceUpdate");
 
     private static string RepositoryRoot()
     {

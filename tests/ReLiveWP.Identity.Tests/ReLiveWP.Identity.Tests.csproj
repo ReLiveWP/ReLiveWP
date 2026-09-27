@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\..\src\libraries\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
   </ItemGroup>
 
 </Project>

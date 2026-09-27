@@ -25,7 +25,7 @@ public class WbxmlGeneratedTableParityTests
     private static string GeneratedTablePath([CallerFilePath] string thisFile = "")
     {
         var repo = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(thisFile)))!;
-        return Path.Combine(repo, "ReLiveWP.Web", "packages", "eas-client", "spec", "codepages.json");
+        return Path.Combine(repo, "src", "web", "packages", "eas-client", "spec", "codepages.json");
     }
 
     private static Dictionary<int, SpecPage> LoadSpec()
@@ -66,7 +66,7 @@ public class WbxmlGeneratedTableParityTests
     public void Generated_table_is_present()
     {
         Assert.True(File.Exists(GeneratedTablePath()),
-            $"{GeneratedTablePath()} is missing; run `pnpm -C ReLiveWP.Web/packages/eas-client extract`");
+            $"{GeneratedTablePath()} is missing; run `pnpm -C src/web/packages/eas-client extract`");
     }
 
     [Fact]

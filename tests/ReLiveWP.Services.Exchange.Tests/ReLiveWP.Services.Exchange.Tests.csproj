@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Services.Exchange\ReLiveWP.Services.Exchange.csproj" />
+    <ProjectReference Include="..\..\src\services\ReLiveWP.Services.Exchange\ReLiveWP.Services.Exchange.csproj" />
   </ItemGroup>
 
   <ItemGroup>

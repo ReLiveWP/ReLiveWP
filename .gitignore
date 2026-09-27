@@ -352,15 +352,14 @@ MigrationBackup/
 *.db*
 *.bin
 
-!ReLiveWP.Services.ClientConfiguration/wwwroot/relivewp_config.db
-/ReLiveWP.Backend.DeviceUpdate/GetExtendedUpdateInfo
-/ReLiveWP.Backend.DeviceUpdate/old
-/ReLiveWP.Backend.DeviceUpdate/SyncUpdates
-/ReLiveWP.Backend.DeviceUpdate/UpdateRegulation
-/ReLiveWP.Backend.DeviceUpdate/wwwroot
+/src/backend/ReLiveWP.Backend.DeviceUpdate/GetExtendedUpdateInfo
+/src/backend/ReLiveWP.Backend.DeviceUpdate/old
+/src/backend/ReLiveWP.Backend.DeviceUpdate/SyncUpdates
+/src/backend/ReLiveWP.Backend.DeviceUpdate/UpdateRegulation
+/src/backend/ReLiveWP.Backend.DeviceUpdate/wwwroot
 
 !packages/*
-!ReLiveWP.Web/packages/*
+!src/web/packages/*
 
 *.Production.json
 
@@ -372,10 +371,10 @@ deploy/*
 /private/
 
 .DS_Store
-/ReLiveWP.Web/ReLiveWP.Services.Support/wwwroot/support.css
-/ReLiveWP.Web/ReLiveWP.Services.Support/wwwroot/logo.svg
-/ReLiveWP.Services.Login/wwwroot/sso/login.css
-/ReLiveWP.Services.Login/wwwroot/ppsecure/inline.js
+/src/services/ReLiveWP.Services.Support/wwwroot/support.css
+/src/services/ReLiveWP.Services.Support/wwwroot/logo.svg
+/src/services/ReLiveWP.Services.Login/wwwroot/sso/login.css
+/src/services/ReLiveWP.Services.Login/wwwroot/ppsecure/inline.js
 docs/eas/*
 /docs
 .env

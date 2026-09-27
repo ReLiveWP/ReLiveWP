@@ -1,4 +1,0 @@
-packages:
-  - "relivewp.*"
-  - "packages/*"
-  - "ReLiveWP.Services.Support"

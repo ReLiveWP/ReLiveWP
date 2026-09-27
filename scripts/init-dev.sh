@@ -5,7 +5,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SECRETS_DIR="$ROOT_DIR/deploy/secrets"
-IDENTITY_DIR="$ROOT_DIR/ReLiveWP.Backend.Identity"
+IDENTITY_DIR="$ROOT_DIR/src/backend/ReLiveWP.Backend.Identity"
 
 mkdir -p "$SECRETS_DIR"
 

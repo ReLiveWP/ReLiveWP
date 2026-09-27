@@ -87,14 +87,14 @@ services:
   web:
     build:
       context: .
-      dockerfile: ReLiveWP.Web/Dockerfile
+      dockerfile: src/web/Dockerfile
       args:
         APP: relivewp.web.client
 
   webmail:
     build:
       context: .
-      dockerfile: ReLiveWP.Web/Dockerfile
+      dockerfile: src/web/Dockerfile
       args:
         APP: relivewp.web.mail
 

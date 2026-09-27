@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Libraries\Dav\Dav.csproj" />
+    <ProjectReference Include="..\..\src\libraries\ReLiveWP.Dav\ReLiveWP.Dav.csproj" />
   </ItemGroup>
 
   <ItemGroup>

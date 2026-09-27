@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES5",
+    "module": "none",
+    "lib": [ "ES5", "DOM" ],
+    "strict": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "removeComments": true,
+    "types": []
+  },
+  "include": [ "src" ]
+}

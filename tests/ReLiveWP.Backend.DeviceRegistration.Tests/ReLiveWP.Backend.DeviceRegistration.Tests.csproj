@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Backend.DeviceRegistration\ReLiveWP.Backend.DeviceRegistration.csproj" />
+    <ProjectReference Include="..\..\src\backend\ReLiveWP.Backend.DeviceRegistration\ReLiveWP.Backend.DeviceRegistration.csproj" />
   </ItemGroup>
 
 </Project>

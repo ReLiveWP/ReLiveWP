@@ -31,10 +31,10 @@
 
 .git/**
 
-ReLiveWP.Backend.DeviceUpdate/Packages/**
+src/backend/ReLiveWP.Backend.DeviceUpdate/Packages/**
 
-ReLiveWP.Web/ReLiveWP.Services.Support/wwwroot/support.css
-ReLiveWP.Web/ReLiveWP.Services.Support/wwwroot/logo.svg
+src/services/ReLiveWP.Services.Support/wwwroot/support.css
+src/services/ReLiveWP.Services.Support/wwwroot/logo.svg
 
 data
 /deploy/*

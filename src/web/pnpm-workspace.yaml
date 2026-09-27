@@ -1,0 +1,3 @@
+packages:
+  - "relivewp.*"
+  - "packages/*"

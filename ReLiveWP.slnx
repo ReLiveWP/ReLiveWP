@@ -5,15 +5,15 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/! Libraries/">
-    <Project Path="Libraries/Atom/Atom.csproj" />
-    <Project Path="Libraries/Dav/Dav.csproj" />
-    <Project Path="ReLiveWP.Grpc.Services/ReLiveWP.Grpc.Services.csproj" />
-    <Project Path="ReLiveWP.Identity/ReLiveWP.Identity.csproj" />
-    <Project Path="ReLiveWP.Integration/ReLiveWP.Integration.csproj" />
-    <Project Path="ReLiveWP.Mail/ReLiveWP.Mail.csproj" />
-    <Project Path="ReLiveWP.Passport/ReLiveWP.Passport.csproj" />
-    <Project Path="ReLiveWP.ProductKeys/ReLiveWP.ProductKeys.csproj" />
-    <Project Path="ReLiveWP.ServiceDefaults/ReLiveWP.ServiceDefaults.csproj" />
+    <Project Path="src/libraries/Atom/Atom.csproj" />
+    <Project Path="src/libraries/ReLiveWP.Dav/ReLiveWP.Dav.csproj" />
+    <Project Path="src/libraries/ReLiveWP.Grpc.Services/ReLiveWP.Grpc.Services.csproj" />
+    <Project Path="src/libraries/ReLiveWP.Identity/ReLiveWP.Identity.csproj" />
+    <Project Path="src/libraries/ReLiveWP.Integration/ReLiveWP.Integration.csproj" />
+    <Project Path="src/libraries/ReLiveWP.Mail/ReLiveWP.Mail.csproj" />
+    <Project Path="src/libraries/ReLiveWP.Passport/ReLiveWP.Passport.csproj" />
+    <Project Path="src/libraries/ReLiveWP.ProductKeys/ReLiveWP.ProductKeys.csproj" />
+    <Project Path="src/libraries/ReLiveWP.ServiceDefaults/ReLiveWP.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/! Solution Items/">
     <File Path=".dockerignore" />
@@ -25,36 +25,36 @@
     <File Path="Dockerfile" />
   </Folder>
   <Folder Name="/Activation/">
-    <Project Path="ReLiveWP.Backend.DeviceRegistration/ReLiveWP.Backend.DeviceRegistration.csproj" />
-    <Project Path="ReLiveWP.ProductKeys.Cli/ReLiveWP.ProductKeys.Cli.csproj" />
-    <Project Path="ReLiveWP.Services.Activation/ReLiveWP.Services.Activation.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.DeviceRegistration/ReLiveWP.Backend.DeviceRegistration.csproj" />
+    <Project Path="src/tools/ReLiveWP.ProductKeys.Cli/ReLiveWP.ProductKeys.Cli.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Activation/ReLiveWP.Services.Activation.csproj" />
   </Folder>
   <Folder Name="/Auth/">
-    <Project Path="ReLiveWP.Backend.ConnectedServices/ReLiveWP.Backend.ConnectedServices.csproj" />
-    <Project Path="ReLiveWP.Backend.Identity/ReLiveWP.Backend.Identity.csproj" />
-    <Project Path="ReLiveWP.Services.Login/ReLiveWP.Services.Login.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.ConnectedServices/ReLiveWP.Backend.ConnectedServices.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.Identity/ReLiveWP.Backend.Identity.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Login/ReLiveWP.Services.Login.csproj" />
   </Folder>
   <Folder Name="/Bing/">
-    <Project Path="ReLiveWP.Services.AppServer/ReLiveWP.Services.AppServer.csproj" />
-    <Project Path="ReLiveWP.Services.Orion/ReLiveWP.Services.Orion.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.AppServer/ReLiveWP.Services.AppServer.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Orion/ReLiveWP.Services.Orion.csproj" />
   </Folder>
   <Folder Name="/DeviceUpdate/">
-    <Project Path="ReLiveWP.Backend.DeviceUpdate/ReLiveWP.Backend.DeviceUpdate.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.DeviceUpdate/ReLiveWP.Backend.DeviceUpdate.csproj" />
   </Folder>
   <Folder Name="/Exchange/">
-    <Project Path="ReLiveWP.Backend.ClearingHouse/ReLiveWP.Backend.ClearingHouse.csproj" />
-    <Project Path="ReLiveWP.Backend.Mail/ReLiveWP.Backend.Mail.csproj" />
-    <Project Path="ReLiveWP.Backend.Mailbox/ReLiveWP.Backend.Mailbox.csproj" />
-    <Project Path="ReLiveWP.Services.AddressBook/ReLiveWP.Services.AddressBook.csproj" />
-    <Project Path="ReLiveWP.Services.Exchange/ReLiveWP.Services.Exchange.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.ClearingHouse/ReLiveWP.Backend.ClearingHouse.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.Mail/ReLiveWP.Backend.Mail.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.Mailbox/ReLiveWP.Backend.Mailbox.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.AddressBook/ReLiveWP.Services.AddressBook.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Exchange/ReLiveWP.Services.Exchange.csproj" />
   </Folder>
   <Folder Name="/Push/">
-    <Project Path="ReLiveWP.Services.Push/ReLiveWP.Services.Push.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Push/ReLiveWP.Services.Push.csproj" />
   </Folder>
   <Folder Name="/Services/">
-    <Project Path="ReLiveWP.Services.Devices/ReLiveWP.Services.Devices.csproj" />
-    <Project Path="ReLiveWP.Services.Hub/ReLiveWP.Services.Hub.csproj" />
-    <Project Path="ReLiveWP.Web/ReLiveWP.Services.Support/ReLiveWP.Services.Support.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Devices/ReLiveWP.Services.Devices.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Hub/ReLiveWP.Services.Hub.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Support/ReLiveWP.Services.Support.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="tests/ReLiveWP.Backend.SkyDrive.Tests/ReLiveWP.Backend.SkyDrive.Tests.csproj" />
@@ -78,14 +78,13 @@
     <Project Path="tests/ReLiveWP.Services.MediaProxy.Tests/ReLiveWP.Services.MediaProxy.Tests.csproj" />
   </Folder>
   <Folder Name="/Windows Live/">
-    <Project Path="ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />
-    <Project Path="ReLiveWP.Services.Profile/ReLiveWP.Services.Profile.csproj" />
-    <Project Path="ReLiveWP.Backend.SkyDrive/ReLiveWP.Backend.SkyDrive.csproj" />
-    <Project Path="ReLiveWP.Services.Activity/ReLiveWP.Services.Activity.csproj" />
-    <Project Path="ReLiveWP.Services.Docs/ReLiveWP.Services.Docs.csproj" />
-    <Project Path="ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />
-    <Project Path="ReLiveWP.Services.MediaProxy/ReLiveWP.Services.MediaProxy.csproj" />
-    <Project Path="ReLiveWP.Services.Messenger/ReLiveWP.Services.Messenger.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.Skybox/ReLiveWP.Backend.Skybox.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Profile/ReLiveWP.Services.Profile.csproj" />
+    <Project Path="src/backend/ReLiveWP.Backend.SkyDrive/ReLiveWP.Backend.SkyDrive.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Activity/ReLiveWP.Services.Activity.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Docs/ReLiveWP.Services.Docs.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.FindMyPhone/ReLiveWP.Services.FindMyPhone.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.MediaProxy/ReLiveWP.Services.MediaProxy.csproj" />
+    <Project Path="src/services/ReLiveWP.Services.Messenger/ReLiveWP.Services.Messenger.csproj" />
   </Folder>
-  <Project Path="ReLiveWP/ReLiveWP.csproj" />
 </Solution>

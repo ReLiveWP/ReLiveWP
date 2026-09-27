@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Backend.ClearingHouse\ReLiveWP.Backend.ClearingHouse.csproj" />
+    <ProjectReference Include="..\..\src\backend\ReLiveWP.Backend.ClearingHouse\ReLiveWP.Backend.ClearingHouse.csproj" />
   </ItemGroup>
 
   <ItemGroup>

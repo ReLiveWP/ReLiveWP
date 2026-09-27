@@ -1,5 +1,6 @@
 <Project>
   <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
     <TargetFramework>net11.0</TargetFramework>
     <Features>runtime-async=on</Features>
     <Nullable>enable</Nullable>

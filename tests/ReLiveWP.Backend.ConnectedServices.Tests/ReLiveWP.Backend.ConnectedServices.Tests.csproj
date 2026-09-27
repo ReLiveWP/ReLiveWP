@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Backend.ConnectedServices\ReLiveWP.Backend.ConnectedServices.csproj" />
+    <ProjectReference Include="..\..\src\backend\ReLiveWP.Backend.ConnectedServices\ReLiveWP.Backend.ConnectedServices.csproj" />
   </ItemGroup>
 
   <ItemGroup>

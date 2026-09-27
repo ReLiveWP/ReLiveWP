@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Services.Docs\ReLiveWP.Services.Docs.csproj" />
+    <ProjectReference Include="..\..\src\services\ReLiveWP.Services.Docs\ReLiveWP.Services.Docs.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  
+  <ItemGroup>
+    <InternalsVisibleTo Include="ReLiveWP.Backend.ClearingHouse.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="$(RepoRoot)protos/clearinghouse.proto" GrpcServices="Server">
+      <Link>Protos\clearinghouse.proto</Link>
+    </Protobuf>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FolkerKinzel.VCards" />
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Grpc.Net.ClientFactory" />
+    <PackageReference Include="Ical.Net" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="RedLock.net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\libraries\ReLiveWP.Identity\ReLiveWP.Identity.csproj" />
+    <ProjectReference Include="..\..\libraries\ReLiveWP.ServiceDefaults\ReLiveWP.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\libraries\ReLiveWP.Grpc.Services\ReLiveWP.Grpc.Services.csproj" />
+    <ProjectReference Include="..\..\libraries\ReLiveWP.Dav\ReLiveWP.Dav.csproj" />
+  </ItemGroup>
+
+</Project>

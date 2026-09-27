@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Services.MediaProxy\ReLiveWP.Services.MediaProxy.csproj" />
+    <ProjectReference Include="..\..\src\services\ReLiveWP.Services.MediaProxy\ReLiveWP.Services.MediaProxy.csproj" />
   </ItemGroup>
 
 </Project>

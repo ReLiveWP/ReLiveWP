@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Services.Activation\ReLiveWP.Services.Activation.csproj" />
+    <ProjectReference Include="..\..\src\services\ReLiveWP.Services.Activation\ReLiveWP.Services.Activation.csproj" />
   </ItemGroup>
 
 </Project>

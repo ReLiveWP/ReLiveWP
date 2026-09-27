@@ -6,7 +6,7 @@ using ReLiveWP.Services.Exchange.Services;
 
 namespace ReLiveWP.Services.Exchange.Tests;
 
-// Shared golden fixtures, also read by ReLiveWP.Web/packages/eas-client. The bytes are written
+// Shared golden fixtures, also read by src/web/packages/eas-client. The bytes are written
 // by hand from the WBXML specification rather than produced by either codec, so agreeing with
 // them means agreeing with the format - not merely with each other.
 public class WbxmlFixtureTests
@@ -35,7 +35,7 @@ public class WbxmlFixtureTests
     private static string FixtureDirectory([CallerFilePath] string thisFile = "")
     {
         var repo = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(thisFile)))!;
-        return Path.Combine(repo, "ReLiveWP.Web", "packages", "eas-client", "test", "fixtures");
+        return Path.Combine(repo, "src", "web", "packages", "eas-client", "test", "fixtures");
     }
 
     // The prefix is the lowercased namespace for every code page MS-ASWBXML defines, but

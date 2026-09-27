@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ReLiveWP.Services.Activity\ReLiveWP.Services.Activity.csproj" />
+    <ProjectReference Include="..\..\src\services\ReLiveWP.Services.Activity\ReLiveWP.Services.Activity.csproj" />
   </ItemGroup>
 
 </Project>
