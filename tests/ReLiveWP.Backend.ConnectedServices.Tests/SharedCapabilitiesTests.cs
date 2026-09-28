@@ -22,6 +22,7 @@ public class SharedCapabilitiesTests : IDisposable
     private const string Did = "did:plc:amyamyamyamyamyamyamy";
 
     private readonly SqliteConnection connection;
+    private readonly ConnectionSecretProtector tokenProtector = TestSecretProtector.CreateKeyed();
 
     public SharedCapabilitiesTests()
     {
@@ -293,7 +294,7 @@ public class SharedCapabilitiesTests : IDisposable
     };
 
     private ConnectedServicesDbContext NewContext() =>
-        new(new DbContextOptionsBuilder<ConnectedServicesDbContext>().UseSqlite(connection).Options);
+        new(new DbContextOptionsBuilder<ConnectedServicesDbContext>().UseSqlite(connection).Options, tokenProtector);
 
     private sealed class ListStreamWriter<T> : IServerStreamWriter<T>
     {

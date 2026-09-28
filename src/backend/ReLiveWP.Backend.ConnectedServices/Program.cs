@@ -154,7 +154,7 @@ builder.Services.AddHostedService<TransientConnectionSweeper>();
 
 var app = builder.Build();
 
-RequireSecretKeyForCredentialServices(app);
+RequireConnectionSecretKey(app);
 
 ApplyMigrations(app);
 
@@ -169,17 +169,11 @@ app.MapDefaultEndpoints();
 
 app.Run();
 
-static void RequireSecretKeyForCredentialServices(WebApplication app)
+static void RequireConnectionSecretKey(WebApplication app)
 {
-    using var scope = app.Services.CreateScope();
-
-    var services = scope.ServiceProvider.GetRequiredService<IConnectedServicesContainer>();
-    if (!services.Values.Any(s => s.LinkMode == ServiceLinkMode.Credentials))
-        return;
-
-    if (!scope.ServiceProvider.GetRequiredService<ConnectionSecretProtector>().IsConfigured)
-        throw new InvalidOperationException(
-            $"{ConnectionSecretProtector.KeyConfigPath} must be set when a credential-linked service is registered.");
+    var protector = app.Services.GetRequiredService<ConnectionSecretProtector>();
+    if (!protector.IsConfigured)
+        throw new InvalidOperationException($"{ConnectionSecretProtector.KeyConfigPath} must be set.");
 }
 
 static void ApplyMigrations(WebApplication app)
@@ -208,4 +202,8 @@ static void ApplyMigrations(WebApplication app)
     }
 
     dbContext.SaveChanges();
+
+    var encryptedCount = dbContext.EncryptPlaintextTokens();
+    if (encryptedCount > 0)
+        app.Logger.LogInformation("Encrypted plaintext tokens on {Count} connections", encryptedCount);
 }

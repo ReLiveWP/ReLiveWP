@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Providers;
+using ReLiveWP.Backend.ConnectedServices.Services;
 
 using ServiceCaps = ReLiveWP.Backend.ConnectedServices.Data.LiveConnectedServiceCapabilities;
 
@@ -11,6 +12,7 @@ namespace ReLiveWP.Backend.ConnectedServices.Tests;
 public class ConcurrentSaveTests : IDisposable
 {
     private readonly SqliteConnection connection;
+    private readonly ConnectionSecretProtector tokenProtector = TestSecretProtector.CreateKeyed();
 
     public ConcurrentSaveTests()
     {
@@ -188,5 +190,5 @@ public class ConcurrentSaveTests : IDisposable
     }
 
     private ConnectedServicesDbContext NewContext() =>
-        new(new DbContextOptionsBuilder<ConnectedServicesDbContext>().UseSqlite(connection).Options);
+        new(new DbContextOptionsBuilder<ConnectedServicesDbContext>().UseSqlite(connection).Options, tokenProtector);
 }

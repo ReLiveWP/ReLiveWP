@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReLiveWP.Backend.ConnectedServices.Data;
 using ReLiveWP.Backend.ConnectedServices.Providers;
@@ -69,6 +68,8 @@ public sealed class MastodonTestBed : IDisposable
         connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
 
+        Protector = TestSecretProtector.CreateKeyed();
+
         using var db = NewContext();
         db.Database.EnsureCreated();
 
@@ -83,11 +84,6 @@ public sealed class MastodonTestBed : IDisposable
 
         Container = new ConnectedServicesContainer { [Mastodon.SERVICE_NAME] = Description };
         HttpClientFactory = new FakeHttpClientFactory(Server);
-
-        var key = Convert.ToHexString(new byte[32]);
-        Protector = new ConnectionSecretProtector(new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { [ConnectionSecretProtector.KeyConfigPath] = key })
-            .Build());
     }
 
     public FakeFediverseHandler Server { get; } = new();
@@ -97,7 +93,7 @@ public sealed class MastodonTestBed : IDisposable
     public ConnectionSecretProtector Protector { get; }
 
     public ConnectedServicesDbContext NewContext()
-        => new(new DbContextOptionsBuilder<ConnectedServicesDbContext>().UseSqlite(connection).Options);
+        => new(new DbContextOptionsBuilder<ConnectedServicesDbContext>().UseSqlite(connection).Options, Protector);
 
     public MastodonClientRegistry NewRegistry(ConnectedServicesDbContext db)
         => new(db, Container, Protector, HttpClientFactory, NullLogger<MastodonClientRegistry>.Instance);
