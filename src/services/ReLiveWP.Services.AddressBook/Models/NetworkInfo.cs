@@ -1,4 +1,4 @@
-﻿using System.Xml.Serialization;
+using System.Xml.Serialization;
 
 namespace ReLiveWP.Services.AddressBook.Models;
 
@@ -47,9 +47,30 @@ public class NetworkInfo
     [XmlElement("NDRCount")]
     public int NDRCount { get; set; }
 
+    [XmlElement("InviterMessage")]
+    public string? InviterMessage { get; set; }
+
+    [XmlElement("InviterCID")]
+    public long InviterCID { get; set; }
+
+    [XmlElement("InviterName")]
+    public string? InviterName { get; set; }
+
+    [XmlElement("InviterEmail")]
+    public string? InviterEmail { get; set; }
+
     [XmlElement("CreateDate")]
     public DateTime CreateDate { get; set; }
 
     [XmlElement("LastChanged")]
     public DateTime LastChanged { get; set; }
+
+    [XmlElement("PropertiesChanged")]
+    public string PropertiesChanged { get; set; } = "";
+
+    [XmlElement("ForwardingEmail")]
+    public string? ForwardingEmail { get; set; }
+
+    [XmlElement("Settings")]
+    public int Settings { get; set; }
 }

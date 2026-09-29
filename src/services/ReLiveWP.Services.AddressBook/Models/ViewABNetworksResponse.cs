@@ -1,15 +1,17 @@
-﻿using System.ServiceModel;
+using System.ServiceModel;
 using System.Xml.Serialization;
 
 namespace ReLiveWP.Services.AddressBook.Models;
 
 [MessageContract]
-[XmlRoot(ElementName = "ViewABNetworksResponse", Namespace = "http://www.msn.com/webservices/AddressBook")]
+[XmlRoot(ElementName = "ViewABNetworksResponse", Namespace = AddressBookConstants.Ns)]
 public class ViewABNetworksResponse
 {
     [MessageHeader]
     public ServiceHeader ServiceHeader { get; set; } = new ServiceHeader();
 
-    [MessageBodyMember(Name = "ViewABNetworksResult")]
-    public ViewABNetworksResult Result { get; set; } = new();
+    [MessageBodyMember]
+    [XmlArray("ViewABNetworksResult")]
+    [XmlArrayItem("NetworkInfo")]
+    public List<NetworkInfo> ViewABNetworksResult { get; set; } = [];
 }

@@ -79,7 +79,7 @@ builder.Services.AddConnectedServices(builder.Configuration)
         DisplayName = "Mastodon",
         RedirectUri = builder.Configuration["ConnectedServices:Mastodon:RedirectUrl"]!,
         Scopes = Mastodon.REQUESTED_SCOPES,
-        ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPost | ServiceCaps.SocialPhotos,
+        ServiceCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost | ServiceCaps.SocialPhotos,
         ShareableCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos,
         OAuthHandler = s => Task.FromResult<IOAuthProvider>(s.GetRequiredService<MastodonOAuthProvider>())
     })

@@ -20,4 +20,8 @@ public class LiveActivityObject
 
     [XmlElement(ElementName = "link", Namespace = Constants.Atom_Namespace)]
     public List<Link> Links { get; set; } = [];
+
+    [XmlArray(ElementName = "Entities", Namespace = Constants.Live_Namespace)]
+    [XmlArrayItem(ElementName = "Entity", Namespace = Constants.Live_Namespace)]
+    public List<LiveEntity>? Entities { get; set; }
 }

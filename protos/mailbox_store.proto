@@ -50,6 +50,7 @@ service MailboxStore {
   rpc UnbindContactIdentity    (UnbindContactIdentityRequest)    returns (MutationResult);
   rpc ResolveFeedSubjects      (ResolveFeedSubjectsRequest)      returns (ResolveFeedSubjectsResponse);
   rpc GetContactProfiles      (GetContactProfilesRequest)      returns (GetContactProfilesResponse);
+  rpc ListPresenceAudience    (ListPresenceAudienceRequest)    returns (ListPresenceAudienceResponse);
 
   rpc ReconcileDuplicateItems (ReconcileDuplicateItemsRequest) returns (ReconcileDuplicateItemsResult);
   rpc RevalidateItems (RevalidateItemsRequest) returns (RevalidateItemsResult);
@@ -940,6 +941,16 @@ message ContactProfile {
 
 message GetContactProfilesResponse {
   repeated ContactProfile profiles = 1;
+}
+
+message ListPresenceAudienceRequest {
+  string user_id = 1;
+}
+
+// both sides follow the same discovery rules as contact linking
+message ListPresenceAudienceResponse {
+  repeated string visible_user_ids = 1;
+  repeated string watcher_user_ids = 2;
 }
 
 message DeleteMailboxRequest {

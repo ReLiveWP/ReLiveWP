@@ -28,9 +28,6 @@ public class SignUpViewModel
     public string PendingId { get; set; } = default!;
 
     [Required]
-    public string InviteCode { get; set; } = "";
-
-    [Required]
     public string EmailAddress { get; set; } = "";
 
     [Required]
@@ -45,6 +42,8 @@ public class SignUpViewModel
     public string ConfirmPassword { get; set; } = "";
 
     public bool RememberMe { get; set; }
+
+    public string? InviteCode { get; set; } = default!;
 
     public string? Error { get; set; }
 }

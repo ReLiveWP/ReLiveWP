@@ -7,6 +7,8 @@ namespace ReLiveWP.Services.Activity.Services;
 
 public record ResolvedEntry(EntryModel Entry, long? AuthorCid);
 
+public record PinnedContactSources(long Cid, IReadOnlyList<ContactFeedSource> Sources);
+
 public class ActivityFeedReader(
     MailboxStore.MailboxStoreClient mailbox,
     ILogger<ActivityFeedReader> logger)
@@ -18,6 +20,16 @@ public class ActivityFeedReader(
         string userId)
     {
         var entries = await provider.GetEntriesAsync(context, count).ToListAsync();
+        return await PairWithAuthorCidsAsync(entries, userId);
+    }
+
+    public async Task<List<ResolvedEntry>> ReadNotificationsAsync(
+        OwnedActivityProviderBase provider,
+        int count,
+        DateTimeOffset? since,
+        string userId)
+    {
+        var entries = await provider.GetNotificationsAsync(count, since).ToListAsync();
         return await PairWithAuthorCidsAsync(entries, userId);
     }
 
@@ -59,6 +71,20 @@ public class ActivityFeedReader(
             .OrderByDescending(e => e.Published)
             .Take(count)
             .Select(entry => new ResolvedEntry(entry, cid))];
+    }
+
+    public async Task<List<ResolvedEntry>> ReadPinnedContactsFeedAsync(
+        IReadOnlyList<PublicActivityProviderBase> providers,
+        IReadOnlyList<PinnedContactSources> contacts,
+        int count)
+    {
+        var fetches = contacts.Select(contact => ReadContactFeedAsync(providers, contact.Sources, contact.Cid, count));
+        var feeds = await Task.WhenAll(fetches);
+
+        return [.. feeds
+            .SelectMany(feed => feed)
+            .OrderByDescending(resolved => resolved.Entry.Published)
+            .Take(count)];
     }
 
     private async Task<List<ResolvedEntry>> PairWithAuthorCidsAsync(List<EntryModel> entries, string userId)

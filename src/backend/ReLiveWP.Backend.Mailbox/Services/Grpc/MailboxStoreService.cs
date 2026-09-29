@@ -1172,6 +1172,18 @@ public class MailboxStoreService(
         return response;
     }
 
+    public override async Task<ListPresenceAudienceResponse> ListPresenceAudience(ListPresenceAudienceRequest request, ServerCallContext context)
+    {
+        var visible = await linkResolver.ListVisibleUserIdsAsync(request.UserId, context.CancellationToken);
+        var watchers = await linkResolver.ListWatcherUserIdsAsync(request.UserId, context.CancellationToken);
+
+        return new ListPresenceAudienceResponse
+        {
+            VisibleUserIds = { visible },
+            WatcherUserIds = { watchers },
+        };
+    }
+
     // noTracking is only safe for callers that never mutate + save the loaded graph (GetItem,
     // GetItems, ListItems, ListFlaggedItems); UpdateItem reuses this via LoadItemWithChildren and
     // needs the default tracked load.

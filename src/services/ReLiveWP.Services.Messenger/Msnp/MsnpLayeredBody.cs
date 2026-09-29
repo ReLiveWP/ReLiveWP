@@ -21,6 +21,28 @@ public static class MsnpLayeredBody
         return new ParsedBody(headers, payload[Math.Min(pos, payload.Length)..]);
     }
 
+    public static IReadOnlyList<IReadOnlyDictionary<string, string>> ParseBlocks(string payload)
+    {
+        var blocks = new List<IReadOnlyDictionary<string, string>>();
+
+        var pos = 0;
+        while (pos < payload.Length)
+        {
+            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            bool sawHeader;
+            (pos, sawHeader) = ParseBlock(payload, pos, headers);
+
+            if (!sawHeader)
+                break;
+
+            blocks.Add(headers);
+            if (headers.ContainsKey("Content-Length"))
+                break;
+        }
+
+        return blocks;
+    }
+
     private static (int Pos, bool SawHeader) ParseBlock(string payload, int pos, Dictionary<string, string> headers)
     {
         var sawHeader = false;

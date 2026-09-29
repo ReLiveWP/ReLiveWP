@@ -78,7 +78,7 @@ public class CertificateRequestController(
         };
 
         // i don't care about these ones too much
-        if (deviceInfo.TryGetValue("Manafacturer", out var manufacturer))
+        if (deviceInfo.TryGetValue("Manufacturer", out var manufacturer))
             registrationRequest.DeviceManufacturer = manufacturer;
         if (deviceInfo.TryGetValue("Model", out var model))
             registrationRequest.DeviceModel = model;

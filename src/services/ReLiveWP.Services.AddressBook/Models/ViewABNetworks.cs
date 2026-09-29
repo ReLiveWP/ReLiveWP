@@ -1,12 +1,13 @@
-﻿using System.ServiceModel;
+using System.ServiceModel;
 
 namespace ReLiveWP.Services.AddressBook.Models;
 
 [MessageContract]
 public class ViewABNetworks
 {
-    [MessageHeader]
-    public ABApplicationHeader ABApplicationHeader { get; set; } = null!;
-    [MessageHeader]
-    public ABAuthHeader ABAuthHeader { get; set; } = null!;
+    [MessageHeader(Name = "ABApplicationHeader", Namespace = AddressBookConstants.Ns)]
+    public ABApplicationHeader? ABApplicationHeader { get; set; }
+
+    [MessageHeader(Name = "ABAuthHeader", Namespace = AddressBookConstants.Ns)]
+    public ABAuthHeader? ABAuthHeader { get; set; }
 }

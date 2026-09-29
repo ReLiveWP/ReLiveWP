@@ -26,7 +26,7 @@ builder.Services.AddIdentity<LiveUser, LiveRole>(options =>
     options.Password.RequireLowercase = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireDigit = false;
-    options.Password.RequiredLength = 1;
+    options.Password.RequiredLength = 8;
 })
 .AddEntityFrameworkStores<LiveDbContext>()
 .AddDefaultTokenProviders()

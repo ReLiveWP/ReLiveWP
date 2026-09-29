@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.ServiceModel;
-using System.Web;
+using ReLiveWP.Identity.Soap;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.Mailbox;
 using ReLiveWP.Services.Profile.Models;
@@ -15,7 +15,7 @@ public interface IProfileService
 }
 
 public class ProfileService(
-    Authentication.AuthenticationClient authentication,
+    SoapTicketVerifier tickets,
     MailboxStore.MailboxStoreClient mailbox,
     User.UserClient users,
     IConfiguration configuration,
@@ -23,45 +23,26 @@ public class ProfileService(
 {
     private const string NoAvatar = "";
 
+    private static readonly string[] TicketTargets =
+    [
+        "directory.services.live.com",
+        "directory.services.live-int.com",
+        "contacts.relivewp.net",
+        "contacts.int.relivewp.net",
+        "directory.relivewp.net",
+    ];
+
     public async Task<GetManyResponse> GetMany(GetManyRequest message)
     {
-        var token = HttpUtility.HtmlDecode(message.UserHeader?.TicketToken);
-        if (string.IsNullOrWhiteSpace(token))
-            throw new FaultException("Missing TicketToken.");
+        var ticket = await tickets.VerifyAsync(message.UserHeader?.TicketToken, TicketTargets);
+        if (!ticket.IsValid)
+            throw new FaultException(ticket.FailureMessage);
 
-        var parser = HttpUtility.ParseQueryString(token);
-
-        // TODO: there is 100% a better way to do this, i refuse to believe SoapCore doesn't
-        // offer an auth mechanism of its own
-        var verify = new VerifyTokenRequest { Token = parser["t"], TokenType = "JWT" };
-        verify.ServiceTargets.Add("directory.services.live.com");
-        verify.ServiceTargets.Add("directory.services.live-int.com");
-        verify.ServiceTargets.Add("contacts.relivewp.net");
-        verify.ServiceTargets.Add("contacts.int.relivewp.net");
-
-        VerifyResponse reply;
-        try
-        {
-            reply = await authentication.VerifySecurityTokenAsync(verify);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to validate TicketToken.");
-            throw new FaultException("Authentication service error.");
-        }
-
-        if (reply.Code != 0)
-        {
-            logger.LogWarning("TicketToken validation failed with code {Code:X}.", reply.Code);
-            throw new FaultException("Invalid TicketToken.");
-        }
-
-        var claims = reply.Claims.ToDictionary(c => c.Type, c => c.Value);
-        var fallbackName = Claim(claims, "preferred_username")
-            ?? EmailLocalPart(Claim(claims, "email") ?? FindEmail(claims))
+        var fallbackName = ticket.Claim("preferred_username")
+            ?? EmailLocalPart(ticket.Claim("email") ?? FindEmail(ticket.Claims))
             ?? "User";
 
-        var userId = reply.Id;
+        var userId = ticket.UserId;
         var owner = await LoadOwnerAsync(userId);
         var cidByProfile = message.Request.Ids.ToDictionary(id => id, ExtractCid);
 
@@ -155,10 +136,7 @@ public class ProfileService(
         return null;
     }
 
-    private static string? Claim(Dictionary<string, string> claims, string type) =>
-        claims.TryGetValue(type, out var v) && !string.IsNullOrEmpty(v) ? v : null;
-
-    private static string? FindEmail(Dictionary<string, string> claims) =>
+    private static string? FindEmail(IReadOnlyDictionary<string, string> claims) =>
         claims.FirstOrDefault(c => c.Key.EndsWith("email", StringComparison.OrdinalIgnoreCase) ||
                                    c.Key.EndsWith("emailaddress", StringComparison.OrdinalIgnoreCase)).Value;
 

@@ -208,6 +208,10 @@ services:
     environment: *otel
     depends_on: *obs-depends
 
+  chat:
+    environment: *otel
+    depends_on: *obs-depends
+
   support:
     environment: *otel
     depends_on: *obs-depends

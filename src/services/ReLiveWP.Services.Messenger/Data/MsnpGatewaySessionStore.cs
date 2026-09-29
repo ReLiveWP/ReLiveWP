@@ -1,33 +1,30 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Google.Protobuf;
+using Microsoft.Extensions.Options;
+using ReLiveWP.ServiceDefaults.Events;
+using ReLiveWP.Services.Grpc.Chat;
 using ReLiveWP.Services.Messenger.Msnp;
 using StackExchange.Redis;
 
 namespace ReLiveWP.Services.Messenger.Data;
 
-public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
+public class MsnpGatewaySessionStore(IConnectionMultiplexer redis, IOptions<MessengerOptions> options) : IMsnpGatewaySessionStore
 {
-    private static readonly TimeSpan DefaultTtl = TimeSpan.FromDays(3);
-
     // dont send too many commands in one go
     private const long MaxDrainCount = 1000;
 
     private static string SessionKey(string sessionId) => $"msnp:gateway:session:{sessionId}";
     private static string OutboxKey(string sessionId) => $"msnp:gateway:outbox:{sessionId}";
+    private static string DoorbellKey(string sessionId) => $"msnp:gateway:doorbell:{sessionId}";
     private static RedisChannel NotifyChannel(string sessionId) =>
         RedisChannel.Literal($"msnp:gateway:notify:{sessionId}");
 
     private readonly IDatabase db = redis.GetDatabase();
     private readonly ISubscriber subscriber = redis.GetSubscriber();
 
-    public Task CreateAsync(MsnpGatewaySession session, CancellationToken ct = default)
-    {
-        var ttl = session.SessionTimeoutSeconds is > 0
-            ? TimeSpan.FromSeconds(session.SessionTimeoutSeconds.Value)
-            : DefaultTtl;
-
-        return db.StringSetAsync(SessionKey(session.SessionId), JsonSerializer.Serialize(session), ttl);
-    }
+    private TimeSpan SessionTtl(MsnpGatewaySession session) =>
+        options.Value.ResolveSessionTtl(session.State, session.SessionTimeoutSeconds);
 
     public async Task<MsnpGatewaySession?> FindAsync(string sessionId, CancellationToken ct = default)
     {
@@ -35,14 +32,14 @@ public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
         return value.IsNull ? null : JsonSerializer.Deserialize<MsnpGatewaySession>((string)value!);
     }
 
-    public Task TouchAsync(string sessionId, CancellationToken ct = default) =>
-        db.KeyExpireAsync(SessionKey(sessionId), DefaultTtl);
+    public Task TouchAsync(MsnpGatewaySession session, CancellationToken ct = default) =>
+        db.KeyExpireAsync(SessionKey(session.SessionId), SessionTtl(session));
 
     public Task SaveAsync(MsnpGatewaySession session, CancellationToken ct = default) =>
-        db.StringSetAsync(SessionKey(session.SessionId), JsonSerializer.Serialize(session), keepTtl: true);
+        db.StringSetAsync(SessionKey(session.SessionId), JsonSerializer.Serialize(session), SessionTtl(session));
 
     public Task DeleteAsync(string sessionId, CancellationToken ct = default) =>
-        db.KeyDeleteAsync([SessionKey(sessionId), OutboxKey(sessionId)]);
+        db.KeyDeleteAsync([SessionKey(sessionId), OutboxKey(sessionId), DoorbellKey(sessionId)]);
 
     // sessions mostly end by TTL rather than an explicit OUT, so live count has to be sampled
     public static async Task<long> CountSessionsAsync(IConnectionMultiplexer redis, CancellationToken ct = default)
@@ -54,25 +51,39 @@ public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
         return count;
     }
 
-    private record OutboxEntry(string Verb, string TrId, string[] Arguments, string? Payload);
+    private record OutboxEntry(string Verb, string TrId, string[] Arguments, byte[]? Payload);
 
-    public async Task EnqueueAsync(string sessionId, IEnumerable<MsnpCommand> commands, CancellationToken ct = default)
+    private static RedisValue ToOutboxValue(MsnpCommand command) =>
+        JsonSerializer.Serialize(new OutboxEntry(command.Verb, command.TrId, command.Arguments, command.Payload));
+
+    public async Task EnqueueAsync(MsnpGatewaySession session, IEnumerable<MsnpCommand> commands, CancellationToken ct = default)
     {
         var entries = commands.ToArray();
-        var values = entries
-            .Select(c => (RedisValue)JsonSerializer.Serialize(new OutboxEntry(c.Verb, c.TrId, c.Arguments, c.Payload)))
-            .ToArray();
+        var values = entries.Select(ToOutboxValue).ToArray();
         if (values.Length == 0)
             return;
 
-        var depth = await db.ListRightPushAsync(OutboxKey(sessionId), values);
+        var outboxKey = OutboxKey(session.SessionId);
+        var depth = await db.ListRightPushAsync(outboxKey, values);
         MessengerMetrics.RecordOutboxEnqueue(entries, depth);
-        await db.KeyExpireAsync(OutboxKey(sessionId), DefaultTtl);
+        await db.KeyExpireAsync(outboxKey, SessionTtl(session));
 
-        await subscriber.PublishAsync(NotifyChannel(sessionId), RedisValue.EmptyString);
+        await subscriber.PublishAsync(NotifyChannel(session.SessionId), RedisValue.EmptyString);
     }
 
-    public async Task<IReadOnlyList<MsnpCommand>> DrainAsync(string sessionId, CancellationToken ct = default)
+    private async Task<MsnpGatewayDrain> DrainAsync(string sessionId)
+    {
+        var commandsDrain = DrainOutboxAsync(sessionId);
+        var deliveriesDrain = DrainChatDeliveriesAsync(sessionId);
+        var commands = await commandsDrain;
+        var deliveries = await deliveriesDrain;
+
+        return commands.Count == 0 && deliveries.Count == 0
+            ? MsnpGatewayDrain.Empty
+            : new MsnpGatewayDrain(commands, deliveries);
+    }
+
+    private async Task<IReadOnlyList<MsnpCommand>> DrainOutboxAsync(string sessionId)
     {
         var values = await db.ListLeftPopAsync(OutboxKey(sessionId), MaxDrainCount);
         if (values is not { Length: > 0 })
@@ -95,11 +106,64 @@ public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
         return commands;
     }
 
-    public async Task<IReadOnlyList<MsnpCommand>> WaitAndDrainAsync(string sessionId, TimeSpan timeout, CancellationToken ct = default)
+    private async Task<IReadOnlyList<ChatDelivery>> DrainChatDeliveriesAsync(string sessionId)
     {
+        var values = await db.ListLeftPopAsync(ChatEvents.DeliveryQueueKey(sessionId), MaxDrainCount);
+        if (values is not { Length: > 0 })
+            return [];
+
+        return values.Select(value => ChatDelivery.Parser.ParseFrom((byte[])value!)).ToList();
+    }
+
+    public async Task RequeueAsync(MsnpGatewaySession session, MsnpGatewayDrain drain)
+    {
+        if (drain.IsEmpty)
+            return;
+
+        var ttl = SessionTtl(session);
+        var outboxKey = OutboxKey(session.SessionId);
+        var chatKey = ChatEvents.DeliveryQueueKey(session.SessionId);
+
+        RedisValue[] commands = [.. drain.Commands.Reverse().Select(ToOutboxValue)];
+        RedisValue[] deliveries = [.. drain.Deliveries.Reverse().Select(d => (RedisValue)d.ToByteArray())];
+
+        var transaction = db.CreateTransaction();
+        if (commands.Length > 0)
+        {
+            _ = transaction.ListLeftPushAsync(outboxKey, commands);
+            _ = transaction.KeyExpireAsync(outboxKey, ttl);
+        }
+
+        if (deliveries.Length > 0)
+        {
+            _ = transaction.ListLeftPushAsync(chatKey, deliveries);
+            _ = transaction.KeyExpireAsync(chatKey, ttl);
+        }
+
+        await transaction.ExecuteAsync();
+        await subscriber.PublishAsync(NotifyChannel(session.SessionId), RedisValue.EmptyString);
+    }
+
+    public Task<long> NotifyAsync(string sessionId) =>
+        subscriber.PublishAsync(NotifyChannel(sessionId), RedisValue.EmptyString);
+
+    public async Task<bool> HasPendingAsync(string sessionId)
+    {
+        var outboxLengthRead = db.ListLengthAsync(OutboxKey(sessionId));
+        var chatLengthRead = db.ListLengthAsync(ChatEvents.DeliveryQueueKey(sessionId));
+        return await outboxLengthRead + await chatLengthRead > 0;
+    }
+
+    public Task<bool> TryClaimDoorbellAsync(string sessionId, TimeSpan window) =>
+        db.StringSetAsync(DoorbellKey(sessionId), 1, window, When.NotExists);
+
+    public async Task<MsnpGatewayDrain> WaitAndDrainAsync(string sessionId, TimeSpan timeout, CancellationToken ct = default)
+    {
+        await db.KeyDeleteAsync(DoorbellKey(sessionId));
+
         var started = Stopwatch.GetTimestamp();
-        var pending = await DrainAsync(sessionId, ct);
-        if (pending.Count > 0 || timeout <= TimeSpan.Zero)
+        var pending = await DrainAsync(sessionId);
+        if (!pending.IsEmpty || timeout <= TimeSpan.Zero)
         {
             MessengerMetrics.RecordPollWait(started, "immediate");
             return pending;
@@ -111,11 +175,12 @@ public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
 
         await subscriber.SubscribeAsync(channel, Handler);
         MessengerMetrics.PollsActive.Add(1);
+
         var outcome = "aborted";
         try
         {
-            pending = await DrainAsync(sessionId, ct);
-            if (pending.Count > 0)
+            pending = await DrainAsync(sessionId);
+            if (!pending.IsEmpty)
             {
                 outcome = "immediate";
                 return pending;
@@ -134,7 +199,7 @@ public class MsnpGatewaySessionStore(IConnectionMultiplexer redis)
                 outcome = "timed_out";
             }
 
-            return await DrainAsync(sessionId, ct);
+            return await DrainAsync(sessionId);
         }
         finally
         {

@@ -31,6 +31,27 @@ public class ActivityFeedReaderTests
     }
 
     [Fact]
+    public async Task Pinned_contacts_merge_newest_first_and_keep_their_own_cids()
+    {
+        var provider = new FakeProvider("atproto",
+            Post("amy-old", "did:plc:amy", Day(1)),
+            Post("bob-new", "did:plc:bob", Day(4)),
+            Post("amy-new", "did:plc:amy", Day(3)),
+            Post("bob-old", "did:plc:bob", Day(2)));
+
+        PinnedContactSources[] contacts =
+        [
+            new(Cid, [new ContactFeedSource("atproto", "did:plc:amy")]),
+            new(BoundCid, [new ContactFeedSource("atproto", "did:plc:bob")]),
+        ];
+
+        var entries = await NewReader().ReadPinnedContactsFeedAsync([provider], contacts, count: 3);
+
+        Assert.Equal(["bob-new", "amy-new", "bob-old"], entries.Select(e => e.Entry.Id));
+        Assert.Equal([BoundCid, Cid, BoundCid], entries.Select(e => e.AuthorCid));
+    }
+
+    [Fact]
     public async Task No_sources_means_no_provider_is_asked()
     {
         var provider = new FakeProvider("atproto", Post("a", "did:plc:amy", Day(1)));

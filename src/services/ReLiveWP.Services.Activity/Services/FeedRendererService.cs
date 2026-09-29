@@ -4,22 +4,71 @@ using ReLiveWP.ServiceDefaults.Media;
 using ReLiveWP.Services.Activity.Models;
 using ReLiveWP.Services.Activity.Models.Atom;
 using ReLiveWP.Services.Activity.Providers;
+using ReLiveWP.Services.Activity.Utilities;
 using Link = Atom.Xml.Link;
 
 namespace ReLiveWP.Services.Activity.Services;
 
 public class FeedRendererService(ActivityFeedReader reader, MediaProxyUrlSigner mediaProxy)
 {
+    private const string NotificationNetworkName = "Twitter";
+
     public async Task<List<LiveEntry>> RenderFeedAsync(
         IUrlHelper url,
         OwnedActivityProviderBase provider,
         ActivitiesContext context,
         int count,
         LiveAuthor meAuthor,
-        string userId)
+        string userId,
+        string storeSourceId = ActivitySubjects.LiveSourceId)
     {
         var entries = await reader.ReadOwnFeedAsync(provider, context, count, userId);
-        return [.. entries.Select(resolved => CreatePostEntry(url, resolved.Entry, meAuthor, resolved.AuthorCid ?? 0))];
+        return [.. entries.Select(resolved => CreatePostEntry(url, resolved.Entry, meAuthor, resolved.AuthorCid ?? 0, storeSourceId))];
+    }
+
+    // the notifications pivot: the author is always someone else, so there is no "me" shortcut
+    public async Task<List<LiveEntry>> RenderNotificationsAsync(
+        IUrlHelper url,
+        OwnedActivityProviderBase provider,
+        int count,
+        DateTimeOffset? since,
+        string userId,
+        string storeSourceId,
+        string storeObjectId)
+    {
+        var entries = await reader.ReadNotificationsAsync(provider, count, since, userId);
+        return [.. entries.Select(resolved => CreateNotificationEntry(url, resolved.Entry, resolved.AuthorCid ?? 0, storeSourceId, storeObjectId))];
+    }
+
+    public async Task<List<LiveEntry>> RenderPinnedContactsFeedAsync(
+        IUrlHelper url,
+        IReadOnlyList<PublicActivityProviderBase> providers,
+        IReadOnlyList<PinnedContactSources> contacts,
+        int count)
+    {
+        var entries = await reader.ReadPinnedContactsFeedAsync(providers, contacts, count);
+        return [.. entries.Select(resolved => CreatePostEntry(url, resolved.Entry, meAuthor: null, resolved.AuthorCid ?? 0))];
+    }
+
+    internal LiveEntry CreateNotificationEntry(IUrlHelper url, EntryModel entryModel, long authorCid,
+                                               string storeSourceId, string storeObjectId)
+    {
+        var entry = CreatePostEntry(url, entryModel, meAuthor: null, authorCid, storeSourceId);
+        entry.Generator = NotificationNetworkName;
+
+        var statusObject = entry.Activities.First();
+        statusObject.Entities =
+        [
+            new LiveEntity()
+            {
+                Type = LiveEntity.UserMentionType,
+                Start = 0,
+                End = 0,
+                User = new LiveEntityUser() { ObjectId = storeObjectId },
+            }
+        ];
+
+        return entry;
     }
 
     public async Task<List<LiveEntry>> RenderContactFeedAsync(
@@ -27,13 +76,15 @@ public class FeedRendererService(ActivityFeedReader reader, MediaProxyUrlSigner 
         IReadOnlyList<PublicActivityProviderBase> providers,
         IReadOnlyList<ContactFeedSource> sources,
         long cid,
-        int count)
+        int count,
+        string storeSourceId = ActivitySubjects.LiveSourceId)
     {
         var entries = await reader.ReadContactFeedAsync(providers, sources, cid, count);
-        return [.. entries.Select(resolved => CreatePostEntry(url, resolved.Entry, meAuthor: null, authorCid: cid))];
+        return [.. entries.Select(resolved => CreatePostEntry(url, resolved.Entry, meAuthor: null, authorCid: cid, storeSourceId))];
     }
 
-    internal LiveEntry CreatePostEntry(IUrlHelper url, EntryModel entryModel, LiveAuthor? meAuthor, long authorCid)
+    internal LiveEntry CreatePostEntry(IUrlHelper url, EntryModel entryModel, LiveAuthor? meAuthor, long authorCid,
+                                       string storeSourceId = ActivitySubjects.LiveSourceId)
     {
         var entryAuthor = entryModel.Author;
         var author = entryAuthor.IsMe && meAuthor != null ? meAuthor : new LiveAuthor()
@@ -80,7 +131,7 @@ public class FeedRendererService(ActivityFeedReader reader, MediaProxyUrlSigner 
             ActivityId = entryModel.Id,
             AppId = "6262816084389410",
             ChangeType = "0",
-            SourceId = "WL",
+            SourceId = storeSourceId,
             ServiceActivityId = entryModel.Id,
             Reactions = []
         };

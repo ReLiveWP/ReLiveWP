@@ -1,4 +1,7 @@
+@using Microsoft.Extensions.Options
+
 @model SignUpViewModel
+@inject IOptions<SsoOptions> options
 @{
     ViewData["Title"] = "sign up";
 }
@@ -9,29 +12,18 @@
     @Html.AntiForgeryToken()
     <input type="hidden" name="PendingId" value="@Model.PendingId" />
 
-    <label for="invite-code">Invite code:</label>
-    <input id="invite-code"
-           name="InviteCode"
-           type="text"
-           autocomplete="off"
-           autocapitalize="characters"
-           spellcheck="false"
-           class="textbox invite-code"
-           placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
-           value="@Model.InviteCode" />
-
     <label for="email">ReLive ID:</label>
     <input id="email"
-           name="EmailAddress"
+           asp-for="EmailAddress"
            type="email"
            autocomplete="email"
            class="textbox"
-           placeholder="example555@@example.com"
+           placeholder="example555@example.com"
            value="@Model.EmailAddress" />
 
     <label for="username">Username:</label>
     <input id="username"
-           name="Username"
+           asp-for="Username"
            type="text"
            autocomplete="username"
            class="textbox"
@@ -39,17 +31,31 @@
 
     <label for="password">Password:</label>
     <input id="password"
-           name="Password"
+           asp-for="Password"
            type="password"
            autocomplete="new-password"
            class="textbox" />
 
     <label for="confirm-password">Confirm password:</label>
     <input id="confirm-password"
-           name="ConfirmPassword"
+           asp-for="ConfirmPassword"
            type="password"
            autocomplete="new-password"
            class="textbox" />
+
+        @if(options.Value.InviteCodeRequired)
+        {
+            <label for="invite-code">Invite code:</label>
+            <input id="invite-code"
+                   asp-for="InviteCode"
+                   type="text"
+                   autocomplete="off"
+                   autocapitalize="characters"
+                   spellcheck="false"
+                   class="textbox invite-code"
+                   placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+                   value="@Model.InviteCode" />
+        }
 
     <label class="remember-me" for="remember-me">
         <input id="remember-me"

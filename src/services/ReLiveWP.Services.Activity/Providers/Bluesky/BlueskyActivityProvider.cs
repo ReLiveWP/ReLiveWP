@@ -15,6 +15,8 @@ public class BlueskyActivityProvider : OwnedActivityProviderBase
     private const string PopularWithFriendsUri = "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/with-friends";
     private const string TheGramUri = "at://did:plc:vpkhqolt662uhesyj6nxm7ys/app.bsky.feed.generator/followpics";
 
+    private const int MaxNotificationPages = 5;
+
     private readonly ATProtocol protocol;
     private readonly ATDid did;
     private readonly string handle;
@@ -124,6 +126,77 @@ public class BlueskyActivityProvider : OwnedActivityProviderBase
                 yield return entry;
             }
         } while (total < count && !string.IsNullOrWhiteSpace(cursor));
+    }
+
+    public override async IAsyncEnumerable<EntryModel> GetNotificationsAsync(int count, DateTimeOffset? since)
+    {
+        if (count <= 0)
+            yield break;
+
+        var cursor = "";
+        var total = 0;
+
+        for (var page = 0; page < MaxNotificationPages; page++)
+        {
+            var toFetch = Math.Clamp(count - total, 10, 100);
+            var listed = (await protocol.Notification.ListNotificationsAsync(limit: toFetch, cursor: cursor))
+                .HandleResult();
+
+            if (listed?.Notifications is not { Count: > 0 } notifications)
+                yield break;
+
+            foreach (var notification in notifications)
+            {
+                var published = new DateTimeOffset(notification.IndexedAt ?? DateTime.UtcNow, TimeSpan.Zero);
+
+                // listNotifications is newest first, so the first stale one ends the walk
+                if (since != null && published <= since)
+                    yield break;
+
+                var entry = MapNotification(notification, published);
+                if (entry == null)
+                    continue;
+
+                yield return entry;
+
+                if (++total >= count)
+                    yield break;
+            }
+
+            cursor = WebUtility.UrlEncode(listed.Cursor);
+            if (string.IsNullOrWhiteSpace(cursor))
+                yield break;
+        }
+    }
+
+    private static EntryModel? MapNotification(
+        FishyFlip.Lexicon.App.Bsky.Notification.Notification notification,
+        DateTimeOffset published)
+    {
+        var kind = BlueskyNotificationMapper.KindForReason(notification.Reason);
+        if (!NotificationEntries.IsMention(kind))
+            return null;
+
+        if (notification.Author is not { Did: { } authorDid, Handle: { } authorHandle })
+            return null;
+
+        if (notification.Uri is not { Identity: { } identity, Collection: { } collection, Rkey: { } rkey })
+            return null;
+
+        var subjectText = notification.Record is Post post ? post.Text : null;
+
+        var source = BlueskyNotificationMapper.CreateSource(
+            id: BlueskyNotificationMapper.ComposeActivityId(identity, collection, rkey),
+            reason: notification.Reason,
+            published: published,
+            did: authorDid.ToString(),
+            handle: authorHandle.ToString(),
+            displayName: notification.Author.DisplayName,
+            avatar: notification.Author.Avatar,
+            subjectText: subjectText,
+            subjectUrl: BlueskyEntryMapper.DescribePostUrl(identity.ToString()!, rkey));
+
+        return BlueskyNotificationMapper.Create(source);
     }
 
     public override async Task<bool> CreateReplyAsync(string provider, string activityId, string text)

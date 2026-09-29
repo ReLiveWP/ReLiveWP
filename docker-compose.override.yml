@@ -182,6 +182,13 @@ services:
       args:
         PROJECT: ReLiveWP.Services.Messenger
 
+  chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT: ReLiveWP.Backend.Chat
+
   support:
     build:
       context: .

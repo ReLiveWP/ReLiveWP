@@ -83,6 +83,46 @@ public class FeedCoalescingActivityProviderTests
         await NewCoalescer().CreatePostAsync("hello");
     }
 
+    // one ABCH network slot carries every linked account, so the pivot is the union, newest first
+    [Fact]
+    public void Notifications_from_every_network_land_in_one_list()
+    {
+        var bluesky = new FakeOwnedProvider("atproto", notifications: [Post("AT", "b1", "liked", Day(1))]);
+        var mastodon = new FakeOwnedProvider("mastodon", notifications: [Post("MA", "m1", "boosted", Day(3))]);
+
+        var entries = NewCoalescer(bluesky, mastodon).GetNotificationsAsync(10, null).ToBlockingEnumerable().ToList();
+
+        Assert.Equal(["m1", "b1"], entries.Select(e => e.Id));
+    }
+
+    // two people saying the same thing are two notifications, unlike a cross-posted status
+    [Fact]
+    public void Identical_wording_from_two_networks_stays_two_notifications()
+    {
+        var bluesky = new FakeOwnedProvider("atproto", notifications: [Post("AT", "b1", "Gargron liked your post", Day(2))]);
+        var mastodon = new FakeOwnedProvider("mastodon", notifications: [Post("MA", "m1", "Gargron liked your post", Day(1))]);
+
+        var entries = NewCoalescer(bluesky, mastodon).GetNotificationsAsync(10, null).ToBlockingEnumerable().ToList();
+
+        Assert.Equal(["b1", "m1"], entries.Select(e => e.Id));
+    }
+
+    [Fact]
+    public void One_network_failing_does_not_empty_the_pivot()
+    {
+        var bluesky = new FakeOwnedProvider("atproto", notifications: [Post("AT", "b1", "liked", Day(1))]);
+        var mastodon = new FakeOwnedProvider("mastodon", notificationFailure: new HttpRequestException("nope"));
+
+        var entries = NewCoalescer(bluesky, mastodon).GetNotificationsAsync(10, null).ToBlockingEnumerable().ToList();
+
+        Assert.Equal("b1", Assert.Single(entries).Id);
+    }
+
+    // the what's-new feed has a "you've linked nothing" placeholder, the pivot should stay empty
+    [Fact]
+    public void Notifications_with_nothing_linked_are_empty()
+        => Assert.Empty(NewCoalescer().GetNotificationsAsync(10, null).ToBlockingEnumerable());
+
     private static FeedCoalescingActivityProvider NewCoalescer(params OwnedActivityProviderBase[] providers) =>
         new(providers, NullLogger.Instance);
 
@@ -113,7 +153,9 @@ public class FeedCoalescingActivityProviderTests
         string identityProvider,
         EntryModel[]? entries = null,
         EntryModel[]? replies = null,
-        Exception? postFailure = null) : OwnedActivityProviderBase
+        Exception? postFailure = null,
+        EntryModel[]? notifications = null,
+        Exception? notificationFailure = null) : OwnedActivityProviderBase
     {
         public List<string> Posted { get; } = [];
 
@@ -138,5 +180,16 @@ public class FeedCoalescingActivityProviderTests
 
         public override IAsyncEnumerable<EntryModel> GetRepliesAsync(string provider, string activityId, int count)
             => (replies ?? []).ToAsyncEnumerable();
+
+        public override async IAsyncEnumerable<EntryModel> GetNotificationsAsync(int count, DateTimeOffset? since)
+        {
+            await Task.Yield();
+
+            if (notificationFailure != null)
+                throw notificationFailure;
+
+            foreach (var notification in notifications ?? [])
+                yield return notification;
+        }
     }
 }

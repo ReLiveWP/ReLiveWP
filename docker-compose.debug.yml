@@ -235,6 +235,15 @@ services:
     ports:
       - 10015:10015
 
+  chat:
+    <<: *debug
+    build:
+      args:
+        CONFIGURATION: Debug
+    environment: *dev-env
+    ports:
+      - 15002:5000
+
   support:
     <<: *debug
     build:

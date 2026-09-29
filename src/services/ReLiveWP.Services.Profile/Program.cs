@@ -1,3 +1,4 @@
+using ReLiveWP.Identity;
 using ReLiveWP.Services.Grpc;
 using ReLiveWP.Services.Grpc.Mailbox;
 using ReLiveWP.Services.Profile.Services;
@@ -10,7 +11,7 @@ builder.Services.AddSoapCore();
 builder.Services.AddControllers();
 
 // we're not using the standard LiveID auth middleware here because tokens come in via SOAP headers
-builder.Services.AddGrpcClient<Authentication.AuthenticationClient>(
+builder.Services.AddSoapTicketVerification(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 builder.Services.AddGrpcClient<MailboxStore.MailboxStoreClient>(
     o => o.Address = new Uri(builder.Configuration["Endpoints:Mailbox"]!));

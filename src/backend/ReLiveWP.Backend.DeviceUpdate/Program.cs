@@ -43,6 +43,7 @@ using (var scope = app.Services.CreateScope())
     CatalogVerifier.LogReport(await CatalogVerifier.CheckCatalogAsync(db), logger);
 }
 
+app.MapDefaultEndpoints();
 app.MapClientWebService();
 
 await app.RunAsync();

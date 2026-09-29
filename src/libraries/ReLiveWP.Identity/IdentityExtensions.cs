@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ReLiveWP.Identity.Exchange;
 using ReLiveWP.Identity.Grpc;
 using ReLiveWP.Identity.LiveID;
+using ReLiveWP.Identity.Soap;
 using ReLiveWP.Services.Grpc;
 
 namespace ReLiveWP.Identity;
@@ -171,6 +172,12 @@ public static class IdentityExtensions
         {
             collection.AddAuthorization();
         }
+    }
+
+    public static void AddSoapTicketVerification(this IServiceCollection collection, Action<GrpcClientFactoryOptions> identityGrpcConfiguration)
+    {
+        collection.AddGrpcClient<Authentication.AuthenticationClient>(SoapTicketVerifier.ClientName, identityGrpcConfiguration);
+        collection.AddScoped<SoapTicketVerifier>();
     }
 
     public const string LiveIDScheme = LiveIDAuthHandler.SchemeName;

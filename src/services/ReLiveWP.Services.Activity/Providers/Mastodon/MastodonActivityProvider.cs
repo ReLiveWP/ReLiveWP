@@ -87,6 +87,54 @@ public class MastodonActivityProvider : OwnedActivityProviderBase
         }
     }
 
+    public override async IAsyncEnumerable<EntryModel> GetNotificationsAsync(int count, DateTimeOffset? since)
+    {
+        if (instance == null || count <= 0)
+            yield break;
+
+        var total = 0;
+        string? maxId = null;
+
+        for (var page = 0; page < MaxPages; page++)
+        {
+            var url = $"api/v1/notifications?limit={PageSize}";
+            if (maxId != null)
+                url = QueryHelpers.AddQueryString(url, "max_id", maxId);
+
+            var notifications = await MastodonRequests.GetJsonAsync<MastodonNotification[]>(
+                proxy, new Uri(url, UriKind.Relative), logger);
+
+            if (notifications is not { Length: > 0 })
+                yield break;
+
+            var accounts = notifications.Select(n => n.Account).OfType<MastodonAccount>();
+            var authors = await resolver.ResolveAuthorsAsync(accounts, instance);
+
+            foreach (var notification in notifications)
+            {
+                // the list is newest first, and the phone drops anything it has already seen
+                if (since != null && (notification.CreatedAt ?? DateTimeOffset.UtcNow) <= since)
+                    yield break;
+
+                if (notification.Account is not { } account || !authors.TryGetValue(account.Id, out var actorUri))
+                    continue;
+
+                var entry = MastodonNotificationMapper.Create(notification, instance, actorUri);
+                if (entry == null)
+                    continue;
+
+                yield return entry;
+
+                if (++total >= count)
+                    yield break;
+            }
+
+            maxId = notifications[^1].Id;
+            if (!MastodonEntryMapper.IsInstanceId(maxId))
+                yield break;
+        }
+    }
+
     public override async Task CreatePostAsync(string text)
     {
         if (instance == null)

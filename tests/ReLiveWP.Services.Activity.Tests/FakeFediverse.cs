@@ -87,6 +87,14 @@ public sealed class MastodonFixture
             """;
     }
 
+    public static string Notification(string id, string type, string account, string? status = null,
+                                      string createdAt = "2026-09-25T12:00:00Z")
+    {
+        return $$"""
+            {"id":"{{id}}","type":"{{type}}","created_at":"{{createdAt}}","account":{{account}},"status":{{status ?? "null"}}}
+            """;
+    }
+
     public static string Attachment(string id, string type = "image", string? url = null, string? previewUrl = null,
                                     string? description = null, int? width = null, int? height = null)
     {

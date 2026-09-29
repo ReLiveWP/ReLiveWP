@@ -1,5 +1,6 @@
 using ReLiveWP.Identity;
 using ReLiveWP.Services.AddressBook.Services;
+using ReLiveWP.Services.Grpc;
 using SoapCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,9 +15,14 @@ builder.Services.AddControllers();
 builder.Services.AddLiveIDAuthentication(o =>
 {
     o.ConnectedServicesGrpcConfiguration = c => c.Address = new Uri(builder.Configuration["Endpoints:ConnectedServices:Grpc"]!);
-    o.LiveIDConfiguration = c => c.ValidServiceTargets =
-        ["http://Passport.NET/tb", "relivewp.net", "contacts.relivewp.net", "contacts.int.relivewp.net"];
+    o.LiveIDConfiguration = c => c.ValidServiceTargets = AddressBookService.TicketTargets;
 });
+
+// abservice.asmx gets its ticket in the ABAuthHeader SOAP header, which the LiveID handler never sees
+builder.Services.AddSoapTicketVerification(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
+builder.Services.AddGrpcClient<User.UserClient>(
+    o => o.Address = new Uri(builder.Configuration["Endpoints:Identity"]!));
 
 builder.Services.AddTransient<IAddressBookService, AddressBookService>();
 

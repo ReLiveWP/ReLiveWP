@@ -33,4 +33,7 @@ public abstract class OwnedActivityProviderBase : ActivityProviderBase
     public abstract Task CreatePostAsync(string text);
     public abstract Task<bool> CreateReplyAsync(string provider, string activityId, string text);
     public abstract IAsyncEnumerable<EntryModel> GetEntriesAsync(ActivitiesContext context, int count);
+
+    public virtual IAsyncEnumerable<EntryModel> GetNotificationsAsync(int count, DateTimeOffset? since)
+        => AsyncEnumerable.Empty<EntryModel>();
 }

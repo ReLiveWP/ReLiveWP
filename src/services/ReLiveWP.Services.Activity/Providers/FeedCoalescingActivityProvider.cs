@@ -65,12 +65,46 @@ public class FeedCoalescingActivityProvider(IReadOnlyList<OwnedActivityProviderB
         }
 
         await foreach (var item in providers.ToAsyncEnumerable()
-                        .SelectMany(s => s.GetEntriesAsync(context, (int)Math.Ceiling(((double)count / providers.Count) * 1.5)))
+                        .SelectMany(s => s.GetEntriesAsync(context, ProviderShare(count)))
                         .Distinct(EntryEqualityComparaer.Instance)
                         .OrderByDescending(d => d.Published)
                         .Take(count))
         {
             yield return item;
+        }
+    }
+
+    // one ABCH network slot carries every linked account, so the pivot shows the union
+    public override async IAsyncEnumerable<EntryModel> GetNotificationsAsync(int count, DateTimeOffset? since)
+    {
+        if (providers.Count == 0 || count <= 0)
+            yield break;
+
+        var share = ProviderShare(count);
+        var pages = await Task.WhenAll(providers.Select(p => ReadNotificationsAsync(p, share, since)));
+
+        var ordered = pages
+            .SelectMany(page => page)
+            .DistinctBy(entry => $"{entry.ProviderId}:{entry.Id}")
+            .OrderByDescending(entry => entry.Published)
+            .Take(count);
+
+        foreach (var entry in ordered)
+            yield return entry;
+    }
+
+    private int ProviderShare(int count) => (int)Math.Ceiling((double)count / providers.Count * 1.5);
+
+    private async Task<List<EntryModel>> ReadNotificationsAsync(OwnedActivityProviderBase provider, int count, DateTimeOffset? since)
+    {
+        try
+        {
+            return await provider.GetNotificationsAsync(count, since).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Reading notifications from {Provider} failed", provider.Name);
+            return [];
         }
     }
 

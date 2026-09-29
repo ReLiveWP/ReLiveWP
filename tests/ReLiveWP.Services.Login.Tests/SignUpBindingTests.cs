@@ -45,16 +45,4 @@ public class SignUpBindingTests
         var failure = Assert.Single(results);
         Assert.Contains(nameof(SignUpViewModel.ConfirmPassword), failure.MemberNames);
     }
-
-    [Fact]
-    public void Missing_invite_fails()
-    {
-        var model = CompleteModel();
-        model.InviteCode = "";
-
-        var results = ValidateModel(model);
-
-        var failure = Assert.Single(results);
-        Assert.Contains(nameof(SignUpViewModel.InviteCode), failure.MemberNames);
-    }
 }

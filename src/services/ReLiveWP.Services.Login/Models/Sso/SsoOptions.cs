@@ -11,6 +11,8 @@ public class SsoOptions
     public string SupportUrl { get; set; } = "https://support.relivewp.net/";
     public string MailUrl { get; set; } = "https://mail.relivewp.net/";
 
+    public bool InviteCodeRequired { get; set; } = true;
+
     public SsoClient? FindClient(string? clientId)
         => clientId is { Length: > 0 } && Clients.TryGetValue(clientId, out var client) ? client : null;
 }

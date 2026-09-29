@@ -1,7 +1,13 @@
+using System.Globalization;
+using System.Text;
+
 namespace ReLiveWP.Services.Messenger.Msnp;
 
 public class MsnpMessage
 {
+    private static readonly HashSet<string> PayloadVerbs =
+        new(["ADL", "DEL", "PUT", "QRY", "RML", "SDG"], StringComparer.OrdinalIgnoreCase);
+
     public IReadOnlyList<MsnpCommand> Commands { get; }
 
     public MsnpMessage(IReadOnlyList<MsnpCommand> commands)
@@ -11,7 +17,7 @@ public class MsnpMessage
 
     public static MsnpMessage Of(params MsnpCommand[] commands) => new(commands);
 
-    public static bool TryParse(string body, out MsnpMessage message)
+    public static bool TryParse(ReadOnlySpan<byte> body, int maxCommands, out MsnpMessage message)
     {
         message = null!;
         var commands = new List<MsnpCommand>();
@@ -19,45 +25,47 @@ public class MsnpMessage
         var pos = 0;
         while (pos < body.Length)
         {
-            var newlineIndex = body.IndexOf("\r\n", pos, StringComparison.Ordinal);
-            var lineEnd = newlineIndex < 0 ? body.Length : newlineIndex;
-            var line = body[pos..lineEnd];
-            pos = newlineIndex < 0 ? body.Length : newlineIndex + 2;
+            var remaining = body[pos..];
+            var lineLength = remaining.IndexOf("\r\n"u8);
+            var line = lineLength < 0 ? remaining : remaining[..lineLength];
+            pos += lineLength < 0 ? remaining.Length : lineLength + 2;
 
-            if (line.Length == 0)
+            if (line.IsEmpty)
                 continue;
 
-            if (!MsnpCommand.TryParse(line, out var command))
+            if (commands.Count >= maxCommands)
                 return false;
 
-            // PUT gets special cased through its included byte length
-            if (command.Verb.Equals("PUT", StringComparison.OrdinalIgnoreCase)
-                && command.Arguments is [var lengthText]
-                && int.TryParse(lengthText, out var length) && length > 0)
+            if (!MsnpCommand.TryParse(Encoding.UTF8.GetString(line), out var command))
+                return false;
+
+            if (!PayloadVerbs.Contains(command.Verb))
             {
-                if (pos + length > body.Length)
-                    return false;
-
-                command = command.WithPayload(body.Substring(pos, length));
-                pos += length;
-
-                if (pos + 2 <= body.Length && body[pos] == '\r' && body[pos + 1] == '\n')
-                    pos += 2;
+                commands.Add(command);
+                continue;
             }
 
-            commands.Add(command);
+            if (command.Arguments is not [.., var lengthText]
+                || !int.TryParse(lengthText, NumberStyles.None, CultureInfo.InvariantCulture, out var payloadLength)
+                || payloadLength > body.Length - pos)
+                return false;
+
+            var payload = body.Slice(pos, payloadLength).ToArray();
+            pos += payloadLength;
+
+            commands.Add(MsnpCommand.Create(command.Verb, command.TrId, command.Arguments[..^1]).WithPayload(payload));
         }
 
         message = new MsnpMessage(commands);
         return true;
     }
 
-    public string Serialize()
+    public byte[] Serialize()
     {
-        var sb = new System.Text.StringBuilder();
+        using var stream = new MemoryStream();
         foreach (var command in Commands)
-            sb.Append(command.Serialize()).Append("\r\n");
+            command.WriteTo(stream);
 
-        return sb.ToString();
+        return stream.ToArray();
     }
 }

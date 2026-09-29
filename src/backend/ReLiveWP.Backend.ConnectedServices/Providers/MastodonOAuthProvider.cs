@@ -204,7 +204,9 @@ public class MastodonOAuthProvider(MastodonClientRegistry clientRegistry,
         {
             caps |= scope switch
             {
-                "read" or "read:statuses" => LiveConnectedServiceCapabilities.SocialFeed | LiveConnectedServiceCapabilities.SocialPhotos,
+                "read" => LiveConnectedServiceCapabilities.SocialFeed | LiveConnectedServiceCapabilities.SocialPhotos | LiveConnectedServiceCapabilities.SocialNotifications,
+                "read:statuses" => LiveConnectedServiceCapabilities.SocialFeed | LiveConnectedServiceCapabilities.SocialPhotos,
+                "read:notifications" => LiveConnectedServiceCapabilities.SocialNotifications,
                 "write" or "write:statuses" => LiveConnectedServiceCapabilities.SocialPost,
                 _ => LiveConnectedServiceCapabilities.None,
             };

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -141,19 +142,24 @@ public class SsoController(
 
         if (!ModelState.IsValid)
         {
+            // TODO: there's a better way to handle this
             return SignUpFailed(model, HasEmptySignUpField(model)
                 ? "Required fields missing!"
                 : "Those passwords don't match!");
         }
 
         var emailAddress = model.EmailAddress.Trim();
-        var registered = await authenticationClient.RegisterAsync(new RegisterRequest()
+        var registration = new RegisterRequest()
         {
             Username = model.Username.Trim(),
             EmailAddress = emailAddress,
             Password = model.Password,
-            InviteCode = model.InviteCode.Trim(),
-        }, cancellationToken: cancellationToken);
+        };
+
+        if (model.InviteCode?.Trim() is { Length: > 0 } inviteCode)
+            registration.InviteCode = inviteCode;
+
+        var registered = await authenticationClient.RegisterAsync(registration, cancellationToken: cancellationToken);
 
         if (registered.Code != S_OK)
             return SignUpFailed(model, DescribeRegisterFailure(registered.Code));
@@ -305,9 +311,11 @@ public class SsoController(
         return View("SignUp", model);
     }
 
-    private static bool HasEmptySignUpField(SignUpViewModel model)
+    private bool HasEmptySignUpField(SignUpViewModel model)
     {
-        string?[] fields = [model.InviteCode, model.EmailAddress, model.Username, model.Password, model.ConfirmPassword];
+        List<string?> fields = [model.EmailAddress, model.Username, model.Password, model.ConfirmPassword];
+        if (Options.InviteCodeRequired)
+            fields.Add(model.InviteCode);
         return fields.Any(string.IsNullOrWhiteSpace);
     }
 

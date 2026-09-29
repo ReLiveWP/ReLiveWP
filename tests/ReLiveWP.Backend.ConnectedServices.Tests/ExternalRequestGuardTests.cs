@@ -64,7 +64,7 @@ public class ExternalRequestGuardTests
     {
         var caps = MastodonOAuthProvider.GetCapabilitiesFromScopes(Mastodon.REQUESTED_SCOPES.Split(' '));
 
-        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialPost, caps);
+        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost, caps);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class ExternalRequestGuardTests
     {
         var caps = MastodonOAuthProvider.GetCapabilitiesFromScopes(Mastodon.FALLBACK_SCOPES.Split(' '));
 
-        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialPost, caps);
+        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost, caps);
     }
 
     [Fact]
@@ -82,5 +82,6 @@ public class ExternalRequestGuardTests
 
         Assert.False(caps.HasFlag(ServiceCaps.SocialPost));
         Assert.True(caps.HasFlag(ServiceCaps.SocialFeed));
+        Assert.False(caps.HasFlag(ServiceCaps.SocialNotifications));
     }
 }

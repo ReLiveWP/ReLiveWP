@@ -16,5 +16,8 @@
     <Protobuf Include="$(RepoRoot)protos/authentication.proto" GrpcServices="Client">
       <Link>Protos\authentication.proto</Link>
     </Protobuf>
+    <Protobuf Include="$(RepoRoot)protos/chat.proto" GrpcServices="Client">
+      <Link>Protos\chat.proto</Link>
+    </Protobuf>
   </ItemGroup>
 </Project>

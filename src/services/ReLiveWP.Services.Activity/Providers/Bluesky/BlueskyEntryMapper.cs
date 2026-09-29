@@ -11,6 +11,12 @@ public static class BlueskyEntryMapper
     public const string IdentityProviderToken = "atproto";
     public const string NoUnauthenticatedLabel = "!no-unauthenticated";
 
+    private const string WebFrontendBaseUrl = "https://anartia.kelinci.net";
+
+    public static string DescribeProfileUrl(string did) => $"{WebFrontendBaseUrl}/{did}";
+
+    public static string DescribePostUrl(string did, string rkey) => $"{WebFrontendBaseUrl}/{did}/{rkey}";
+
     public static ATUri? ParseActivityIdToUri(string provider, string activityId)
     {
         if (string.Compare(ProviderId, provider, true) != 0)
@@ -48,7 +54,7 @@ public static class BlueskyEntryMapper
             Id = $"{postView.Author.Did}",
             ScreenName = $"@{postView.Author.Handle}",
             DisplayName = string.IsNullOrWhiteSpace(postView.Author.DisplayName) ? $"@{postView.Author.Handle}" : postView.Author.DisplayName,
-            CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}",
+            CanonicalUrl = DescribeProfileUrl(postView.Author.Did.ToString()),
             AvatarUrl = FixImageUrl(postView.Author.Avatar!)!
         };
 
@@ -64,7 +70,7 @@ public static class BlueskyEntryMapper
             Author = author,
             Categories = ["status"],
             Generator = "Bluesky",
-            CanonicalUrl = $"https://anartia.kelinci.net/{postView.Author.Did}/{postId}",
+            CanonicalUrl = DescribePostUrl(postView.Author.Did.ToString(), postId),
             CanReply = !(postView.Viewer?.ReplyDisabled ?? false),
             ReplyCount = (int)(postView.ReplyCount ?? 0),
         };

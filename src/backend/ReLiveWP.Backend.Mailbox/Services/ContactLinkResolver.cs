@@ -1,4 +1,5 @@
 using System.Globalization;
+using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using ReLiveWP.Backend.Mailbox.Data;
 using ReLiveWP.Backend.Mailbox.Data.Entities;
@@ -174,14 +175,104 @@ public class ContactLinkResolver(
         }
     }
 
-    // the annotation only says the viewer has a contact carrying this cid. permission is worked out
-    // again here every time, so a target going private takes effect without waiting for a reconcile
+    private readonly record struct SubjectResolution(IReadOnlyDictionary<long, string> Subjects, bool DirectoryFailed);
+
     public async Task<IReadOnlyDictionary<long, string>> ResolveDiscoverableSubjectsAsync(
         string viewerUserId, IReadOnlyCollection<long> cids, CancellationToken ct = default)
     {
+        var resolution = await ResolveSubjectsAsync(viewerUserId, cids, "feed_subjects", ct);
+        return resolution.Subjects;
+    }
+
+    public async Task<IReadOnlyList<string>> ListVisibleUserIdsAsync(string viewerUserId, CancellationToken ct)
+    {
+        var cids = await db.ContactAnnotations.AsNoTracking()
+            .Where(a => a.Cid != null
+                && a.WLId != null
+                && a.ContactItem.UserId == viewerUserId
+                && a.ContactItem.DeletedAt == null)
+            .Select(a => a.Cid!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var resolution = await ResolveSubjectsAsync(viewerUserId, cids, "presence_visible", ct);
+        if (resolution.DirectoryFailed)
+            throw new RpcException(new Status(StatusCode.Unavailable, "directory lookup failed"));
+
+        return resolution.Subjects.Values.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    public async Task<IReadOnlyList<string>> ListWatcherUserIdsAsync(string targetUserId, CancellationToken ct)
+    {
+        var profile = await users.GetUserProfileAsync(new GetUserProfileRequest { UserId = targetUserId }, cancellationToken: ct);
+        var visibility = profile.HasVisibility ? profile.Visibility : ProfileVisibility.Private;
+
+        if (visibility == ProfileVisibility.Private || ParseCid(profile.Cid) is not { } cid)
+            return [];
+
+        var viewers = await db.ContactAnnotations.AsNoTracking()
+            .Where(a => a.Cid == cid
+                && a.WLId != null
+                && a.ContactItem.UserId != targetUserId
+                && a.ContactItem.DeletedAt == null)
+            .Select(a => a.ContactItem.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return await FilterDiscoverableViewersAsync(viewers, targetUserId, visibility, ct);
+    }
+
+    private async Task<IReadOnlyList<string>> FilterDiscoverableViewersAsync(
+        IReadOnlyList<string> viewerUserIds, string targetUserId, ProfileVisibility visibility, CancellationToken ct)
+    {
+        if (visibility == ProfileVisibility.Public)
+            return viewerUserIds;
+
+        if (visibility != ProfileVisibility.Mutual || viewerUserIds.Count == 0)
+            return [];
+
+        var viewerAddresses = await AccountAddressesAsync(viewerUserIds, ct);
+        var wantedAddresses = viewerAddresses.Values.Distinct(StringComparer.Ordinal).ToList();
+
+        var knownAddresses = await db.ContactEmails.AsNoTracking()
+            .Where(e => e.UserId == targetUserId
+                && wantedAddresses.Contains(e.NormalizedAddress)
+                && e.ContactItem.DeletedAt == null)
+            .Select(e => e.NormalizedAddress)
+            .Distinct()
+            .ToListAsync(ct);
+        var known = knownAddresses.ToHashSet(StringComparer.Ordinal);
+
+        return viewerUserIds
+            .Where(viewer => viewerAddresses.TryGetValue(viewer, out var address) && known.Contains(address))
+            .ToList();
+    }
+
+    private async Task<Dictionary<string, string>> AccountAddressesAsync(IReadOnlyList<string> userIds, CancellationToken ct)
+    {
+        var meContacts = await db.Items.OfType<DbContactItem>().AsNoTracking()
+            .Where(c => userIds.Contains(c.UserId) && c.DeletedAt == null && c.Annotation!.ContactType == "Me")
+            .Select(c => new { c.UserId, c.Email1Address })
+            .ToListAsync(ct);
+
+        var addresses = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var contact in meContacts)
+        {
+            if (!addresses.ContainsKey(contact.UserId) && ContactAddresses.Normalize(contact.Email1Address) is { } address)
+                addresses[contact.UserId] = address;
+        }
+
+        return addresses;
+    }
+
+    // the annotation only says the viewer has a contact carrying this cid. permission is worked out
+    // again here every time, so a target going private takes effect without waiting for a reconcile
+    private async Task<SubjectResolution> ResolveSubjectsAsync(
+        string viewerUserId, IReadOnlyCollection<long> cids, string metric, CancellationToken ct)
+    {
         var resolved = new Dictionary<long, string>();
         if (cids.Count == 0)
-            return resolved;
+            return new SubjectResolution(resolved, DirectoryFailed: false);
 
         // nullable so an annotation with no cid falls out of the IN without a separate guard
         var wanted = cids.Select(c => (long?)c).ToList();
@@ -196,7 +287,7 @@ public class ContactLinkResolver(
             .ToListAsync(ct);
 
         if (candidates.Count == 0)
-            return resolved;
+            return new SubjectResolution(resolved, DirectoryFailed: false);
 
         LookupUsersByEmailResponse reply;
         try
@@ -204,13 +295,13 @@ public class ContactLinkResolver(
             reply = await users.LookupUsersByEmailAsync(
                 new LookupUsersByEmailRequest { Emails = { candidates.Select(c => c.Address).Distinct() } },
                 cancellationToken: ct);
-            MailboxMetrics.RecordContactLink("feed_subjects", succeeded: true);
+            MailboxMetrics.RecordContactLink(metric, succeeded: true);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "directory lookup failed resolving feed subjects for {User}", viewerUserId);
-            MailboxMetrics.RecordContactLink("feed_subjects", succeeded: false);
-            return resolved;
+            logger.LogWarning(ex, "directory lookup failed resolving {Metric} for {User}", metric, viewerUserId);
+            MailboxMetrics.RecordContactLink(metric, succeeded: false);
+            return new SubjectResolution(resolved, DirectoryFailed: true);
         }
 
         var byAddress = reply.Users
@@ -235,7 +326,7 @@ public class ContactLinkResolver(
             resolved[candidate.Cid] = target.UserId;
         }
 
-        return resolved;
+        return new SubjectResolution(resolved, DirectoryFailed: false);
     }
 
     public async Task<bool> IsDiscoverableAsync(string viewerUserId, string targetUserId, ProfileVisibility visibility, CancellationToken ct)

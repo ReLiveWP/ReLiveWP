@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using ReLiveWP.ServiceDefaults.Media;
@@ -14,6 +15,10 @@ public class FeedRendererServiceTests
     private const string ThumbUrl = "https://files.example/small/1.png";
     private const string FullUrl = "https://files.example/original/1.png";
 
+    private static readonly XNamespace AtomNs = Constants.Atom_Namespace;
+    private static readonly XNamespace ActivityNs = Constants.ActivityStreams_Namespace;
+    private static readonly XNamespace LiveNs = Constants.Live_Namespace;
+
     private sealed class StubUrlHelper : IUrlHelper
     {
         public ActionContext ActionContext { get; } = new();
@@ -25,6 +30,13 @@ public class FeedRendererServiceTests
     }
 
     private static FeedRendererService CreateRenderer(MediaProxyUrlSigner mediaProxy) => new(null!, mediaProxy);
+
+    private static XElement SerializeInFeed(LiveEntry entry)
+    {
+        var feed = new LiveFeed() { Entries = [entry] };
+        var xml = XDocument.Parse(AtomSerialization.Serialize(feed));
+        return xml.Root!.Element(AtomNs + "entry")!;
+    }
 
     private static Link ReadAvatarLink(LiveEntry entry)
     {
@@ -87,6 +99,82 @@ public class FeedRendererServiceTests
         Assert.StartsWith($"{TestMediaProxy.Root}/v1/full/", alternate.Href);
         Assert.Equal("image/jpeg", preview.Type);
         Assert.Equal("image/jpeg", alternate.Type);
+    }
+
+    [Fact]
+    public void EntriesDefaultToTheLiveStore()
+    {
+        var renderer = CreateRenderer(TestMediaProxy.Unconfigured);
+
+        var entry = renderer.CreatePostEntry(new StubUrlHelper(), Post(AvatarUrl, ThumbUrl, FullUrl), meAuthor: null, authorCid: 42);
+
+        Assert.Equal("WL", entry.SourceId);
+    }
+
+    // the phone files an entry under the store whose NPWLAggServiceID equals live:SourceId, and drops it otherwise
+    [Fact]
+    public void EntriesCarryTheStoreTheyWereAskedFor()
+    {
+        var renderer = CreateRenderer(TestMediaProxy.Unconfigured);
+
+        var entry = renderer.CreatePostEntry(new StubUrlHelper(), Post(AvatarUrl, ThumbUrl, FullUrl), meAuthor: null, authorCid: 42,
+            storeSourceId: "TWITR");
+
+        Assert.Equal("TWITR", entry.SourceId);
+    }
+
+    // captured: the aggregate store asks with <Identifier><SourceId>TWITR</SourceId><ObjectId>TWITR</ObjectId>
+    [Fact]
+    public void ANotificationMentionsTheStoreItWasAskedForVerbatim()
+    {
+        var renderer = CreateRenderer(TestMediaProxy.Unconfigured);
+
+        var entry = renderer.CreateNotificationEntry(new StubUrlHelper(), Post(AvatarUrl, ThumbUrl, FullUrl), authorCid: 42,
+            storeSourceId: "TWITR", storeObjectId: "TWITR");
+
+        var xml = SerializeInFeed(entry);
+        var statusObject = xml.Elements(ActivityNs + "object")
+            .Single(o => (string?)o.Element(ActivityNs + "object-type") == "http://activitystrea.ms/schema/1.0/status");
+        var mention = Assert.Single(statusObject.Elements(LiveNs + "Entities").Elements(LiveNs + "Entity"));
+
+        Assert.Equal("UserMention", (string?)mention.Element(LiveNs + "Type"));
+        Assert.Equal("0", (string?)mention.Element(LiveNs + "Start"));
+        Assert.Equal("0", (string?)mention.Element(LiveNs + "End"));
+        Assert.Equal("TWITR", (string?)mention.Element(LiveNs + "User")?.Element(LiveNs + "ObjectId"));
+        Assert.Equal("TWITR", (string?)xml.Element(LiveNs + "SourceId"));
+    }
+
+    // SocialNotificationItem only formats "{name} mentioned you in a tweet" for NetworkName == "Twitter"
+    [Fact]
+    public void ANotificationClaimsTwitterSoThePivotRowHasText()
+    {
+        var renderer = CreateRenderer(TestMediaProxy.Unconfigured);
+
+        var entry = renderer.CreateNotificationEntry(new StubUrlHelper(), Post(AvatarUrl, ThumbUrl, FullUrl), authorCid: 42,
+            storeSourceId: "TWITR", storeObjectId: "TWITR");
+
+        Assert.Equal("Twitter", (string?)SerializeInFeed(entry).Element(AtomNs + "generator"));
+    }
+
+    [Fact]
+    public void OrdinaryPostsKeepTheirOwnGenerator()
+    {
+        var renderer = CreateRenderer(TestMediaProxy.Unconfigured);
+
+        var entry = renderer.CreatePostEntry(new StubUrlHelper(), Post(AvatarUrl, ThumbUrl, FullUrl), meAuthor: null, authorCid: 42);
+
+        Assert.Equal("Bluesky", entry.Generator);
+    }
+
+    [Fact]
+    public void OrdinaryPostsCarryNoEntities()
+    {
+        var renderer = CreateRenderer(TestMediaProxy.Unconfigured);
+
+        var entry = renderer.CreatePostEntry(new StubUrlHelper(), Post(AvatarUrl, ThumbUrl, FullUrl), meAuthor: null, authorCid: 42);
+
+        var xml = SerializeInFeed(entry);
+        Assert.Empty(xml.Descendants(LiveNs + "Entities"));
     }
 
     [Fact]

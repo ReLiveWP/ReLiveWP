@@ -28,7 +28,7 @@ public class ChannelController(
         var channel = await channelStore.FindByTokenAsync(id, ct);
         if (channel == null)
         {
-            logger.LogWarning("notification for unknown channel token {Token}", id);
+            logger.LogWarning("notification for unknown channel token");
             return NotFound();
         }
 

@@ -1,0 +1,110 @@
+syntax = "proto3";
+option csharp_namespace = "ReLiveWP.Services.Grpc.Chat";
+package chat;
+import "google/protobuf/empty.proto";
+
+service Chat {
+  rpc RegisterEndpoint (RegisterEndpointRequest) returns (google.protobuf.Empty);
+  rpc SetPresence      (SetPresenceRequest)      returns (EndpointStateResponse);
+  rpc ReportActivity   (ReportActivityRequest)   returns (EndpointStateResponse);
+  rpc EndEndpoint      (EndEndpointRequest)      returns (google.protobuf.Empty);
+  rpc SendMessage      (SendMessageRequest)      returns (SendMessageResponse);
+}
+
+enum PresenceStatus {
+  PRESENCE_STATUS_OFFLINE       = 0;
+  PRESENCE_STATUS_ONLINE        = 1;
+  PRESENCE_STATUS_BUSY          = 2;
+  PRESENCE_STATUS_AWAY          = 3;
+  PRESENCE_STATUS_BE_RIGHT_BACK = 4;
+  PRESENCE_STATUS_ON_THE_PHONE  = 5;
+  PRESENCE_STATUS_OUT_TO_LUNCH  = 6;
+  PRESENCE_STATUS_IDLE          = 7;
+  PRESENCE_STATUS_HIDDEN        = 8;
+}
+
+message RegisterEndpointRequest {
+  string         endpoint_id             = 1;
+  string         user_id                 = 2;
+  string         address                 = 3;
+  PresenceStatus status                  = 4;
+  int32          session_timeout_seconds = 5;
+  string         instance_id             = 6;
+}
+
+message SetPresenceRequest {
+  string         endpoint_id = 1;
+  PresenceStatus status      = 2;
+}
+
+message ReportActivityRequest {
+  string endpoint_id = 1;
+}
+
+enum EndpointState {
+  ENDPOINT_STATE_UNKNOWN    = 0;
+  ENDPOINT_STATE_KNOWN      = 1;
+  ENDPOINT_STATE_SUPERSEDED = 2;
+  ENDPOINT_STATE_EVICTED    = 3;
+}
+
+message EndpointStateResponse {
+  EndpointState state = 1;
+}
+
+message EndEndpointRequest {
+  string endpoint_id = 1;
+}
+
+enum MessageKind {
+  MESSAGE_KIND_UNSPECIFIED = 0;
+  MESSAGE_KIND_TEXT        = 1;
+  MESSAGE_KIND_NUDGE       = 2;
+  MESSAGE_KIND_DATA        = 3;
+}
+
+message SendMessageRequest {
+  string      endpoint_id           = 1;
+  string      transaction_id        = 2;
+  string      recipient_address     = 3;
+  MessageKind kind                  = 4;
+  bytes       payload               = 5;
+  string      recipient_instance_id = 6;
+  bool        store_if_offline      = 7;
+}
+
+enum SendOutcome {
+  SEND_OUTCOME_DELIVERED         = 0;
+  SEND_OUTCOME_VOIDED            = 1;
+  SEND_OUTCOME_RECIPIENT_OFFLINE = 2;
+  SEND_OUTCOME_THROTTLED         = 3;
+  SEND_OUTCOME_FAILED            = 4;
+  SEND_OUTCOME_STORED            = 5;
+}
+
+message SendMessageResponse {
+  SendOutcome outcome = 1;
+}
+
+// queued per endpoint in redis, see ChatEvents in ServiceDefaults
+message ChatDelivery {
+  oneof kind {
+    PresenceChanged presence_changed = 1;
+    MessageReceived message_received = 2;
+  }
+
+  int64  queued_at_unix_ms = 10;
+  string trace_parent      = 11;
+}
+
+message MessageReceived {
+  bytes payload                  = 1;
+  int64 original_arrival_unix_ms = 2;
+}
+
+message PresenceChanged {
+  string          address              = 1;
+  PresenceStatus  status               = 2;
+  repeated string instance_ids         = 3;
+  repeated string removed_instance_ids = 4;
+}

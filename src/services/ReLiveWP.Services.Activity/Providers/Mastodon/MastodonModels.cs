@@ -39,6 +39,13 @@ public sealed record MastodonStatus(
     MastodonMediaAttachment[]? MediaAttachments,
     bool? Sensitive);
 
+public sealed record MastodonNotification(
+    string Id,
+    string? Type,
+    DateTimeOffset? CreatedAt,
+    MastodonAccount? Account,
+    MastodonStatus? Status);
+
 public sealed record MastodonContext(MastodonStatus[]? Ancestors, MastodonStatus[]? Descendants);
 
 public sealed record MastodonSearchResults(MastodonStatus[]? Statuses);

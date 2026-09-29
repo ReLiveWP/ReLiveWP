@@ -22,10 +22,13 @@ public class MsnpGatewayResult : IResult
     public static MsnpGatewayResult SessionClosed(string sessionId) =>
         new($"SessionID={sessionId}; Session=close", MsnpMessage.Of());
 
-    public Task ExecuteAsync(HttpContext httpContext)
+    public async Task ExecuteAsync(HttpContext httpContext)
     {
+        var bytes = body.Serialize();
+
         httpContext.Response.Headers["X-MSN-Messenger"] = headerValue;
         httpContext.Response.ContentType = "text/plain";
-        return httpContext.Response.WriteAsync(body.Serialize());
+        httpContext.Response.ContentLength = bytes.Length;
+        await httpContext.Response.Body.WriteAsync(bytes);
     }
 }

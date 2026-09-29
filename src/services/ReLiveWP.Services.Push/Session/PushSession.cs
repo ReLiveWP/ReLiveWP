@@ -68,7 +68,7 @@ public class PushSession
 
         serverCert = serverCertificate.Certificate;
         handshakeTimeout = TimeSpan.FromSeconds(configuration.GetValue("Push:HandshakeTimeoutSeconds", 30));
-        idleTimeout = TimeSpan.FromSeconds(configuration.GetValue("Push:IdleTimeoutSeconds", 3600));
+        idleTimeout = TimeSpan.FromSeconds(configuration.GetValue("Push:IdleTimeoutSeconds", 21600));
     }
 
     // completes the moment the device is authenticated and Connected, so the app layer
@@ -216,9 +216,6 @@ public class PushSession
             EndSession("auth_failed");
             return true;
         }
-
-        logger.LogInformation("Reconnect with token {Token}",
-            presentedToken == null ? "<none>" : Convert.ToHexString(presentedToken));
 
         // a token we don't recognise (or one that isn't this device's) can't resume, reject
         // with 0x4101 so the device drops it and does a fresh Connect

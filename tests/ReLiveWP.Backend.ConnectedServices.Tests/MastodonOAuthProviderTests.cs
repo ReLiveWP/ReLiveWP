@@ -159,7 +159,7 @@ public class MastodonOAuthProviderTests : IDisposable
         Assert.Equal("@wamwoowam@snug.moe", service.ServiceProfile.Username);
         Assert.Equal("Wam", service.ServiceProfile.DisplayName);
         Assert.Equal("https://snug.moe/files/thumbnail-427685b6", service.ServiceProfile.AvatarUrl);
-        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialPost, service.AvailableCapabilities);
+        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost, service.AvailableCapabilities);
 
         var tokenRequest = bed.Server.Requests.Single(r => r.Uri.AbsolutePath == "/oauth/token");
         Assert.Contains("client_secret=client-secret", tokenRequest.Body);
@@ -198,7 +198,7 @@ public class MastodonOAuthProviderTests : IDisposable
         var service = await provider.FinalizeAccountLinkAsync(NewConnection(), pending, "the-code");
 
         Assert.Equal("the-token", service.AccessToken);
-        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialPost, service.AvailableCapabilities);
+        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost, service.AvailableCapabilities);
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public class MastodonOAuthProviderTests : IDisposable
 
         var service = await LinkAsync();
 
-        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialPost, service.AvailableCapabilities);
+        Assert.Equal(ServiceCaps.SocialFeed | ServiceCaps.SocialPhotos | ServiceCaps.SocialNotifications | ServiceCaps.SocialPost, service.AvailableCapabilities);
     }
 
     [Fact]
@@ -419,7 +419,7 @@ public class MastodonOAuthProviderTests : IDisposable
         RefreshToken = default!,
         ExpiresAt = default,
         Flags = LiveConnectedServiceFlags.None,
-        AvailableCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPost | ServiceCaps.SocialPhotos,
+        AvailableCapabilities = ServiceCaps.SocialFeed | ServiceCaps.SocialPost | ServiceCaps.SocialNotifications | ServiceCaps.SocialPhotos,
         EnabledCapabilities = 0,
     };
 

@@ -36,6 +36,9 @@ public class ActivitiesController(
     FeedRendererService feeds,
     ActivityProviderService activityProvider) : Controller
 {
+    private const string SocialNotificationsXslt = "wp7socnots";
+    private const string PinnedContactXslt = "wp7ctsm";
+
     [HttpPost]
     [Route("/Activities", Name = "activities_route")]
     public async Task<ActionResult<LiveFeed>> Activities(
@@ -43,14 +46,18 @@ public class ActivitiesController(
         [FromQuery(Name = "Count")] int count = 10,
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$xslt")] string? xslt = null,
+        [FromQuery(Name = "$xslt_time")] string? xsltTime = null,
         [FromBody] Identifiers? identifiers = null)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
         var userInfo = await userClient.GetUserInfoAsync(new GetUserInfoRequest() { UserId = User.Id() });
 
-        var requestedId = identifiers?.IdentifierList?.FirstOrDefault()?.ObjectId;
-        var author = CreateAuthor(userInfo, requestedId);
+        var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var identifier = identifiers?.IdentifierList?.FirstOrDefault();
+        var subject = ActivitySubjects.Resolve(identifier?.SourceId, identifier?.ObjectId, ownerCid);
+
+        var author = CreateAuthor(userInfo, subject);
         var feed = new LiveFeed()
         {
             Title = $"What's New with {author.Name}",
@@ -63,15 +70,24 @@ public class ActivitiesController(
             ]
         };
 
-        var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var requested = requestedId != null ? long.Parse(requestedId, CultureInfo.InvariantCulture) : (long?)null;
-        if (requested is { } contactCid && contactCid != ownerCid)
+        if (string.Equals(xslt, SocialNotificationsXslt, StringComparison.OrdinalIgnoreCase))
         {
-            var sources = await activityProvider.GetContactFeedSourcesAsync(contactCid, User.Id()!, HttpContext.RequestAborted);
-            feed.Entries.AddRange(
-                await feeds.RenderContactFeedAsync(Url, activityProvider.PublicProviders, sources, contactCid, count));
+            var storeObjectId = identifier?.ObjectId ?? ownerCid.ToString(CultureInfo.InvariantCulture);
+            return await NotificationsAsync(feed, author, subject, storeObjectId, count, xsltTime);
+        }
 
-            return feed;
+        switch (subject.Kind)
+        {
+            case ActivitySubjectKind.Contact:
+                var sources = await activityProvider.GetContactFeedSourcesAsync(subject.Cid, User.Id()!, HttpContext.RequestAborted);
+                feed.Entries.AddRange(
+                    await feeds.RenderContactFeedAsync(Url, activityProvider.PublicProviders, sources, subject.Cid, count, subject.StoreSourceId));
+                return feed;
+
+            case ActivitySubjectKind.Unknown:
+                logger.LogInformation("Feed requested for {SourceId}:{ObjectId}, which names nobody we know",
+                    identifier?.SourceId, identifier?.ObjectId);
+                return feed;
         }
 
         var provider = await activityProvider.GetOwnedProviderAsync(OwnedProviderUse.Read);
@@ -79,9 +95,64 @@ public class ActivitiesController(
             return feed;
 
         feed.Entries.AddRange(
-            await feeds.RenderFeedAsync(Url, provider, ActivitiesContext.My, count, author, User.Id()!));
+            await feeds.RenderFeedAsync(Url, provider, ActivitiesContext.My, count, author, User.Id()!, subject.StoreSourceId));
 
         return feed;
+    }
+
+    private async Task<ActionResult<LiveFeed>> NotificationsAsync(
+        LiveFeed feed, LiveAuthor author, ActivitySubject subject, string storeObjectId, int count, string? xsltTime)
+    {
+        feed.Title = $"Notifications for {author.Name}";
+
+        var provider = await activityProvider.GetOwnedProviderAsync(OwnedProviderUse.Read);
+        if (provider == null)
+            return feed;
+
+        var since = ParseLastSeen(xsltTime);
+        logger.LogInformation("Social notifications requested for {Store}, count {Count}, since {Since}",
+            subject.StoreSourceId, count, since);
+
+        feed.Entries.AddRange(
+            await feeds.RenderNotificationsAsync(Url, provider, count, since, User.Id()!, subject.StoreSourceId, storeObjectId));
+
+        return feed;
+    }
+
+    private async Task<ActionResult<LiveFeed>> PinnedContactsAsync(LiveFeed feed, int count, string? xsltPeeps)
+    {
+        var peeps = PinnedPeeps.ParsePeeps(xsltPeeps);
+        var cids = PinnedPeeps.SelectLiveCids(peeps);
+        if (cids.Count < peeps.Count)
+            logger.LogInformation("Pinned contact feed for {Peeps} skipped {Skipped} peep(s) that are not distinct Live cids",
+                xsltPeeps, peeps.Count - cids.Count);
+
+        var lookups = cids.Select(async cid =>
+        {
+            var sources = await activityProvider.GetContactFeedSourcesAsync(cid, User.Id()!, HttpContext.RequestAborted);
+            return new PinnedContactSources(cid, sources);
+        });
+        var contacts = await Task.WhenAll(lookups);
+
+        feed.Entries.AddRange(
+            await feeds.RenderPinnedContactsFeedAsync(Url, activityProvider.PublicProviders, contacts, count));
+
+        return feed;
+    }
+
+    private DateTimeOffset? ParseLastSeen(string? xsltTime)
+    {
+        if (string.IsNullOrWhiteSpace(xsltTime))
+            return null;
+
+        if (!DateTimeOffset.TryParse(xsltTime, CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed))
+        {
+            logger.LogInformation("Could not read the notifications marker {Marker}", xsltTime);
+            return null;
+        }
+
+        return parsed <= DateTimeOffset.UnixEpoch ? null : parsed;
     }
 
     [HttpGet]
@@ -92,7 +163,8 @@ public class ActivitiesController(
         [FromQuery(Name = "Source")] string source = "WL",
         [FromQuery(Name = "Type")] string type = "all",
         [FromQuery(Name = "$format")] string format = "atom10",
-        [FromQuery(Name = "$xslt")] string? xslt = null)
+        [FromQuery(Name = "$xslt")] string? xslt = null,
+        [FromQuery(Name = "$xslt_peeps")] string? xsltPeeps = null)
     {
         Response.Headers.Append("X-QueriedServices", "WL");
 
@@ -109,6 +181,9 @@ public class ActivitiesController(
                 new Link(this.Url.Link("contacts_activities_route_for_user", new { provider = "WL", id = author.Id })),
             ]
         };
+
+        if (string.Equals(xslt, PinnedContactXslt, StringComparison.OrdinalIgnoreCase))
+            return await PinnedContactsAsync(feed, count, xsltPeeps);
 
         var provider = await activityProvider.GetOwnedProviderAsync(OwnedProviderUse.Read);
         if (provider == null)
@@ -213,19 +288,18 @@ public class ActivitiesController(
     }
 
     // TODO: move this to an adapter class
-    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, string? requestedCid = null)
+    private LiveAuthor CreateAuthor(GetUserInfoResponse userInfo, ActivitySubject? subject = null)
     {
-        var userId = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-        var requestedId = requestedCid != null ? long.Parse(requestedCid, CultureInfo.InvariantCulture) : (long?)null;
-        // A differing id is a contact-feed request (the ObjectId names the contact), not an error.
-        if (requestedId != null && userId != requestedId)
-            logger.LogDebug("Feed requested for contact CID {RequestedCid} (owner {OwnerCid})", requestedId, userId);
+        var ownerCid = long.Parse(userInfo.Cid, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var cid = subject is { Kind: ActivitySubjectKind.Contact } contact ? contact.Cid : ownerCid;
+        if (cid != ownerCid)
+            logger.LogDebug("Feed requested for contact CID {RequestedCid} (owner {OwnerCid})", cid, ownerCid);
 
         return new LiveAuthor()
         {
-            Id = $"{(requestedId ?? userId)}",
+            Id = $"{cid}",
             Name = userInfo.Username,
-            Url = this.Url.Link("activities_route_for_user", new { id = (requestedId ?? userId).ToString(), provider = "WL" }),
+            Url = this.Url.Link("activities_route_for_user", new { id = cid.ToString(), provider = "WL" }),
             Links = []
         };
     }

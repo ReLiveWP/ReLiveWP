@@ -147,7 +147,7 @@ public class MastodonClientRegistryTests : IDisposable
               "token_endpoint": "https://mastodon.social/oauth/token",
               "revocation_endpoint": "https://mastodon.social/oauth/revoke",
               "app_registration_endpoint": "https://mastodon.social/api/v1/apps",
-              "scopes_supported": ["read", "write", "read:accounts", "read:statuses", "write:statuses", "write:media", "profile"]
+              "scopes_supported": ["read", "write", "read:accounts", "read:statuses", "read:notifications", "write:statuses", "write:media", "profile"]
             }
             """);
         bed.ServeAppRegistration("mastodon.social");
